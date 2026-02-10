@@ -66,3 +66,4 @@ ignore = ["B008"]  # Allow Depends() in FastAPI function arguments
 python_version = "3.12"
 strict = true
 ignore_missing_imports = true
+exclude = ["app/alembic/"]
