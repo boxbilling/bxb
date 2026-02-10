@@ -3,6 +3,7 @@ from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer
 from app.models.item import Item
 from app.models.plan import Plan, PlanInterval
+from app.models.subscription import Subscription, SubscriptionStatus
 
 __all__ = [
     "AggregationType",
@@ -13,4 +14,6 @@ __all__ = [
     "Item",
     "Plan",
     "PlanInterval",
+    "Subscription",
+    "SubscriptionStatus",
 ]

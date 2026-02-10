@@ -1,0 +1,6 @@
+export { default as DashboardPage } from './DashboardPage'
+export { default as CustomersPage } from './CustomersPage'
+export { default as MetricsPage } from './MetricsPage'
+export { default as PlansPage } from './PlansPage'
+export { default as SubscriptionsPage } from './SubscriptionsPage'
+export { default as InvoicesPage } from './InvoicesPage'

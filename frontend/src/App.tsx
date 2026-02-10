@@ -1,20 +1,34 @@
-import { Routes, Route } from 'react-router-dom'
-import MainLayout from './layouts/MainLayout'
-import HomePage from './pages/HomePage.tsx'
-import UserProfilePage from './pages/UserProfilePage'
-import LoginPage from './pages/LoginPage'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import AdminLayout from './layouts/AdminLayout'
+import {
+  DashboardPage,
+  CustomersPage,
+  MetricsPage,
+  PlansPage,
+  SubscriptionsPage,
+  InvoicesPage,
+} from './pages/admin'
+import SettingsPage from './pages/admin/SettingsPage'
 
 function App() {
   return (
     <Routes>
-      {/* Pages with MainLayout (header + footer) */}
-      <Route element={<MainLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/profile" element={<UserProfilePage />} />
+      {/* Admin Dashboard */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<DashboardPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route path="metrics" element={<MetricsPage />} />
+        <Route path="plans" element={<PlansPage />} />
+        <Route path="subscriptions" element={<SubscriptionsPage />} />
+        <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
 
-      {/* Pages without layout */}
-      <Route path="/login" element={<LoginPage />} />
+      {/* Redirect root to admin */}
+      <Route path="/" element={<Navigate to="/admin" replace />} />
+      
+      {/* Catch all - redirect to admin */}
+      <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
   )
 }
