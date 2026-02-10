@@ -1,0 +1,183 @@
+name: Release
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: 'Version bump type'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get current version
+        id: current_version
+        run: |
+          if [ -f VERSION ]; then
+            echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+          else
+            echo "version=0.0.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Calculate next version
+        id: next_version
+        run: |
+          CURRENT="${{ steps.current_version.outputs.version }}"
+          BUMP="${{ github.event.inputs.version_bump || 'minor' }}"
+          
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          
+          case $BUMP in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEXT="${MAJOR}.${MINOR}.${PATCH}"
+          echo "version=$NEXT" >> $GITHUB_OUTPUT
+          echo "Next version: $NEXT"
+
+      - name: Check for changes since last release
+        id: changes
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log --oneline | head -50)
+          else
+            COMMITS=$(git log ${LAST_TAG}..HEAD --oneline)
+          fi
+          
+          if [ -z "$COMMITS" ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No changes since last release"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "Changes found"
+          fi
+
+      - name: Generate changelog
+        if: steps.changes.outputs.has_changes == 'true'
+        id: changelog
+        run: |
+          VERSION="${{ steps.next_version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          # Generate changelog entry
+          CHANGELOG_ENTRY="## [$VERSION] - $DATE\n\n"
+          
+          # Group commits by type
+          if [ -z "$LAST_TAG" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+          
+          # Features
+          FEATURES=$(git log $RANGE --oneline --grep="^feat" 2>/dev/null | sed 's/^[a-f0-9]* /- /' || true)
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### Features\n${FEATURES}\n\n"
+          fi
+          
+          # Fixes
+          FIXES=$(git log $RANGE --oneline --grep="^fix" 2>/dev/null | sed 's/^[a-f0-9]* /- /' || true)
+          if [ -n "$FIXES" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### Bug Fixes\n${FIXES}\n\n"
+          fi
+          
+          # Other changes
+          OTHERS=$(git log $RANGE --oneline --grep="^chore\|^docs\|^test\|^ci" 2>/dev/null | sed 's/^[a-f0-9]* /- /' || true)
+          if [ -n "$OTHERS" ]; then
+            CHANGELOG_ENTRY="${CHANGELOG_ENTRY}### Other Changes\n${OTHERS}\n\n"
+          fi
+          
+          # Save for release notes
+          echo "entry<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGELOG_ENTRY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update VERSION file
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          echo "${{ steps.next_version.outputs.version }}" > VERSION
+
+      - name: Update CHANGELOG.md
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          VERSION="${{ steps.next_version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          # Create changelog entry
+          {
+            echo "## [$VERSION] - $DATE"
+            echo ""
+            git log $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD --pretty=format:"- %s" 2>/dev/null || git log --pretty=format:"- %s" | head -50
+            echo ""
+            echo ""
+          } > /tmp/new_entry.md
+          
+          # Prepend to CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            cat CHANGELOG.md >> /tmp/new_entry.md
+            mv /tmp/new_entry.md CHANGELOG.md
+          else
+            {
+              echo "# Changelog"
+              echo ""
+              echo "All notable changes to this project will be documented in this file."
+              echo ""
+              echo "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),"
+              echo "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)."
+              echo ""
+              cat /tmp/new_entry.md
+            } > CHANGELOG.md
+          fi
+
+      - name: Commit version bump
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          VERSION="${{ steps.next_version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION CHANGELOG.md
+          git commit -m "chore(release): $VERSION"
+          git push
+
+      - name: Create Release
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.next_version.outputs.version }}
+          name: Release v${{ steps.next_version.outputs.version }}
+          body: ${{ steps.changelog.outputs.entry }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
