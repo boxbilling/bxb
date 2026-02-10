@@ -8,6 +8,7 @@ help:
 	@echo "Development:"
 	@echo "  install     Install all dependencies"
 	@echo "  dev         Run development server"
+	@echo "  worker      Run worker server"
 	@echo "  test        Run tests"
 	@echo "  test-cov    Run tests with 100% coverage check"
 	@echo "  lint        Run linters"
@@ -30,6 +31,9 @@ install:
 
 dev:
 	cd backend && uv run fastapi dev app/main.py --port 8000
+
+worker:
+	cd backend && uv run arq app.worker.WorkerSettings
 
 test:
 	cd backend && uv run pytest tests/ -v
