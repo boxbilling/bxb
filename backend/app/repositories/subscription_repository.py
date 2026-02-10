@@ -33,7 +33,7 @@ class SubscriptionRepository:
         )
         # If started_at is provided and in the past or now, set status to ACTIVE
         if data.started_at is not None and data.started_at <= datetime.now(UTC):
-            subscription.status = SubscriptionStatus.ACTIVE.value
+            subscription.status = SubscriptionStatus.ACTIVE.value  # type: ignore[assignment]
         self.db.add(subscription)
         self.db.commit()
         self.db.refresh(subscription)
@@ -69,8 +69,8 @@ class SubscriptionRepository:
         subscription = self.get_by_id(subscription_id)
         if not subscription:
             return None
-        subscription.status = SubscriptionStatus.TERMINATED.value
-        subscription.ending_at = datetime.now(UTC)
+        subscription.status = SubscriptionStatus.TERMINATED.value  # type: ignore[assignment]
+        subscription.ending_at = datetime.now(UTC)  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(subscription)
         return subscription
@@ -80,8 +80,8 @@ class SubscriptionRepository:
         subscription = self.get_by_id(subscription_id)
         if not subscription:
             return None
-        subscription.status = SubscriptionStatus.CANCELED.value
-        subscription.canceled_at = datetime.now(UTC)
+        subscription.status = SubscriptionStatus.CANCELED.value  # type: ignore[assignment]
+        subscription.canceled_at = datetime.now(UTC)  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(subscription)
         return subscription

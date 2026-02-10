@@ -1,5 +1,8 @@
+from typing import Any
+
 from arq import create_pool
-from arq.connections import RedisSettings
+from arq.connections import ArqRedis, RedisSettings
+from arq.jobs import Job
 
 from app.core.config import settings
 
@@ -7,12 +10,12 @@ from app.core.config import settings
 redis_settings = RedisSettings.from_dsn(settings.REDIS_URL)
 
 
-async def get_redis_pool():
+async def get_redis_pool() -> ArqRedis:
     """Get or create Redis pool for arq"""
     return await create_pool(redis_settings)
 
 
-async def enqueue_task(task_name: str, *args, **kwargs):
+async def enqueue_task(task_name: str, *args: Any, **kwargs: Any) -> Job:
     """
     Enqueue a task to the arq worker.
 
@@ -27,12 +30,12 @@ async def enqueue_task(task_name: str, *args, **kwargs):
     pool = await get_redis_pool()
     try:
         job = await pool.enqueue_job(task_name, *args, **kwargs)
-        return job
+        return job  # type: ignore[return-value]
     finally:
         await pool.close()
 
 
 # ===== Example Tasks =====
-async def enqueue_task_ping():
+async def enqueue_task_ping() -> Job:
     """Enqueue a simple ping task for testing"""
     return await enqueue_task("task_ping")

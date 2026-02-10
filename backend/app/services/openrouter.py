@@ -40,7 +40,7 @@ class OpenRouterClient:
             )
         return self._client
 
-    async def close(self):
+    async def close(self) -> None:
         if self._client and not self._client.is_closed:
             await self._client.aclose()
             self._client = None
@@ -87,7 +87,7 @@ class OpenRouterClient:
             data = response.json()
 
             logger.debug(f"OpenRouter response: {data.get('usage', {})}")
-            return data
+            return dict(data)
 
         except httpx.HTTPStatusError as e:
             error_body = e.response.text
@@ -104,7 +104,7 @@ class OpenRouterClient:
         tools: list[dict[str, Any]] | None = None,
         temperature: float = 0.7,
         max_tokens: int = 4096,
-    ):
+    ) -> Any:
         """
         Stream a chat completion response.
 
@@ -166,14 +166,14 @@ class OpenRouterClient:
 
     def get_usage(self, response: dict[str, Any]) -> dict[str, int]:
         """Extract token usage from response."""
-        return response.get(
-            "usage",
-            {
+        usage = response.get("usage")
+        if usage is None:
+            return {
                 "prompt_tokens": 0,
                 "completion_tokens": 0,
                 "total_tokens": 0,
-            },
-        )
+            }
+        return dict(usage)
 
     def has_tool_calls(self, response: dict[str, Any]) -> bool:
         """Check if response contains tool calls."""

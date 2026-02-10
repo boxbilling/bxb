@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from arq import cron
 
@@ -9,7 +10,7 @@ from app.tasks import redis_settings
 logger = logging.getLogger(__name__)
 
 
-async def update_item_prices(ctx: dict) -> int:
+async def update_item_prices(ctx: dict[str, Any]) -> int:
     """Example task: apply a 10% discount to all items with quantity > 100."""
     db = SessionLocal()
     try:

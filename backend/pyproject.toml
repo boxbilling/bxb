@@ -67,3 +67,7 @@ python_version = "3.12"
 strict = true
 ignore_missing_imports = true
 exclude = ["app/alembic/"]
+
+[[tool.mypy.overrides]]
+module = "app.models.*"
+disable_error_code = ["misc"]  # Allow subclassing Base (has type Any)

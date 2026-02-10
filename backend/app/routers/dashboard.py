@@ -10,5 +10,5 @@ router = APIRouter()
 @router.get("/", response_model=Message)
 async def get_statistics(
     db: Session = Depends(get_db),
-):
+) -> Message:
     return Message(message="Hello World")

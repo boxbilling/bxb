@@ -25,7 +25,7 @@ app.include_router(subscriptions.router, prefix="/v1/subscriptions", tags=["subs
 
 
 @app.get("/")
-async def root():
+async def root() -> dict[str, str]:
     return {
         "message": settings.APP_DOMAIN,
         "status": "running",
@@ -33,5 +33,5 @@ async def root():
 
 
 @app.get("/health")
-async def health():
+async def health() -> dict[str, str]:
     return {"status": "healthy"}
