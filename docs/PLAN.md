@@ -14,6 +14,7 @@ Build a modern, open-source billing platform that handles usage-based, subscript
 4. **Quality First**: 100% test coverage, always
 5. **Real-Time**: Event-driven architecture for instant metering
 6. **Extensible**: Clean architecture for adding payment providers
+7. **UCP Native**: Payment abstraction via Universal Checkout Protocol (https://ucp.dev)
 
 ### What Makes bxb Different from Lago
 
@@ -299,7 +300,11 @@ class Invoice(Base):
 - [ ] PDF generation (optional)
 
 ### Phase 6: Payments (Week 11-12)
-- [ ] Stripe integration
+- [ ] UCP (Universal Checkout Protocol) integration
+  - See: https://ucp.dev/latest/
+  - Provider-agnostic payment abstraction (Stripe, PayPal, Adyen, etc.)
+  - OAuth 2.0 identity linking
+  - Checkout session management
 - [ ] Payment webhook handling
 - [ ] Invoice status updates
 
