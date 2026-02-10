@@ -7,9 +7,13 @@ from fastapi.testclient import TestClient
 
 from app.core.database import Base, engine, get_db
 from app.main import app
+from app.models.billable_metric import AggregationType, BillableMetric
+from app.models.charge import Charge, ChargeModel
 from app.models.plan import Plan, PlanInterval
+from app.repositories.charge_repository import ChargeRepository
 from app.repositories.plan_repository import PlanRepository
-from app.schemas.plan import PlanCreate
+from app.schemas.charge import ChargeCreate, ChargeUpdate
+from app.schemas.plan import ChargeInput, PlanCreate
 
 
 @pytest.fixture(autouse=True)
@@ -36,6 +40,32 @@ def db_session():
     finally:
         for _ in gen:
             pass
+
+
+def create_test_metric(db_session, code: str = "api_calls") -> BillableMetric:
+    """Helper to create a test billable metric."""
+    metric = BillableMetric(
+        code=code,
+        name=f"Test Metric {code}",
+        aggregation_type=AggregationType.COUNT.value,
+    )
+    db_session.add(metric)
+    db_session.commit()
+    db_session.refresh(metric)
+    return metric
+
+
+def create_test_plan(db_session, code: str = "test_plan") -> Plan:
+    """Helper to create a test plan."""
+    plan = Plan(
+        code=code,
+        name=f"Test Plan {code}",
+        interval=PlanInterval.MONTHLY.value,
+    )
+    db_session.add(plan)
+    db_session.commit()
+    db_session.refresh(plan)
+    return plan
 
 
 class TestPlanInterval:
@@ -464,3 +494,428 @@ class TestPlansAPI:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
+
+
+class TestChargeModel:
+    def test_standard(self):
+        """Test STANDARD charge model."""
+        assert ChargeModel.STANDARD == "standard"
+        assert ChargeModel.STANDARD.value == "standard"
+
+    def test_graduated(self):
+        """Test GRADUATED charge model."""
+        assert ChargeModel.GRADUATED == "graduated"
+        assert ChargeModel.GRADUATED.value == "graduated"
+
+    def test_volume(self):
+        """Test VOLUME charge model."""
+        assert ChargeModel.VOLUME == "volume"
+        assert ChargeModel.VOLUME.value == "volume"
+
+    def test_package(self):
+        """Test PACKAGE charge model."""
+        assert ChargeModel.PACKAGE == "package"
+        assert ChargeModel.PACKAGE.value == "package"
+
+    def test_percentage(self):
+        """Test PERCENTAGE charge model."""
+        assert ChargeModel.PERCENTAGE == "percentage"
+        assert ChargeModel.PERCENTAGE.value == "percentage"
+
+
+class TestChargeModelDB:
+    def test_charge_defaults(self, db_session):
+        """Test Charge model default values."""
+        plan = create_test_plan(db_session)
+        metric = create_test_metric(db_session)
+
+        charge = Charge(
+            plan_id=plan.id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        assert charge.id is not None
+        assert charge.plan_id == plan.id
+        assert charge.billable_metric_id == metric.id
+        assert charge.charge_model == "standard"
+        assert charge.properties == {}
+        assert charge.created_at is not None
+        assert charge.updated_at is not None
+
+
+class TestChargeRepository:
+    def test_get_by_id(self, db_session):
+        """Test getting charge by ID."""
+        plan = create_test_plan(db_session)
+        metric = create_test_metric(db_session)
+        repo = ChargeRepository(db_session)
+
+        data = ChargeCreate(
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD,
+            properties={"amount": 100},
+        )
+        charge = repo.create(plan.id, data)
+
+        found = repo.get_by_id(charge.id)
+        assert found is not None
+        assert found.id == charge.id
+
+        not_found = repo.get_by_id(uuid.uuid4())
+        assert not_found is None
+
+    def test_get_by_plan_id(self, db_session):
+        """Test getting charges by plan ID."""
+        plan = create_test_plan(db_session)
+        metric1 = create_test_metric(db_session, "metric1")
+        metric2 = create_test_metric(db_session, "metric2")
+        repo = ChargeRepository(db_session)
+
+        repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric1.id,
+            charge_model=ChargeModel.STANDARD,
+        ))
+        repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric2.id,
+            charge_model=ChargeModel.GRADUATED,
+        ))
+
+        charges = repo.get_by_plan_id(plan.id)
+        assert len(charges) == 2
+
+        empty = repo.get_by_plan_id(uuid.uuid4())
+        assert len(empty) == 0
+
+    def test_create(self, db_session):
+        """Test creating a charge."""
+        plan = create_test_plan(db_session)
+        metric = create_test_metric(db_session)
+        repo = ChargeRepository(db_session)
+
+        data = ChargeCreate(
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD,
+            properties={"amount_cents": 500},
+        )
+        charge = repo.create(plan.id, data)
+
+        assert charge.id is not None
+        assert charge.plan_id == plan.id
+        assert charge.billable_metric_id == metric.id
+        assert charge.charge_model == "standard"
+        assert charge.properties == {"amount_cents": 500}
+
+    def test_update(self, db_session):
+        """Test updating a charge."""
+        plan = create_test_plan(db_session)
+        metric = create_test_metric(db_session)
+        repo = ChargeRepository(db_session)
+
+        charge = repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD,
+            properties={"amount": 100},
+        ))
+
+        updated = repo.update(charge.id, ChargeUpdate(
+            charge_model=ChargeModel.GRADUATED,
+            properties={"tiers": [{"up_to": 100, "amount": 10}]},
+        ))
+        assert updated is not None
+        assert updated.charge_model == "graduated"
+        assert updated.properties == {"tiers": [{"up_to": 100, "amount": 10}]}
+
+    def test_update_partial(self, db_session):
+        """Test partial update of a charge."""
+        plan = create_test_plan(db_session)
+        metric = create_test_metric(db_session)
+        repo = ChargeRepository(db_session)
+
+        charge = repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD,
+            properties={"amount": 100},
+        ))
+
+        updated = repo.update(charge.id, ChargeUpdate(
+            properties={"amount": 200},
+        ))
+        assert updated is not None
+        assert updated.charge_model == "standard"  # Unchanged
+        assert updated.properties == {"amount": 200}  # Updated
+
+    def test_update_not_found(self, db_session):
+        """Test updating a non-existent charge."""
+        repo = ChargeRepository(db_session)
+        result = repo.update(uuid.uuid4(), ChargeUpdate(properties={"x": 1}))
+        assert result is None
+
+    def test_delete(self, db_session):
+        """Test deleting a charge."""
+        plan = create_test_plan(db_session)
+        metric = create_test_metric(db_session)
+        repo = ChargeRepository(db_session)
+
+        charge = repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD,
+        ))
+
+        assert repo.delete(charge.id) is True
+        assert repo.get_by_id(charge.id) is None
+
+    def test_delete_not_found(self, db_session):
+        """Test deleting a non-existent charge."""
+        repo = ChargeRepository(db_session)
+        assert repo.delete(uuid.uuid4()) is False
+
+    def test_delete_by_plan_id(self, db_session):
+        """Test deleting all charges for a plan."""
+        plan = create_test_plan(db_session)
+        metric1 = create_test_metric(db_session, "m1")
+        metric2 = create_test_metric(db_session, "m2")
+        repo = ChargeRepository(db_session)
+
+        repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric1.id,
+            charge_model=ChargeModel.STANDARD,
+        ))
+        repo.create(plan.id, ChargeCreate(
+            billable_metric_id=metric2.id,
+            charge_model=ChargeModel.VOLUME,
+        ))
+
+        count = repo.delete_by_plan_id(plan.id)
+        assert count == 2
+        assert len(repo.get_by_plan_id(plan.id)) == 0
+
+
+class TestPlansWithChargesAPI:
+    def test_create_plan_with_charges(self, client: TestClient, db_session):
+        """Test creating a plan with charges."""
+        # First create a billable metric
+        metric_response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "api_calls",
+                "name": "API Calls",
+                "aggregation_type": "count",
+            },
+        )
+        metric_id = metric_response.json()["id"]
+
+        # Create plan with charges
+        response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "with_charges",
+                "name": "Plan with Charges",
+                "interval": "monthly",
+                "amount_cents": 2999,
+                "charges": [
+                    {
+                        "billable_metric_id": metric_id,
+                        "charge_model": "standard",
+                        "properties": {"amount_cents": 10},
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["code"] == "with_charges"
+        assert len(data["charges"]) == 1
+        assert data["charges"][0]["billable_metric_id"] == metric_id
+        assert data["charges"][0]["charge_model"] == "standard"
+        assert data["charges"][0]["properties"] == {"amount_cents": 10}
+
+    def test_create_plan_with_multiple_charges(self, client: TestClient):
+        """Test creating a plan with multiple charges."""
+        # Create billable metrics
+        metric1 = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "calls", "name": "Calls", "aggregation_type": "count"},
+        ).json()
+        metric2 = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "storage", "name": "Storage", "aggregation_type": "sum", "field_name": "gb"},
+        ).json()
+
+        # Create plan with multiple charges
+        response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "multi_charges",
+                "name": "Multi Charges Plan",
+                "interval": "monthly",
+                "charges": [
+                    {"billable_metric_id": metric1["id"], "charge_model": "standard", "properties": {"amount": 1}},
+                    {"billable_metric_id": metric2["id"], "charge_model": "graduated", "properties": {"tiers": []}},
+                ],
+            },
+        )
+        assert response.status_code == 201
+        assert len(response.json()["charges"]) == 2
+
+    def test_create_plan_invalid_metric_id(self, client: TestClient):
+        """Test creating a plan with non-existent billable metric."""
+        fake_metric_id = str(uuid.uuid4())
+        response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "bad_metric",
+                "name": "Bad Metric Plan",
+                "interval": "monthly",
+                "charges": [
+                    {"billable_metric_id": fake_metric_id, "charge_model": "standard", "properties": {}},
+                ],
+            },
+        )
+        assert response.status_code == 400
+        assert f"Billable metric {fake_metric_id} not found" in response.json()["detail"]
+
+    def test_get_plan_with_charges(self, client: TestClient):
+        """Test getting a plan returns its charges."""
+        # Create metric
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "test_metric", "name": "Test", "aggregation_type": "count"},
+        ).json()
+
+        # Create plan with charge
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "get_with_charges",
+                "name": "Get With Charges",
+                "interval": "monthly",
+                "charges": [{"billable_metric_id": metric["id"], "charge_model": "standard", "properties": {}}],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        # Get plan
+        response = client.get(f"/v1/plans/{plan_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["charges"]) == 1
+
+    def test_update_plan_with_charges(self, client: TestClient):
+        """Test updating a plan's charges."""
+        # Create metrics
+        metric1 = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "upd_metric1", "name": "Update Metric 1", "aggregation_type": "count"},
+        ).json()
+        metric2 = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "upd_metric2", "name": "Update Metric 2", "aggregation_type": "count"},
+        ).json()
+
+        # Create plan with one charge
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "upd_charges",
+                "name": "Update Charges",
+                "interval": "monthly",
+                "charges": [{"billable_metric_id": metric1["id"], "charge_model": "standard", "properties": {}}],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        # Update to have a different charge
+        response = client.put(
+            f"/v1/plans/{plan_id}",
+            json={
+                "charges": [{"billable_metric_id": metric2["id"], "charge_model": "graduated", "properties": {}}],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["charges"]) == 1
+        assert data["charges"][0]["billable_metric_id"] == metric2["id"]
+        assert data["charges"][0]["charge_model"] == "graduated"
+
+    def test_update_plan_invalid_metric_id(self, client: TestClient):
+        """Test updating a plan with non-existent billable metric."""
+        # Create plan without charges
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "upd_bad_metric",
+                "name": "Update Bad Metric",
+                "interval": "monthly",
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        # Try to update with invalid metric
+        fake_metric_id = str(uuid.uuid4())
+        response = client.put(
+            f"/v1/plans/{plan_id}",
+            json={
+                "charges": [{"billable_metric_id": fake_metric_id, "charge_model": "standard", "properties": {}}],
+            },
+        )
+        assert response.status_code == 400
+        assert f"Billable metric {fake_metric_id} not found" in response.json()["detail"]
+
+    def test_list_plans_with_charges(self, client: TestClient):
+        """Test listing plans includes their charges."""
+        # Create metric
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "list_metric", "name": "List Metric", "aggregation_type": "count"},
+        ).json()
+
+        # Create plan with charge
+        client.post(
+            "/v1/plans/",
+            json={
+                "code": "list_plan",
+                "name": "List Plan",
+                "interval": "monthly",
+                "charges": [{"billable_metric_id": metric["id"], "charge_model": "standard", "properties": {}}],
+            },
+        )
+
+        # List plans
+        response = client.get("/v1/plans/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert len(data[0]["charges"]) == 1
+
+    def test_delete_plan_deletes_charges(self, client: TestClient):
+        """Test deleting a plan also deletes its charges."""
+        # Create metric
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "del_metric", "name": "Delete Metric", "aggregation_type": "count"},
+        ).json()
+
+        # Create plan with charge
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "del_plan_charges",
+                "name": "Delete Plan Charges",
+                "interval": "monthly",
+                "charges": [{"billable_metric_id": metric["id"], "charge_model": "standard", "properties": {}}],
+            },
+        )
+        plan_id = create_response.json()["id"]
+        assert len(create_response.json()["charges"]) == 1
+
+        # Delete plan
+        response = client.delete(f"/v1/plans/{plan_id}")
+        assert response.status_code == 204
+
+        # Verify plan is gone
+        get_response = client.get(f"/v1/plans/{plan_id}")
+        assert get_response.status_code == 404
