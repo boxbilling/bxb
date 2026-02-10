@@ -1,8 +1,16 @@
+from app.schemas.billable_metric import (
+    BillableMetricCreate,
+    BillableMetricResponse,
+    BillableMetricUpdate,
+)
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
 from app.schemas.message import Message
 
 __all__ = [
+    "BillableMetricCreate",
+    "BillableMetricResponse",
+    "BillableMetricUpdate",
     "CustomerCreate",
     "CustomerResponse",
     "CustomerUpdate",

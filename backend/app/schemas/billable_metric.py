@@ -1,0 +1,43 @@
+from datetime import datetime
+from typing import Self
+from uuid import UUID
+
+from pydantic import BaseModel, Field, model_validator
+
+from app.models.billable_metric import AggregationType
+
+
+class BillableMetricCreate(BaseModel):
+    code: str = Field(..., min_length=1, max_length=255)
+    name: str = Field(..., min_length=1, max_length=255)
+    description: str | None = None
+    aggregation_type: AggregationType
+    field_name: str | None = Field(default=None, max_length=255)
+
+    @model_validator(mode="after")
+    def validate_field_name_required(self) -> Self:
+        """Validate field_name is provided for aggregation types that need it."""
+        requires_field = (AggregationType.SUM, AggregationType.MAX, AggregationType.UNIQUE_COUNT)
+        if self.aggregation_type in requires_field and not self.field_name:
+            msg = f"field_name is required for aggregation_type '{self.aggregation_type.value}'"
+            raise ValueError(msg)
+        return self
+
+
+class BillableMetricUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    field_name: str | None = Field(default=None, max_length=255)
+
+
+class BillableMetricResponse(BaseModel):
+    id: UUID
+    code: str
+    name: str
+    description: str | None
+    aggregation_type: AggregationType
+    field_name: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
