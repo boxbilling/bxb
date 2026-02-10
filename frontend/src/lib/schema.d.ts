@@ -303,6 +303,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Events
+         * @description List events with optional filters.
+         */
+        get: operations["list_events_v1_events__get"];
+        put?: never;
+        /**
+         * Create Event
+         * @description Ingest a single event.
+         *
+         *     If an event with the same transaction_id already exists, returns the existing event.
+         *     This provides idempotent event ingestion.
+         */
+        post: operations["create_event_v1_events__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/{event_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Event
+         * @description Get an event by ID.
+         */
+        get: operations["get_event_v1_events__event_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Events Batch
+         * @description Ingest a batch of events (up to 100).
+         *
+         *     Duplicate transaction_ids are handled gracefully - existing events are returned
+         *     without error. The response includes counts of newly ingested vs duplicate events.
+         */
+        post: operations["create_events_batch_v1_events_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -510,6 +580,62 @@ export interface components {
             timezone?: string | null;
             /** Billing Metadata */
             billing_metadata?: Record<string, never> | null;
+        };
+        /** EventBatchCreate */
+        EventBatchCreate: {
+            /** Events */
+            events: components["schemas"]["EventCreate"][];
+        };
+        /** EventBatchResponse */
+        EventBatchResponse: {
+            /** Ingested */
+            ingested: number;
+            /** Duplicates */
+            duplicates: number;
+            /** Events */
+            events: components["schemas"]["EventResponse"][];
+        };
+        /** EventCreate */
+        EventCreate: {
+            /** Transaction Id */
+            transaction_id: string;
+            /** External Customer Id */
+            external_customer_id: string;
+            /** Code */
+            code: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Properties */
+            properties?: Record<string, never>;
+        };
+        /** EventResponse */
+        EventResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Transaction Id */
+            transaction_id: string;
+            /** External Customer Id */
+            external_customer_id: string;
+            /** Code */
+            code: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Properties */
+            properties: Record<string, never>;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -769,7 +895,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -1606,6 +1734,139 @@ export interface operations {
             };
         };
     };
+    list_events_v1_events__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                external_customer_id?: string | null;
+                code?: string | null;
+                from_timestamp?: string | null;
+                to_timestamp?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_event_v1_events__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_event_v1_events__event_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_events_batch_v1_events_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventBatchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     root__get: {
         parameters: {
             query?: never;
@@ -1621,7 +1882,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };
@@ -1641,7 +1904,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": {
+                        [key: string]: string;
+                    };
                 };
             };
         };

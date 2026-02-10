@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import billable_metrics, customers, dashboard, items, plans, subscriptions
+from app.routers import billable_metrics, customers, dashboard, events, items, plans, subscriptions
 
 app = FastAPI(title="API", version="0.0.1")
 
@@ -22,6 +22,7 @@ app.include_router(
 )
 app.include_router(plans.router, prefix="/v1/plans", tags=["plans"])
 app.include_router(subscriptions.router, prefix="/v1/subscriptions", tags=["subscriptions"])
+app.include_router(events.router, prefix="/v1/events", tags=["events"])
 
 
 @app.get("/")
