@@ -1,4 +1,4 @@
-.PHONY: help install dev test test-cov lint format migrate run clean
+.PHONY: help install dev test test-cov lint format migrate run clean openapi
 
 help:
 	@echo "bxb - Open Source Billing Software"
@@ -12,6 +12,7 @@ help:
 	@echo "  test-cov    Run tests with 100% coverage check"
 	@echo "  lint        Run linters"
 	@echo "  format      Format code"
+	@echo "  openapi     Generate OpenAPI schema and sync frontend client"
 	@echo ""
 	@echo "Database:"
 	@echo "  migrate     Run database migrations"
@@ -25,7 +26,7 @@ help:
 # Backend
 install:
 	cd backend && uv sync --group dev
-	cd frontend && pnpm install
+	cd frontend && npm install
 
 dev:
 	cd backend && uv run fastapi dev app/main.py --port 8000
@@ -43,6 +44,11 @@ lint:
 format:
 	cd backend && uv run ruff format app/ tests/
 	cd backend && uv run ruff check --fix app/ tests/
+
+# OpenAPI - Generate schema and sync frontend client (run before each commit)
+openapi:
+	cd backend && uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))" > ./openapi.json
+	cd frontend && npm run generate-client
 
 # Database
 migrate:
