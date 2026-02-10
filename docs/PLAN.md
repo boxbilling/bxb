@@ -275,38 +275,35 @@ class Invoice(Base):
 - [ ] Database schema (Customer, BillableMetric)
 - [ ] Basic CRUD APIs for Customer
 
-### Phase 2: Core Billing (Week 3-4)
-- [ ] BillableMetric API
-- [ ] Plan & Charge models
-- [ ] Plan API
-- [ ] Subscription model and API
+### Phase 2: Core Billing (Week 3-4) ✅
+- [x] BillableMetric API
+- [x] Plan & Charge models
+- [x] Plan API
+- [x] Subscription model and API
 
-### Phase 3: Event Ingestion (Week 5-6)
-- [ ] Event model and API
-- [ ] Batch event ingestion
-- [ ] Idempotency handling
-- [ ] Event validation
+### Phase 3: Event Ingestion (Week 5-6) ✅
+- [x] Event model and API
+- [x] Batch event ingestion
+- [x] Idempotency handling
+- [x] Event validation
 
-### Phase 4: Aggregation Engine (Week 7-8)
-- [ ] Usage aggregation service
-- [ ] All aggregation types
-- [ ] Billing period calculations
-- [ ] Background job for aggregation
+### Phase 4: Aggregation Engine (Week 7-8) ✅
+- [x] Usage aggregation service
+- [x] All aggregation types
+- [x] Billing period calculations
+- [x] Background job for aggregation
 
-### Phase 5: Invoicing (Week 9-10)
-- [ ] Invoice generation
-- [ ] Fee calculation
-- [ ] Invoice finalization
+### Phase 5: Invoicing (Week 9-10) ✅
+- [x] Invoice generation
+- [x] Fee calculation
+- [x] Invoice finalization
 - [ ] PDF generation (optional)
 
-### Phase 6: Payments (Week 11-12)
-- [ ] UCP (Universal Checkout Protocol) integration
-  - See: https://ucp.dev/latest/
-  - Provider-agnostic payment abstraction (Stripe, PayPal, Adyen, etc.)
-  - OAuth 2.0 identity linking
-  - Checkout session management
-- [ ] Payment webhook handling
-- [ ] Invoice status updates
+### Phase 6: Payments (Week 11-12) ✅
+- [x] Payment provider abstraction (Stripe + Manual, extensible for PayPal, Adyen, etc.)
+- [x] Checkout session management
+- [x] Payment webhook handling
+- [x] Invoice status updates on payment
 
 ### Phase 7: Advanced Charges (Week 13-14)
 - [ ] Graduated pricing
