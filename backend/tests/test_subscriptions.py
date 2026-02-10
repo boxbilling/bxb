@@ -143,11 +143,13 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        repo.create(SubscriptionCreate(
-            external_id="sub_ext",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        repo.create(
+            SubscriptionCreate(
+                external_id="sub_ext",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         found = repo.get_by_external_id("sub_ext")
         assert found is not None
@@ -163,8 +165,12 @@ class TestSubscriptionRepository:
         plan2 = create_test_plan(db_session, "plan2")
         repo = SubscriptionRepository(db_session)
 
-        repo.create(SubscriptionCreate(external_id="sub1", customer_id=customer.id, plan_id=plan1.id))
-        repo.create(SubscriptionCreate(external_id="sub2", customer_id=customer.id, plan_id=plan2.id))
+        repo.create(
+            SubscriptionCreate(external_id="sub1", customer_id=customer.id, plan_id=plan1.id)
+        )
+        repo.create(
+            SubscriptionCreate(external_id="sub2", customer_id=customer.id, plan_id=plan2.id)
+        )
 
         subscriptions = repo.get_by_customer_id(customer.id)
         assert len(subscriptions) == 2
@@ -178,11 +184,13 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_pending",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_pending",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         assert subscription.status == "pending"
         assert subscription.started_at is None
@@ -194,12 +202,14 @@ class TestSubscriptionRepository:
         repo = SubscriptionRepository(db_session)
 
         past_time = datetime.now(UTC) - timedelta(hours=1)
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_active",
-            customer_id=customer.id,
-            plan_id=plan.id,
-            started_at=past_time,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_active",
+                customer_id=customer.id,
+                plan_id=plan.id,
+                started_at=past_time,
+            )
+        )
 
         assert subscription.status == "active"
         # Compare timestamps without timezone (SQLite doesn't preserve tz info)
@@ -212,12 +222,14 @@ class TestSubscriptionRepository:
         repo = SubscriptionRepository(db_session)
 
         future_time = datetime.now(UTC) + timedelta(days=1)
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_future",
-            customer_id=customer.id,
-            plan_id=plan.id,
-            started_at=future_time,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_future",
+                customer_id=customer.id,
+                plan_id=plan.id,
+                started_at=future_time,
+            )
+        )
 
         assert subscription.status == "pending"
         # Compare timestamps without timezone (SQLite doesn't preserve tz info)
@@ -229,17 +241,22 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_update",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_update",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         ending = datetime.now(UTC) + timedelta(days=30)
-        updated = repo.update(subscription.id, SubscriptionUpdate(
-            status=SubscriptionStatus.ACTIVE,
-            ending_at=ending,
-        ))
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(
+                status=SubscriptionStatus.ACTIVE,
+                ending_at=ending,
+            ),
+        )
         assert updated is not None
         assert updated.status == "active"
         # Compare timestamps without timezone (SQLite doesn't preserve tz info)
@@ -251,17 +268,22 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_partial",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_partial",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         # Update only ending_at, not status (tests branch where status not in update_data)
         ending = datetime.now(UTC) + timedelta(days=30)
-        updated = repo.update(subscription.id, SubscriptionUpdate(
-            ending_at=ending,
-        ))
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(
+                ending_at=ending,
+            ),
+        )
         assert updated is not None
         assert updated.status == "pending"  # Unchanged
         assert updated.ending_at.replace(tzinfo=None) == ending.replace(tzinfo=None)
@@ -272,18 +294,23 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session, "plan_none")
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_none_status",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_none_status",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         # Update with explicit None for status (tests the branch where status is in data but is None)
         canceled_time = datetime.now(UTC)
-        updated = repo.update(subscription.id, SubscriptionUpdate(
-            status=None,  # Explicitly None
-            canceled_at=canceled_time,
-        ))
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(
+                status=None,  # Explicitly None
+                canceled_at=canceled_time,
+            ),
+        )
         assert updated is not None
         assert updated.status == "pending"  # Status unchanged
         assert updated.canceled_at is not None
@@ -300,11 +327,13 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_delete",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_delete",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         assert repo.delete(subscription.id) is True
         assert repo.get_by_id(subscription.id) is None
@@ -320,11 +349,13 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_term",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_term",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         terminated = repo.terminate(subscription.id)
         assert terminated is not None
@@ -343,11 +374,13 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        subscription = repo.create(SubscriptionCreate(
-            external_id="sub_cancel",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_cancel",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         canceled = repo.cancel(subscription.id)
         assert canceled is not None
@@ -366,11 +399,13 @@ class TestSubscriptionRepository:
         plan = create_test_plan(db_session)
         repo = SubscriptionRepository(db_session)
 
-        repo.create(SubscriptionCreate(
-            external_id="exists_test",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ))
+        repo.create(
+            SubscriptionCreate(
+                external_id="exists_test",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
 
         assert repo.external_id_exists("exists_test") is True
         assert repo.external_id_exists("not_exists") is False
@@ -472,7 +507,11 @@ class TestSubscriptionsAPI:
         fake_customer_id = str(uuid.uuid4())
         response = client.post(
             "/v1/subscriptions/",
-            json={"external_id": "inv_cust", "customer_id": fake_customer_id, "plan_id": plan["id"]},
+            json={
+                "external_id": "inv_cust",
+                "customer_id": fake_customer_id,
+                "plan_id": plan["id"],
+            },
         )
         assert response.status_code == 400
         assert f"Customer {fake_customer_id} not found" in response.json()["detail"]
@@ -487,7 +526,11 @@ class TestSubscriptionsAPI:
         fake_plan_id = str(uuid.uuid4())
         response = client.post(
             "/v1/subscriptions/",
-            json={"external_id": "inv_plan", "customer_id": customer["id"], "plan_id": fake_plan_id},
+            json={
+                "external_id": "inv_plan",
+                "customer_id": customer["id"],
+                "plan_id": fake_plan_id,
+            },
         )
         assert response.status_code == 400
         assert f"Plan {fake_plan_id} not found" in response.json()["detail"]
@@ -621,7 +664,11 @@ class TestSubscriptionsAPI:
         ).json()
         create_response = client.post(
             "/v1/subscriptions/",
-            json={"external_id": "sub_cancel", "customer_id": customer["id"], "plan_id": plan["id"]},
+            json={
+                "external_id": "sub_cancel",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
         )
         subscription_id = create_response.json()["id"]
 
@@ -652,7 +699,11 @@ class TestSubscriptionsAPI:
         for i in range(5):
             client.post(
                 "/v1/subscriptions/",
-                json={"external_id": f"sub_page_{i}", "customer_id": customer["id"], "plan_id": plan["id"]},
+                json={
+                    "external_id": f"sub_page_{i}",
+                    "customer_id": customer["id"],
+                    "plan_id": plan["id"],
+                },
             )
 
         response = client.get("/v1/subscriptions/?skip=2&limit=2")

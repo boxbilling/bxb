@@ -47,9 +47,7 @@ async def create_billable_metric(
     """Create a new billable metric."""
     repo = BillableMetricRepository(db)
     if repo.code_exists(data.code):
-        raise HTTPException(
-            status_code=409, detail="Billable metric with this code already exists"
-        )
+        raise HTTPException(status_code=409, detail="Billable metric with this code already exists")
     return repo.create(data)
 
 

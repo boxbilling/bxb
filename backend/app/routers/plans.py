@@ -63,17 +63,14 @@ async def create_plan(
     """Create a new plan."""
     repo = PlanRepository(db)
     if repo.code_exists(data.code):
-        raise HTTPException(
-            status_code=409, detail="Plan with this code already exists"
-        )
+        raise HTTPException(status_code=409, detail="Plan with this code already exists")
 
     # Validate all billable_metric_ids exist
     metric_repo = BillableMetricRepository(db)
     for charge in data.charges:
         if not metric_repo.get_by_id(charge.billable_metric_id):
             raise HTTPException(
-                status_code=400,
-                detail=f"Billable metric {charge.billable_metric_id} not found"
+                status_code=400, detail=f"Billable metric {charge.billable_metric_id} not found"
             )
 
     plan = repo.create(data)
@@ -95,8 +92,7 @@ async def update_plan(
         for charge in data.charges:
             if not metric_repo.get_by_id(charge.billable_metric_id):
                 raise HTTPException(
-                    status_code=400,
-                    detail=f"Billable metric {charge.billable_metric_id} not found"
+                    status_code=400, detail=f"Billable metric {charge.billable_metric_id} not found"
                 )
 
     plan = repo.update(plan_id, data)

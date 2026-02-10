@@ -19,8 +19,18 @@ class Subscription(Base):
 
     id = Column(UUIDType, primary_key=True, default=lambda: uuid.uuid4())
     external_id = Column(String(255), unique=True, index=True, nullable=False)
-    customer_id = Column(UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True)
-    plan_id = Column(UUIDType, ForeignKey("plans.id", ondelete="RESTRICT"), nullable=False, index=True)
+    customer_id = Column(
+        UUIDType,
+        ForeignKey("customers.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    plan_id = Column(
+        UUIDType,
+        ForeignKey("plans.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
     status = Column(String(20), nullable=False, default=SubscriptionStatus.PENDING.value)
     started_at = Column(DateTime(timezone=True), nullable=True)
     ending_at = Column(DateTime(timezone=True), nullable=True)

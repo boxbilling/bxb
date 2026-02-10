@@ -43,9 +43,7 @@ async def create_customer(
     """Create a new customer."""
     repo = CustomerRepository(db)
     if repo.external_id_exists(data.external_id):
-        raise HTTPException(
-            status_code=409, detail="Customer with this external_id already exists"
-        )
+        raise HTTPException(status_code=409, detail="Customer with this external_id already exists")
     return repo.create(data)
 
 

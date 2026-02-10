@@ -13,7 +13,7 @@ from app.models.plan import Plan, PlanInterval
 from app.repositories.charge_repository import ChargeRepository
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.charge import ChargeCreate, ChargeUpdate
-from app.schemas.plan import ChargeInput, PlanCreate
+from app.schemas.plan import PlanCreate
 
 
 @pytest.fixture(autouse=True)
@@ -575,14 +575,20 @@ class TestChargeRepository:
         metric2 = create_test_metric(db_session, "metric2")
         repo = ChargeRepository(db_session)
 
-        repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric1.id,
-            charge_model=ChargeModel.STANDARD,
-        ))
-        repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric2.id,
-            charge_model=ChargeModel.GRADUATED,
-        ))
+        repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric1.id,
+                charge_model=ChargeModel.STANDARD,
+            ),
+        )
+        repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric2.id,
+                charge_model=ChargeModel.GRADUATED,
+            ),
+        )
 
         charges = repo.get_by_plan_id(plan.id)
         assert len(charges) == 2
@@ -615,16 +621,22 @@ class TestChargeRepository:
         metric = create_test_metric(db_session)
         repo = ChargeRepository(db_session)
 
-        charge = repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric.id,
-            charge_model=ChargeModel.STANDARD,
-            properties={"amount": 100},
-        ))
+        charge = repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric.id,
+                charge_model=ChargeModel.STANDARD,
+                properties={"amount": 100},
+            ),
+        )
 
-        updated = repo.update(charge.id, ChargeUpdate(
-            charge_model=ChargeModel.GRADUATED,
-            properties={"tiers": [{"up_to": 100, "amount": 10}]},
-        ))
+        updated = repo.update(
+            charge.id,
+            ChargeUpdate(
+                charge_model=ChargeModel.GRADUATED,
+                properties={"tiers": [{"up_to": 100, "amount": 10}]},
+            ),
+        )
         assert updated is not None
         assert updated.charge_model == "graduated"
         assert updated.properties == {"tiers": [{"up_to": 100, "amount": 10}]}
@@ -635,15 +647,21 @@ class TestChargeRepository:
         metric = create_test_metric(db_session)
         repo = ChargeRepository(db_session)
 
-        charge = repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric.id,
-            charge_model=ChargeModel.STANDARD,
-            properties={"amount": 100},
-        ))
+        charge = repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric.id,
+                charge_model=ChargeModel.STANDARD,
+                properties={"amount": 100},
+            ),
+        )
 
-        updated = repo.update(charge.id, ChargeUpdate(
-            properties={"amount": 200},
-        ))
+        updated = repo.update(
+            charge.id,
+            ChargeUpdate(
+                properties={"amount": 200},
+            ),
+        )
         assert updated is not None
         assert updated.charge_model == "standard"  # Unchanged
         assert updated.properties == {"amount": 200}  # Updated
@@ -660,10 +678,13 @@ class TestChargeRepository:
         metric = create_test_metric(db_session)
         repo = ChargeRepository(db_session)
 
-        charge = repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric.id,
-            charge_model=ChargeModel.STANDARD,
-        ))
+        charge = repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric.id,
+                charge_model=ChargeModel.STANDARD,
+            ),
+        )
 
         assert repo.delete(charge.id) is True
         assert repo.get_by_id(charge.id) is None
@@ -680,14 +701,20 @@ class TestChargeRepository:
         metric2 = create_test_metric(db_session, "m2")
         repo = ChargeRepository(db_session)
 
-        repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric1.id,
-            charge_model=ChargeModel.STANDARD,
-        ))
-        repo.create(plan.id, ChargeCreate(
-            billable_metric_id=metric2.id,
-            charge_model=ChargeModel.VOLUME,
-        ))
+        repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric1.id,
+                charge_model=ChargeModel.STANDARD,
+            ),
+        )
+        repo.create(
+            plan.id,
+            ChargeCreate(
+                billable_metric_id=metric2.id,
+                charge_model=ChargeModel.VOLUME,
+            ),
+        )
 
         count = repo.delete_by_plan_id(plan.id)
         assert count == 2
@@ -742,7 +769,12 @@ class TestPlansWithChargesAPI:
         ).json()
         metric2 = client.post(
             "/v1/billable_metrics/",
-            json={"code": "storage", "name": "Storage", "aggregation_type": "sum", "field_name": "gb"},
+            json={
+                "code": "storage",
+                "name": "Storage",
+                "aggregation_type": "sum",
+                "field_name": "gb",
+            },
         ).json()
 
         # Create plan with multiple charges
@@ -753,8 +785,16 @@ class TestPlansWithChargesAPI:
                 "name": "Multi Charges Plan",
                 "interval": "monthly",
                 "charges": [
-                    {"billable_metric_id": metric1["id"], "charge_model": "standard", "properties": {"amount": 1}},
-                    {"billable_metric_id": metric2["id"], "charge_model": "graduated", "properties": {"tiers": []}},
+                    {
+                        "billable_metric_id": metric1["id"],
+                        "charge_model": "standard",
+                        "properties": {"amount": 1},
+                    },
+                    {
+                        "billable_metric_id": metric2["id"],
+                        "charge_model": "graduated",
+                        "properties": {"tiers": []},
+                    },
                 ],
             },
         )
@@ -771,7 +811,11 @@ class TestPlansWithChargesAPI:
                 "name": "Bad Metric Plan",
                 "interval": "monthly",
                 "charges": [
-                    {"billable_metric_id": fake_metric_id, "charge_model": "standard", "properties": {}},
+                    {
+                        "billable_metric_id": fake_metric_id,
+                        "charge_model": "standard",
+                        "properties": {},
+                    },
                 ],
             },
         )
@@ -793,7 +837,13 @@ class TestPlansWithChargesAPI:
                 "code": "get_with_charges",
                 "name": "Get With Charges",
                 "interval": "monthly",
-                "charges": [{"billable_metric_id": metric["id"], "charge_model": "standard", "properties": {}}],
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "standard",
+                        "properties": {},
+                    }
+                ],
             },
         )
         plan_id = create_response.json()["id"]
@@ -823,7 +873,13 @@ class TestPlansWithChargesAPI:
                 "code": "upd_charges",
                 "name": "Update Charges",
                 "interval": "monthly",
-                "charges": [{"billable_metric_id": metric1["id"], "charge_model": "standard", "properties": {}}],
+                "charges": [
+                    {
+                        "billable_metric_id": metric1["id"],
+                        "charge_model": "standard",
+                        "properties": {},
+                    }
+                ],
             },
         )
         plan_id = create_response.json()["id"]
@@ -832,7 +888,13 @@ class TestPlansWithChargesAPI:
         response = client.put(
             f"/v1/plans/{plan_id}",
             json={
-                "charges": [{"billable_metric_id": metric2["id"], "charge_model": "graduated", "properties": {}}],
+                "charges": [
+                    {
+                        "billable_metric_id": metric2["id"],
+                        "charge_model": "graduated",
+                        "properties": {},
+                    }
+                ],
             },
         )
         assert response.status_code == 200
@@ -859,7 +921,13 @@ class TestPlansWithChargesAPI:
         response = client.put(
             f"/v1/plans/{plan_id}",
             json={
-                "charges": [{"billable_metric_id": fake_metric_id, "charge_model": "standard", "properties": {}}],
+                "charges": [
+                    {
+                        "billable_metric_id": fake_metric_id,
+                        "charge_model": "standard",
+                        "properties": {},
+                    }
+                ],
             },
         )
         assert response.status_code == 400
@@ -880,7 +948,13 @@ class TestPlansWithChargesAPI:
                 "code": "list_plan",
                 "name": "List Plan",
                 "interval": "monthly",
-                "charges": [{"billable_metric_id": metric["id"], "charge_model": "standard", "properties": {}}],
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "standard",
+                        "properties": {},
+                    }
+                ],
             },
         )
 
@@ -906,7 +980,13 @@ class TestPlansWithChargesAPI:
                 "code": "del_plan_charges",
                 "name": "Delete Plan Charges",
                 "interval": "monthly",
-                "charges": [{"billable_metric_id": metric["id"], "charge_model": "standard", "properties": {}}],
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "standard",
+                        "properties": {},
+                    }
+                ],
             },
         )
         plan_id = create_response.json()["id"]

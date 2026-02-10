@@ -10,6 +10,7 @@ from app.models.plan import PlanInterval
 
 class ChargeInput(BaseModel):
     """Charge input when creating/updating a plan."""
+
     billable_metric_id: UUID
     charge_model: ChargeModel
     properties: dict[str, Any] = Field(default_factory=dict)
@@ -17,6 +18,7 @@ class ChargeInput(BaseModel):
 
 class ChargeOutput(BaseModel):
     """Charge output in plan responses."""
+
     id: UUID
     plan_id: UUID
     billable_metric_id: UUID
