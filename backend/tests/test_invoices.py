@@ -1,0 +1,710 @@
+"""Tests for Invoice API and Repository."""
+
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from uuid import uuid4
+
+import pytest
+from fastapi.testclient import TestClient
+
+from app.core.database import Base, engine, get_db
+from app.main import app
+from app.models.invoice import InvoiceStatus
+from app.repositories.customer_repository import CustomerRepository
+from app.repositories.invoice_repository import InvoiceRepository
+from app.repositories.plan_repository import PlanRepository
+from app.repositories.subscription_repository import SubscriptionRepository
+from app.schemas.customer import CustomerCreate
+from app.schemas.invoice import InvoiceCreate, InvoiceLineItem, InvoiceUpdate
+from app.schemas.plan import PlanCreate
+from app.schemas.subscription import SubscriptionCreate
+
+
+@pytest.fixture(autouse=True)
+def setup_database():
+    """Create tables before each test."""
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
+
+
+@pytest.fixture
+def db_session():
+    """Create a database session for direct repository testing."""
+    gen = get_db()
+    db = next(gen)
+    try:
+        yield db
+    finally:
+        for _ in gen:
+            pass
+
+
+@pytest.fixture
+def customer(db_session):
+    """Create a test customer."""
+    repo = CustomerRepository(db_session)
+    return repo.create(CustomerCreate(external_id="inv_test_cust", name="Invoice Test Customer"))
+
+
+@pytest.fixture
+def plan(db_session):
+    """Create a test plan."""
+    repo = PlanRepository(db_session)
+    return repo.create(
+        PlanCreate(code="inv_test_plan", name="Invoice Test Plan", interval="monthly")
+    )
+
+
+@pytest.fixture
+def subscription(db_session, customer, plan):
+    """Create a test subscription."""
+    repo = SubscriptionRepository(db_session)
+    return repo.create(
+        SubscriptionCreate(
+            external_id="inv_test_sub",
+            customer_id=customer.id,
+            plan_id=plan.id,
+        )
+    )
+
+
+@pytest.fixture
+def sample_line_items():
+    """Sample line items for invoice creation."""
+    return [
+        InvoiceLineItem(
+            description="Base subscription fee",
+            quantity=Decimal("1"),
+            unit_price=Decimal("29.99"),
+            amount=Decimal("29.99"),
+        ),
+        InvoiceLineItem(
+            description="API calls overage",
+            quantity=Decimal("1000"),
+            unit_price=Decimal("0.01"),
+            amount=Decimal("10.00"),
+            metric_code="api_calls",
+        ),
+    ]
+
+
+class TestInvoiceRepository:
+    def test_create_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            currency="USD",
+            line_items=sample_line_items,
+            due_date=datetime.now(UTC) + timedelta(days=14),
+        )
+
+        invoice = repo.create(data)
+
+        assert invoice.id is not None
+        assert invoice.invoice_number.startswith("INV-")
+        assert invoice.customer_id == customer.id
+        assert invoice.subscription_id == subscription.id
+        assert invoice.status == InvoiceStatus.DRAFT.value
+        assert invoice.subtotal == Decimal("39.99")
+        assert invoice.total == Decimal("39.99")
+        assert len(invoice.line_items) == 2
+
+    def test_generate_invoice_number_sequence(
+        self, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that invoice numbers are sequential."""
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+
+        invoice1 = repo.create(data)
+        invoice2 = repo.create(data)
+
+        # Extract sequence numbers
+        seq1 = int(invoice1.invoice_number.split("-")[-1])
+        seq2 = int(invoice2.invoice_number.split("-")[-1])
+
+        assert seq2 == seq1 + 1
+
+    def test_get_by_id(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        fetched = repo.get_by_id(invoice.id)
+        assert fetched is not None
+        assert fetched.id == invoice.id
+
+    def test_get_by_id_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.get_by_id(uuid4()) is None
+
+    def test_get_by_invoice_number(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        fetched = repo.get_by_invoice_number(invoice.invoice_number)
+        assert fetched is not None
+        assert fetched.id == invoice.id
+
+    def test_get_by_invoice_number_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.get_by_invoice_number("INV-NOTEXIST-0001") is None
+
+    def test_get_all(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        # Create multiple invoices
+        invoices_created = []
+        for i in range(3):
+            data = InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC) + timedelta(days=i),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30 + i),
+                line_items=sample_line_items,
+            )
+            invoices_created.append(repo.create(data))
+
+        invoices = repo.get_all()
+        assert len(invoices) >= 3
+
+    def test_get_all_with_filters(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        # Create an invoice
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        repo.create(data)
+
+        # Test customer_id filter
+        invoices = repo.get_all(customer_id=customer.id)
+        assert len(invoices) == 1
+
+        # Test subscription_id filter
+        invoices = repo.get_all(subscription_id=subscription.id)
+        assert len(invoices) == 1
+
+        # Test status filter
+        invoices = repo.get_all(status=InvoiceStatus.DRAFT)
+        assert len(invoices) == 1
+
+        # Test no match
+        invoices = repo.get_all(customer_id=uuid4())
+        assert len(invoices) == 0
+
+    def test_get_all_pagination(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        # Create 5 invoices
+        for i in range(5):
+            data = InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC) + timedelta(days=i * 10),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30 + i * 10),
+                line_items=sample_line_items,
+            )
+            repo.create(data)
+
+        # Test pagination
+        invoices = repo.get_all(skip=2, limit=2)
+        assert len(invoices) == 2
+
+    def test_generate_invoice_number_with_invalid_format(
+        self, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that invalid invoice number format in DB falls back to sequence 1."""
+        repo = InvoiceRepository(db_session)
+
+        # First create a valid invoice
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        # Manually corrupt the invoice number to have today's prefix but invalid suffix
+        today = datetime.now().strftime("%Y%m%d")
+        invoice.invoice_number = f"INV-{today}-INVALID"  # type: ignore[assignment]
+        db_session.commit()
+
+        # Create another invoice - should handle invalid format gracefully
+        data2 = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC) + timedelta(days=31),
+            billing_period_end=datetime.now(UTC) + timedelta(days=60),
+            line_items=sample_line_items,
+        )
+        invoice2 = repo.create(data2)
+
+        # Should still generate a valid invoice number with sequence 1
+        assert invoice2.invoice_number.startswith("INV-")
+        assert invoice2.invoice_number.endswith("-0001")
+
+    def test_update_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        # Update due date
+        new_due_date = datetime.now(UTC) + timedelta(days=30)
+        updated = repo.update(invoice.id, InvoiceUpdate(due_date=new_due_date))
+
+        assert updated is not None
+        assert updated.due_date is not None
+
+    def test_update_invoice_status(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        # Update status via update method
+        updated = repo.update(invoice.id, InvoiceUpdate(status=InvoiceStatus.FINALIZED))
+        assert updated is not None
+        assert updated.status == InvoiceStatus.FINALIZED.value
+
+    def test_update_invoice_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.update(uuid4(), InvoiceUpdate(due_date=datetime.now(UTC))) is None
+
+    def test_finalize_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        finalized = repo.finalize(invoice.id)
+
+        assert finalized is not None
+        assert finalized.status == InvoiceStatus.FINALIZED.value
+        assert finalized.issued_at is not None
+
+    def test_finalize_invoice_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.finalize(uuid4()) is None
+
+    def test_finalize_non_draft_invoice(
+        self, db_session, customer, subscription, sample_line_items
+    ):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+
+        # Try to finalize again
+        with pytest.raises(ValueError, match="Only draft invoices can be finalized"):
+            repo.finalize(invoice.id)
+
+    def test_mark_paid(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+
+        paid = repo.mark_paid(invoice.id)
+
+        assert paid is not None
+        assert paid.status == InvoiceStatus.PAID.value
+        assert paid.paid_at is not None
+
+    def test_mark_paid_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.mark_paid(uuid4()) is None
+
+    def test_mark_paid_draft_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        with pytest.raises(ValueError, match="Only finalized invoices can be marked as paid"):
+            repo.mark_paid(invoice.id)
+
+    def test_void_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        voided = repo.void(invoice.id)
+
+        assert voided is not None
+        assert voided.status == InvoiceStatus.VOIDED.value
+
+    def test_void_invoice_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.void(uuid4()) is None
+
+    def test_void_paid_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+        repo.mark_paid(invoice.id)
+
+        with pytest.raises(ValueError, match="Paid invoices cannot be voided"):
+            repo.void(invoice.id)
+
+    def test_delete_draft_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        result = repo.delete(invoice.id)
+
+        assert result is True
+        assert repo.get_by_id(invoice.id) is None
+
+    def test_delete_invoice_not_found(self, db_session):
+        repo = InvoiceRepository(db_session)
+        assert repo.delete(uuid4()) is False
+
+    def test_delete_finalized_invoice(self, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+
+        with pytest.raises(ValueError, match="Only draft invoices can be deleted"):
+            repo.delete(invoice.id)
+
+
+class TestInvoicesAPI:
+    def test_list_invoices_empty(self, client):
+        response = client.get("/v1/invoices/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_invoices(self, client, db_session, customer, subscription, sample_line_items):
+        # Create invoice directly
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        repo.create(data)
+
+        response = client.get("/v1/invoices/")
+        assert response.status_code == 200
+        invoices = response.json()
+        assert len(invoices) == 1
+
+    def test_list_invoices_with_filters(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        repo.create(data)
+
+        # Filter by customer_id
+        response = client.get(f"/v1/invoices/?customer_id={customer.id}")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+
+        # Filter by status
+        response = client.get("/v1/invoices/?status=draft")
+        assert response.status_code == 200
+        assert len(response.json()) == 1
+
+    def test_get_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        response = client.get(f"/v1/invoices/{invoice.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(invoice.id)
+        assert data["status"] == "draft"
+
+    def test_get_invoice_not_found(self, client):
+        response = client.get(f"/v1/invoices/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_update_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        response = client.put(
+            f"/v1/invoices/{invoice.id}",
+            json={"due_date": (datetime.now(UTC) + timedelta(days=30)).isoformat()},
+        )
+        assert response.status_code == 200
+
+    def test_update_invoice_not_found(self, client):
+        response = client.put(
+            f"/v1/invoices/{uuid4()}",
+            json={"due_date": datetime.now(UTC).isoformat()},
+        )
+        assert response.status_code == 404
+
+    def test_finalize_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 200
+        assert response.json()["status"] == "finalized"
+
+    def test_finalize_invoice_not_found(self, client):
+        response = client.post(f"/v1/invoices/{uuid4()}/finalize")
+        assert response.status_code == 404
+
+    def test_finalize_non_draft(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 400
+
+    def test_pay_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/pay")
+        assert response.status_code == 200
+        assert response.json()["status"] == "paid"
+
+    def test_pay_invoice_not_found(self, client):
+        response = client.post(f"/v1/invoices/{uuid4()}/pay")
+        assert response.status_code == 404
+
+    def test_pay_draft_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/pay")
+        assert response.status_code == 400
+
+    def test_void_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/void")
+        assert response.status_code == 200
+        assert response.json()["status"] == "voided"
+
+    def test_void_invoice_not_found(self, client):
+        response = client.post(f"/v1/invoices/{uuid4()}/void")
+        assert response.status_code == 404
+
+    def test_void_paid_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+        repo.mark_paid(invoice.id)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/void")
+        assert response.status_code == 400
+
+    def test_delete_invoice(self, client, db_session, customer, subscription, sample_line_items):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+
+        response = client.delete(f"/v1/invoices/{invoice.id}")
+        assert response.status_code == 204
+
+    def test_delete_invoice_not_found(self, client):
+        response = client.delete(f"/v1/invoices/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_delete_finalized_invoice(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data)
+        repo.finalize(invoice.id)
+
+        response = client.delete(f"/v1/invoices/{invoice.id}")
+        assert response.status_code == 400

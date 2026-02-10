@@ -14,8 +14,17 @@ class InvoiceRepository:
 
     def _generate_invoice_number(self) -> str:
         """Generate a unique invoice number."""
-        # Get the current max invoice number
-        result = self.db.query(Invoice.invoice_number).order_by(Invoice.created_at.desc()).first()
+        today = datetime.now().strftime("%Y%m%d")
+        prefix = f"INV-{today}-"
+
+        # Get the highest invoice number for today
+        result = (
+            self.db.query(Invoice.invoice_number)
+            .filter(Invoice.invoice_number.like(f"{prefix}%"))
+            .order_by(Invoice.invoice_number.desc())
+            .first()
+        )
+
         if result:
             # Extract number from INV-YYYYMMDD-XXXX format
             try:
@@ -26,8 +35,7 @@ class InvoiceRepository:
         else:
             new_num = 1
 
-        today = datetime.now().strftime("%Y%m%d")
-        return f"INV-{today}-{new_num:04d}"
+        return f"{prefix}{new_num:04d}"
 
     def get_all(
         self,
