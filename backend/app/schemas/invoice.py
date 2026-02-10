@@ -1,0 +1,56 @@
+from datetime import datetime
+from decimal import Decimal
+from typing import Any
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+from app.models.invoice import InvoiceStatus
+
+
+class InvoiceLineItem(BaseModel):
+    description: str
+    quantity: Decimal
+    unit_price: Decimal
+    amount: Decimal
+    charge_id: UUID | None = None
+    metric_code: str | None = None
+
+
+class InvoiceCreate(BaseModel):
+    customer_id: UUID
+    subscription_id: UUID
+    billing_period_start: datetime
+    billing_period_end: datetime
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    line_items: list[InvoiceLineItem] = Field(default_factory=list)
+    due_date: datetime | None = None
+
+
+class InvoiceUpdate(BaseModel):
+    status: InvoiceStatus | None = None
+    due_date: datetime | None = None
+    issued_at: datetime | None = None
+    paid_at: datetime | None = None
+
+
+class InvoiceResponse(BaseModel):
+    id: UUID
+    invoice_number: str
+    customer_id: UUID
+    subscription_id: UUID
+    status: str
+    billing_period_start: datetime
+    billing_period_end: datetime
+    subtotal: Decimal
+    tax_amount: Decimal
+    total: Decimal
+    currency: str
+    line_items: list[dict[str, Any]]
+    due_date: datetime | None
+    issued_at: datetime | None
+    paid_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
