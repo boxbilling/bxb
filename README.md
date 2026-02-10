@@ -1,20 +1,235 @@
-# Template
+# bxb
 
-Opinionated web project template for building projects with AI.
+<p align="center">
+  <strong>Open Source Metering & Usage-Based Billing</strong>
+</p>
 
-## Backend Tech Stack
+<p align="center">
+  The modern, developer-friendly alternative to Chargebee, Recurly, and Stripe Billing.
+</p>
 
-- **Framework**: FastAPI
-- **Python**: 3.12+
-- **Package Manager**: uv
-- **Database**: PostgreSQL (SQLAlchemy + psycopg2)
-- **Validation**: Pydantic
-- **DB Migrations**: alembic
-- **Task Queue**: arq
-- **HTTP Client**: httpx
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#contributing">Contributing</a>
+</p>
 
-## Rules before each commit
+---
 
-1. Test must pass: run `make test` and fix any errors.
-2. Run `make lint` to check code style.
-3. Run `make openapi` to generate new OpenAPI schema.
+## What is bxb?
+
+**bxb** is an open-source billing platform designed for modern SaaS businesses. Whether you need usage-based pricing, subscription billing, or a hybrid of both, bxb provides the infrastructure to build sophisticated billing systems without the complexity.
+
+Inspired by [Lago](https://github.com/getlago/lago), built with Python/FastAPI for reliability and developer productivity.
+
+### Why bxb?
+
+- **🐍 Python/FastAPI**: Modern async Python stack, easy to extend
+- **📦 Simple Deployment**: Docker-first, minimal dependencies
+- **🔧 Developer First**: OpenAPI spec, auto-generated clients, great DX
+- **💰 Any Pricing Model**: Usage-based, subscription, hybrid, volume, graduated
+- **🔒 Self-Hosted**: Your data stays on your infrastructure
+- **📊 Real-Time Metering**: Instant usage tracking and billing
+- **✅ 100% Test Coverage**: Enforced on every commit
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|------------|
+| Backend | Python 3.12+, FastAPI, SQLAlchemy |
+| Frontend | React, TypeScript, Vite, Radix UI |
+| Database | PostgreSQL |
+| Queue | arq (Redis) |
+| Payments | Stripe |
+
+## Features
+
+### Core Billing
+- **Usage Metering**: Track and aggregate customer usage in real-time
+- **Flexible Plans**: Create plans with any combination of subscription fees and usage charges
+- **Multiple Charge Models**: Standard, graduated, volume, package, and percentage pricing
+- **Automated Invoicing**: Generate professional invoices automatically
+
+### Pricing Models
+- **Subscription-Based**: Fixed recurring fees on any interval
+- **Usage-Based**: Pay-as-you-go based on actual consumption
+- **Hybrid**: Combine subscriptions with usage charges
+- **Tiered/Graduated**: Progressive pricing as usage increases
+- **Volume**: Retroactive volume discounts
+
+### Integrations
+- **Payment Providers**: Stripe (more coming)
+- **Webhooks**: Real-time notifications for billing events
+- **REST API**: Comprehensive API for all operations
+- **OpenAPI**: Auto-generated TypeScript client
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.12+ (via [uv](https://docs.astral.sh/uv/))
+- Node.js 20+ (via pnpm)
+- PostgreSQL 16+
+- Redis (for background jobs)
+
+### Using Docker
+
+```bash
+# Clone the repository
+git clone https://github.com/boxbilling/bxb.git
+cd bxb
+
+# Start all services
+docker-compose up -d
+
+# API: http://localhost:8000
+# Frontend: http://localhost:3000
+```
+
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/boxbilling/bxb.git
+cd bxb
+
+# Install dependencies
+make install
+
+# Set up environment
+cp backend/.env.example backend/.env
+# Edit backend/.env with your database URL
+
+# Run database migrations
+make migrate
+
+# Start the backend
+make dev
+
+# In another terminal, start the frontend
+make frontend-dev
+```
+
+## Development
+
+### Running Tests
+
+⚠️ **This project requires 100% test coverage.** CI will fail if coverage drops below 100%.
+
+```bash
+# Run tests
+make test
+
+# Run tests with coverage check (enforces 100%)
+make test-cov
+
+# Run linting
+make lint
+
+# Format code
+make format
+```
+
+### Project Structure
+
+```
+bxb/
+├── backend/
+│   ├── app/
+│   │   ├── alembic/        # Database migrations
+│   │   ├── core/           # Config, database, deps
+│   │   ├── models/         # SQLAlchemy models
+│   │   ├── repositories/   # Data access layer
+│   │   ├── routers/        # API endpoints
+│   │   ├── schemas/        # Pydantic schemas
+│   │   ├── services/       # Business logic
+│   │   └── main.py         # FastAPI app
+│   ├── tests/              # Test suite
+│   └── pyproject.toml      # Python dependencies
+├── frontend/
+│   ├── src/
+│   │   ├── components/     # React components
+│   │   ├── pages/          # Page components
+│   │   └── lib/            # Utilities, API client
+│   └── package.json        # Node dependencies
+├── docker-compose.yml
+└── Makefile
+```
+
+## API Design
+
+API follows Lago's patterns. Core resources:
+
+- `POST /v1/customers` - Create customer
+- `POST /v1/billable_metrics` - Define metered features
+- `POST /v1/plans` - Create pricing plans
+- `POST /v1/subscriptions` - Subscribe customer to plan
+- `POST /v1/events` - Send usage events
+- `GET /v1/invoices` - List invoices
+
+See [OpenAPI spec](./backend/openapi.json) for full API documentation.
+
+## Roadmap
+
+### Phase 1: Core Foundation ✅
+- [x] Project setup with FastAPI + React
+- [x] CI/CD with 100% coverage enforcement
+- [ ] Customer management
+- [ ] Billable metrics
+
+### Phase 2: Billing Engine
+- [ ] Plans and pricing
+- [ ] Subscriptions
+- [ ] Event ingestion
+- [ ] Usage aggregation
+
+### Phase 3: Invoicing
+- [ ] Invoice generation
+- [ ] Stripe integration
+- [ ] Webhooks
+
+### Phase 4: Advanced Features
+- [ ] All charge models (graduated, volume, package)
+- [ ] Coupons and discounts
+- [ ] Credit notes
+- [ ] Wallets (prepaid credits)
+
+## Comparison with Alternatives
+
+| Feature | bxb | Lago | Stripe Billing | Chargebee |
+|---------|-----|------|----------------|-----------|
+| Open Source | ✅ | ✅ | ❌ | ❌ |
+| Self-Hosted | ✅ | ✅ | ❌ | ❌ |
+| Usage-Based Billing | ✅ | ✅ | ✅ | ✅ |
+| Python/FastAPI | ✅ | ❌ (Ruby) | N/A | N/A |
+| 100% Test Coverage | ✅ | ❌ | N/A | N/A |
+| No Revenue Share | ✅ | ✅ | ❌ | ❌ |
+
+## Contributing
+
+We love contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+
+### Testing Requirements
+
+All code must have tests. Coverage is enforced at 100%.
+
+```bash
+# Before pushing
+make test-cov
+make lint
+```
+
+## License
+
+bxb is open source under the [AGPL-3.0 License](./LICENSE).
+
+## Acknowledgments
+
+bxb is inspired by [Lago](https://github.com/getlago/lago), an excellent open-source billing platform. We're building on their API design while using a Python stack.
+
+---
+
+<p align="center">
+  Built with ❤️ for the developer community
+</p>
