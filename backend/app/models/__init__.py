@@ -4,6 +4,7 @@ from app.models.customer import Customer
 from app.models.event import Event
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.item import Item
+from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
 
@@ -17,6 +18,9 @@ __all__ = [
     "Invoice",
     "InvoiceStatus",
     "Item",
+    "Payment",
+    "PaymentProvider",
+    "PaymentStatus",
     "Plan",
     "PlanInterval",
     "Subscription",

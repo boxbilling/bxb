@@ -11,5 +11,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379"
     OPENROUTER_API_KEY: str = ""
 
+    # Payment providers
+    stripe_api_key: str = ""
+    stripe_webhook_secret: str = ""
+    manual_webhook_secret: str = ""
+
 
 settings = Settings()
