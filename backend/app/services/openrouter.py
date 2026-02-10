@@ -91,13 +91,11 @@ class OpenRouterClient:
 
         except httpx.HTTPStatusError as e:
             error_body = e.response.text
-            logger.error(
-                f"OpenRouter HTTP error: {e.response.status_code} - {error_body}"
-            )
-            raise OpenRouterError(f"API error: {error_body}", e.response.status_code)
+            logger.error(f"OpenRouter HTTP error: {e.response.status_code} - {error_body}")
+            raise OpenRouterError(f"API error: {error_body}", e.response.status_code) from e
         except httpx.RequestError as e:
             logger.error(f"OpenRouter request error: {e}")
-            raise OpenRouterError(f"Request failed: {e}")
+            raise OpenRouterError(f"Request failed: {e}") from e
 
     async def chat_stream(
         self,
