@@ -1,18 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, Clock } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -47,64 +39,15 @@ import {
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { billableMetricsApi, ApiError } from '@/lib/api'
 import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/types/billing'
-
-// Mock data
-const mockMetrics: BillableMetric[] = [
-  {
-    id: '1',
-    code: 'api_requests',
-    name: 'API Requests',
-    description: 'Number of API calls made',
-    aggregation_type: 'count',
-    field_name: null,
-    recurring: false,
-    created_at: '2024-01-10T10:00:00Z',
-    updated_at: '2024-01-10T10:00:00Z',
-  },
-  {
-    id: '2',
-    code: 'storage_gb',
-    name: 'Storage Usage',
-    description: 'Total storage used in gigabytes',
-    aggregation_type: 'max',
-    field_name: 'gb_used',
-    recurring: true,
-    created_at: '2024-01-12T14:30:00Z',
-    updated_at: '2024-01-12T14:30:00Z',
-  },
-  {
-    id: '3',
-    code: 'active_users',
-    name: 'Active Users',
-    description: 'Unique active users in the billing period',
-    aggregation_type: 'unique_count',
-    field_name: 'user_id',
-    recurring: false,
-    created_at: '2024-01-15T09:00:00Z',
-    updated_at: '2024-01-15T09:00:00Z',
-  },
-  {
-    id: '4',
-    code: 'bandwidth_gb',
-    name: 'Bandwidth',
-    description: 'Total bandwidth consumed in GB',
-    aggregation_type: 'sum',
-    field_name: 'bytes_transferred',
-    recurring: false,
-    created_at: '2024-01-20T11:00:00Z',
-    updated_at: '2024-01-20T11:00:00Z',
-  },
-]
 
 const aggregationTypes: { value: AggregationType; label: string; description: string; icon: React.ElementType }[] = [
   { value: 'count', label: 'Count', description: 'Count total events', icon: Hash },
   { value: 'sum', label: 'Sum', description: 'Sum a numeric field', icon: ArrowUp },
   { value: 'max', label: 'Max', description: 'Maximum value of a field', icon: ArrowUp },
   { value: 'unique_count', label: 'Unique Count', description: 'Count unique values', icon: CircleDot },
-  { value: 'latest', label: 'Latest', description: 'Most recent value', icon: Clock },
 ]
 
 function AggregationBadge({ type }: { type: AggregationType }) {
@@ -116,7 +59,6 @@ function AggregationBadge({ type }: { type: AggregationType }) {
     sum: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
     max: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
     unique_count: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-    latest: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300',
   }[type]
 
   return (
@@ -143,21 +85,19 @@ function MetricFormDialog({
   const [formData, setFormData] = useState<BillableMetricCreate>({
     code: metric?.code ?? '',
     name: metric?.name ?? '',
-    description: metric?.description ?? '',
+    description: metric?.description ?? undefined,
     aggregation_type: metric?.aggregation_type ?? 'count',
-    field_name: metric?.field_name ?? '',
-    recurring: metric?.recurring ?? false,
+    field_name: metric?.field_name ?? undefined,
   })
 
   const needsFieldName = formData.aggregation_type !== 'count'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const data = {
+    onSubmit({
       ...formData,
       field_name: needsFieldName ? formData.field_name : null,
-    }
-    onSubmit(data)
+    })
   }
 
   return (
@@ -212,7 +152,7 @@ function MetricFormDialog({
                 id="description"
                 value={formData.description ?? ''}
                 onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
+                  setFormData({ ...formData, description: e.target.value || undefined })
                 }
                 placeholder="Number of API calls made"
               />
@@ -252,7 +192,7 @@ function MetricFormDialog({
                   id="field_name"
                   value={formData.field_name ?? ''}
                   onChange={(e) =>
-                    setFormData({ ...formData, field_name: e.target.value })
+                    setFormData({ ...formData, field_name: e.target.value || undefined })
                   }
                   placeholder="bytes_transferred"
                   required={needsFieldName}
@@ -262,22 +202,6 @@ function MetricFormDialog({
                 </p>
               </div>
             )}
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="recurring"
-                checked={formData.recurring}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, recurring: checked as boolean })
-                }
-              />
-              <div className="grid gap-1.5 leading-none">
-                <Label htmlFor="recurring">Recurring metric</Label>
-                <p className="text-xs text-muted-foreground">
-                  Value persists across billing periods (e.g., storage)
-                </p>
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -303,77 +227,59 @@ export default function MetricsPage() {
   const [editingMetric, setEditingMetric] = useState<BillableMetric | null>(null)
   const [deleteMetric, setDeleteMetric] = useState<BillableMetric | null>(null)
 
-  // Fetch metrics
-  const { data, isLoading } = useQuery({
+  // Fetch metrics from API
+  const { data: metrics, isLoading, error } = useQuery({
     queryKey: ['billable-metrics'],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      // return billableMetricsApi.list()
-      await new Promise((r) => setTimeout(r, 500))
-      return {
-        data: mockMetrics,
-        meta: { total: mockMetrics.length, page: 1, per_page: 10, total_pages: 1 },
-      }
-    },
+    queryFn: () => billableMetricsApi.list(),
   })
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: BillableMetricCreate) => {
-      await new Promise((r) => setTimeout(r, 500))
-      return { ...data, id: String(Date.now()) } as BillableMetric
-    },
+    mutationFn: (data: BillableMetricCreate) => billableMetricsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
       setFormOpen(false)
       toast.success('Billable metric created successfully')
     },
-    onError: () => {
-      toast.error('Failed to create billable metric')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create billable metric'
+      toast.error(message)
     },
   })
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({
-      code,
-      data,
-    }: {
-      code: string
-      data: BillableMetricUpdate
-    }) => {
-      await new Promise((r) => setTimeout(r, 500))
-      return { code, ...data } as BillableMetric
-    },
+    mutationFn: ({ id, data }: { id: string; data: BillableMetricUpdate }) =>
+      billableMetricsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
       setEditingMetric(null)
       setFormOpen(false)
       toast.success('Billable metric updated successfully')
     },
-    onError: () => {
-      toast.error('Failed to update billable metric')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to update billable metric'
+      toast.error(message)
     },
   })
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (code: string) => {
-      await new Promise((r) => setTimeout(r, 500))
-    },
+    mutationFn: (id: string) => billableMetricsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
       setDeleteMetric(null)
       toast.success('Billable metric deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete billable metric')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to delete billable metric'
+      toast.error(message)
     },
   })
 
   const handleSubmit = (data: BillableMetricCreate | BillableMetricUpdate) => {
     if (editingMetric) {
-      updateMutation.mutate({ code: editingMetric.code, data })
+      updateMutation.mutate({ id: editingMetric.id, data })
     } else {
       createMutation.mutate(data as BillableMetricCreate)
     }
@@ -391,6 +297,14 @@ export default function MetricsPage() {
     setFormOpen(open)
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">Failed to load billable metrics. Please try again.</p>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -406,7 +320,7 @@ export default function MetricsPage() {
         </Button>
       </div>
 
-      {/* Metrics Grid/Table */}
+      {/* Metrics Grid */}
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
@@ -421,7 +335,7 @@ export default function MetricsPage() {
             </Card>
           ))}
         </div>
-      ) : data?.data.length === 0 ? (
+      ) : !metrics || metrics.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Code className="h-12 w-12 text-muted-foreground mb-4" />
@@ -437,7 +351,7 @@ export default function MetricsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data?.data.map((metric) => (
+          {metrics.map((metric) => (
             <Card key={metric.id}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -481,9 +395,6 @@ export default function MetricsPage() {
                       {metric.field_name}
                     </Badge>
                   )}
-                  {metric.recurring && (
-                    <Badge variant="outline">Recurring</Badge>
-                  )}
                 </div>
               </CardContent>
             </Card>
@@ -516,9 +427,7 @@ export default function MetricsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                deleteMetric && deleteMutation.mutate(deleteMetric.code)
-              }
+              onClick={() => deleteMetric && deleteMutation.mutate(deleteMetric.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}

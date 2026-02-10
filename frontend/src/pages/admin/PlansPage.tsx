@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Users, DollarSign, Calendar, Layers } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -40,105 +40,9 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
-import type { Plan, PlanCreate, PlanUpdate, PlanInterval, Charge, ChargeCreate, ChargeModel, BillableMetric } from '@/types/billing'
-
-// Mock data
-const mockPlans: Plan[] = [
-  {
-    id: '1',
-    code: 'starter',
-    name: 'Starter',
-    description: 'Perfect for small teams getting started',
-    amount_cents: 2900,
-    amount_currency: 'USD',
-    interval: 'monthly',
-    pay_in_advance: true,
-    trial_period_days: 14,
-    charges: [
-      {
-        id: 'c1',
-        billable_metric_id: '1',
-        billable_metric: { id: '1', code: 'api_requests', name: 'API Requests', description: null, aggregation_type: 'count', field_name: null, recurring: false, created_at: '', updated_at: '' },
-        charge_model: 'standard',
-        amount: '0.001',
-        properties: {},
-        min_amount_cents: null,
-        created_at: '',
-        updated_at: '',
-      },
-    ],
-    active_subscriptions_count: 45,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    code: 'pro',
-    name: 'Professional',
-    description: 'For growing businesses with advanced needs',
-    amount_cents: 9900,
-    amount_currency: 'USD',
-    interval: 'monthly',
-    pay_in_advance: true,
-    trial_period_days: null,
-    charges: [
-      {
-        id: 'c2',
-        billable_metric_id: '1',
-        billable_metric: { id: '1', code: 'api_requests', name: 'API Requests', description: null, aggregation_type: 'count', field_name: null, recurring: false, created_at: '', updated_at: '' },
-        charge_model: 'graduated',
-        amount: null,
-        properties: {
-          graduated_tiers: [
-            { from_value: 0, to_value: 10000, per_unit_amount: '0', flat_amount: '0' },
-            { from_value: 10001, to_value: 100000, per_unit_amount: '0.0005', flat_amount: '0' },
-            { from_value: 100001, to_value: null, per_unit_amount: '0.0003', flat_amount: '0' },
-          ],
-        },
-        min_amount_cents: null,
-        created_at: '',
-        updated_at: '',
-      },
-      {
-        id: 'c3',
-        billable_metric_id: '2',
-        billable_metric: { id: '2', code: 'storage_gb', name: 'Storage Usage', description: null, aggregation_type: 'max', field_name: 'gb_used', recurring: true, created_at: '', updated_at: '' },
-        charge_model: 'standard',
-        amount: '0.10',
-        properties: {},
-        min_amount_cents: null,
-        created_at: '',
-        updated_at: '',
-      },
-    ],
-    active_subscriptions_count: 128,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-  },
-  {
-    id: '3',
-    code: 'enterprise',
-    name: 'Enterprise',
-    description: 'Custom solutions for large organizations',
-    amount_cents: 49900,
-    amount_currency: 'USD',
-    interval: 'monthly',
-    pay_in_advance: true,
-    trial_period_days: null,
-    charges: [],
-    active_subscriptions_count: 12,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
-  },
-]
-
-const mockMetrics: BillableMetric[] = [
-  { id: '1', code: 'api_requests', name: 'API Requests', description: null, aggregation_type: 'count', field_name: null, recurring: false, created_at: '', updated_at: '' },
-  { id: '2', code: 'storage_gb', name: 'Storage Usage', description: null, aggregation_type: 'max', field_name: 'gb_used', recurring: true, created_at: '', updated_at: '' },
-  { id: '3', code: 'active_users', name: 'Active Users', description: null, aggregation_type: 'unique_count', field_name: 'user_id', recurring: false, created_at: '', updated_at: '' },
-]
+import { plansApi, billableMetricsApi, ApiError } from '@/lib/api'
+import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -175,19 +79,20 @@ function ChargeModelBadge({ model }: { model: ChargeModel }) {
 interface ChargeFormData {
   billable_metric_id: string
   charge_model: ChargeModel
-  amount: string
 }
 
 function PlanFormDialog({
   open,
   onOpenChange,
   plan,
+  metrics,
   onSubmit,
   isLoading,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   plan?: Plan | null
+  metrics: BillableMetric[]
   onSubmit: (data: PlanCreate | PlanUpdate) => void
   isLoading: boolean
 }) {
@@ -196,24 +101,21 @@ function PlanFormDialog({
     name: string
     description: string
     amount_cents: number
-    amount_currency: string
+    currency: string
     interval: PlanInterval
-    pay_in_advance: boolean
-    trial_period_days: number | null
+    trial_period_days: number
     charges: ChargeFormData[]
   }>({
     code: plan?.code ?? '',
     name: plan?.name ?? '',
     description: plan?.description ?? '',
     amount_cents: plan?.amount_cents ?? 0,
-    amount_currency: plan?.amount_currency ?? 'USD',
+    currency: plan?.currency ?? 'USD',
     interval: plan?.interval ?? 'monthly',
-    pay_in_advance: plan?.pay_in_advance ?? true,
-    trial_period_days: plan?.trial_period_days ?? null,
-    charges: plan?.charges.map((c) => ({
+    trial_period_days: plan?.trial_period_days ?? 0,
+    charges: plan?.charges?.map((c) => ({
       billable_metric_id: c.billable_metric_id,
       charge_model: c.charge_model,
-      amount: c.amount ?? '',
     })) ?? [],
   })
 
@@ -222,7 +124,7 @@ function PlanFormDialog({
       ...formData,
       charges: [
         ...formData.charges,
-        { billable_metric_id: '', charge_model: 'standard', amount: '0' },
+        { billable_metric_id: '', charge_model: 'standard' },
       ],
     })
   }
@@ -245,20 +147,23 @@ function PlanFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const charges: ChargeInput[] = formData.charges
+      .filter((c) => c.billable_metric_id)
+      .map((c) => ({
+        billable_metric_id: c.billable_metric_id,
+        charge_model: c.charge_model,
+        properties: {},
+      }))
+    
     const data: PlanCreate = {
       code: formData.code,
       name: formData.name,
       description: formData.description || undefined,
       amount_cents: formData.amount_cents,
-      amount_currency: formData.amount_currency,
+      currency: formData.currency,
       interval: formData.interval,
-      pay_in_advance: formData.pay_in_advance,
       trial_period_days: formData.trial_period_days,
-      charges: formData.charges.map((c) => ({
-        billable_metric_id: c.billable_metric_id,
-        charge_model: c.charge_model,
-        amount: c.amount || undefined,
-      })),
+      charges,
     }
     onSubmit(data)
   }
@@ -332,15 +237,15 @@ function PlanFormDialog({
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(formData.amount_cents, formData.amount_currency)}
+                  {formatCurrency(formData.amount_cents, formData.currency)}
                 </p>
               </div>
               <div className="space-y-2">
                 <Label>Currency</Label>
                 <Select
-                  value={formData.amount_currency}
+                  value={formData.currency}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, amount_currency: value })
+                    setFormData({ ...formData, currency: value })
                   }
                 >
                   <SelectTrigger>
@@ -374,34 +279,20 @@ function PlanFormDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="pay_in_advance"
-                  checked={formData.pay_in_advance}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, pay_in_advance: checked as boolean })
-                  }
-                />
-                <Label htmlFor="pay_in_advance">Pay in advance</Label>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="trial">Trial Period (days)</Label>
-                <Input
-                  id="trial"
-                  type="number"
-                  value={formData.trial_period_days ?? ''}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      trial_period_days: e.target.value
-                        ? parseInt(e.target.value)
-                        : null,
-                    })
-                  }
-                  placeholder="14"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="trial">Trial Period (days)</Label>
+              <Input
+                id="trial"
+                type="number"
+                value={formData.trial_period_days}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    trial_period_days: parseInt(e.target.value) || 0,
+                  })
+                }
+                placeholder="14"
+              />
             </div>
 
             {/* Charges */}
@@ -443,7 +334,7 @@ function PlanFormDialog({
                             <SelectValue placeholder="Select metric" />
                           </SelectTrigger>
                           <SelectContent>
-                            {mockMetrics.map((m) => (
+                            {metrics.map((m) => (
                               <SelectItem key={m.id} value={m.id}>
                                 {m.name}
                               </SelectItem>
@@ -467,18 +358,9 @@ function PlanFormDialog({
                             <SelectItem value="graduated">Graduated</SelectItem>
                             <SelectItem value="volume">Volume</SelectItem>
                             <SelectItem value="package">Package</SelectItem>
+                            <SelectItem value="percentage">Percentage</SelectItem>
                           </SelectContent>
                         </Select>
-                      </div>
-                      <div className="w-24 space-y-2">
-                        <Label>Amount</Label>
-                        <Input
-                          value={charge.amount}
-                          onChange={(e) =>
-                            updateCharge(index, { amount: e.target.value })
-                          }
-                          placeholder="0.01"
-                        />
                       </div>
                       <Button
                         type="button"
@@ -518,69 +400,65 @@ export default function PlansPage() {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [deletePlan, setDeletePlan] = useState<Plan | null>(null)
 
-  // Fetch plans
-  const { data, isLoading } = useQuery({
+  // Fetch plans from API
+  const { data: plans, isLoading, error } = useQuery({
     queryKey: ['plans'],
-    queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 500))
-      return {
-        data: mockPlans,
-        meta: { total: mockPlans.length, page: 1, per_page: 10, total_pages: 1 },
-      }
-    },
+    queryFn: () => plansApi.list(),
+  })
+
+  // Fetch metrics for the form
+  const { data: metrics } = useQuery({
+    queryKey: ['billable-metrics'],
+    queryFn: () => billableMetricsApi.list(),
   })
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: PlanCreate) => {
-      await new Promise((r) => setTimeout(r, 500))
-      return { ...data, id: String(Date.now()) } as Plan
-    },
+    mutationFn: (data: PlanCreate) => plansApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       setFormOpen(false)
       toast.success('Plan created successfully')
     },
-    onError: () => {
-      toast.error('Failed to create plan')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create plan'
+      toast.error(message)
     },
   })
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({ code, data }: { code: string; data: PlanUpdate }) => {
-      await new Promise((r) => setTimeout(r, 500))
-      return { code, ...data } as Plan
-    },
+    mutationFn: ({ id, data }: { id: string; data: PlanUpdate }) =>
+      plansApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       setEditingPlan(null)
       setFormOpen(false)
       toast.success('Plan updated successfully')
     },
-    onError: () => {
-      toast.error('Failed to update plan')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to update plan'
+      toast.error(message)
     },
   })
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (code: string) => {
-      await new Promise((r) => setTimeout(r, 500))
-    },
+    mutationFn: (id: string) => plansApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       setDeletePlan(null)
       toast.success('Plan deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete plan')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to delete plan'
+      toast.error(message)
     },
   })
 
   const handleSubmit = (data: PlanCreate | PlanUpdate) => {
     if (editingPlan) {
-      updateMutation.mutate({ code: editingPlan.code, data })
+      updateMutation.mutate({ id: editingPlan.id, data })
     } else {
       createMutation.mutate(data as PlanCreate)
     }
@@ -596,6 +474,14 @@ export default function PlansPage() {
       setEditingPlan(null)
     }
     setFormOpen(open)
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">Failed to load plans. Please try again.</p>
+      </div>
+    )
   }
 
   return (
@@ -628,7 +514,7 @@ export default function PlansPage() {
             </Card>
           ))}
         </div>
-      ) : data?.data.length === 0 ? (
+      ) : !plans || plans.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Layers className="h-12 w-12 text-muted-foreground mb-4" />
@@ -644,7 +530,7 @@ export default function PlansPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {data?.data.map((plan) => (
+          {plans.map((plan) => (
             <Card key={plan.id}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -683,7 +569,7 @@ export default function PlansPage() {
                 {/* Price */}
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold">
-                    {formatCurrency(plan.amount_cents, plan.amount_currency)}
+                    {formatCurrency(plan.amount_cents, plan.currency)}
                   </span>
                   <span className="text-muted-foreground">
                     /{intervalLabel(plan.interval)}
@@ -692,11 +578,7 @@ export default function PlansPage() {
 
                 {/* Stats */}
                 <div className="flex items-center gap-4 text-sm">
-                  <div className="flex items-center gap-1 text-muted-foreground">
-                    <Users className="h-4 w-4" />
-                    {plan.active_subscriptions_count} active
-                  </div>
-                  {plan.trial_period_days && (
+                  {plan.trial_period_days > 0 && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Calendar className="h-4 w-4" />
                       {plan.trial_period_days}d trial
@@ -705,7 +587,7 @@ export default function PlansPage() {
                 </div>
 
                 {/* Charges */}
-                {plan.charges.length > 0 && (
+                {plan.charges && plan.charges.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                       Usage Charges
@@ -716,7 +598,9 @@ export default function PlansPage() {
                           key={charge.id}
                           className="flex items-center justify-between text-sm"
                         >
-                          <span>{charge.billable_metric?.name}</span>
+                          <span className="text-muted-foreground truncate max-w-[150px]">
+                            {charge.billable_metric_id.slice(0, 8)}...
+                          </span>
                           <ChargeModelBadge model={charge.charge_model} />
                         </div>
                       ))}
@@ -734,6 +618,7 @@ export default function PlansPage() {
         open={formOpen}
         onOpenChange={handleCloseForm}
         plan={editingPlan}
+        metrics={metrics ?? []}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
@@ -748,15 +633,12 @@ export default function PlansPage() {
             <AlertDialogTitle>Delete Plan</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deletePlan?.name}"?
-              {deletePlan?.active_subscriptions_count
-                ? ` This plan has ${deletePlan.active_subscriptions_count} active subscriptions.`
-                : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deletePlan && deleteMutation.mutate(deletePlan.code)}
+              onClick={() => deletePlan && deleteMutation.mutate(deletePlan.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}

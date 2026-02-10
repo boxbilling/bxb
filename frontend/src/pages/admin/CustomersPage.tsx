@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Mail, Phone } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -40,65 +40,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { customersApi, ApiError } from '@/lib/api'
 import type { Customer, CustomerCreate, CustomerUpdate } from '@/types/billing'
-
-// Mock data
-const mockCustomers: Customer[] = [
-  {
-    id: '1',
-    external_id: 'cust_001',
-    name: 'Acme Corporation',
-    email: 'billing@acme.com',
-    phone: '+1 555-0100',
-    address_line1: '123 Business St',
-    address_line2: null,
-    city: 'San Francisco',
-    state: 'CA',
-    postal_code: '94102',
-    country: 'US',
-    currency: 'USD',
-    timezone: 'America/Los_Angeles',
-    metadata: {},
-    created_at: '2024-01-15T10:00:00Z',
-    updated_at: '2024-01-15T10:00:00Z',
-  },
-  {
-    id: '2',
-    external_id: 'cust_002',
-    name: 'TechStart Inc',
-    email: 'accounts@techstart.io',
-    phone: '+1 555-0200',
-    address_line1: '456 Innovation Ave',
-    address_line2: 'Suite 100',
-    city: 'New York',
-    state: 'NY',
-    postal_code: '10001',
-    country: 'US',
-    currency: 'USD',
-    timezone: 'America/New_York',
-    metadata: { plan: 'enterprise' },
-    created_at: '2024-02-01T14:30:00Z',
-    updated_at: '2024-02-01T14:30:00Z',
-  },
-  {
-    id: '3',
-    external_id: 'cust_003',
-    name: 'CloudNine Ltd',
-    email: 'hello@cloudnine.co.uk',
-    phone: '+44 20 7123 4567',
-    address_line1: '10 Downing Street',
-    address_line2: null,
-    city: 'London',
-    state: null,
-    postal_code: 'SW1A 2AA',
-    country: 'GB',
-    currency: 'GBP',
-    timezone: 'Europe/London',
-    metadata: {},
-    created_at: '2024-02-10T09:15:00Z',
-    updated_at: '2024-02-10T09:15:00Z',
-  },
-]
 
 function CustomerFormDialog({
   open,
@@ -116,12 +59,9 @@ function CustomerFormDialog({
   const [formData, setFormData] = useState<CustomerCreate>({
     external_id: customer?.external_id ?? '',
     name: customer?.name ?? '',
-    email: customer?.email ?? '',
-    phone: customer?.phone ?? '',
-    address_line1: customer?.address_line1 ?? '',
-    city: customer?.city ?? '',
-    country: customer?.country ?? '',
+    email: customer?.email ?? undefined,
     currency: customer?.currency ?? 'USD',
+    timezone: customer?.timezone ?? 'UTC',
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,68 +119,33 @@ function CustomerFormDialog({
                   type="email"
                   value={formData.email ?? ''}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({ ...formData, email: e.target.value || undefined })
                   }
                   placeholder="billing@example.com"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone ?? ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="+1 555-0100"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                value={formData.address_line1 ?? ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, address_line1: e.target.value })
-                }
-                placeholder="123 Main St"
-              />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={formData.city ?? ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  placeholder="San Francisco"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={formData.country ?? ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, country: e.target.value })
-                  }
-                  placeholder="US"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency</Label>
                 <Input
                   id="currency"
-                  value={formData.currency ?? 'USD'}
+                  value={formData.currency}
                   onChange={(e) =>
                     setFormData({ ...formData, currency: e.target.value })
                   }
                   placeholder="USD"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Input
+                id="timezone"
+                value={formData.timezone}
+                onChange={(e) =>
+                  setFormData({ ...formData, timezone: e.target.value })
+                }
+                placeholder="UTC"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -264,88 +169,65 @@ function CustomerFormDialog({
 export default function CustomersPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
-  const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null)
 
-  // Fetch customers
-  const { data, isLoading } = useQuery({
-    queryKey: ['customers', { page, search }],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      // return customersApi.list({ page, per_page: 10, search })
-      await new Promise((r) => setTimeout(r, 500))
-      const filtered = mockCustomers.filter(
-        (c) =>
-          c.name.toLowerCase().includes(search.toLowerCase()) ||
-          c.email?.toLowerCase().includes(search.toLowerCase()) ||
-          c.external_id.toLowerCase().includes(search.toLowerCase())
-      )
-      return {
-        data: filtered,
-        meta: { total: filtered.length, page: 1, per_page: 10, total_pages: 1 },
-      }
-    },
+  // Fetch customers from API
+  const { data: customers, isLoading, error } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customersApi.list(),
   })
+
+  // Filter customers by search (client-side)
+  const filteredCustomers = customers?.filter(
+    (c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.email?.toLowerCase().includes(search.toLowerCase()) ||
+      c.external_id.toLowerCase().includes(search.toLowerCase())
+  ) ?? []
 
   // Create mutation
   const createMutation = useMutation({
-    mutationFn: async (data: CustomerCreate) => {
-      // TODO: Replace with actual API call
-      // return customersApi.create(data)
-      await new Promise((r) => setTimeout(r, 500))
-      return { ...data, id: String(Date.now()) } as Customer
-    },
+    mutationFn: (data: CustomerCreate) => customersApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setFormOpen(false)
       toast.success('Customer created successfully')
     },
-    onError: () => {
-      toast.error('Failed to create customer')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create customer'
+      toast.error(message)
     },
   })
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string
-      data: CustomerUpdate
-    }) => {
-      // TODO: Replace with actual API call
-      // return customersApi.update(id, data)
-      await new Promise((r) => setTimeout(r, 500))
-      return { id, ...data } as Customer
-    },
+    mutationFn: ({ id, data }: { id: string; data: CustomerUpdate }) =>
+      customersApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setEditingCustomer(null)
       setFormOpen(false)
       toast.success('Customer updated successfully')
     },
-    onError: () => {
-      toast.error('Failed to update customer')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to update customer'
+      toast.error(message)
     },
   })
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      // TODO: Replace with actual API call
-      // return customersApi.delete(id)
-      await new Promise((r) => setTimeout(r, 500))
-    },
+    mutationFn: (id: string) => customersApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       setDeleteCustomer(null)
       toast.success('Customer deleted successfully')
     },
-    onError: () => {
-      toast.error('Failed to delete customer')
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to delete customer'
+      toast.error(message)
     },
   })
 
@@ -367,6 +249,14 @@ export default function CustomersPage() {
       setEditingCustomer(null)
     }
     setFormOpen(open)
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">Failed to load customers. Please try again.</p>
+      </div>
+    )
   }
 
   return (
@@ -404,8 +294,8 @@ export default function CustomersPage() {
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>External ID</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Location</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Timezone</TableHead>
               <TableHead>Currency</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -414,34 +304,22 @@ export default function CustomersPage() {
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell>
-                    <Skeleton className="h-5 w-40" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-24" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-28" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-12" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-8 w-8" />
-                  </TableCell>
+                  <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
-            ) : data?.data.length === 0 ? (
+            ) : filteredCustomers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
                   No customers found
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data.map((customer) => (
+              filteredCustomers.map((customer) => (
                 <TableRow key={customer.id}>
                   <TableCell>
                     <div className="font-medium">{customer.name}</div>
@@ -452,29 +330,17 @@ export default function CustomersPage() {
                     </code>
                   </TableCell>
                   <TableCell>
-                    <div className="space-y-1">
-                      {customer.email && (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          {customer.email}
-                        </div>
-                      )}
-                      {customer.phone && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Phone className="h-3 w-3" />
-                          {customer.phone}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {customer.city && customer.country ? (
-                      <span>
-                        {customer.city}, {customer.country}
-                      </span>
+                    {customer.email ? (
+                      <div className="flex items-center gap-1 text-sm">
+                        <Mail className="h-3 w-3 text-muted-foreground" />
+                        {customer.email}
+                      </div>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{customer.timezone}</span>
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{customer.currency}</Badge>
@@ -508,33 +374,6 @@ export default function CustomersPage() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {data && data.meta.total_pages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {data.data.length} of {data.meta.total} customers
-          </p>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page === data.meta.total_pages}
-              onClick={() => setPage(page + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Create/Edit Dialog */}
       <CustomerFormDialog
         open={formOpen}
@@ -554,16 +393,13 @@ export default function CustomersPage() {
             <AlertDialogTitle>Delete Customer</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete "{deleteCustomer?.name}"? This
-              action cannot be undone and will remove all associated
-              subscriptions and invoices.
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() =>
-                deleteCustomer && deleteMutation.mutate(deleteCustomer.id)
-              }
+              onClick={() => deleteCustomer && deleteMutation.mutate(deleteCustomer.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? 'Deleting...' : 'Delete'}

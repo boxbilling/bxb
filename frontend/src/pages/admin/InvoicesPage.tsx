@@ -32,12 +32,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import type { Invoice, InvoiceStatus, Customer } from '@/types/billing'
 
-// Mock data
+// Mock customers matching the new schema (for invoice display only - invoices not in backend yet)
 const mockCustomers: Customer[] = [
-  { id: '1', external_id: 'cust_001', name: 'Acme Corporation', email: 'billing@acme.com', phone: null, address_line1: '123 Business St', address_line2: null, city: 'San Francisco', state: 'CA', postal_code: '94102', country: 'US', currency: 'USD', timezone: 'America/Los_Angeles', metadata: {}, created_at: '', updated_at: '' },
-  { id: '2', external_id: 'cust_002', name: 'TechStart Inc', email: 'accounts@techstart.io', phone: null, address_line1: '456 Innovation Ave', address_line2: null, city: 'New York', state: 'NY', postal_code: '10001', country: 'US', currency: 'USD', timezone: 'America/New_York', metadata: {}, created_at: '', updated_at: '' },
+  { 
+    id: '1', 
+    external_id: 'cust_001', 
+    name: 'Acme Corporation', 
+    email: 'billing@acme.com', 
+    currency: 'USD', 
+    timezone: 'America/Los_Angeles', 
+    billing_metadata: {}, 
+    created_at: '2024-01-01T00:00:00Z', 
+    updated_at: '2024-01-01T00:00:00Z' 
+  },
+  { 
+    id: '2', 
+    external_id: 'cust_002', 
+    name: 'TechStart Inc', 
+    email: 'accounts@techstart.io', 
+    currency: 'USD', 
+    timezone: 'America/New_York', 
+    billing_metadata: {}, 
+    created_at: '2024-01-01T00:00:00Z', 
+    updated_at: '2024-01-01T00:00:00Z' 
+  },
 ]
 
+// Mock invoices - Invoice API not implemented in backend yet
 const mockInvoices: Invoice[] = [
   {
     id: '1',
@@ -76,46 +97,6 @@ const mockInvoices: Invoice[] = [
     ],
     created_at: '2024-01-15T00:00:00Z',
     updated_at: '2024-01-29T10:00:00Z',
-  },
-  {
-    id: '3',
-    number: 'INV-2024-0040',
-    customer_id: '1',
-    customer: mockCustomers[0],
-    subscription_id: '1',
-    status: 'paid',
-    issuing_date: '2024-01-01T00:00:00Z',
-    payment_due_date: '2024-01-15T00:00:00Z',
-    amount_cents: 9900,
-    amount_currency: 'USD',
-    taxes_amount_cents: 792,
-    total_amount_cents: 10692,
-    line_items: [
-      { id: 'li3', description: 'Professional Plan - January 2024', amount_cents: 9900, quantity: 1, unit_amount_cents: 9900 },
-    ],
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-10T14:30:00Z',
-  },
-  {
-    id: '4',
-    number: 'INV-2024-0039',
-    customer_id: '1',
-    customer: mockCustomers[0],
-    subscription_id: '1',
-    status: 'draft',
-    issuing_date: '2024-03-01T00:00:00Z',
-    payment_due_date: '2024-03-15T00:00:00Z',
-    amount_cents: 12500,
-    amount_currency: 'USD',
-    taxes_amount_cents: 1000,
-    total_amount_cents: 13500,
-    line_items: [
-      { id: 'li4', description: 'Professional Plan - March 2024', amount_cents: 9900, quantity: 1, unit_amount_cents: 9900 },
-      { id: 'li5', description: 'API Requests (25,000 @ $0.0001)', amount_cents: 2500, quantity: 25000, unit_amount_cents: 1 },
-      { id: 'li6', description: 'Storage (10 GB @ $0.10)', amount_cents: 100, quantity: 10, unit_amount_cents: 10 },
-    ],
-    created_at: '2024-03-01T00:00:00Z',
-    updated_at: '2024-03-01T00:00:00Z',
   },
 ]
 
@@ -250,11 +231,11 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
 
-  // Fetch invoices
+  // Fetch invoices - using mock data until backend implements invoices
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', { search, statusFilter }],
     queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 500))
+      await new Promise((r) => setTimeout(r, 300))
       let filtered = mockInvoices
       if (statusFilter !== 'all') {
         filtered = filtered.filter((i) => i.status === statusFilter)
@@ -266,15 +247,12 @@ export default function InvoicesPage() {
             i.number.toLowerCase().includes(search.toLowerCase())
         )
       }
-      return {
-        data: filtered,
-        meta: { total: filtered.length, page: 1, per_page: 10, total_pages: 1 },
-      }
+      return filtered
     },
   })
 
   // Calculate totals
-  const totals = data?.data.reduce(
+  const totals = (data ?? []).reduce(
     (acc, inv) => {
       if (inv.status === 'paid') {
         acc.paid += inv.total_amount_cents
@@ -286,7 +264,7 @@ export default function InvoicesPage() {
       return acc
     },
     { paid: 0, outstanding: 0, draft: 0 }
-  ) ?? { paid: 0, outstanding: 0, draft: 0 }
+  )
 
   return (
     <div className="space-y-6">
@@ -389,7 +367,7 @@ export default function InvoicesPage() {
                   <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                 </TableRow>
               ))
-            ) : data?.data.length === 0 ? (
+            ) : !data || data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
                   <FileText className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -397,7 +375,7 @@ export default function InvoicesPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              data?.data.map((invoice) => (
+              data.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell>
                     <code className="text-sm font-medium">{invoice.number}</code>
