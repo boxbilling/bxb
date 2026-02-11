@@ -42,7 +42,7 @@ This phase implements the 5 remaining charge models (graduated, volume, package,
   - Keep the existing min_price/max_price logic for STANDARD model
   - Ensure the line item description, quantity, unit_price, and amount fields are still set correctly
 
-- [ ] Write comprehensive unit tests for all charge model calculators in `backend/tests/test_charge_models.py`:
+- [x] Write comprehensive unit tests for all charge model calculators in `backend/tests/test_charge_models.py`:
   - **Standard**: test basic multiplication, test zero units, test zero price, test both `amount` and `unit_price` property keys
   - **Graduated**: test single tier, test multiple tiers, test flat fees per tier, test open-ended final tier (to_value=None), test zero units, test both property formats (graduated_ranges and tiers)
   - **Volume**: test falls in first tier, test falls in middle tier, test falls in last tier, test flat amount per tier, test both property formats
