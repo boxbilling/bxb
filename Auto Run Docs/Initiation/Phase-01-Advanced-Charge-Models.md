@@ -52,11 +52,12 @@ This phase implements the 5 remaining charge models (graduated, volume, package,
   - **Factory**: test returns correct calculator for each ChargeModel enum value, test returns None for unknown model
   - Follow existing test patterns: use `pytest`, `TestClient(app)`, fixtures with `Base.metadata.create_all/drop_all`
 
-- [ ] Run tests and fix any failures to maintain 100% coverage:
+- [x] Run tests and fix any failures to maintain 100% coverage:
   - Run `cd backend && uv run pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=100`
   - If any existing tests break due to the refactor, fix them
   - Ensure all new charge model code paths are covered
   - Run `cd backend && uv run ruff check app/ tests/` and `cd backend && uv run ruff format app/ tests/` to fix lint issues
+  - **Note:** Added missing `backend/app/services/__init__.py` which was causing `invoice_generation.py` to be invisible to coverage. Added 24 comprehensive tests in `backend/tests/test_invoice_generation.py` covering all charge model paths, edge cases (metric not found, no billable metric, min/max price, zero amounts), and factory fallback. All 522 tests pass with 100% coverage.
 
 - [ ] Write integration tests that verify end-to-end invoice generation with each charge model in `backend/tests/test_charge_model_integration.py`:
   - Create a plan with a graduated charge, subscribe a customer, send events, generate invoice, verify fee calculation matches expected graduated pricing
