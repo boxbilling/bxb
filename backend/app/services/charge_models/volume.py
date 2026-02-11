@@ -1,7 +1,8 @@
 from decimal import Decimal
+from typing import Any
 
 
-def calculate(units: Decimal, properties: dict) -> Decimal:
+def calculate(units: Decimal, properties: dict[str, Any]) -> Decimal:
     ranges = properties.get("volume_ranges", [])
     if ranges:
         return _calculate_lago_format(units, ranges)
@@ -13,7 +14,7 @@ def calculate(units: Decimal, properties: dict) -> Decimal:
     return Decimal(0)
 
 
-def _calculate_lago_format(units: Decimal, ranges: list[dict]) -> Decimal:
+def _calculate_lago_format(units: Decimal, ranges: list[dict[str, Any]]) -> Decimal:
     for r in sorted(ranges, key=lambda x: x.get("from_value", 0)):
         to_value = r.get("to_value")
         if to_value is None or units <= Decimal(str(to_value)):
@@ -28,7 +29,7 @@ def _calculate_lago_format(units: Decimal, ranges: list[dict]) -> Decimal:
     return units * per_unit + flat
 
 
-def _calculate_bxb_format(units: Decimal, tiers: list[dict]) -> Decimal:
+def _calculate_bxb_format(units: Decimal, tiers: list[dict[str, Any]]) -> Decimal:
     for tier in sorted(tiers, key=lambda t: t.get("up_to", float("inf"))):
         up_to = Decimal(str(tier.get("up_to", float("inf"))))
         if units <= up_to:

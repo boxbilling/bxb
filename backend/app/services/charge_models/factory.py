@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from decimal import Decimal
 
 from app.models.charge import ChargeModel
 from app.services.charge_models import (
@@ -10,7 +11,14 @@ from app.services.charge_models import (
     volume,
 )
 
-_CALCULATORS: dict[ChargeModel, Callable] = {
+# Calculator functions have varying signatures based on charge model type.
+# Using Callable[..., Decimal] to accommodate different parameter requirements:
+# - standard, graduated, volume, package: (units, properties)
+# - percentage: (units, properties, total_amount, event_count)
+# - graduated_percentage: (total_amount, properties)
+CalculatorFn = Callable[..., Decimal]
+
+_CALCULATORS: dict[ChargeModel, CalculatorFn] = {
     ChargeModel.STANDARD: standard.calculate,
     ChargeModel.GRADUATED: graduated.calculate,
     ChargeModel.VOLUME: volume.calculate,
@@ -20,5 +28,5 @@ _CALCULATORS: dict[ChargeModel, Callable] = {
 }
 
 
-def get_charge_calculator(model: ChargeModel) -> Callable | None:
+def get_charge_calculator(model: ChargeModel) -> CalculatorFn | None:
     return _CALCULATORS.get(model)

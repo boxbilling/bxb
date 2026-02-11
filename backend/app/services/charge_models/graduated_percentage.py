@@ -1,7 +1,8 @@
 from decimal import Decimal
+from typing import Any
 
 
-def calculate(total_amount: Decimal, properties: dict) -> Decimal:
+def calculate(total_amount: Decimal, properties: dict[str, Any]) -> Decimal:
     ranges = properties.get("graduated_percentage_ranges", [])
     if not ranges:
         return Decimal(0)

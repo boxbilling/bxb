@@ -1,8 +1,9 @@
 import math
 from decimal import Decimal
+from typing import Any
 
 
-def calculate(units: Decimal, properties: dict) -> Decimal:
+def calculate(units: Decimal, properties: dict[str, Any]) -> Decimal:
     amount = Decimal(str(properties.get("amount", properties.get("unit_price", 0))))
     package_size = Decimal(str(properties.get("package_size", 1)))
     free_units = Decimal(str(properties.get("free_units", 0)))

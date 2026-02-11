@@ -1,7 +1,8 @@
 from decimal import Decimal
+from typing import Any
 
 
-def calculate(units: Decimal, properties: dict) -> Decimal:
+def calculate(units: Decimal, properties: dict[str, Any]) -> Decimal:
     ranges = properties.get("graduated_ranges", [])
     if ranges:
         return _calculate_lago_format(units, ranges)
@@ -13,7 +14,7 @@ def calculate(units: Decimal, properties: dict) -> Decimal:
     return Decimal(0)
 
 
-def _calculate_lago_format(units: Decimal, ranges: list[dict]) -> Decimal:
+def _calculate_lago_format(units: Decimal, ranges: list[dict[str, Any]]) -> Decimal:
     total = Decimal(0)
     remaining = units
 
@@ -38,7 +39,7 @@ def _calculate_lago_format(units: Decimal, ranges: list[dict]) -> Decimal:
     return total
 
 
-def _calculate_bxb_format(units: Decimal, tiers: list[dict]) -> Decimal:
+def _calculate_bxb_format(units: Decimal, tiers: list[dict[str, Any]]) -> Decimal:
     total = Decimal(0)
     remaining = units
     prev_limit = Decimal(0)

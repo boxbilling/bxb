@@ -1,9 +1,10 @@
 from decimal import Decimal
+from typing import Any
 
 
 def calculate(
     units: Decimal,
-    properties: dict,
+    properties: dict[str, Any],
     total_amount: Decimal = Decimal("0"),
     event_count: int = 0,
 ) -> Decimal:
