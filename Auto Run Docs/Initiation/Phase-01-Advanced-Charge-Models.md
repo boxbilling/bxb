@@ -68,8 +68,9 @@ This phase implements the 5 remaining charge models (graduated, volume, package,
   - Use existing test helpers and fixtures from other test files as reference
   - **Note:** Added 23 integration tests across 7 test classes: TestGraduatedChargeIntegration (3 tests: two tiers, flat fees, bxb format), TestVolumeChargeIntegration (3 tests: second tier, flat amount, bxb format), TestPackageChargeIntegration (3 tests: round up, free units, exact boundary), TestPercentageChargeIntegration (4 tests: basic, fixed fees, free events, min/max bounds), TestGraduatedPercentageChargeIntegration (3 tests: two tiers, flat fees, fallback to usage), TestMultiChargeModelIntegration (2 tests: dual charges, all 5 charge types on one plan), TestSumAggregationIntegration (2 tests: standard+SUM, graduated+SUM), TestInvoiceMetadata (3 tests: draft status, line item details, DB persistence). All 545 tests pass with 100% coverage.
 
-- [ ] Run full test suite with coverage and lint one final time:
+- [x] Run full test suite with coverage and lint one final time:
   - `cd backend && uv run ruff format app/ tests/`
   - `cd backend && uv run ruff check app/ tests/`
   - `cd backend && uv run pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=100`
   - All 7 charge models (standard + 5 new + graduated_percentage) working end-to-end
+  - **Note:** Final verification complete. `ruff format` — 76 files unchanged. `ruff check` — all checks passed. `pytest` — 545 tests passed, 100.00% coverage achieved. All charge models verified working end-to-end.
