@@ -111,11 +111,11 @@ async def create_checkout_session(
         customer_id=invoice.customer_id,  # type: ignore[arg-type]
         amount=float(invoice.total),
         currency=invoice.currency,  # type: ignore[arg-type]
-        provider=PaymentProvider.STRIPE,
+        provider=data.provider,
     )
 
     # Create checkout session with payment provider
-    provider_svc = get_payment_provider(PaymentProvider.STRIPE)
+    provider_svc = get_payment_provider(data.provider)
     try:
         session = provider_svc.create_checkout_session(
             payment_id=payment.id,  # type: ignore[arg-type]
@@ -151,7 +151,7 @@ async def create_checkout_session(
     return CheckoutSessionResponse(
         payment_id=payment.id,  # type: ignore[arg-type]
         checkout_url=session.checkout_url,
-        provider=PaymentProvider.STRIPE.value,
+        provider=data.provider.value,
         expires_at=session.expires_at,
     )
 
@@ -161,6 +161,7 @@ async def handle_webhook(
     provider: PaymentProvider,
     request: Request,
     stripe_signature: str | None = Header(None, alias="Stripe-Signature"),
+    ucp_signature: str | None = Header(None, alias="X-UCP-Signature"),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Handle payment provider webhooks.
@@ -176,8 +177,12 @@ async def handle_webhook(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid provider") from None
 
-    # Verify signature
-    signature = stripe_signature or request.headers.get("X-Webhook-Signature", "")
+    # Verify signature - check provider-specific headers first
+    signature = (
+        stripe_signature
+        or ucp_signature
+        or request.headers.get("X-Webhook-Signature", "")
+    )
     if not payment_provider.verify_webhook_signature(payload, signature):
         raise HTTPException(status_code=401, detail="Invalid signature")
 

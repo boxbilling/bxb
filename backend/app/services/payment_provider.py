@@ -1,15 +1,18 @@
 """Payment provider abstraction layer.
 
-Supports multiple payment providers (Stripe, manual, etc.)
+Supports multiple payment providers (Stripe, UCP, manual, etc.)
 """
 
 import hashlib
 import hmac
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from urllib.error import URLError
+from urllib.request import Request, urlopen
 from uuid import UUID
 
 from app.core.config import settings
@@ -242,11 +245,204 @@ class ManualProvider(PaymentProviderBase):
         )
 
 
+class UCPProvider(PaymentProviderBase):
+    """Universal Commerce Protocol (UCP) payment provider.
+
+    UCP is an open protocol for agentic commerce backed by Google, Shopify,
+    Stripe, and others. See https://ucp.dev for details.
+
+    UCP checkout sessions follow the spec at:
+    https://ucp.dev/latest/specification/checkout-rest/
+    """
+
+    UCP_VERSION = "2026-01-23"
+
+    def __init__(
+        self,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        webhook_secret: str | None = None,
+        merchant_id: str | None = None,
+    ):
+        self.base_url = (base_url or settings.ucp_base_url).rstrip("/")
+        self.api_key = api_key or settings.ucp_api_key
+        self.webhook_secret = webhook_secret or settings.ucp_webhook_secret
+        self.merchant_id = merchant_id or settings.ucp_merchant_id
+
+    @property
+    def provider_name(self) -> PaymentProvider:
+        return PaymentProvider.UCP
+
+    def _make_request(
+        self,
+        method: str,
+        endpoint: str,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Make an HTTP request to the UCP API."""
+        url = f"{self.base_url}{endpoint}"
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+            "UCP-Agent": f'profile="{self.base_url}/.well-known/ucp"',
+        }
+
+        body = json.dumps(data).encode() if data else None
+        request = Request(url, data=body, headers=headers, method=method)
+
+        try:
+            with urlopen(request, timeout=30) as response:
+                result: dict[str, Any] = json.loads(response.read().decode())
+                return result
+        except URLError as e:
+            raise RuntimeError(f"UCP API request failed: {e}") from e
+
+    def create_checkout_session(
+        self,
+        payment_id: UUID,
+        amount: Decimal,
+        currency: str,
+        customer_email: str | None,
+        invoice_number: str,
+        success_url: str,
+        cancel_url: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> CheckoutSession:
+        """Create a UCP checkout session.
+
+        Following the UCP Checkout REST spec:
+        POST /checkout-sessions
+        """
+        # Amount in UCP is in smallest currency unit (cents)
+        amount_cents = int(amount * 100)
+
+        # Build UCP checkout session request
+        request_data: dict[str, Any] = {
+            "line_items": [
+                {
+                    "id": f"li_{payment_id}",
+                    "item": {
+                        "id": f"inv_{invoice_number}",
+                        "title": f"Invoice {invoice_number}",
+                        "price": amount_cents,
+                    },
+                    "quantity": 1,
+                }
+            ],
+            "metadata": {
+                "payment_id": str(payment_id),
+                "invoice_number": invoice_number,
+                "success_url": success_url,
+                "cancel_url": cancel_url,
+                **(metadata or {}),
+            },
+        }
+
+        # Add buyer info if email available
+        if customer_email:
+            request_data["buyer"] = {"email": customer_email}
+
+        # Make the API call
+        response = self._make_request("POST", "/checkout-sessions", request_data)
+
+        # Extract checkout session ID and build checkout URL
+        checkout_id = response.get("id", f"ucp_{payment_id}")
+
+        # UCP returns a permalink in the response, or we construct one
+        checkout_url = response.get("permalink_url", "")
+        if not checkout_url and self.base_url:
+            checkout_url = f"{self.base_url}/checkout/{checkout_id}"
+
+        # Calculate expiry (UCP sessions typically expire in 24 hours)
+        expires_at = datetime.now(UTC) + timedelta(hours=24)
+
+        return CheckoutSession(
+            provider_checkout_id=checkout_id,
+            checkout_url=checkout_url,
+            expires_at=expires_at,
+        )
+
+    def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
+        """Verify UCP webhook signature using HMAC-SHA256."""
+        if not self.webhook_secret:
+            return False
+
+        # UCP uses HMAC-SHA256 for webhook signatures
+        expected = hmac.new(
+            self.webhook_secret.encode(),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+
+        # Support both raw hex and "sha256=" prefixed signatures
+        if signature.startswith("sha256="):
+            signature = signature[7:]
+
+        return hmac.compare_digest(expected, signature)
+
+    def parse_webhook(self, payload: dict[str, Any]) -> WebhookResult:
+        """Parse UCP webhook payload.
+
+        UCP sends events for checkout status changes and order updates.
+        See: https://ucp.dev/latest/specification/order/
+        """
+        event_type = payload.get("type", payload.get("event_type", "ucp.unknown"))
+
+        # Extract checkout/order data
+        data = payload.get("data", payload)
+        checkout_id = data.get("checkout_id") or data.get("id")
+        order_id = data.get("order_id") or data.get("id")
+        status_raw = data.get("status", "")
+
+        # Map UCP statuses to our internal statuses
+        # UCP checkout statuses: incomplete, ready_for_complete, completed, canceled
+        status_map = {
+            "completed": "succeeded",
+            "ready_for_complete": "pending",
+            "incomplete": "pending",
+            "canceled": "canceled",
+            "failed": "failed",
+            "refunded": "refunded",
+        }
+        status = status_map.get(status_raw)
+
+        # Extract metadata
+        meta = data.get("metadata", {})
+        if not meta and "line_items" in data:
+            # Try to extract from line items
+            for item in data.get("line_items", []):
+                if item.get("item", {}).get("id", "").startswith("inv_"):
+                    meta["invoice_number"] = item["item"]["id"][4:]
+                    break
+
+        result = WebhookResult(
+            event_type=event_type,
+            provider_checkout_id=checkout_id,
+            provider_payment_id=order_id if order_id != checkout_id else None,
+            status=status,
+            metadata=meta,
+        )
+
+        # Handle error messages for failed payments
+        if status == "failed":
+            messages = data.get("messages", [])
+            for msg in messages:
+                if msg.get("type") == "error":
+                    result.failure_reason = msg.get("content", "Payment failed")
+                    break
+            if not result.failure_reason:
+                result.failure_reason = "Payment failed"
+
+        return result
+
+
 def get_payment_provider(provider: PaymentProvider) -> PaymentProviderBase:
     """Factory function to get the appropriate payment provider."""
     providers: dict[PaymentProvider, type[PaymentProviderBase]] = {
         PaymentProvider.STRIPE: StripeProvider,
         PaymentProvider.MANUAL: ManualProvider,
+        PaymentProvider.UCP: UCPProvider,
     }
 
     provider_class = providers.get(provider)

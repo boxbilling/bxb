@@ -300,10 +300,11 @@ class Invoice(Base):
 - [ ] PDF generation (optional)
 
 ### Phase 6: Payments (Week 11-12) ✅
-- [x] Payment provider abstraction (Stripe + Manual, extensible for PayPal, Adyen, etc.)
+- [x] Payment provider abstraction (Stripe + UCP + Manual, extensible for PayPal, Adyen, etc.)
 - [x] Checkout session management
 - [x] Payment webhook handling
 - [x] Invoice status updates on payment
+- [x] UCP (Universal Commerce Protocol) integration - https://ucp.dev
 
 ### Phase 7: Advanced Charges (Week 13-14)
 - [ ] Graduated pricing

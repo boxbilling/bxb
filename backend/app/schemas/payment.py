@@ -55,6 +55,10 @@ class CheckoutSessionCreate(BaseModel):
     invoice_id: UUID
     success_url: str = Field(..., description="URL to redirect after successful payment")
     cancel_url: str = Field(..., description="URL to redirect if payment is canceled")
+    provider: PaymentProvider = Field(
+        default=PaymentProvider.STRIPE,
+        description="Payment provider to use (stripe, ucp, manual)",
+    )
 
 
 class CheckoutSessionResponse(BaseModel):

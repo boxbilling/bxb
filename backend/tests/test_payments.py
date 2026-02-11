@@ -24,6 +24,8 @@ from app.schemas.subscription import SubscriptionCreate
 from app.services.payment_provider import (
     ManualProvider,
     StripeProvider,
+    UCPProvider,
+    WebhookResult,
     get_payment_provider,
 )
 
@@ -1296,8 +1298,6 @@ class TestPaymentsAPI:
         self, mock_parse, mock_verify, client, payment, db_session
     ):
         """Test webhook with unknown status (no status update action)."""
-        from app.services.payment_provider import WebhookResult
-
         mock_verify.return_value = True
         # Return a result with status that's not succeeded/failed/canceled
         mock_parse.return_value = WebhookResult(
@@ -1323,3 +1323,580 @@ class TestPaymentsAPI:
         # Payment status should remain unchanged (pending)
         updated = repo.get_by_id(payment.id)
         assert updated.status == PaymentStatus.PENDING.value
+
+
+class TestUCPProvider:
+    """Tests for UCP (Universal Commerce Protocol) provider."""
+
+    def test_get_ucp_provider(self):
+        """Test getting UCP provider."""
+        provider = get_payment_provider(PaymentProvider.UCP)
+        assert isinstance(provider, UCPProvider)
+        assert provider.provider_name == PaymentProvider.UCP
+
+    def test_ucp_provider_initialization(self):
+        """Test UCP provider initialization with custom values."""
+        provider = UCPProvider(
+            base_url="https://ucp.example.com/",
+            api_key="test_key",
+            webhook_secret="test_secret",
+            merchant_id="merchant_123",
+        )
+        assert provider.base_url == "https://ucp.example.com"  # Trailing slash stripped
+        assert provider.api_key == "test_key"
+        assert provider.webhook_secret == "test_secret"
+        assert provider.merchant_id == "merchant_123"
+
+    def test_ucp_provider_verify_signature_no_secret(self):
+        """Test UCP signature verification without secret."""
+        provider = UCPProvider(webhook_secret="")
+        result = provider.verify_webhook_signature(b"payload", "signature")
+        assert result is False
+
+    @patch("app.services.payment_provider.settings")
+    def test_ucp_provider_verify_signature_valid(self, mock_settings):
+        """Test UCP signature verification with valid signature."""
+        import hashlib
+        import hmac
+
+        mock_settings.ucp_webhook_secret = "ucp_secret"
+        mock_settings.ucp_base_url = ""
+        mock_settings.ucp_api_key = ""
+        mock_settings.ucp_merchant_id = ""
+
+        provider = UCPProvider(webhook_secret="ucp_secret")
+        payload = b'{"type": "checkout.completed"}'
+        expected_sig = hmac.new(b"ucp_secret", payload, hashlib.sha256).hexdigest()
+        result = provider.verify_webhook_signature(payload, expected_sig)
+        assert result is True
+
+    @patch("app.services.payment_provider.settings")
+    def test_ucp_provider_verify_signature_with_prefix(self, mock_settings):
+        """Test UCP signature verification with sha256= prefix."""
+        import hashlib
+        import hmac
+
+        mock_settings.ucp_webhook_secret = "ucp_secret"
+        mock_settings.ucp_base_url = ""
+        mock_settings.ucp_api_key = ""
+        mock_settings.ucp_merchant_id = ""
+
+        provider = UCPProvider(webhook_secret="ucp_secret")
+        payload = b'{"type": "checkout.completed"}'
+        raw_sig = hmac.new(b"ucp_secret", payload, hashlib.sha256).hexdigest()
+        result = provider.verify_webhook_signature(payload, f"sha256={raw_sig}")
+        assert result is True
+
+    def test_ucp_provider_verify_signature_invalid(self):
+        """Test UCP signature verification with invalid signature."""
+        provider = UCPProvider(webhook_secret="secret")
+        result = provider.verify_webhook_signature(b"payload", "invalid")
+        assert result is False
+
+    def test_ucp_provider_parse_webhook_completed(self):
+        """Test UCP webhook parsing for completed checkout."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.completed",
+                "data": {
+                    "id": "chk_123",
+                    "order_id": "ord_456",
+                    "status": "completed",
+                    "metadata": {"payment_id": "abc", "invoice_number": "INV-001"},
+                },
+            }
+        )
+        assert result.event_type == "checkout.completed"
+        assert result.provider_checkout_id == "chk_123"
+        assert result.provider_payment_id == "ord_456"
+        assert result.status == "succeeded"
+        assert result.metadata["payment_id"] == "abc"
+
+    def test_ucp_provider_parse_webhook_canceled(self):
+        """Test UCP webhook parsing for canceled checkout."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.canceled",
+                "data": {"id": "chk_789", "status": "canceled"},
+            }
+        )
+        assert result.event_type == "checkout.canceled"
+        assert result.status == "canceled"
+
+    def test_ucp_provider_parse_webhook_failed(self):
+        """Test UCP webhook parsing for failed checkout with error message."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.failed",
+                "data": {
+                    "id": "chk_fail",
+                    "status": "failed",
+                    "messages": [
+                        {"type": "error", "content": "Card declined by issuer"}
+                    ],
+                },
+            }
+        )
+        assert result.event_type == "checkout.failed"
+        assert result.status == "failed"
+        assert result.failure_reason == "Card declined by issuer"
+
+    def test_ucp_provider_parse_webhook_failed_no_message(self):
+        """Test UCP webhook parsing for failed checkout without error message."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.failed",
+                "data": {"id": "chk_fail", "status": "failed"},
+            }
+        )
+        assert result.failure_reason == "Payment failed"
+
+    def test_ucp_provider_parse_webhook_incomplete(self):
+        """Test UCP webhook parsing for incomplete checkout."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.updated",
+                "data": {"id": "chk_incomplete", "status": "incomplete"},
+            }
+        )
+        assert result.status == "pending"
+
+    def test_ucp_provider_parse_webhook_ready_for_complete(self):
+        """Test UCP webhook parsing for ready_for_complete status."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.updated",
+                "data": {"id": "chk_ready", "status": "ready_for_complete"},
+            }
+        )
+        assert result.status == "pending"
+
+    def test_ucp_provider_parse_webhook_unknown_status(self):
+        """Test UCP webhook parsing for unknown status."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.updated",
+                "data": {"id": "chk_unknown", "status": "some_new_status"},
+            }
+        )
+        assert result.status is None
+
+    def test_ucp_provider_parse_webhook_extract_metadata_from_line_items(self):
+        """Test UCP webhook extracts invoice from line items when no metadata."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.completed",
+                "data": {
+                    "id": "chk_li",
+                    "status": "completed",
+                    "line_items": [
+                        {
+                            "id": "li_1",
+                            "item": {"id": "inv_INV-002", "title": "Invoice INV-002"},
+                        }
+                    ],
+                },
+            }
+        )
+        assert result.metadata.get("invoice_number") == "INV-002"
+
+    def test_ucp_provider_parse_webhook_no_matching_line_items(self):
+        """Test UCP webhook when line items don't have inv_ prefix."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.completed",
+                "data": {
+                    "id": "chk_no_inv",
+                    "status": "completed",
+                    "line_items": [
+                        {
+                            "id": "li_1",
+                            "item": {"id": "product_123", "title": "Some Product"},
+                        },
+                        {
+                            "id": "li_2",
+                            "item": {"id": "sku_456", "title": "Another Item"},
+                        },
+                    ],
+                },
+            }
+        )
+        # No invoice_number should be extracted
+        assert result.metadata.get("invoice_number") is None
+
+    def test_ucp_provider_parse_webhook_empty_line_items(self):
+        """Test UCP webhook with empty line items array."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.completed",
+                "data": {
+                    "id": "chk_empty_li",
+                    "status": "completed",
+                    "line_items": [],
+                },
+            }
+        )
+        assert result.metadata == {}
+
+    def test_ucp_provider_parse_webhook_failed_no_error_messages(self):
+        """Test UCP webhook for failed checkout with non-error messages."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.failed",
+                "data": {
+                    "id": "chk_fail_no_err",
+                    "status": "failed",
+                    "messages": [
+                        {"type": "info", "content": "Some info"},
+                        {"type": "warning", "content": "Some warning"},
+                    ],
+                },
+            }
+        )
+        assert result.failure_reason == "Payment failed"
+
+    def test_ucp_provider_parse_webhook_failed_empty_messages(self):
+        """Test UCP webhook for failed checkout with empty messages array."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.failed",
+                "data": {
+                    "id": "chk_fail_empty_msg",
+                    "status": "failed",
+                    "messages": [],
+                },
+            }
+        )
+        assert result.failure_reason == "Payment failed"
+
+    def test_ucp_provider_parse_webhook_with_event_type_fallback(self):
+        """Test UCP webhook parsing with event_type instead of type."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {"event_type": "order.created", "id": "ord_123", "status": "completed"}
+        )
+        assert result.event_type == "order.created"
+        assert result.provider_checkout_id == "ord_123"
+
+    def test_ucp_provider_parse_webhook_same_checkout_and_order_id(self):
+        """Test UCP webhook when checkout_id equals order_id."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "checkout.completed",
+                "data": {"id": "chk_same", "checkout_id": "chk_same", "status": "completed"},
+            }
+        )
+        # When checkout_id equals id, provider_payment_id should be None
+        assert result.provider_checkout_id == "chk_same"
+        assert result.provider_payment_id is None
+
+    def test_ucp_provider_parse_webhook_refunded(self):
+        """Test UCP webhook parsing for refunded status."""
+        provider = UCPProvider()
+        result = provider.parse_webhook(
+            {
+                "type": "order.refunded",
+                "data": {"id": "ord_refund", "status": "refunded"},
+            }
+        )
+        assert result.status == "refunded"
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_provider_create_checkout_session(self, mock_urlopen):
+        """Test UCP checkout session creation."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = b'{"id": "chk_new_123", "status": "incomplete", "permalink_url": "https://checkout.ucp.dev/chk_new_123"}'
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://api.ucp.dev",
+            api_key="ucp_test_key",
+        )
+
+        session = provider.create_checkout_session(
+            payment_id=uuid4(),
+            amount=Decimal("99.99"),
+            currency="USD",
+            customer_email="test@example.com",
+            invoice_number="INV-UCP-001",
+            success_url="https://example.com/success",
+            cancel_url="https://example.com/cancel",
+            metadata={"custom": "data"},
+        )
+
+        assert session.provider_checkout_id == "chk_new_123"
+        assert session.checkout_url == "https://checkout.ucp.dev/chk_new_123"
+        assert session.expires_at is not None
+        mock_urlopen.assert_called_once()
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_provider_create_checkout_session_no_email(self, mock_urlopen):
+        """Test UCP checkout session creation without email."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = b'{"id": "chk_no_email", "status": "incomplete"}'
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://api.ucp.dev",
+            api_key="ucp_test_key",
+        )
+
+        session = provider.create_checkout_session(
+            payment_id=uuid4(),
+            amount=Decimal("50.00"),
+            currency="EUR",
+            customer_email=None,
+            invoice_number="INV-UCP-002",
+            success_url="https://example.com/success",
+            cancel_url="https://example.com/cancel",
+        )
+
+        assert session.provider_checkout_id == "chk_no_email"
+        # Should construct URL from base_url when permalink_url not in response
+        assert "api.ucp.dev/checkout/chk_no_email" in session.checkout_url
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_provider_create_checkout_session_api_error(self, mock_urlopen):
+        """Test UCP checkout session creation handles API errors."""
+        from urllib.error import URLError
+
+        mock_urlopen.side_effect = URLError("Connection refused")
+
+        provider = UCPProvider(
+            base_url="https://api.ucp.dev",
+            api_key="ucp_test_key",
+        )
+
+        with pytest.raises(RuntimeError, match="UCP API request failed"):
+            provider.create_checkout_session(
+                payment_id=uuid4(),
+                amount=Decimal("100.00"),
+                currency="USD",
+                customer_email="test@example.com",
+                invoice_number="INV-ERR",
+                success_url="https://example.com/success",
+                cancel_url="https://example.com/cancel",
+            )
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_provider_make_request_headers(self, mock_urlopen):
+        """Test UCP provider sets correct request headers."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = b'{"id": "chk_headers"}'
+        mock_response.__enter__ = MagicMock(return_value=mock_response)
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://api.ucp.dev",
+            api_key="ucp_test_key_123",
+        )
+
+        provider._make_request("POST", "/checkout-sessions", {"test": "data"})
+
+        # Verify the request was made with correct headers
+        call_args = mock_urlopen.call_args
+        request = call_args[0][0]
+        assert request.get_header("Content-type") == "application/json"
+        assert request.get_header("Authorization") == "Bearer ucp_test_key_123"
+        # Note: urllib.request normalizes headers to title case (Ucp-agent)
+        assert "Ucp-agent" in request.headers or "UCP-Agent" in request.headers
+
+
+class TestUCPPaymentsAPI:
+    """Tests for UCP payments via the API."""
+
+    @patch("app.routers.payments.get_payment_provider")
+    def test_create_checkout_with_ucp_provider(self, mock_get_provider, client, finalized_invoice):
+        """Test creating checkout session with UCP provider."""
+        from app.services.payment_provider import CheckoutSession
+
+        mock_provider = MagicMock()
+        mock_provider.create_checkout_session.return_value = CheckoutSession(
+            provider_checkout_id="ucp_chk_123",
+            checkout_url="https://checkout.ucp.dev/ucp_chk_123",
+            expires_at=datetime.utcnow() + timedelta(hours=24),
+        )
+        mock_get_provider.return_value = mock_provider
+
+        response = client.post(
+            "/v1/payments/checkout",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+                "provider": "ucp",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["checkout_url"] == "https://checkout.ucp.dev/ucp_chk_123"
+        assert data["provider"] == "ucp"
+
+    @patch("app.routers.payments.get_payment_provider")
+    def test_ucp_webhook_with_signature_header(self, mock_get_provider, client, payment, db_session):
+        """Test UCP webhook with X-UCP-Signature header."""
+        mock_provider = MagicMock()
+        mock_provider.verify_webhook_signature.return_value = True
+        mock_provider.parse_webhook.return_value = WebhookResult(
+            event_type="checkout.completed",
+            provider_checkout_id="ucp_chk_webhook",
+            status="succeeded",
+        )
+        mock_get_provider.return_value = mock_provider
+
+        # Create a UCP payment
+        repo = PaymentRepository(db_session)
+        ucp_payment = repo.create(
+            invoice_id=payment.invoice_id,
+            customer_id=payment.customer_id,
+            amount=100.0,
+            currency="USD",
+            provider=PaymentProvider.UCP,
+        )
+        repo.set_provider_ids(
+            payment_id=ucp_payment.id,
+            provider_checkout_id="ucp_chk_webhook",
+        )
+
+        response = client.post(
+            "/v1/payments/webhook/ucp",
+            json={
+                "type": "checkout.completed",
+                "data": {
+                    "id": "ucp_chk_webhook",
+                    "status": "completed",
+                },
+            },
+            headers={"X-UCP-Signature": "valid_sig"},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "processed"
+
+    @patch("app.routers.payments.get_payment_provider")
+    def test_ucp_webhook_payment_failed(self, mock_get_provider, client, payment, db_session):
+        """Test UCP webhook marks payment as failed."""
+        mock_provider = MagicMock()
+        mock_provider.verify_webhook_signature.return_value = True
+        mock_provider.parse_webhook.return_value = WebhookResult(
+            event_type="checkout.failed",
+            provider_checkout_id="ucp_chk_fail",
+            status="failed",
+            failure_reason="Insufficient funds",
+        )
+        mock_get_provider.return_value = mock_provider
+
+        repo = PaymentRepository(db_session)
+        ucp_payment = repo.create(
+            invoice_id=payment.invoice_id,
+            customer_id=payment.customer_id,
+            amount=100.0,
+            currency="USD",
+            provider=PaymentProvider.UCP,
+        )
+        repo.set_provider_ids(
+            payment_id=ucp_payment.id,
+            provider_checkout_id="ucp_chk_fail",
+        )
+
+        response = client.post(
+            "/v1/payments/webhook/ucp",
+            json={
+                "type": "checkout.failed",
+                "data": {
+                    "id": "ucp_chk_fail",
+                    "status": "failed",
+                    "messages": [{"type": "error", "content": "Insufficient funds"}],
+                },
+            },
+            headers={"X-UCP-Signature": "valid"},
+        )
+        assert response.status_code == 200
+
+        # Refresh the session to get the updated payment from the database
+        db_session.expire_all()
+        updated = repo.get_by_id(ucp_payment.id)
+        assert updated.status == PaymentStatus.FAILED.value
+
+    @patch("app.routers.payments.get_payment_provider")
+    def test_ucp_webhook_checkout_canceled(self, mock_get_provider, client, payment, db_session):
+        """Test UCP webhook marks payment as canceled."""
+        mock_provider = MagicMock()
+        mock_provider.verify_webhook_signature.return_value = True
+        mock_provider.parse_webhook.return_value = WebhookResult(
+            event_type="checkout.canceled",
+            provider_checkout_id="ucp_chk_cancel",
+            status="canceled",
+        )
+        mock_get_provider.return_value = mock_provider
+
+        repo = PaymentRepository(db_session)
+        ucp_payment = repo.create(
+            invoice_id=payment.invoice_id,
+            customer_id=payment.customer_id,
+            amount=100.0,
+            currency="USD",
+            provider=PaymentProvider.UCP,
+        )
+        repo.set_provider_ids(
+            payment_id=ucp_payment.id,
+            provider_checkout_id="ucp_chk_cancel",
+        )
+
+        response = client.post(
+            "/v1/payments/webhook/ucp",
+            json={
+                "type": "checkout.canceled",
+                "data": {"id": "ucp_chk_cancel", "status": "canceled"},
+            },
+            headers={"X-UCP-Signature": "valid"},
+        )
+        assert response.status_code == 200
+
+        # Refresh the session to get the updated payment from the database
+        db_session.expire_all()
+        updated = repo.get_by_id(ucp_payment.id)
+        assert updated.status == PaymentStatus.CANCELED.value
+
+    def test_ucp_webhook_invalid_signature(self, client):
+        """Test UCP webhook with invalid signature."""
+        response = client.post(
+            "/v1/payments/webhook/ucp",
+            json={"type": "test"},
+            headers={"X-UCP-Signature": "invalid"},
+        )
+        assert response.status_code == 401
+
+    def test_list_payments_by_ucp_provider(self, client, payment, db_session, finalized_invoice, customer):
+        """Test filtering payments by UCP provider."""
+        # Create a UCP payment
+        repo = PaymentRepository(db_session)
+        repo.create(
+            invoice_id=finalized_invoice.id,
+            customer_id=customer.id,
+            amount=75.0,
+            currency="USD",
+            provider=PaymentProvider.UCP,
+        )
+
+        response = client.get("/v1/payments/?provider=ucp")
+        assert response.status_code == 200
+        assert len(response.json()) >= 1
+        assert all(p["provider"] == "ucp" for p in response.json())
