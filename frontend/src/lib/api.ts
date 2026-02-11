@@ -174,13 +174,65 @@ export const dashboardApi = {
   },
 }
 
-// Invoices API (mock for now - not implemented in backend)
+// Invoices API
+type InvoiceResponse = components['schemas']['InvoiceResponse']
+type InvoiceStatus = components['schemas']['InvoiceStatus']
+
 export const invoicesApi = {
-  list: async () => [],
-  get: async (_id: string) => null,
-  finalize: async (_id: string) => null,
-  void: async (_id: string) => null,
+  list: (params?: { skip?: number; limit?: number; customer_id?: string; status?: InvoiceStatus }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.skip) searchParams.set('skip', String(params.skip))
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.customer_id) searchParams.set('customer_id', params.customer_id)
+    if (params?.status) searchParams.set('status', params.status)
+    const query = searchParams.toString()
+    return request<InvoiceResponse[]>(`/v1/invoices/${query ? `?${query}` : ''}`)
+  },
+  get: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}`),
+  finalize: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/finalize`, { method: 'POST' }),
+  pay: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/pay`, { method: 'POST' }),
+  void: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/void`, { method: 'POST' }),
+  delete: (id: string) => request<void>(`/v1/invoices/${id}`, { method: 'DELETE' }),
   downloadPdf: (id: string) => `${API_BASE_URL}/v1/invoices/${id}/download`,
+}
+
+// Payments API
+type PaymentResponse = components['schemas']['PaymentResponse']
+type PaymentStatus = components['schemas']['PaymentStatus']
+type PaymentProvider = components['schemas']['PaymentProvider']
+type CheckoutSessionCreate = components['schemas']['CheckoutSessionCreate']
+type CheckoutSessionResponse = components['schemas']['CheckoutSessionResponse']
+
+export const paymentsApi = {
+  list: (params?: {
+    skip?: number
+    limit?: number
+    invoice_id?: string
+    customer_id?: string
+    status?: PaymentStatus
+    provider?: PaymentProvider
+  }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.skip) searchParams.set('skip', String(params.skip))
+    if (params?.limit) searchParams.set('limit', String(params.limit))
+    if (params?.invoice_id) searchParams.set('invoice_id', params.invoice_id)
+    if (params?.customer_id) searchParams.set('customer_id', params.customer_id)
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.provider) searchParams.set('provider', params.provider)
+    const query = searchParams.toString()
+    return request<PaymentResponse[]>(`/v1/payments/${query ? `?${query}` : ''}`)
+  },
+  get: (id: string) => request<PaymentResponse>(`/v1/payments/${id}`),
+  createCheckout: (data: CheckoutSessionCreate) =>
+    request<CheckoutSessionResponse>('/v1/payments/checkout', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  markPaid: (id: string) =>
+    request<PaymentResponse>(`/v1/payments/${id}/mark-paid`, { method: 'POST' }),
+  refund: (id: string) =>
+    request<PaymentResponse>(`/v1/payments/${id}/refund`, { method: 'POST' }),
+  delete: (id: string) => request<void>(`/v1/payments/${id}`, { method: 'DELETE' }),
 }
 
 export { ApiError }

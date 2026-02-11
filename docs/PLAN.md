@@ -308,10 +308,12 @@ class Invoice(Base):
 - [x] Invoice status updates on payment
 - [x] UCP (Universal Commerce Protocol) integration - https://ucp.dev
 
-### Phase 7: Advanced Charges (Week 13-14)
-- [ ] Graduated pricing
-- [ ] Volume pricing
-- [ ] Package pricing
+### Phase 7: Advanced Charges (Week 13-14) ✅
+- [x] Graduated pricing
+- [x] Volume pricing
+- [x] Package pricing
+- [x] Percentage pricing
+- [x] Graduated percentage pricing
 
 ### Phase 8: Polish (Week 15-16)
 - [ ] Admin UI improvements

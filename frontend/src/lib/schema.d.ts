@@ -481,6 +481,136 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Payments
+         * @description List payments with optional filters.
+         */
+        get: operations["list_payments_v1_payments__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{payment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Payment
+         * @description Get a payment by ID.
+         */
+        get: operations["get_payment_v1_payments__payment_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Payment
+         * @description Delete a pending payment.
+         */
+        delete: operations["delete_payment_v1_payments__payment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Checkout Session
+         * @description Create a checkout session for an invoice.
+         *
+         *     This creates a payment record and returns a URL where the customer
+         *     can complete the payment.
+         */
+        post: operations["create_checkout_session_v1_payments_checkout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/webhook/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Handle Webhook
+         * @description Handle payment provider webhooks.
+         *
+         *     This endpoint receives webhook events from payment providers
+         *     and updates payment/invoice status accordingly.
+         */
+        post: operations["handle_webhook_v1_payments_webhook__provider__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{payment_id}/mark-paid": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Payment Paid
+         * @description Manually mark a payment as paid (for manual/offline payments).
+         */
+        post: operations["mark_payment_paid_v1_payments__payment_id__mark_paid_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{payment_id}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refund Payment
+         * @description Refund a succeeded payment.
+         */
+        post: operations["refund_payment_v1_payments__payment_id__refund_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -590,7 +720,7 @@ export interface components {
          * ChargeModel
          * @enum {string}
          */
-        ChargeModel: "standard" | "graduated" | "volume" | "package" | "percentage";
+        ChargeModel: "standard" | "graduated" | "volume" | "package" | "percentage" | "graduated_percentage";
         /**
          * ChargeOutput
          * @description Charge output in plan responses.
@@ -624,6 +754,49 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * CheckoutSessionCreate
+         * @description Schema for creating a checkout session.
+         */
+        CheckoutSessionCreate: {
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /**
+             * Success Url
+             * @description URL to redirect after successful payment
+             */
+            success_url: string;
+            /**
+             * Cancel Url
+             * @description URL to redirect if payment is canceled
+             */
+            cancel_url: string;
+            /**
+             * @description Payment provider to use (stripe, ucp, manual)
+             * @default stripe
+             */
+            provider: components["schemas"]["PaymentProvider"];
+        };
+        /**
+         * CheckoutSessionResponse
+         * @description Schema for checkout session response.
+         */
+        CheckoutSessionResponse: {
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Checkout Url */
+            checkout_url: string;
+            /** Provider */
+            provider: string;
+            /** Expires At */
+            expires_at?: string | null;
         };
         /** CustomerCreate */
         CustomerCreate: {
@@ -876,6 +1049,69 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * PaymentProvider
+         * @description Supported payment providers.
+         * @enum {string}
+         */
+        PaymentProvider: "stripe" | "manual" | "ucp";
+        /**
+         * PaymentResponse
+         * @description Schema for payment response.
+         */
+        PaymentResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+            /** Status */
+            status: string;
+            /** Provider */
+            provider: string;
+            /** Provider Payment Id */
+            provider_payment_id?: string | null;
+            /** Provider Checkout Id */
+            provider_checkout_id?: string | null;
+            /** Provider Checkout Url */
+            provider_checkout_url?: string | null;
+            /** Failure Reason */
+            failure_reason?: string | null;
+            /** Payment Metadata */
+            payment_metadata?: Record<string, never> | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Completed At */
+            completed_at?: string | null;
+        };
+        /**
+         * PaymentStatus
+         * @description Payment status enum.
+         * @enum {string}
+         */
+        PaymentStatus: "pending" | "processing" | "succeeded" | "failed" | "refunded" | "canceled";
         /** PlanCreate */
         PlanCreate: {
             /** Code */
@@ -2258,6 +2494,231 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InvoiceResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_payments_v1_payments__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                invoice_id?: string | null;
+                customer_id?: string | null;
+                status?: components["schemas"]["PaymentStatus"] | null;
+                provider?: components["schemas"]["PaymentProvider"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payment_v1_payments__payment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_payment_v1_payments__payment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_checkout_session_v1_payments_checkout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckoutSessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckoutSessionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    handle_webhook_v1_payments_webhook__provider__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Stripe-Signature"?: string | null;
+                "X-UCP-Signature"?: string | null;
+            };
+            path: {
+                provider: components["schemas"]["PaymentProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_payment_paid_v1_payments__payment_id__mark_paid_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refund_payment_v1_payments__payment_id__refund_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
                 };
             };
             /** @description Validation Error */
