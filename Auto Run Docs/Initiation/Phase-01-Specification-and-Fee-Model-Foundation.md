@@ -45,7 +45,12 @@ This phase creates the comprehensive specification document for all missing Lago
   - `backend/app/repositories/fee_repository.py` — FeeRepository with methods: `create()`, `create_bulk()`, `get_by_id()`, `get_by_invoice_id()`, `get_by_customer_id()`, `get_by_subscription_id()`, `update()`, `delete()`, `mark_succeeded()`, `mark_failed()`
   - Alembic migration for the `fees` table with all columns and indexes
 
-- [ ] Create the Fee API router:
+- [x] Create the Fee API router:
+  > **Completed 2026-02-11**: Created all components:
+  > - `backend/app/routers/fees.py` — Three endpoints: `GET /` (list with pagination and 5 filters), `GET /{fee_id}` (get by ID), `PUT /{fee_id}` (update payment_status/description/taxes). Follows project conventions (Query-validated pagination, HTTPException 404s, FeeRepository pattern).
+  > - Registered router in `backend/app/main.py` at `/v1/fees` with `["fees"]` tags
+  > - `backend/tests/test_fees.py` — 35 tests covering: FeeRepository CRUD (19 tests: create, create_bulk, get_by_id, get_by_invoice/customer/subscription_id, get_all with filters/pagination, update, delete, mark_succeeded, mark_failed, payment_status_filter) + Fee API endpoints (16 tests: list empty/populated, all 5 filters, pagination, get by ID, get not found, update payment_status/description/taxes, update not found, response format, combined filters)
+  > - All 580 tests pass (545 existing + 35 new).
   - `backend/app/routers/fees.py` — Endpoints:
     - `GET /v1/fees` — List fees with filters (invoice_id, customer_id, subscription_id, fee_type, payment_status)
     - `GET /v1/fees/{id}` — Get fee by ID
