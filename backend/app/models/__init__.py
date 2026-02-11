@@ -2,6 +2,7 @@ from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer
 from app.models.event import Event
+from app.models.fee import Fee, FeePaymentStatus, FeeType
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.item import Item
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
@@ -15,6 +16,9 @@ __all__ = [
     "ChargeModel",
     "Customer",
     "Event",
+    "Fee",
+    "FeePaymentStatus",
+    "FeeType",
     "Invoice",
     "InvoiceStatus",
     "Item",

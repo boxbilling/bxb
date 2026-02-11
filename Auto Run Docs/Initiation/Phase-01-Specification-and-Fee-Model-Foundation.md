@@ -23,7 +23,14 @@ This phase creates the comprehensive specification document for all missing Lago
   - `docs/spec/14-data-export-and-analytics.md` — DataExport entity (CSV exports with status tracking), ClickHouse integration for event analytics, activity/API logging, daily usage pre-aggregation.
   - All spec files should use YAML front matter: `type: spec`, `created: 2026-02-11`, `tags: [spec, {feature-name}]`, and cross-reference related specs with `[[Spec-Name]]` wiki-links.
 
-- [ ] Create the Fee model, migration, repository, and schema in the bxb backend:
+- [x] Create the Fee model, migration, repository, and schema in the bxb backend:
+  > **Completed 2026-02-11**: Created all four components:
+  > - `backend/app/models/fee.py` — Fee SQLAlchemy model with UUIDType PK, FKs to invoices/charges/subscriptions/customers, FeeType and FeePaymentStatus enums, all specified numeric/string/JSON fields, and 5 indexes
+  > - `backend/app/schemas/fee.py` — Pydantic schemas: FeeCreate, FeeUpdate, FeeResponse with all fields, enums imported from model
+  > - `backend/app/repositories/fee_repository.py` — FeeRepository with all 10 methods: create(), create_bulk(), get_by_id(), get_by_invoice_id(), get_by_customer_id(), get_by_subscription_id(), get_all() with filters, update(), delete(), mark_succeeded(), mark_failed()
+  > - `backend/app/alembic/versions/20260211_c572a3f1d896_create_fees_table.py` — Migration for fees table with all columns, FKs, and indexes
+  > - Registered Fee in models/__init__.py, schemas/__init__.py, repositories/__init__.py
+  > - All 545 existing tests continue to pass.
   - `backend/app/models/fee.py` — Fee SQLAlchemy model with fields:
     - `id` (UUIDType PK), `invoice_id` (FK to invoices, nullable for pay-in-advance), `charge_id` (FK to charges, nullable), `subscription_id` (FK to subscriptions, nullable), `customer_id` (FK to customers, not null)
     - `fee_type` (String: "charge", "subscription", "add_on", "credit", "commitment")
