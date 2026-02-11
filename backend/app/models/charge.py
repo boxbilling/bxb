@@ -14,6 +14,7 @@ class ChargeModel(str, Enum):
     VOLUME = "volume"  # Volume discounts
     PACKAGE = "package"  # Price per X units
     PERCENTAGE = "percentage"  # % of transaction
+    GRADUATED_PERCENTAGE = "graduated_percentage"  # Tiered % of transaction
 
 
 class Charge(Base):
@@ -29,7 +30,7 @@ class Charge(Base):
         nullable=False,
         index=True,
     )
-    charge_model = Column(String(20), nullable=False)
+    charge_model = Column(String(30), nullable=False)
     properties = Column(JSON, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

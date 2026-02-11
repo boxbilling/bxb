@@ -22,7 +22,7 @@ def upgrade() -> None:
         sa.Column("id", sa.String(length=36), nullable=False),
         sa.Column("plan_id", sa.String(length=36), nullable=False),
         sa.Column("billable_metric_id", sa.String(length=36), nullable=False),
-        sa.Column("charge_model", sa.String(length=20), nullable=False),
+        sa.Column("charge_model", sa.String(length=30), nullable=False),
         sa.Column("properties", sa.JSON(), nullable=False, server_default="{}"),
         sa.Column(
             "created_at",
