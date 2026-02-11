@@ -57,7 +57,13 @@ This phase creates the comprehensive specification document for all missing Lago
     - `PUT /v1/fees/{id}` — Update fee (payment_status changes)
   - Register the router in `backend/app/main.py`
 
-- [ ] Refactor InvoiceGenerationService to create Fee records instead of JSON line items:
+- [x] Refactor InvoiceGenerationService to create Fee records instead of JSON line items:
+  > **Completed 2026-02-11**: Refactored InvoiceGenerationService with:
+  > - `_calculate_charge_fee()` — New method that returns `FeeCreate` objects with all fields (fee_type, customer_id, subscription_id, charge_id, amount_cents, units, events_count, unit_amount_cents, description, metric_code, properties)
+  > - `generate_invoice()` — Now creates Fee records via `FeeRepository.create_bulk()` linked to the invoice. Invoice line_items JSON still populated from fees for backward compatibility.
+  > - `_calculate_charge()` — Kept for backward compatibility (tests use it directly)
+  > - `UsageAggregationService.aggregate_usage_with_count()` — New method returning `UsageResult` dataclass with both `value` and `events_count`. Original `aggregate_usage()` delegates to it.
+  > - All 608 tests pass with 100% coverage.
   - Modify `backend/app/services/invoice_generation.py`:
     - `generate_invoice()` should create Fee records in the database for each charge
     - Each Fee gets: `fee_type="charge"`, `invoice_id`, `charge_id`, `subscription_id`, `customer_id`, the calculated `amount_cents`, `units`, `unit_amount_cents`, `events_count`, `description`, `metric_code`
@@ -65,12 +71,17 @@ This phase creates the comprehensive specification document for all missing Lago
     - Keep `line_items` JSON on Invoice for backward compatibility (populate from fees), but fees are now the source of truth
   - Modify `backend/app/services/usage_aggregation.py` to also return `events_count` alongside the aggregated value, so it can be stored on the Fee
 
-- [ ] Write comprehensive tests for the Fee model and API:
+- [x] Write comprehensive tests for the Fee model and API:
+  > **Completed 2026-02-11**: Added 28 new tests across 3 files:
+  > - `test_invoice_generation.py` — 19 new tests: `TestGenerateInvoiceFeeRecords` (7 tests: single/multiple fee creation, no-charge/none-charge scenarios, line_items backward compatibility, events_count verification, properties snapshot) + `TestCalculateChargeFee` (12 tests: standard/graduated/percentage/graduated_percentage fee calc, no-metric, metric-not-found, calculator-none, zero amounts, unknown model, empty properties, min/max price)
+  > - `test_usage_aggregation.py` — 7 new tests: `TestAggregateUsageWithCount` covering count/sum/max/unique_count with events_count, no-events, unknown metric
+  > - `test_fees.py` — 2 new tests: `test_get_all_with_subscription_filter` and `test_get_all_with_charge_filter` for full repository coverage
   - `backend/tests/test_fees.py` — Test all Fee CRUD operations, filtering, payment status transitions
   - Update `backend/tests/test_invoices.py` — Test that invoice generation now creates Fee records, verify Fee-Invoice relationship, verify backward compatibility of `line_items` JSON
   - Ensure 100% test coverage is maintained across all new and modified code
 
-- [ ] Run the full test suite and fix any failures:
+- [x] Run the full test suite and fix any failures:
+  > **Completed 2026-02-11**: 608 tests pass, 100% coverage achieved.
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ -v --tb=short`
   - Fix any test failures or coverage gaps
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=100` to verify 100% coverage

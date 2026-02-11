@@ -11,7 +11,7 @@ from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.event_repository import EventRepository
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
-from app.services.usage_aggregation import UsageAggregationService
+from app.services.usage_aggregation import UsageAggregationService, UsageResult
 
 
 @pytest.fixture(autouse=True)
@@ -619,3 +619,159 @@ class TestUsageAggregationService:
         assert "api_calls" in summary
         assert summary["api_calls"] == Decimal(1)
         assert "deleted_metric" not in summary
+
+
+class TestAggregateUsageWithCount:
+    """Test aggregate_usage_with_count returns both value and events_count."""
+
+    def test_count_with_events_count(self, db_session, count_metric):
+        """Test COUNT aggregation returns events_count."""
+        event_repo = EventRepository(db_session)
+        service = UsageAggregationService(db_session)
+
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+        for i in range(5):
+            event_repo.create(
+                EventCreate(
+                    transaction_id=f"wc-count-{i}",
+                    external_customer_id="cust-001",
+                    code="api_calls",
+                    timestamp=base_time + timedelta(hours=i),
+                )
+            )
+
+        result = service.aggregate_usage_with_count(
+            external_customer_id="cust-001",
+            code="api_calls",
+            from_timestamp=base_time,
+            to_timestamp=base_time + timedelta(days=1),
+        )
+
+        assert isinstance(result, UsageResult)
+        assert result.value == Decimal(5)
+        assert result.events_count == 5
+
+    def test_sum_with_events_count(self, db_session, sum_metric):
+        """Test SUM aggregation returns correct events_count."""
+        event_repo = EventRepository(db_session)
+        service = UsageAggregationService(db_session)
+
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+        for i, val in enumerate([100, 200, 150]):
+            event_repo.create(
+                EventCreate(
+                    transaction_id=f"wc-sum-{i}",
+                    external_customer_id="cust-001",
+                    code="data_transfer",
+                    timestamp=base_time + timedelta(hours=i),
+                    properties={"bytes": val},
+                )
+            )
+
+        result = service.aggregate_usage_with_count(
+            external_customer_id="cust-001",
+            code="data_transfer",
+            from_timestamp=base_time,
+            to_timestamp=base_time + timedelta(days=1),
+        )
+
+        assert result.value == Decimal(450)
+        assert result.events_count == 3
+
+    def test_max_with_events_count(self, db_session, max_metric):
+        """Test MAX aggregation returns correct events_count."""
+        event_repo = EventRepository(db_session)
+        service = UsageAggregationService(db_session)
+
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+        for i, val in enumerate([10, 50, 30]):
+            event_repo.create(
+                EventCreate(
+                    transaction_id=f"wc-max-{i}",
+                    external_customer_id="cust-001",
+                    code="peak_connections",
+                    timestamp=base_time + timedelta(hours=i),
+                    properties={"connections": val},
+                )
+            )
+
+        result = service.aggregate_usage_with_count(
+            external_customer_id="cust-001",
+            code="peak_connections",
+            from_timestamp=base_time,
+            to_timestamp=base_time + timedelta(days=1),
+        )
+
+        assert result.value == Decimal(50)
+        assert result.events_count == 3
+
+    def test_max_no_events_count_is_zero(self, db_session, max_metric):
+        """Test MAX aggregation with no events returns 0 events_count."""
+        service = UsageAggregationService(db_session)
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+
+        result = service.aggregate_usage_with_count(
+            external_customer_id="cust-001",
+            code="peak_connections",
+            from_timestamp=base_time,
+            to_timestamp=base_time + timedelta(days=1),
+        )
+
+        assert result.value == Decimal(0)
+        assert result.events_count == 0
+
+    def test_unique_count_with_events_count(self, db_session, unique_count_metric):
+        """Test UNIQUE_COUNT aggregation returns correct events_count."""
+        event_repo = EventRepository(db_session)
+        service = UsageAggregationService(db_session)
+
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+        user_ids = ["user-1", "user-2", "user-1", "user-3"]
+        for i, uid in enumerate(user_ids):
+            event_repo.create(
+                EventCreate(
+                    transaction_id=f"wc-unique-{i}",
+                    external_customer_id="cust-001",
+                    code="unique_users",
+                    timestamp=base_time + timedelta(hours=i),
+                    properties={"user_id": uid},
+                )
+            )
+
+        result = service.aggregate_usage_with_count(
+            external_customer_id="cust-001",
+            code="unique_users",
+            from_timestamp=base_time,
+            to_timestamp=base_time + timedelta(days=1),
+        )
+
+        assert result.value == Decimal(3)  # 3 unique users
+        assert result.events_count == 4  # 4 events total
+
+    def test_no_events_returns_zero_count(self, db_session, count_metric):
+        """Test that no events returns 0 events_count."""
+        service = UsageAggregationService(db_session)
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+
+        result = service.aggregate_usage_with_count(
+            external_customer_id="cust-001",
+            code="api_calls",
+            from_timestamp=base_time,
+            to_timestamp=base_time + timedelta(days=1),
+        )
+
+        assert result.value == Decimal(0)
+        assert result.events_count == 0
+
+    def test_unknown_metric_raises(self, db_session):
+        """Test that unknown metric raises ValueError."""
+        service = UsageAggregationService(db_session)
+        base_time = datetime(2026, 1, 15, 10, 0, 0, tzinfo=UTC)
+
+        with pytest.raises(ValueError, match="not found"):
+            service.aggregate_usage_with_count(
+                external_customer_id="cust-001",
+                code="nonexistent",
+                from_timestamp=base_time,
+                to_timestamp=base_time + timedelta(days=1),
+            )

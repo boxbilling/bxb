@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -6,6 +7,14 @@ from sqlalchemy.orm import Session
 from app.models.billable_metric import AggregationType
 from app.models.event import Event
 from app.repositories.billable_metric_repository import BillableMetricRepository
+
+
+@dataclass
+class UsageResult:
+    """Result of a usage aggregation containing value and event count."""
+
+    value: Decimal
+    events_count: int
 
 
 class UsageAggregationService:
@@ -27,6 +36,26 @@ class UsageAggregationService:
         Returns:
             Aggregated usage value based on the metric's aggregation type.
         """
+        result = self.aggregate_usage_with_count(
+            external_customer_id=external_customer_id,
+            code=code,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+        )
+        return result.value
+
+    def aggregate_usage_with_count(
+        self,
+        external_customer_id: str,
+        code: str,
+        from_timestamp: datetime,
+        to_timestamp: datetime,
+    ) -> UsageResult:
+        """Aggregate usage for a customer and metric code within a time period.
+
+        Returns:
+            UsageResult with aggregated value and events count.
+        """
         metric = self.metric_repo.get_by_code(code)
         if not metric:
             raise ValueError(f"Billable metric with code '{code}' not found")
@@ -40,9 +69,10 @@ class UsageAggregationService:
             Event.timestamp < to_timestamp,
         )
 
+        events_count = query.count()
+
         if aggregation_type == AggregationType.COUNT:
-            count = query.count()
-            return Decimal(count)
+            return UsageResult(value=Decimal(events_count), events_count=events_count)
 
         elif aggregation_type == AggregationType.SUM:
             if not metric.field_name:
@@ -52,19 +82,19 @@ class UsageAggregationService:
             for event in events:
                 value = event.properties.get(metric.field_name, 0)
                 total += Decimal(str(value))
-            return total
+            return UsageResult(value=total, events_count=events_count)
 
         elif aggregation_type == AggregationType.MAX:
             if not metric.field_name:
                 raise ValueError(f"Metric '{code}' requires field_name for MAX aggregation")
             events = query.all()
             if not events:
-                return Decimal(0)
+                return UsageResult(value=Decimal(0), events_count=0)
             max_val = Decimal(0)
             for event in events:
                 value = event.properties.get(metric.field_name, 0)
                 max_val = max(max_val, Decimal(str(value)))
-            return max_val
+            return UsageResult(value=max_val, events_count=events_count)
 
         elif aggregation_type == AggregationType.UNIQUE_COUNT:
             if not metric.field_name:
@@ -77,7 +107,7 @@ class UsageAggregationService:
                 value = event.properties.get(metric.field_name)
                 if value is not None:
                     unique_values.add(value)
-            return Decimal(len(unique_values))
+            return UsageResult(value=Decimal(len(unique_values)), events_count=events_count)
 
         else:  # pragma: no cover
             raise ValueError(f"Unknown aggregation type: {aggregation_type}")

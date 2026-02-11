@@ -257,6 +257,73 @@ class TestFeeRepository:
         all_fees = repo.get_all()
         assert len(all_fees) == 2
 
+    def test_get_all_with_subscription_filter(self, db_session, customer, invoice, subscription):
+        repo = FeeRepository(db_session)
+        fee = repo.create(
+            FeeCreate(
+                customer_id=customer.id,
+                invoice_id=invoice.id,
+                subscription_id=subscription.id,
+                fee_type=FeeType.CHARGE,
+                amount_cents=Decimal("1000"),
+                total_amount_cents=Decimal("1000"),
+            )
+        )
+        # Filter by subscription_id
+        results = repo.get_all(subscription_id=subscription.id)
+        assert len(results) == 1
+        assert results[0].id == fee.id
+
+        # No match
+        results = repo.get_all(subscription_id=uuid4())
+        assert len(results) == 0
+
+    def test_get_all_with_charge_filter(self, db_session, customer, invoice):
+        repo = FeeRepository(db_session)
+
+        # Create a charge to use as FK
+        from app.models.billable_metric import BillableMetric
+        from app.models.charge import Charge, ChargeModel as CM
+        from app.repositories.plan_repository import PlanRepository
+        from app.schemas.plan import PlanCreate
+
+        plan_repo = PlanRepository(db_session)
+        plan = plan_repo.create(PlanCreate(code=f"fee_charge_plan_{uuid4()}", name="Test", interval="monthly"))
+
+        metric = BillableMetric(code=f"fee_test_metric_{uuid4()}", name="Test Metric", aggregation_type="count")
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        charge = Charge(
+            plan_id=plan.id,
+            billable_metric_id=metric.id,
+            charge_model=CM.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        fee = repo.create(
+            FeeCreate(
+                customer_id=customer.id,
+                invoice_id=invoice.id,
+                charge_id=charge.id,
+                fee_type=FeeType.CHARGE,
+                amount_cents=Decimal("500"),
+                total_amount_cents=Decimal("500"),
+            )
+        )
+        # Filter by charge_id
+        results = repo.get_all(charge_id=charge.id)
+        assert len(results) == 1
+        assert results[0].id == fee.id
+
+        # No match
+        results = repo.get_all(charge_id=uuid4())
+        assert len(results) == 0
+
     def test_get_all_pagination(self, db_session, customer):
         repo = FeeRepository(db_session)
         for i in range(5):

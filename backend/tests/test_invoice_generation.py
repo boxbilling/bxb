@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -12,8 +12,10 @@ from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer
 from app.models.event import Event
+from app.models.fee import FeeType
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.repositories.fee_repository import FeeRepository
 from app.services.invoice_generation import InvoiceGenerationService
 
 
@@ -879,3 +881,626 @@ class TestCalculateChargeEdgeCases:
         assert invoice is not None
         assert invoice.line_items == []
         assert invoice.total == Decimal(0)
+
+
+class TestGenerateInvoiceFeeRecords:
+    """Test that generate_invoice creates Fee records in the database."""
+
+    def test_fee_records_created_for_single_charge(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a Fee record is created when generating an invoice with one charge."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "2.50"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        # Verify Fee records were created
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+
+        fee = fees[0]
+        assert fee.fee_type == FeeType.CHARGE.value
+        assert fee.amount_cents == Decimal("25")
+        assert fee.total_amount_cents == Decimal("25")
+        assert fee.units == Decimal("10")
+        assert fee.events_count == 10
+        assert fee.customer_id == customer.id
+        assert fee.subscription_id == active_subscription.id
+        assert fee.charge_id == charge.id
+        assert fee.invoice_id == invoice.id
+        assert fee.description == "API Calls"
+        assert fee.metric_code == "api_calls"
+
+    def test_fee_records_created_for_multiple_charges(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that multiple Fee records are created for multiple charges."""
+        start, end = billing_period
+
+        metric2 = BillableMetric(
+            code="storage_gb",
+            name="Storage (GB)",
+            aggregation_type="count",
+        )
+        db_session.add(metric2)
+        db_session.commit()
+        db_session.refresh(metric2)
+
+        charge1 = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        charge2 = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric2.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add_all([charge1, charge2])
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code=metric2.code,
+                transaction_id=f"txn_storage_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 2
+
+        # Verify totals match: 5 * $1 + 3 * $5 = $20
+        total_from_fees = sum(f.total_amount_cents for f in fees)
+        assert total_from_fees == Decimal("20")
+        assert invoice.total == Decimal("20")
+
+    def test_no_fee_records_when_no_charges(
+        self, db_session, active_subscription, billing_period
+    ):
+        """Test that no Fee records are created when there are no charges."""
+        start, end = billing_period
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id="inv_gen_cust",
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 0
+
+    def test_no_fee_records_when_charges_return_none(
+        self, db_session, active_subscription, billing_period
+    ):
+        """Test that no Fee records are created when all charges return None."""
+        start, end = billing_period
+        fake_metric_id = uuid4()
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=fake_metric_id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id="inv_gen_cust",
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 0
+
+    def test_line_items_json_backward_compatibility(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that line_items JSON is still populated for backward compatibility."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "2.50"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=4)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        # line_items JSON should still be populated
+        assert len(invoice.line_items) == 1
+        line_item = invoice.line_items[0]
+        assert line_item["description"] == "API Calls"
+        assert Decimal(str(line_item["amount"])) == Decimal("10")
+        assert line_item["metric_code"] == "api_calls"
+
+        # And Fee records should match
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].amount_cents == Decimal("10")
+
+    def test_fee_events_count_matches_actual_events(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that events_count on the Fee matches the actual number of events."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=7)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].events_count == 7
+
+    def test_fee_properties_snapshot(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that Fee stores a snapshot of the charge properties."""
+        start, end = billing_period
+        charge_props = {"amount": "3.00", "unit_price": "3.00"}
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties=charge_props,
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=2)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].properties == charge_props
+
+
+class TestCalculateChargeFee:
+    """Test the _calculate_charge_fee method directly."""
+
+    def test_standard_fee_basic(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test standard charge fee calculation."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "3.00", "unit_price": "3.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.amount_cents == Decimal("15.00")
+        assert fee_data.units == Decimal("5")
+        assert fee_data.events_count == 5
+        assert fee_data.description == "API Calls"
+        assert fee_data.metric_code == "api_calls"
+        assert fee_data.customer_id == customer.id
+        assert fee_data.subscription_id == active_subscription.id
+        assert fee_data.charge_id == charge.id
+
+    def test_fee_no_metric(self, db_session, active_subscription, customer, billing_period):
+        """Test fee calculation without a billable metric (flat fee)."""
+        start, end = billing_period
+        mock_charge = MagicMock(spec=Charge)
+        mock_charge.billable_metric_id = None
+        mock_charge.charge_model = ChargeModel.STANDARD.value
+        mock_charge.properties = {"amount": "99.00"}
+        mock_charge.id = uuid4()
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=mock_charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id="inv_gen_cust",
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.amount_cents == Decimal("99.00")
+        assert fee_data.description == "Subscription Fee"
+        assert fee_data.metric_code is None
+        assert fee_data.events_count == 0
+
+    def test_fee_metric_not_found(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test fee calculation when metric doesn't exist."""
+        start, end = billing_period
+        fake_metric_id = uuid4()
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=fake_metric_id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id="inv_gen_cust",
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is None
+
+    def test_fee_calculator_returns_none(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation when calculator returns None."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=1)
+
+        service = InvoiceGenerationService(db_session)
+        with patch("app.services.invoice_generation.get_charge_calculator", return_value=None):
+            fee_data = service._calculate_charge_fee(
+                charge=charge,
+                customer_id=customer.id,
+                subscription_id=active_subscription.id,
+                external_customer_id=customer.external_id,
+                billing_period_start=start,
+                billing_period_end=end,
+            )
+        assert fee_data is None
+
+    def test_fee_zero_amount_and_quantity(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation when both amount and quantity are zero."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "0"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # No events = 0 usage
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is None
+
+    def test_fee_unknown_charge_model(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test fee calculation with unrecognized charge model."""
+        start, end = billing_period
+        mock_charge = MagicMock(spec=Charge)
+        mock_charge.billable_metric_id = None
+        mock_charge.charge_model = ChargeModel.STANDARD.value
+        mock_charge.properties = {"amount": "10.00"}
+        mock_charge.id = uuid4()
+
+        service = InvoiceGenerationService(db_session)
+
+        fake_model = MagicMock()
+        fake_model.__eq__ = lambda self, other: False
+        fake_model.__hash__ = lambda self: hash("fake")
+
+        with (
+            patch("app.services.invoice_generation.ChargeModel", return_value=fake_model),
+            patch(
+                "app.services.invoice_generation.get_charge_calculator",
+                return_value=lambda **kwargs: Decimal("0"),
+            ),
+        ):
+            fee_data = service._calculate_charge_fee(
+                charge=mock_charge,
+                customer_id=customer.id,
+                subscription_id=active_subscription.id,
+                external_customer_id="test",
+                billing_period_start=start,
+                billing_period_end=end,
+            )
+        assert fee_data is None
+
+    def test_fee_graduated_charge(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with graduated charge model."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.GRADUATED.value,
+            properties={
+                "graduated_ranges": [
+                    {"from_value": 0, "to_value": 5, "per_unit_amount": "2.00", "flat_amount": "0"},
+                    {"from_value": 5, "to_value": None, "per_unit_amount": "1.00", "flat_amount": "0"},
+                ]
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.units == Decimal("10")
+        assert fee_data.amount_cents == Decimal("16.00")
+        assert fee_data.events_count == 10
+
+    def test_fee_percentage_charge(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with percentage charge model."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.PERCENTAGE.value,
+            properties={
+                "rate": "10",
+                "fixed_amount": "0",
+                "base_amount": "1000",
+                "event_count": "5",
+                "free_units_per_events": "0",
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=3)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.units == Decimal("1")
+        assert fee_data.amount_cents == Decimal("100")
+        assert fee_data.events_count == 3
+
+    def test_fee_graduated_percentage_charge(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with graduated percentage charge model."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.GRADUATED_PERCENTAGE.value,
+            properties={
+                "base_amount": "1500",
+                "graduated_percentage_ranges": [
+                    {"from_value": 0, "to_value": 1000, "rate": "5", "flat_amount": "0"},
+                    {"from_value": 1000, "to_value": None, "rate": "3", "flat_amount": "0"},
+                ],
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=1)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.units == Decimal("1")
+        assert fee_data.amount_cents == Decimal("65")
+
+    def test_fee_empty_properties(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with empty/None properties."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties=None,
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=2)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.amount_cents == Decimal("0")
+
+    def test_fee_min_price(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with min_price applied."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "0.01", "min_price": "50.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=2)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.amount_cents == Decimal("50.00")
+
+    def test_fee_max_price(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with max_price applied."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "100.00", "max_price": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.amount_cents == Decimal("10.00")
