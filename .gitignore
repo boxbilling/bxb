@@ -100,3 +100,6 @@ dmypy.json
 
 # ruff
 .ruff_cache/
+
+# Reference repos (local only)
+reference/
