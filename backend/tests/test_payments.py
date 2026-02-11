@@ -649,7 +649,9 @@ class TestStripeProviderWithMock:
         # Pre-load the stripe module
         _ = provider.stripe
 
-        with patch.object(stripe.checkout.Session, "create", return_value=mock_session) as mock_create:
+        with patch.object(
+            stripe.checkout.Session, "create", return_value=mock_session
+        ) as mock_create:
             session = provider.create_checkout_session(
                 payment_id=uuid4(),
                 amount=Decimal("150.00"),
@@ -679,7 +681,9 @@ class TestStripeProviderWithMock:
         provider = StripeProvider(api_key="sk_test_key")
         _ = provider.stripe
 
-        with patch.object(stripe.checkout.Session, "create", return_value=mock_session) as mock_create:
+        with patch.object(
+            stripe.checkout.Session, "create", return_value=mock_session
+        ) as mock_create:
             session = provider.create_checkout_session(
                 payment_id=uuid4(),
                 amount=Decimal("75.50"),
@@ -1036,7 +1040,9 @@ class TestPaymentsAPI:
         assert "Failed to create checkout session" in response.json()["detail"]
 
     @patch("app.routers.payments.get_payment_provider")
-    def test_create_checkout_stripe_not_installed(self, mock_get_provider, client, finalized_invoice):
+    def test_create_checkout_stripe_not_installed(
+        self, mock_get_provider, client, finalized_invoice
+    ):
         """Test creating checkout when stripe not installed."""
         mock_provider = MagicMock()
         mock_provider.create_checkout_session.side_effect = ImportError("stripe not installed")
@@ -1294,9 +1300,7 @@ class TestPaymentsAPI:
 
     @patch("app.services.payment_provider.StripeProvider.verify_webhook_signature")
     @patch("app.services.payment_provider.StripeProvider.parse_webhook")
-    def test_webhook_unknown_status(
-        self, mock_parse, mock_verify, client, payment, db_session
-    ):
+    def test_webhook_unknown_status(self, mock_parse, mock_verify, client, payment, db_session):
         """Test webhook with unknown status (no status update action)."""
         mock_verify.return_value = True
         # Return a result with status that's not succeeded/failed/canceled
@@ -1434,9 +1438,7 @@ class TestUCPProvider:
                 "data": {
                     "id": "chk_fail",
                     "status": "failed",
-                    "messages": [
-                        {"type": "error", "content": "Card declined by issuer"}
-                    ],
+                    "messages": [{"type": "error", "content": "Card declined by issuer"}],
                 },
             }
         )
@@ -1751,7 +1753,9 @@ class TestUCPPaymentsAPI:
         assert data["provider"] == "ucp"
 
     @patch("app.routers.payments.get_payment_provider")
-    def test_ucp_webhook_with_signature_header(self, mock_get_provider, client, payment, db_session):
+    def test_ucp_webhook_with_signature_header(
+        self, mock_get_provider, client, payment, db_session
+    ):
         """Test UCP webhook with X-UCP-Signature header."""
         mock_provider = MagicMock()
         mock_provider.verify_webhook_signature.return_value = True
@@ -1884,7 +1888,9 @@ class TestUCPPaymentsAPI:
         )
         assert response.status_code == 401
 
-    def test_list_payments_by_ucp_provider(self, client, payment, db_session, finalized_invoice, customer):
+    def test_list_payments_by_ucp_provider(
+        self, client, payment, db_session, finalized_invoice, customer
+    ):
         """Test filtering payments by UCP provider."""
         # Create a UCP payment
         repo = PaymentRepository(db_session)

@@ -29,7 +29,7 @@ This phase implements the 5 remaining charge models (graduated, volume, package,
   - `backend/app/services/charge_models/graduated_percentage.py` — `calculate(total_amount: Decimal, properties: dict) -> Decimal`: different percentage rate per tier of the total amount. Read `graduated_percentage_ranges` with `from_value`, `to_value`, `rate`, `flat_amount`. Iterate tiers, applying each rate to the portion of amount in that tier
   - `backend/app/services/charge_models/factory.py` — `get_charge_calculator(model: ChargeModel)` function that returns the appropriate calculate function from a dict mapping
 
-- [ ] Refactor `backend/app/services/invoice_generation.py` to use the charge model factory instead of inline calculations:
+- [x] Refactor `backend/app/services/invoice_generation.py` to use the charge model factory instead of inline calculations:
   - Import `get_charge_calculator` from `app.services.charge_models.factory`
   - Replace the inline `if/elif` chain in `_calculate_charge()` with a call to the factory
   - For STANDARD: call `calculator(units=usage, properties=properties)` — also pass any `unit_price`/`amount` normalization

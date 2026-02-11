@@ -12,6 +12,7 @@ from app.repositories.charge_repository import ChargeRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
+from app.services.charge_models.factory import get_charge_calculator
 from app.services.usage_aggregation import UsageAggregationService
 
 
@@ -124,40 +125,45 @@ class InvoiceGenerationService:
             description = "Subscription Fee"
             metric_code = None
 
-        # Calculate amount based on charge model
+        # Get the calculator for this charge model
+        calculator = get_charge_calculator(charge_model)
+        if not calculator:
+            return None
+
+        # Calculate amount based on charge model using factory
         if charge_model == ChargeModel.STANDARD:
             quantity = usage
-            amount = usage * unit_price
+            amount = calculator(units=usage, properties=properties)
             if min_price and amount < min_price:
                 amount = min_price
             if max_price and amount > max_price:
                 amount = max_price
 
-        elif charge_model == ChargeModel.GRADUATED:
-            # Tiered pricing - use tiers from charge properties
+        elif charge_model in (
+            ChargeModel.GRADUATED,
+            ChargeModel.VOLUME,
+            ChargeModel.PACKAGE,
+        ):
             quantity = usage
-            amount = self._calculate_tiered_amount(usage, properties)
-
-        elif charge_model == ChargeModel.VOLUME:
-            # Volume pricing - single tier applies to all units
-            quantity = usage
-            amount = self._calculate_volume_amount(usage, properties)
-
-        elif charge_model == ChargeModel.PACKAGE:
-            # Package pricing - charge per package of units
-            package_size = Decimal(str(properties.get("package_size", 1)))
-            packages = (usage / package_size).quantize(Decimal("1"), rounding="CEILING")
-            quantity = packages
-            amount = packages * unit_price
+            amount = calculator(units=usage, properties=properties)
 
         elif charge_model == ChargeModel.PERCENTAGE:
-            # Percentage of base amount (stored in properties)
-            percentage = Decimal(str(properties.get("percentage", 0)))
-            base_amount = Decimal(str(properties.get("base_amount", 0)))
+            total_amount = Decimal(str(properties.get("base_amount", 0)))
+            event_count = int(properties.get("event_count", 0))
             quantity = Decimal(1)
-            amount = base_amount * (percentage / 100)
+            amount = calculator(
+                units=usage,
+                properties=properties,
+                total_amount=total_amount,
+                event_count=event_count,
+            )
 
-        else:  # pragma: no cover
+        elif charge_model == ChargeModel.GRADUATED_PERCENTAGE:
+            usage_amount = Decimal(str(properties.get("base_amount", usage)))
+            quantity = Decimal(1)
+            amount = calculator(total_amount=usage_amount, properties=properties)
+
+        else:
             return None
 
         if amount == 0 and quantity == 0:
@@ -171,53 +177,3 @@ class InvoiceGenerationService:
             charge_id=UUID(str(charge.id)),
             metric_code=metric_code,
         )
-
-    def _calculate_tiered_amount(self, usage: Decimal, properties: dict[str, Any]) -> Decimal:
-        """Calculate amount using tiered pricing.
-
-        Tiers format: [{"up_to": 100, "unit_price": 0.10}, ...]
-        """
-        tiers = properties.get("tiers", [])
-        if not tiers:
-            return Decimal(0)
-
-        total = Decimal(0)
-        remaining = usage
-        prev_limit = Decimal(0)
-
-        for tier in sorted(tiers, key=lambda t: t.get("up_to", float("inf"))):
-            up_to = Decimal(str(tier.get("up_to", float("inf"))))
-            tier_price = Decimal(str(tier.get("unit_price", 0)))
-
-            tier_usage = min(remaining, up_to - prev_limit)
-            if tier_usage <= 0:
-                break
-
-            total += tier_usage * tier_price
-            remaining -= tier_usage
-            prev_limit = up_to
-
-            if remaining <= 0:
-                break
-
-        return total
-
-    def _calculate_volume_amount(self, usage: Decimal, properties: dict[str, Any]) -> Decimal:
-        """Calculate amount using volume pricing.
-
-        Volume format: [{"up_to": 100, "unit_price": 0.10}, ...]
-        The tier that contains the usage applies to ALL units.
-        """
-        tiers = properties.get("tiers", [])
-        if not tiers:
-            return Decimal(0)
-
-        for tier in sorted(tiers, key=lambda t: t.get("up_to", float("inf"))):
-            up_to = Decimal(str(tier.get("up_to", float("inf"))))
-            if usage <= up_to:
-                tier_price = Decimal(str(tier.get("unit_price", 0)))
-                return usage * tier_price
-
-        # If usage exceeds all tiers, use the last tier's price
-        last_tier = sorted(tiers, key=lambda t: t.get("up_to", float("inf")))[-1]
-        return usage * Decimal(str(last_tier.get("unit_price", 0)))

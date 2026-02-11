@@ -178,11 +178,7 @@ async def handle_webhook(
         raise HTTPException(status_code=400, detail="Invalid provider") from None
 
     # Verify signature - check provider-specific headers first
-    signature = (
-        stripe_signature
-        or ucp_signature
-        or request.headers.get("X-Webhook-Signature", "")
-    )
+    signature = stripe_signature or ucp_signature or request.headers.get("X-Webhook-Signature", "")
     if not payment_provider.verify_webhook_signature(payload, signature):
         raise HTTPException(status_code=401, detail="Invalid signature")
 

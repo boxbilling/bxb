@@ -93,9 +93,7 @@ class StripeProvider(PaymentProviderBase):
                 stripe.api_key = self.api_key
                 self._stripe = stripe
             except ImportError as e:
-                raise ImportError(
-                    "stripe package not installed. Run: pip install stripe"
-                ) from e
+                raise ImportError("stripe package not installed. Run: pip install stripe") from e
         return self._stripe
 
     @property
