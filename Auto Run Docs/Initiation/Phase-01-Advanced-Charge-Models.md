@@ -19,7 +19,7 @@ This phase implements the 5 remaining charge models (graduated, volume, package,
   - The other 5 values (STANDARD, GRADUATED, VOLUME, PACKAGE, PERCENTAGE) already exist — do not duplicate them
   - **Note:** Also widened `charge_model` column from `String(20)` to `String(30)` in both model and migration to accommodate the 22-char value `"graduated_percentage"`
 
-- [ ] Create the charge model calculator services directory and all calculator modules. Each module should have a single `calculate()` function:
+- [x] Create the charge model calculator services directory and all calculator modules. Each module should have a single `calculate()` function:
   - `backend/app/services/charge_models/__init__.py` (empty)
   - `backend/app/services/charge_models/standard.py` — `calculate(units: Decimal, properties: dict) -> Decimal`: returns `units * amount` where `amount` comes from `properties["amount"]` or `properties.get("unit_price", 0)`. Support both keys for backward compatibility with existing charges
   - `backend/app/services/charge_models/graduated.py` — `calculate(units: Decimal, properties: dict) -> Decimal`: tiered pricing where different tiers have different per-unit prices. Support two property formats: (a) Lago-style `graduated_ranges` with `from_value`, `to_value`, `per_unit_amount`, `flat_amount` and (b) existing bxb format `tiers` with `up_to`, `unit_price`. Iterate tiers in order, consuming units per tier, accumulating `(units_in_tier * per_unit) + flat_amount`
