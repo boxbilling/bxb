@@ -35,6 +35,8 @@ Build a modern, open-source billing platform that handles usage-based, subscript
 - **Language**: Python 3.12+
 - **Framework**: FastAPI (async, OpenAPI native)
 - **ORM**: SQLAlchemy 2.0 (async support)
+- **Main Database**: Postgres
+- **Streamed Events**: ClickHouse
 - **Validation**: Pydantic v2
 - **Migrations**: Alembic
 - **Background Jobs**: arq (Redis-based async)
