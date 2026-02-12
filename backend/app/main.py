@@ -13,6 +13,7 @@ from app.routers import (
     fees,
     invoices,
     items,
+    organizations,
     payments,
     plans,
     subscriptions,
@@ -52,6 +53,11 @@ app.include_router(
     webhook_endpoints.router,
     prefix="/v1/webhook_endpoints",
     tags=["webhook_endpoints"],
+)
+app.include_router(
+    organizations.router,
+    prefix="/v1/organizations",
+    tags=["organizations"],
 )
 
 
