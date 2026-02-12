@@ -1,15 +1,18 @@
-"""Tests for Commitment model, repository, and schema."""
+"""Tests for Commitment model, repository, schema, and API endpoints."""
 
+import uuid
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core.database import get_db
+from app.main import app
 from app.models.commitment import Commitment
 from app.repositories.commitment_repository import CommitmentRepository
 from app.repositories.plan_repository import PlanRepository
-from app.schemas.commitment import CommitmentCreate, CommitmentUpdate
+from app.schemas.commitment import CommitmentCreate, CommitmentResponse, CommitmentUpdate
 from app.schemas.plan import PlanCreate
 from tests.conftest import DEFAULT_ORG_ID
 
@@ -243,3 +246,242 @@ class TestCommitmentRepository:
         assert repo.delete(commitment.id, uuid4()) is False
         # Verify commitment still exists
         assert repo.get_by_id(commitment.id) is not None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Schema Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestCommitmentSchemas:
+    """Tests for Pydantic commitment schemas."""
+
+    def test_create_defaults(self):
+        """Test CommitmentCreate default values."""
+        schema = CommitmentCreate(
+            plan_id=uuid4(),
+            amount_cents=Decimal("5000"),
+        )
+        assert schema.commitment_type == "minimum_commitment"
+        assert schema.invoice_display_name is None
+
+    def test_create_all_fields(self):
+        """Test CommitmentCreate with all fields."""
+        pid = uuid4()
+        schema = CommitmentCreate(
+            plan_id=pid,
+            commitment_type="minimum_commitment",
+            amount_cents=Decimal("10000"),
+            invoice_display_name="Custom Name",
+        )
+        assert schema.plan_id == pid
+        assert schema.amount_cents == Decimal("10000")
+        assert schema.invoice_display_name == "Custom Name"
+
+    def test_update_all_optional(self):
+        """Test CommitmentUpdate has all optional fields."""
+        schema = CommitmentUpdate()
+        assert schema.commitment_type is None
+        assert schema.amount_cents is None
+        assert schema.invoice_display_name is None
+
+    def test_response_from_model(self, db_session, commitment):
+        """Test CommitmentResponse from ORM model."""
+        response = CommitmentResponse.model_validate(commitment)
+        assert response.id == commitment.id
+        assert response.plan_id == commitment.plan_id
+        assert response.commitment_type == "minimum_commitment"
+        assert response.amount_cents == Decimal("10000")
+        assert response.invoice_display_name == "Minimum Monthly Commitment"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
+
+
+class TestCommitmentsAPI:
+    """Tests for the commitments API endpoints."""
+
+    def _create_plan(self, client: TestClient, code: str | None = None) -> dict:
+        """Helper to create a plan via API."""
+        plan_code = code or f"cmt_plan_{uuid4()}"
+        response = client.post(
+            "/v1/plans/",
+            json={
+                "code": plan_code,
+                "name": "Commitment API Test Plan",
+                "interval": "monthly",
+            },
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    def test_create_commitment(self, client: TestClient):
+        """Test creating a commitment on a plan."""
+        plan = self._create_plan(client, "cmt_create_test")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={
+                "amount_cents": 10000,
+                "commitment_type": "minimum_commitment",
+                "invoice_display_name": "Minimum Monthly Commitment",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["plan_id"] == plan["id"]
+        assert float(data["amount_cents"]) == 10000.0
+        assert data["commitment_type"] == "minimum_commitment"
+        assert data["invoice_display_name"] == "Minimum Monthly Commitment"
+        assert "id" in data
+        assert "created_at" in data
+        assert "updated_at" in data
+
+    def test_create_commitment_minimal(self, client: TestClient):
+        """Test creating a commitment with minimal fields."""
+        plan = self._create_plan(client, "cmt_create_minimal")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": 5000},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["commitment_type"] == "minimum_commitment"
+        assert data["invoice_display_name"] is None
+
+    def test_create_commitment_plan_not_found(self, client: TestClient):
+        """Test creating a commitment on a non-existent plan."""
+        response = client.post(
+            "/v1/plans/nonexistent_plan/commitments",
+            json={"amount_cents": 5000},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
+    def test_create_commitment_invalid_amount(self, client: TestClient):
+        """Test creating a commitment with negative amount."""
+        plan = self._create_plan(client, "cmt_invalid_amount")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": -100},
+        )
+        assert response.status_code == 422
+
+    def test_list_commitments_empty(self, client: TestClient):
+        """Test listing commitments for a plan with none."""
+        plan = self._create_plan(client, "cmt_list_empty")
+        response = client.get(f"/v1/plans/{plan['code']}/commitments")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_commitments(self, client: TestClient):
+        """Test listing commitments for a plan."""
+        plan = self._create_plan(client, "cmt_list_test")
+        client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": 5000},
+        )
+        client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": 10000},
+        )
+        response = client.get(f"/v1/plans/{plan['code']}/commitments")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_commitments_plan_not_found(self, client: TestClient):
+        """Test listing commitments for a non-existent plan."""
+        response = client.get("/v1/plans/nonexistent_plan/commitments")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
+    def test_update_commitment(self, client: TestClient):
+        """Test updating a commitment."""
+        plan = self._create_plan(client, "cmt_update_test")
+        create_resp = client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": 5000, "invoice_display_name": "Original"},
+        )
+        commitment_id = create_resp.json()["id"]
+
+        response = client.put(
+            f"/v1/commitments/{commitment_id}",
+            json={"amount_cents": 20000, "invoice_display_name": "Updated"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert float(data["amount_cents"]) == 20000.0
+        assert data["invoice_display_name"] == "Updated"
+
+    def test_update_commitment_partial(self, client: TestClient):
+        """Test partial update of a commitment."""
+        plan = self._create_plan(client, "cmt_partial_upd")
+        create_resp = client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": 5000, "invoice_display_name": "Keep Me"},
+        )
+        commitment_id = create_resp.json()["id"]
+
+        response = client.put(
+            f"/v1/commitments/{commitment_id}",
+            json={"amount_cents": 8000},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert float(data["amount_cents"]) == 8000.0
+        assert data["invoice_display_name"] == "Keep Me"
+
+    def test_update_commitment_not_found(self, client: TestClient):
+        """Test updating a non-existent commitment."""
+        fake_id = str(uuid.uuid4())
+        response = client.put(
+            f"/v1/commitments/{fake_id}",
+            json={"amount_cents": 1000},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Commitment not found"
+
+    def test_update_commitment_invalid_uuid(self, client: TestClient):
+        """Test updating a commitment with invalid UUID."""
+        response = client.put(
+            "/v1/commitments/not-a-uuid",
+            json={"amount_cents": 1000},
+        )
+        assert response.status_code == 422
+
+    def test_delete_commitment(self, client: TestClient):
+        """Test deleting a commitment."""
+        plan = self._create_plan(client, "cmt_delete_test")
+        create_resp = client.post(
+            f"/v1/plans/{plan['code']}/commitments",
+            json={"amount_cents": 5000},
+        )
+        commitment_id = create_resp.json()["id"]
+
+        response = client.delete(f"/v1/commitments/{commitment_id}")
+        assert response.status_code == 204
+
+        # Verify it's gone
+        list_resp = client.get(f"/v1/plans/{plan['code']}/commitments")
+        assert list_resp.status_code == 200
+        assert len(list_resp.json()) == 0
+
+    def test_delete_commitment_not_found(self, client: TestClient):
+        """Test deleting a non-existent commitment."""
+        fake_id = str(uuid.uuid4())
+        response = client.delete(f"/v1/commitments/{fake_id}")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Commitment not found"
+
+    def test_delete_commitment_invalid_uuid(self, client: TestClient):
+        """Test deleting a commitment with invalid UUID."""
+        response = client.delete("/v1/commitments/not-a-uuid")
+        assert response.status_code == 422

@@ -14,6 +14,13 @@ class UsageThresholdCreate(BaseModel):
     threshold_display_name: str | None = Field(default=None, max_length=255)
 
 
+class UsageThresholdCreateAPI(BaseModel):
+    amount_cents: Decimal = Field(..., ge=0)
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    recurring: bool = False
+    threshold_display_name: str | None = Field(default=None, max_length=255)
+
+
 class UsageThresholdResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,6 +33,13 @@ class UsageThresholdResponse(BaseModel):
     threshold_display_name: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CurrentUsageResponse(BaseModel):
+    subscription_id: UUID
+    current_usage_amount_cents: Decimal
+    billing_period_start: datetime
+    billing_period_end: datetime
 
 
 class AppliedUsageThresholdResponse(BaseModel):

@@ -12,6 +12,12 @@ class CommitmentCreate(BaseModel):
     invoice_display_name: str | None = Field(default=None, max_length=255)
 
 
+class CommitmentCreateAPI(BaseModel):
+    commitment_type: str = Field(default="minimum_commitment", max_length=50)
+    amount_cents: Decimal = Field(..., ge=0)
+    invoice_display_name: str | None = Field(default=None, max_length=255)
+
+
 class CommitmentUpdate(BaseModel):
     commitment_type: str | None = Field(default=None, max_length=50)
     amount_cents: Decimal | None = Field(default=None, ge=0)

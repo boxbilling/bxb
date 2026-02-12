@@ -1,12 +1,15 @@
-"""Tests for UsageThreshold and AppliedUsageThreshold models, repositories, and schemas."""
+"""Tests for UsageThreshold and AppliedUsageThreshold models, repositories, schemas, and API."""
 
+import uuid as uuid_mod
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core.database import get_db
+from app.main import app
 from app.models.applied_usage_threshold import AppliedUsageThreshold
 from app.models.usage_threshold import UsageThreshold
 from app.repositories.applied_usage_threshold_repository import (
@@ -23,6 +26,7 @@ from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
 from app.schemas.usage_threshold import (
     AppliedUsageThresholdResponse,
+    CurrentUsageResponse,
     UsageThresholdCreate,
     UsageThresholdResponse,
 )
@@ -752,3 +756,294 @@ class TestUsageThresholdSchemas:
         )
         response = AppliedUsageThresholdResponse.model_validate(record)
         assert response.invoice_id == invoice.id
+
+    def test_current_usage_response(self):
+        """Test CurrentUsageResponse schema."""
+        now = datetime.now(UTC)
+        sub_id = uuid4()
+        response = CurrentUsageResponse(
+            subscription_id=sub_id,
+            current_usage_amount_cents=Decimal("5000"),
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+        )
+        assert response.subscription_id == sub_id
+        assert response.current_usage_amount_cents == Decimal("5000")
+        assert response.billing_period_start is not None
+        assert response.billing_period_end is not None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
+
+
+class TestUsageThresholdsAPI:
+    """Tests for the usage thresholds API endpoints."""
+
+    def _create_plan(self, client: TestClient, code: str | None = None) -> dict:
+        """Helper to create a plan via API."""
+        plan_code = code or f"ut_api_plan_{uuid4()}"
+        response = client.post(
+            "/v1/plans/",
+            json={
+                "code": plan_code,
+                "name": "UT API Test Plan",
+                "interval": "monthly",
+            },
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    def _create_customer(self, client: TestClient, ext_id: str | None = None) -> dict:
+        """Helper to create a customer via API."""
+        external_id = ext_id or f"ut_api_cust_{uuid4()}"
+        response = client.post(
+            "/v1/customers/",
+            json={
+                "external_id": external_id,
+                "name": "UT API Test Customer",
+            },
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    def _create_subscription(
+        self, client: TestClient, customer_id: str, plan_id: str, ext_id: str | None = None
+    ) -> dict:
+        """Helper to create a subscription via API."""
+        external_id = ext_id or f"ut_api_sub_{uuid4()}"
+        response = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": external_id,
+                "customer_id": customer_id,
+                "plan_id": plan_id,
+            },
+        )
+        assert response.status_code == 201
+        return response.json()
+
+    def test_create_plan_threshold(self, client: TestClient):
+        """Test creating a usage threshold on a plan."""
+        plan = self._create_plan(client, "ut_plan_create")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/usage_thresholds",
+            json={
+                "amount_cents": 5000,
+                "threshold_display_name": "Plan Alert $50",
+                "recurring": True,
+                "currency": "EUR",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["plan_id"] == plan["id"]
+        assert data["subscription_id"] is None
+        assert float(data["amount_cents"]) == 5000.0
+        assert data["threshold_display_name"] == "Plan Alert $50"
+        assert data["recurring"] is True
+        assert data["currency"] == "EUR"
+        assert "id" in data
+        assert "created_at" in data
+        assert "updated_at" in data
+
+    def test_create_plan_threshold_minimal(self, client: TestClient):
+        """Test creating a plan threshold with minimal fields."""
+        plan = self._create_plan(client, "ut_plan_create_min")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/usage_thresholds",
+            json={"amount_cents": 3000},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["currency"] == "USD"
+        assert data["recurring"] is False
+        assert data["threshold_display_name"] is None
+
+    def test_create_plan_threshold_plan_not_found(self, client: TestClient):
+        """Test creating a threshold on a non-existent plan."""
+        response = client.post(
+            "/v1/plans/nonexistent_plan/usage_thresholds",
+            json={"amount_cents": 5000},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
+    def test_create_plan_threshold_invalid_amount(self, client: TestClient):
+        """Test creating a threshold with negative amount."""
+        plan = self._create_plan(client, "ut_plan_invalid")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/usage_thresholds",
+            json={"amount_cents": -100},
+        )
+        assert response.status_code == 422
+
+    def test_create_subscription_threshold(self, client: TestClient):
+        """Test creating a usage threshold on a subscription."""
+        plan = self._create_plan(client, "ut_sub_create_plan")
+        customer = self._create_customer(client, "ut_sub_create_cust")
+        sub = self._create_subscription(client, customer["id"], plan["id"], "ut_sub_create")
+        response = client.post(
+            f"/v1/subscriptions/{sub['id']}/usage_thresholds",
+            json={
+                "amount_cents": 10000,
+                "recurring": True,
+                "threshold_display_name": "Sub Alert $100",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["subscription_id"] == sub["id"]
+        assert data["plan_id"] is None
+        assert float(data["amount_cents"]) == 10000.0
+        assert data["recurring"] is True
+        assert data["threshold_display_name"] == "Sub Alert $100"
+
+    def test_create_subscription_threshold_not_found(self, client: TestClient):
+        """Test creating a threshold on a non-existent subscription."""
+        fake_id = str(uuid_mod.uuid4())
+        response = client.post(
+            f"/v1/subscriptions/{fake_id}/usage_thresholds",
+            json={"amount_cents": 5000},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription not found"
+
+    def test_create_subscription_threshold_invalid_uuid(self, client: TestClient):
+        """Test creating a threshold with invalid subscription UUID."""
+        response = client.post(
+            "/v1/subscriptions/not-a-uuid/usage_thresholds",
+            json={"amount_cents": 5000},
+        )
+        assert response.status_code == 422
+
+    def test_list_subscription_thresholds_empty(self, client: TestClient):
+        """Test listing thresholds for a subscription with none."""
+        plan = self._create_plan(client, "ut_list_empty_plan")
+        customer = self._create_customer(client, "ut_list_empty_cust")
+        sub = self._create_subscription(client, customer["id"], plan["id"], "ut_list_empty")
+        response = client.get(f"/v1/subscriptions/{sub['id']}/usage_thresholds")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_subscription_thresholds(self, client: TestClient):
+        """Test listing thresholds for a subscription."""
+        plan = self._create_plan(client, "ut_list_plan")
+        customer = self._create_customer(client, "ut_list_cust")
+        sub = self._create_subscription(client, customer["id"], plan["id"], "ut_list_sub")
+        client.post(
+            f"/v1/subscriptions/{sub['id']}/usage_thresholds",
+            json={"amount_cents": 3000},
+        )
+        client.post(
+            f"/v1/subscriptions/{sub['id']}/usage_thresholds",
+            json={"amount_cents": 7000},
+        )
+        response = client.get(f"/v1/subscriptions/{sub['id']}/usage_thresholds")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_subscription_thresholds_not_found(self, client: TestClient):
+        """Test listing thresholds for a non-existent subscription."""
+        fake_id = str(uuid_mod.uuid4())
+        response = client.get(f"/v1/subscriptions/{fake_id}/usage_thresholds")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription not found"
+
+    def test_get_current_usage(self, client: TestClient):
+        """Test getting current usage for a subscription."""
+        plan = self._create_plan(client, "ut_usage_plan")
+        customer = self._create_customer(client, "ut_usage_cust")
+        sub = self._create_subscription(client, customer["id"], plan["id"], "ut_usage_sub")
+        response = client.get(f"/v1/subscriptions/{sub['id']}/current_usage")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["subscription_id"] == sub["id"]
+        assert "current_usage_amount_cents" in data
+        assert "billing_period_start" in data
+        assert "billing_period_end" in data
+
+    def test_get_current_usage_subscription_not_found(self, client: TestClient):
+        """Test getting current usage for a non-existent subscription."""
+        fake_id = str(uuid_mod.uuid4())
+        response = client.get(f"/v1/subscriptions/{fake_id}/current_usage")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription not found"
+
+    def test_get_current_usage_invalid_uuid(self, client: TestClient):
+        """Test getting current usage with invalid UUID."""
+        response = client.get("/v1/subscriptions/not-a-uuid/current_usage")
+        assert response.status_code == 422
+
+    def test_get_current_usage_plan_not_found(self, client: TestClient, db_session):
+        """Test getting current usage when subscription's plan is missing."""
+        from app.models.subscription import Subscription
+
+        # Create subscription pointing to a non-existent plan
+        fake_plan_id = uuid4()
+        customer = self._create_customer(client, "ut_usage_no_plan_cust")
+        sub = Subscription(
+            external_id=f"ut_orphan_plan_{uuid4()}",
+            customer_id=customer["id"],
+            plan_id=fake_plan_id,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.get(f"/v1/subscriptions/{sub.id}/current_usage")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
+    def test_get_current_usage_customer_not_found(self, client: TestClient, db_session):
+        """Test getting current usage when subscription's customer is missing."""
+        from app.models.subscription import Subscription
+
+        plan = self._create_plan(client, "ut_usage_no_cust_plan")
+        fake_customer_id = uuid4()
+        sub = Subscription(
+            external_id=f"ut_orphan_cust_{uuid4()}",
+            customer_id=fake_customer_id,
+            plan_id=plan["id"],
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.get(f"/v1/subscriptions/{sub.id}/current_usage")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+    def test_delete_threshold(self, client: TestClient):
+        """Test deleting a usage threshold."""
+        plan = self._create_plan(client, "ut_delete_plan")
+        response = client.post(
+            f"/v1/plans/{plan['code']}/usage_thresholds",
+            json={"amount_cents": 5000},
+        )
+        threshold_id = response.json()["id"]
+
+        del_response = client.delete(f"/v1/usage_thresholds/{threshold_id}")
+        assert del_response.status_code == 204
+
+    def test_delete_threshold_not_found(self, client: TestClient):
+        """Test deleting a non-existent usage threshold."""
+        fake_id = str(uuid_mod.uuid4())
+        response = client.delete(f"/v1/usage_thresholds/{fake_id}")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Usage threshold not found"
+
+    def test_delete_threshold_invalid_uuid(self, client: TestClient):
+        """Test deleting a threshold with invalid UUID."""
+        response = client.delete("/v1/usage_thresholds/not-a-uuid")
+        assert response.status_code == 422

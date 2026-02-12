@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.routers import (
     add_ons,
     billable_metrics,
+    commitments,
     coupons,
     credit_notes,
     customers,
@@ -20,6 +21,7 @@ from app.routers import (
     plans,
     subscriptions,
     taxes,
+    usage_thresholds,
     wallets,
     webhook_endpoints,
 )
@@ -70,6 +72,16 @@ app.include_router(
     payment_requests.router,
     prefix="/v1/payment_requests",
     tags=["payment_requests"],
+)
+app.include_router(
+    commitments.router,
+    prefix="/v1",
+    tags=["commitments"],
+)
+app.include_router(
+    usage_thresholds.router,
+    prefix="/v1",
+    tags=["usage_thresholds"],
 )
 
 
