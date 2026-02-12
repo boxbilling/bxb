@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from app.models.charge import ChargeModel
 from app.services.charge_models import (
+    custom,
+    dynamic,
     graduated,
     graduated_percentage,
     package,
@@ -25,6 +27,8 @@ _CALCULATORS: dict[ChargeModel, CalculatorFn] = {
     ChargeModel.PACKAGE: package.calculate,
     ChargeModel.PERCENTAGE: percentage.calculate,
     ChargeModel.GRADUATED_PERCENTAGE: graduated_percentage.calculate,
+    ChargeModel.CUSTOM: custom.calculate,
+    ChargeModel.DYNAMIC: dynamic.calculate,
 }
 
 

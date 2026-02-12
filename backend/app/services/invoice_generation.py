@@ -173,6 +173,7 @@ class InvoiceGenerationService:
 
         # Get usage for the metric
         events_count = 0
+        event_properties_list: list[dict[str, Any]] = []
         if charge.billable_metric_id:
             from app.repositories.billable_metric_repository import (
                 BillableMetricRepository,
@@ -193,6 +194,24 @@ class InvoiceGenerationService:
             )
             usage = usage_result.value
             events_count = usage_result.events_count
+
+            # For dynamic charges, fetch raw event properties
+            if charge_model == ChargeModel.DYNAMIC:
+                from app.models.event import Event
+
+                raw_events = (
+                    self.db.query(Event)
+                    .filter(
+                        Event.external_customer_id == external_customer_id,
+                        Event.code == metric_code,
+                        Event.timestamp >= billing_period_start,
+                        Event.timestamp < billing_period_end,
+                    )
+                    .all()
+                )
+                event_properties_list = [
+                    dict(e.properties) if e.properties else {} for e in raw_events
+                ]
 
             description = str(metric.name)
         else:
@@ -237,6 +256,14 @@ class InvoiceGenerationService:
             usage_amount = Decimal(str(properties.get("base_amount", usage)))
             quantity = Decimal(1)
             amount = calculator(total_amount=usage_amount, properties=properties)
+
+        elif charge_model == ChargeModel.CUSTOM:
+            quantity = usage
+            amount = calculator(units=usage, properties=properties)
+
+        elif charge_model == ChargeModel.DYNAMIC:
+            quantity = Decimal(events_count)
+            amount = calculator(events=event_properties_list, properties=properties)
 
         else:
             return None
@@ -280,6 +307,7 @@ class InvoiceGenerationService:
         max_price = Decimal(str(properties.get("max_price", 0)))
 
         # Get usage for the metric
+        event_properties_list: list[dict[str, Any]] = []
         if charge.billable_metric_id:
             from app.repositories.billable_metric_repository import (
                 BillableMetricRepository,
@@ -298,6 +326,24 @@ class InvoiceGenerationService:
                 from_timestamp=billing_period_start,
                 to_timestamp=billing_period_end,
             )
+
+            # For dynamic charges, fetch raw event properties
+            if charge_model == ChargeModel.DYNAMIC:
+                from app.models.event import Event
+
+                raw_events = (
+                    self.db.query(Event)
+                    .filter(
+                        Event.external_customer_id == external_customer_id,
+                        Event.code == metric_code,
+                        Event.timestamp >= billing_period_start,
+                        Event.timestamp < billing_period_end,
+                    )
+                    .all()
+                )
+                event_properties_list = [
+                    dict(e.properties) if e.properties else {} for e in raw_events
+                ]
 
             description = str(metric.name)
         else:
@@ -342,6 +388,14 @@ class InvoiceGenerationService:
             usage_amount = Decimal(str(properties.get("base_amount", usage)))
             quantity = Decimal(1)
             amount = calculator(total_amount=usage_amount, properties=properties)
+
+        elif charge_model == ChargeModel.CUSTOM:
+            quantity = usage
+            amount = calculator(units=usage, properties=properties)
+
+        elif charge_model == ChargeModel.DYNAMIC:
+            quantity = usage
+            amount = calculator(events=event_properties_list, properties=properties)
 
         else:
             return None

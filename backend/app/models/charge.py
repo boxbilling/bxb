@@ -15,6 +15,8 @@ class ChargeModel(str, Enum):
     PACKAGE = "package"  # Price per X units
     PERCENTAGE = "percentage"  # % of transaction
     GRADUATED_PERCENTAGE = "graduated_percentage"  # Tiered % of transaction
+    CUSTOM = "custom"  # Custom expression-based charge
+    DYNAMIC = "dynamic"  # Pricing derived from event properties
 
 
 class Charge(Base):

@@ -4,6 +4,8 @@ from decimal import Decimal
 
 from app.models.charge import ChargeModel
 from app.services.charge_models import (
+    custom,
+    dynamic,
     graduated,
     graduated_percentage,
     package,
@@ -782,6 +784,92 @@ class TestGraduatedPercentageCalculator:
         assert result == Decimal("6")
 
 
+class TestCustomCalculator:
+    def test_custom_amount_fixed(self):
+        """Test custom charge with a fixed custom_amount."""
+        result = custom.calculate(Decimal("10"), {"custom_amount": "250"})
+        assert result == Decimal("250")
+
+    def test_custom_unit_price(self):
+        """Test custom charge with per-unit pricing."""
+        result = custom.calculate(Decimal("5"), {"unit_price": "10"})
+        assert result == Decimal("50")
+
+    def test_custom_no_properties(self):
+        """Test custom charge with no relevant properties returns zero."""
+        result = custom.calculate(Decimal("100"), {})
+        assert result == Decimal("0")
+
+    def test_custom_amount_takes_precedence(self):
+        """Test that custom_amount takes precedence over unit_price."""
+        result = custom.calculate(
+            Decimal("10"), {"custom_amount": "99", "unit_price": "5"}
+        )
+        assert result == Decimal("99")
+
+    def test_custom_zero_units(self):
+        """Test custom charge with zero units and unit_price."""
+        result = custom.calculate(Decimal("0"), {"unit_price": "50"})
+        assert result == Decimal("0")
+
+    def test_custom_decimal_precision(self):
+        """Test custom charge maintains decimal precision."""
+        result = custom.calculate(Decimal("3"), {"unit_price": "0.0033"})
+        assert result == Decimal("0.0099")
+
+
+class TestDynamicCalculator:
+    def test_basic_dynamic_pricing(self):
+        """Test dynamic pricing from event properties."""
+        events = [
+            {"unit_price": "10", "quantity": "2"},
+            {"unit_price": "5", "quantity": "3"},
+        ]
+        result = dynamic.calculate(events=events, properties={})
+        # 10*2 + 5*3 = 20 + 15 = 35
+        assert result == Decimal("35")
+
+    def test_custom_field_names(self):
+        """Test dynamic pricing with custom field names."""
+        events = [
+            {"price": "100", "qty": "1"},
+            {"price": "50", "qty": "4"},
+        ]
+        result = dynamic.calculate(
+            events=events,
+            properties={"price_field": "price", "quantity_field": "qty"},
+        )
+        # 100*1 + 50*4 = 100 + 200 = 300
+        assert result == Decimal("300")
+
+    def test_no_events(self):
+        """Test dynamic pricing with no events returns zero."""
+        result = dynamic.calculate(events=[], properties={})
+        assert result == Decimal("0")
+
+    def test_missing_fields_default_to_zero(self):
+        """Test that missing event fields default to zero."""
+        events = [
+            {"unit_price": "10"},  # missing quantity
+            {"quantity": "5"},  # missing unit_price
+        ]
+        result = dynamic.calculate(events=events, properties={})
+        # 10*0 + 0*5 = 0
+        assert result == Decimal("0")
+
+    def test_single_event(self):
+        """Test dynamic pricing with a single event."""
+        events = [{"unit_price": "25.50", "quantity": "2"}]
+        result = dynamic.calculate(events=events, properties={})
+        assert result == Decimal("51.00")
+
+    def test_decimal_precision(self):
+        """Test dynamic pricing maintains decimal precision."""
+        events = [{"unit_price": "0.001", "quantity": "1000"}]
+        result = dynamic.calculate(events=events, properties={})
+        assert result == Decimal("1.000")
+
+
 class TestFactory:
     def test_returns_standard_calculator(self):
         """Test factory returns correct calculator for STANDARD."""
@@ -812,6 +900,16 @@ class TestFactory:
         """Test factory returns correct calculator for GRADUATED_PERCENTAGE."""
         calc = get_charge_calculator(ChargeModel.GRADUATED_PERCENTAGE)
         assert calc is graduated_percentage.calculate
+
+    def test_returns_custom_calculator(self):
+        """Test factory returns correct calculator for CUSTOM."""
+        calc = get_charge_calculator(ChargeModel.CUSTOM)
+        assert calc is custom.calculate
+
+    def test_returns_dynamic_calculator(self):
+        """Test factory returns correct calculator for DYNAMIC."""
+        calc = get_charge_calculator(ChargeModel.DYNAMIC)
+        assert calc is dynamic.calculate
 
     def test_returns_none_for_unknown_model(self):
         """Test factory returns None for an unknown model."""

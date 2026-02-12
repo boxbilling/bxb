@@ -651,6 +651,138 @@ class TestCalculateChargeGraduatedPercentage:
         assert line_item.amount == Decimal("0.5")
 
 
+class TestCalculateChargeCustom:
+    """Test _calculate_charge with CUSTOM charge model."""
+
+    def test_custom_charge_with_unit_price(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test custom charge with unit_price."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.CUSTOM.value,
+            properties={"unit_price": "7.50"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=4)
+
+        service = InvoiceGenerationService(db_session)
+        line_item = service._calculate_charge(
+            charge=charge,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert line_item is not None
+        assert line_item.quantity == Decimal("4")
+        # 4 events * $7.50 = $30
+        assert line_item.amount == Decimal("30.00")
+
+    def test_custom_charge_with_custom_amount(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test custom charge with fixed custom_amount."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.CUSTOM.value,
+            properties={"custom_amount": "99.99"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=1)
+
+        service = InvoiceGenerationService(db_session)
+        line_item = service._calculate_charge(
+            charge=charge,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert line_item is not None
+        assert line_item.amount == Decimal("99.99")
+
+
+class TestCalculateChargeDynamic:
+    """Test _calculate_charge with DYNAMIC charge model."""
+
+    def test_dynamic_charge_basic(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test dynamic charge calculates from event properties."""
+        start, end = billing_period
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.DYNAMIC.value,
+            properties={
+                "price_field": "unit_price",
+                "quantity_field": "quantity",
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Create events with pricing properties
+        for i, (price, qty) in enumerate([(10, 2), (5, 3)]):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code=metric.code,
+                transaction_id=f"txn_dyn_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"unit_price": str(price), "quantity": str(qty)},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        line_item = service._calculate_charge(
+            charge=charge,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert line_item is not None
+        # 10*2 + 5*3 = 35
+        assert line_item.amount == Decimal("35")
+
+    def test_dynamic_charge_no_events(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test dynamic charge with no events returns zero."""
+        start, end = billing_period
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.DYNAMIC.value,
+            properties={"price_field": "unit_price", "quantity_field": "quantity"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        service = InvoiceGenerationService(db_session)
+        line_item = service._calculate_charge(
+            charge=charge,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        # 0 amount and 0 quantity => None
+        assert line_item is None
+
+
 class TestCalculateChargeEdgeCases:
     """Test edge cases for _calculate_charge."""
 
@@ -1506,6 +1638,135 @@ class TestCalculateChargeFee:
         )
         assert fee_data is not None
         assert fee_data.amount_cents == Decimal("10.00")
+
+    def test_fee_custom_charge(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with custom charge model."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.CUSTOM.value,
+            properties={"unit_price": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=3)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.units == Decimal("3")
+        assert fee_data.amount_cents == Decimal("15.00")
+        assert fee_data.events_count == 3
+
+    def test_fee_custom_charge_with_custom_amount(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with custom charge model using custom_amount."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.CUSTOM.value,
+            properties={"custom_amount": "42.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=2)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        assert fee_data.amount_cents == Decimal("42.00")
+
+    def test_fee_dynamic_charge(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with dynamic charge model."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.DYNAMIC.value,
+            properties={"price_field": "unit_price", "quantity_field": "quantity"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Create events with pricing properties
+        for i, (price, qty) in enumerate([(20, 1), (10, 3)]):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code=metric.code,
+                transaction_id=f"txn_fee_dyn_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"unit_price": str(price), "quantity": str(qty)},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fee_data is not None
+        # 20*1 + 10*3 = 50
+        assert fee_data.amount_cents == Decimal("50")
+        assert fee_data.events_count == 2
+        assert fee_data.units == Decimal("2")
+
+    def test_fee_dynamic_charge_no_events(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test fee calculation with dynamic charge model and no events."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.DYNAMIC.value,
+            properties={"price_field": "unit_price", "quantity_field": "quantity"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        service = InvoiceGenerationService(db_session)
+        fee_data = service._calculate_charge_fee(
+            charge=charge,
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id=customer.external_id,
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        # 0 amount and 0 quantity => None
+        assert fee_data is None
 
 
 def _create_coupon(db_session, code, coupon_type, frequency, **kwargs):
