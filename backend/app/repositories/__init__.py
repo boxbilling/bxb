@@ -6,6 +6,7 @@ from app.repositories.item_repository import ItemRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.repositories.wallet_repository import WalletRepository
 
 __all__ = [
     "BillableMetricRepository",
@@ -16,4 +17,5 @@ __all__ = [
     "PaymentRepository",
     "PlanRepository",
     "SubscriptionRepository",
+    "WalletRepository",
 ]

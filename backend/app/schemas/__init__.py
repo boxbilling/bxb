@@ -10,6 +10,7 @@ from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
 from app.schemas.message import Message
 from app.schemas.plan import ChargeInput, ChargeOutput, PlanCreate, PlanResponse, PlanUpdate
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.schemas.wallet import WalletCreate, WalletResponse, WalletUpdate
 
 __all__ = [
     "BillableMetricCreate",
@@ -36,4 +37,7 @@ __all__ = [
     "SubscriptionCreate",
     "SubscriptionResponse",
     "SubscriptionUpdate",
+    "WalletCreate",
+    "WalletResponse",
+    "WalletUpdate",
 ]

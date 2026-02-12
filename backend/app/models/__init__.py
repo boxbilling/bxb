@@ -8,6 +8,7 @@ from app.models.item import Item
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.wallet import Wallet, WalletStatus
 
 __all__ = [
     "AggregationType",
@@ -29,4 +30,6 @@ __all__ = [
     "PlanInterval",
     "Subscription",
     "SubscriptionStatus",
+    "Wallet",
+    "WalletStatus",
 ]
