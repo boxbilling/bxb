@@ -2591,3 +2591,1475 @@ class TestTaxIntegration:
         assert invoice.subtotal == Decimal("0")
         assert invoice.tax_amount == Decimal("0")
         assert invoice.total == Decimal("0")
+
+
+class TestFilteredChargeCalculation:
+    """Test filtered charge calculation in invoice generation."""
+
+    def test_charge_with_filters_creates_separate_fees(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that a charge with filters creates separate Fee records per filter."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        # Create a metric with a "region" filter dimension
+        metric = BillableMetric(
+            code="filtered_api_calls",
+            name="Filtered API Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="region",
+            values=["us-east", "eu-west"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        # Create charge with base properties
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Create two ChargeFilters with different pricing
+        cf_us = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "3.00"},
+            invoice_display_name="US East API Calls",
+        )
+        db_session.add(cf_us)
+        db_session.commit()
+        db_session.refresh(cf_us)
+
+        cfv_us = ChargeFilterValue(
+            charge_filter_id=cf_us.id,
+            billable_metric_filter_id=bmf.id,
+            value="us-east",
+        )
+        db_session.add(cfv_us)
+
+        cf_eu = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "5.00"},
+            invoice_display_name="EU West API Calls",
+        )
+        db_session.add(cf_eu)
+        db_session.commit()
+        db_session.refresh(cf_eu)
+
+        cfv_eu = ChargeFilterValue(
+            charge_filter_id=cf_eu.id,
+            billable_metric_filter_id=bmf.id,
+            value="eu-west",
+        )
+        db_session.add(cfv_eu)
+        db_session.commit()
+
+        # Create events with region properties
+        for i in range(4):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="filtered_api_calls",
+                transaction_id=f"txn_us_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us-east"},
+            )
+            db_session.add(event)
+        for i in range(2):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="filtered_api_calls",
+                transaction_id=f"txn_eu_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 10),
+                properties={"region": "eu-west"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 2
+
+        # Sort by description for deterministic assertions
+        fees_sorted = sorted(fees, key=lambda f: str(f.description))
+
+        # EU West: 2 events * $5.00 = $10
+        assert fees_sorted[0].description == "EU West API Calls"
+        assert fees_sorted[0].amount_cents == Decimal("10")
+        assert fees_sorted[0].units == Decimal("2")
+        assert fees_sorted[0].events_count == 2
+
+        # US East: 4 events * $3.00 = $12
+        assert fees_sorted[1].description == "US East API Calls"
+        assert fees_sorted[1].amount_cents == Decimal("12")
+        assert fees_sorted[1].units == Decimal("4")
+        assert fees_sorted[1].events_count == 4
+
+        # Total should be $22
+        assert invoice.total == Decimal("22")
+
+    def test_charge_without_filters_unchanged(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that charges without filters behave as before (single fee)."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "2.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].amount_cents == Decimal("10")
+        assert invoice.total == Decimal("10")
+
+    def test_filter_with_no_matching_events(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filter that matches zero events produces no fee."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="no_match_calls",
+            name="No Match Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="region",
+            values=["us-east"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "5.00"},
+            invoice_display_name="US East",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf.id,
+            value="us-east",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        # Create events with DIFFERENT region (no match)
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="no_match_calls",
+                transaction_id=f"txn_nomatch_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "ap-south"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        # No matching events => 0 usage => 0 amount & 0 quantity => no fee
+        assert len(fees) == 0
+        assert invoice.total == Decimal("0")
+
+    def test_filter_display_name_falls_back_to_metric_name(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that fee description falls back to metric name when no invoice_display_name."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="fallback_calls",
+            name="Fallback Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="type",
+            values=["read"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # No invoice_display_name
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "2.00"},
+            invoice_display_name=None,
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf.id,
+            value="read",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="fallback_calls",
+                transaction_id=f"txn_fallback_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"type": "read"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].description == "Fallback Calls"
+        assert fees[0].amount_cents == Decimal("6")
+
+    def test_filter_properties_override_charge_properties(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that filter properties override charge base properties."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="override_calls",
+            name="Override Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="tier",
+            values=["premium"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        # Base charge has amount=1.00
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00", "unit_price": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Filter overrides amount to 10.00
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "10.00"},
+            invoice_display_name="Premium Calls",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf.id,
+            value="premium",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="override_calls",
+                transaction_id=f"txn_override_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"tier": "premium"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # 3 events * $10.00 (overridden) = $30
+        assert fees[0].amount_cents == Decimal("30")
+        # unit_price is inherited from base since filter doesn't override it
+        assert fees[0].unit_amount_cents == Decimal("1")
+
+    def test_filtered_charge_with_graduated_model(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filtered charge with a graduated charge model."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="grad_filtered_calls",
+            name="Graduated Filtered Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="region",
+            values=["us-east"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.GRADUATED.value,
+            properties={
+                "graduated_ranges": [
+                    {"from_value": 0, "to_value": 5, "per_unit_amount": "2.00", "flat_amount": "0"},
+                    {"from_value": 5, "to_value": None, "per_unit_amount": "1.00", "flat_amount": "0"},
+                ]
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={},  # Uses base charge properties
+            invoice_display_name="US East Graduated",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf.id,
+            value="us-east",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        # Create 8 us-east events and 5 other events
+        for i in range(8):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="grad_filtered_calls",
+                transaction_id=f"txn_grad_us_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us-east"},
+            )
+            db_session.add(event)
+        for i in range(5):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="grad_filtered_calls",
+                transaction_id=f"txn_grad_other_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 20),
+                properties={"region": "ap-south"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # 8 us-east events: first 6 at $2 = $12, remaining 2 at $1 = $2 => $14
+        assert fees[0].amount_cents == Decimal("14")
+        assert fees[0].units == Decimal("8")
+        assert fees[0].events_count == 8
+        assert fees[0].description == "US East Graduated"
+
+    def test_charge_filter_with_empty_filter_values_skipped(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that a ChargeFilter with no filter values is skipped."""
+        from app.models.charge_filter import ChargeFilter
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="empty_filter_calls",
+            name="Empty Filter Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Create ChargeFilter without any ChargeFilterValues
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "10.00"},
+            invoice_display_name="Empty Filter",
+        )
+        db_session.add(cf)
+        db_session.commit()
+
+        # Create events
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="empty_filter_calls",
+                transaction_id=f"txn_empty_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        # Empty filter values => filter skipped => no fees
+        assert len(fees) == 0
+
+    def test_filtered_charge_no_metric_returns_empty(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that filtered charge with no billable_metric_id returns empty."""
+        start, end = billing_period
+        mock_charge = MagicMock(spec=Charge)
+        mock_charge.billable_metric_id = None
+        mock_charge.charge_model = ChargeModel.STANDARD.value
+        mock_charge.properties = {"amount": "10.00"}
+        mock_charge.id = uuid4()
+
+        service = InvoiceGenerationService(db_session)
+        fees = service._calculate_filtered_charge_fees(
+            charge=mock_charge,
+            charge_filters=[MagicMock()],
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id="test",
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fees == []
+
+    def test_filtered_charge_metric_not_found_returns_empty(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that filtered charge with nonexistent metric returns empty."""
+        start, end = billing_period
+        fake_metric_id = uuid4()
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=fake_metric_id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        service = InvoiceGenerationService(db_session)
+        fees = service._calculate_filtered_charge_fees(
+            charge=charge,
+            charge_filters=[MagicMock()],
+            customer_id=customer.id,
+            subscription_id=active_subscription.id,
+            external_customer_id="test",
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert fees == []
+
+    def test_filtered_dynamic_charge(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filtered charge with dynamic charge model."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="dyn_filtered",
+            name="Dynamic Filtered",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="service",
+            values=["compute"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.DYNAMIC.value,
+            properties={"price_field": "unit_price", "quantity_field": "quantity"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={},
+            invoice_display_name="Compute Charges",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf.id,
+            value="compute",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        # Compute events
+        for i, (price, qty) in enumerate([(10, 2), (20, 1)]):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="dyn_filtered",
+                transaction_id=f"txn_dyn_comp_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={
+                    "service": "compute",
+                    "unit_price": str(price),
+                    "quantity": str(qty),
+                },
+            )
+            db_session.add(event)
+        # Non-matching event
+        event = Event(
+            external_customer_id=customer.external_id,
+            code="dyn_filtered",
+            transaction_id=f"txn_dyn_store_{uuid4()}",
+            timestamp=start + timedelta(hours=5),
+            properties={
+                "service": "storage",
+                "unit_price": "100",
+                "quantity": "5",
+            },
+        )
+        db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # 10*2 + 20*1 = 40 (storage event excluded)
+        assert fees[0].amount_cents == Decimal("40")
+        assert fees[0].events_count == 2
+        assert fees[0].description == "Compute Charges"
+
+    def test_multiple_filters_multiple_dimensions(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test charge with filters spanning multiple dimensions."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="multi_dim_calls",
+            name="Multi Dim Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        # Two filter dimensions: region and tier
+        bmf_region = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="region",
+            values=["us-east", "eu-west"],
+        )
+        bmf_tier = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="tier",
+            values=["basic", "premium"],
+        )
+        db_session.add_all([bmf_region, bmf_tier])
+        db_session.commit()
+        db_session.refresh(bmf_region)
+        db_session.refresh(bmf_tier)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Filter: region=us-east AND tier=premium
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "7.00"},
+            invoice_display_name="US East Premium",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv_region = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf_region.id,
+            value="us-east",
+        )
+        cfv_tier = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf_tier.id,
+            value="premium",
+        )
+        db_session.add_all([cfv_region, cfv_tier])
+        db_session.commit()
+
+        # Events matching both filters
+        for i in range(2):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="multi_dim_calls",
+                transaction_id=f"txn_md_match_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us-east", "tier": "premium"},
+            )
+            db_session.add(event)
+        # Event matching only one filter (should not be counted)
+        event = Event(
+            external_customer_id=customer.external_id,
+            code="multi_dim_calls",
+            transaction_id=f"txn_md_partial_{uuid4()}",
+            timestamp=start + timedelta(hours=5),
+            properties={"region": "us-east", "tier": "basic"},
+        )
+        db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # Only 2 events match both region=us-east AND tier=premium
+        assert fees[0].amount_cents == Decimal("14")  # 2 * $7
+        assert fees[0].units == Decimal("2")
+        assert fees[0].events_count == 2
+
+    def test_line_items_backward_compat_with_filters(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that line_items JSON is populated for filtered charges."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="compat_calls",
+            name="Compat Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id,
+            key="type",
+            values=["read", "write"],
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "2.00"},
+            invoice_display_name="Read Calls",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=bmf.id,
+            value="read",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(4):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="compat_calls",
+                transaction_id=f"txn_compat_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"type": "read"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        # line_items JSON should reflect filtered fees
+        assert len(invoice.line_items) == 1
+        assert invoice.line_items[0]["description"] == "Read Calls"
+        assert Decimal(str(invoice.line_items[0]["amount"])) == Decimal("8")
+
+    def test_filter_with_orphaned_bmf_reference_skipped(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that a filter value with deleted BillableMetricFilter is skipped."""
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="orphan_calls",
+            name="Orphan Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "10.00"},
+            invoice_display_name="Orphaned",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+
+        # Create ChargeFilterValue pointing to nonexistent BillableMetricFilter
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id,
+            billable_metric_filter_id=uuid4(),
+            value="phantom",
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(2):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="orphan_calls",
+                transaction_id=f"txn_orphan_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        # Orphaned reference => no valid filters => no fees
+        assert len(fees) == 0
+
+    def test_filtered_calculator_returns_none(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that when calculator returns None for a filtered charge, it is skipped."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="calc_none_calls",
+            name="Calc None Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id, key="region", values=["us"]
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id, properties={}, invoice_display_name="US"
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id, billable_metric_filter_id=bmf.id, value="us"
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(2):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="calc_none_calls",
+                transaction_id=f"txn_calcnone_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        with patch("app.services.invoice_generation.get_charge_calculator", return_value=None):
+            fees = service._calculate_filtered_charge_fees(
+                charge=charge,
+                charge_filters=[cf],
+                customer_id=customer.id,
+                subscription_id=active_subscription.id,
+                external_customer_id=customer.external_id,
+                billing_period_start=start,
+                billing_period_end=end,
+            )
+        assert fees == []
+
+    def test_filtered_standard_min_max_price(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filtered standard charge with min_price and max_price."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="minmax_calls",
+            name="MinMax Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id, key="region", values=["us", "eu"]
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "1.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Filter with min_price
+        cf_min = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "0.01", "min_price": "50.00"},
+            invoice_display_name="US Min",
+        )
+        db_session.add(cf_min)
+        db_session.commit()
+        db_session.refresh(cf_min)
+        cfv_min = ChargeFilterValue(
+            charge_filter_id=cf_min.id, billable_metric_filter_id=bmf.id, value="us"
+        )
+        db_session.add(cfv_min)
+
+        # Filter with max_price
+        cf_max = ChargeFilter(
+            charge_id=charge.id,
+            properties={"amount": "100.00", "max_price": "10.00"},
+            invoice_display_name="EU Max",
+        )
+        db_session.add(cf_max)
+        db_session.commit()
+        db_session.refresh(cf_max)
+        cfv_max = ChargeFilterValue(
+            charge_filter_id=cf_max.id, billable_metric_filter_id=bmf.id, value="eu"
+        )
+        db_session.add(cfv_max)
+        db_session.commit()
+
+        # US events
+        for i in range(2):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="minmax_calls",
+                transaction_id=f"txn_minmax_us_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us"},
+            )
+            db_session.add(event)
+        # EU events
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="minmax_calls",
+                transaction_id=f"txn_minmax_eu_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 10),
+                properties={"region": "eu"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 2
+
+        fees_sorted = sorted(fees, key=lambda f: str(f.description))
+        # EU Max: 3 * 100 = 300, but max_price = 10
+        assert fees_sorted[0].description == "EU Max"
+        assert fees_sorted[0].amount_cents == Decimal("10")
+        # US Min: 2 * 0.01 = 0.02, but min_price = 50
+        assert fees_sorted[1].description == "US Min"
+        assert fees_sorted[1].amount_cents == Decimal("50")
+
+    def test_filtered_percentage_charge(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filtered charge with percentage charge model."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="pct_filtered_calls",
+            name="Pct Filtered Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id, key="region", values=["us"]
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.PERCENTAGE.value,
+            properties={
+                "rate": "10",
+                "fixed_amount": "0",
+                "base_amount": "1000",
+                "event_count": "5",
+                "free_units_per_events": "0",
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={},
+            invoice_display_name="US Percentage",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id, billable_metric_filter_id=bmf.id, value="us"
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="pct_filtered_calls",
+                transaction_id=f"txn_pctf_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # 10% of $1000 = $100
+        assert fees[0].amount_cents == Decimal("100")
+        assert fees[0].description == "US Percentage"
+
+    def test_filtered_graduated_percentage_charge(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filtered charge with graduated percentage charge model."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="gpct_filtered",
+            name="Grad Pct Filtered",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id, key="type", values=["api"]
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.GRADUATED_PERCENTAGE.value,
+            properties={
+                "base_amount": "1500",
+                "graduated_percentage_ranges": [
+                    {"from_value": 0, "to_value": 1000, "rate": "5", "flat_amount": "0"},
+                    {"from_value": 1000, "to_value": None, "rate": "3", "flat_amount": "0"},
+                ],
+            },
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={},
+            invoice_display_name="API Grad Pct",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id, billable_metric_filter_id=bmf.id, value="api"
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(1):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="gpct_filtered",
+                transaction_id=f"txn_gpctf_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"type": "api"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # First $1000 at 5% = $50, remaining $500 at 3% = $15 => $65
+        assert fees[0].amount_cents == Decimal("65")
+        assert fees[0].description == "API Grad Pct"
+
+    def test_filtered_custom_charge(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test filtered charge with custom charge model."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="custom_filtered",
+            name="Custom Filtered",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id, key="tier", values=["pro"]
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.CUSTOM.value,
+            properties={"unit_price": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id,
+            properties={"unit_price": "8.00"},
+            invoice_display_name="Pro Custom",
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id, billable_metric_filter_id=bmf.id, value="pro"
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(3):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="custom_filtered",
+                transaction_id=f"txn_customf_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"tier": "pro"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        # 3 events * $8.00 (overridden) = $24
+        assert fees[0].amount_cents == Decimal("24")
+        assert fees[0].description == "Pro Custom"
+
+    def test_filtered_unknown_charge_model_skipped(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Test that unknown charge model in filtered context is skipped."""
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.models.charge_filter import ChargeFilter
+        from app.models.charge_filter_value import ChargeFilterValue
+
+        start, end = billing_period
+
+        metric = BillableMetric(
+            code="unknown_model_calls",
+            name="Unknown Model Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        bmf = BillableMetricFilter(
+            billable_metric_id=metric.id, key="region", values=["us"]
+        )
+        db_session.add(bmf)
+        db_session.commit()
+        db_session.refresh(bmf)
+
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        cf = ChargeFilter(
+            charge_id=charge.id, properties={}, invoice_display_name="US"
+        )
+        db_session.add(cf)
+        db_session.commit()
+        db_session.refresh(cf)
+        cfv = ChargeFilterValue(
+            charge_filter_id=cf.id, billable_metric_filter_id=bmf.id, value="us"
+        )
+        db_session.add(cfv)
+        db_session.commit()
+
+        for i in range(2):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code="unknown_model_calls",
+                transaction_id=f"txn_unknown_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={"region": "us"},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+
+        # Mock to return a charge model that doesn't match any branch
+        fake_model = MagicMock()
+        fake_model.__eq__ = lambda self, other: False
+        fake_model.__hash__ = lambda self: hash("fake")
+
+        with (
+            patch("app.services.invoice_generation.ChargeModel", return_value=fake_model),
+            patch(
+                "app.services.invoice_generation.get_charge_calculator",
+                return_value=lambda **kwargs: Decimal("0"),
+            ),
+        ):
+            fees = service._calculate_filtered_charge_fees(
+                charge=charge,
+                charge_filters=[cf],
+                customer_id=customer.id,
+                subscription_id=active_subscription.id,
+                external_customer_id=customer.external_id,
+                billing_period_start=start,
+                billing_period_end=end,
+            )
+        assert fees == []

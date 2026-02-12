@@ -9,6 +9,7 @@ from app.models.charge import Charge, ChargeModel
 from app.models.fee import FeeType
 from app.models.invoice import Invoice
 from app.models.subscription import SubscriptionStatus
+from app.repositories.charge_filter_repository import ChargeFilterRepository
 from app.repositories.charge_repository import ChargeRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
@@ -28,6 +29,7 @@ class InvoiceGenerationService:
         self.db = db
         self.subscription_repo = SubscriptionRepository(db)
         self.charge_repo = ChargeRepository(db)
+        self.charge_filter_repo = ChargeFilterRepository(db)
         self.invoice_repo = InvoiceRepository(db)
         self.fee_repo = FeeRepository(db)
         self.usage_service = UsageAggregationService(db)
@@ -72,16 +74,33 @@ class InvoiceGenerationService:
         fee_creates: list[FeeCreate] = []
 
         for charge in charges:
-            fee_data = self._calculate_charge_fee(
-                charge=charge,
-                customer_id=customer_id,
-                subscription_id=subscription_id,
-                external_customer_id=external_customer_id,
-                billing_period_start=billing_period_start,
-                billing_period_end=billing_period_end,
-            )
-            if fee_data:
-                fee_creates.append(fee_data)
+            charge_id = UUID(str(charge.id))
+            charge_filters = self.charge_filter_repo.get_by_charge_id(charge_id)
+
+            if charge_filters:
+                # Filtered charge: create separate fees per filter
+                filtered_fees = self._calculate_filtered_charge_fees(
+                    charge=charge,
+                    charge_filters=charge_filters,
+                    customer_id=customer_id,
+                    subscription_id=subscription_id,
+                    external_customer_id=external_customer_id,
+                    billing_period_start=billing_period_start,
+                    billing_period_end=billing_period_end,
+                )
+                fee_creates.extend(filtered_fees)
+            else:
+                # Unfiltered charge: single aggregation, single fee
+                fee_data = self._calculate_charge_fee(
+                    charge=charge,
+                    customer_id=customer_id,
+                    subscription_id=subscription_id,
+                    external_customer_id=external_customer_id,
+                    billing_period_start=billing_period_start,
+                    billing_period_end=billing_period_end,
+                )
+                if fee_data:
+                    fee_creates.append(fee_data)
 
         # Build line_items for backward compatibility (before invoice creation)
         line_items = [
@@ -118,11 +137,11 @@ class InvoiceGenerationService:
         # Apply taxes to each fee
         for fee in created_fees:
             fee_id = UUID(str(fee.id))
-            charge_id = UUID(str(fee.charge_id)) if fee.charge_id else None
+            fee_charge_id = UUID(str(fee.charge_id)) if fee.charge_id else None
             taxes = self.tax_service.get_applicable_taxes(
                 customer_id=customer_id,
                 plan_id=plan_id,
-                charge_id=charge_id,
+                charge_id=fee_charge_id,
             )
             if taxes:
                 self.tax_service.apply_taxes_to_fee(fee_id, taxes)
@@ -285,6 +304,195 @@ class InvoiceGenerationService:
             metric_code=metric_code,
             properties=properties,
         )
+
+    def _calculate_filtered_charge_fees(
+        self,
+        charge: Charge,
+        charge_filters: list[Any],
+        customer_id: UUID,
+        subscription_id: UUID,
+        external_customer_id: str,
+        billing_period_start: datetime,
+        billing_period_end: datetime,
+    ) -> list[FeeCreate]:
+        """Calculate fees for a charge that has filters.
+
+        For each ChargeFilter, aggregate usage matching the filter's key-value
+        pairs and calculate a separate fee using the filter's properties.
+
+        Returns:
+            List of FeeCreate objects, one per applicable filter.
+        """
+        from app.models.billable_metric_filter import BillableMetricFilter
+        from app.repositories.billable_metric_repository import (
+            BillableMetricRepository,
+        )
+
+        fees: list[FeeCreate] = []
+
+        # Resolve metric info (needed for all filters)
+        if not charge.billable_metric_id:
+            return fees
+
+        metric_repo = BillableMetricRepository(self.db)
+        metric_id = UUID(str(charge.billable_metric_id))
+        metric = metric_repo.get_by_id(metric_id)
+        if not metric:
+            return fees
+
+        metric_code = str(metric.code)
+        charge_model = ChargeModel(charge.charge_model)
+
+        for cf in charge_filters:
+            # Build filter dict from ChargeFilterValues
+            filter_values = self.charge_filter_repo.get_filter_values(
+                UUID(str(cf.id))
+            )
+            if not filter_values:
+                continue
+
+            filters: dict[str, str] = {}
+            for fv in filter_values:
+                bmf = (
+                    self.db.query(BillableMetricFilter)
+                    .filter(BillableMetricFilter.id == fv.billable_metric_filter_id)
+                    .first()
+                )
+                if bmf is None:
+                    continue
+                filters[str(bmf.key)] = str(fv.value)
+
+            if not filters:
+                continue
+
+            # Aggregate usage with these filters applied
+            usage_result = self.usage_service.aggregate_usage_with_count(
+                external_customer_id=external_customer_id,
+                code=metric_code,
+                from_timestamp=billing_period_start,
+                to_timestamp=billing_period_end,
+                filters=filters,
+            )
+            usage = usage_result.value
+            events_count = usage_result.events_count
+
+            # Use the ChargeFilter's properties (override), falling back to
+            # the charge's base properties for any missing keys
+            base_properties: dict[str, Any] = (
+                dict(charge.properties) if charge.properties else {}
+            )
+            filter_properties: dict[str, Any] = (
+                dict(cf.properties) if cf.properties else {}
+            )
+            properties = {**base_properties, **filter_properties}
+
+            unit_price = Decimal(str(properties.get("unit_price", 0)))
+
+            # For dynamic charges, fetch filtered raw event properties
+            event_properties_list: list[dict[str, Any]] = []
+            if charge_model == ChargeModel.DYNAMIC:
+                from app.models.event import Event
+
+                raw_events = (
+                    self.db.query(Event)
+                    .filter(
+                        Event.external_customer_id == external_customer_id,
+                        Event.code == metric_code,
+                        Event.timestamp >= billing_period_start,
+                        Event.timestamp < billing_period_end,
+                    )
+                    .all()
+                )
+                # Apply same property filters to raw events
+                event_properties_list = [
+                    dict(e.properties) if e.properties else {}
+                    for e in raw_events
+                    if all(
+                        dict(e.properties or {}).get(k) == v
+                        for k, v in filters.items()
+                    )
+                ]
+
+            # Get calculator and compute amount
+            calculator = get_charge_calculator(charge_model)
+            if not calculator:
+                continue
+
+            if charge_model == ChargeModel.STANDARD:
+                min_price = Decimal(str(properties.get("min_price", 0)))
+                max_price = Decimal(str(properties.get("max_price", 0)))
+                quantity = usage
+                amount = calculator(units=usage, properties=properties)
+                if min_price and amount < min_price:
+                    amount = min_price
+                if max_price and amount > max_price:
+                    amount = max_price
+
+            elif charge_model in (
+                ChargeModel.GRADUATED,
+                ChargeModel.VOLUME,
+                ChargeModel.PACKAGE,
+            ):
+                quantity = usage
+                amount = calculator(units=usage, properties=properties)
+
+            elif charge_model == ChargeModel.PERCENTAGE:
+                total_amount = Decimal(str(properties.get("base_amount", 0)))
+                event_count = int(properties.get("event_count", 0))
+                quantity = Decimal(1)
+                amount = calculator(
+                    units=usage,
+                    properties=properties,
+                    total_amount=total_amount,
+                    event_count=event_count,
+                )
+
+            elif charge_model == ChargeModel.GRADUATED_PERCENTAGE:
+                usage_amount = Decimal(str(properties.get("base_amount", usage)))
+                quantity = Decimal(1)
+                amount = calculator(total_amount=usage_amount, properties=properties)
+
+            elif charge_model == ChargeModel.CUSTOM:
+                quantity = usage
+                amount = calculator(units=usage, properties=properties)
+
+            elif charge_model == ChargeModel.DYNAMIC:
+                quantity = Decimal(events_count)
+                amount = calculator(
+                    events=event_properties_list, properties=properties
+                )
+
+            else:
+                continue
+
+            if amount == 0 and quantity == 0:
+                continue
+
+            # Use filter's invoice_display_name if set, otherwise metric name
+            description = (
+                str(cf.invoice_display_name)
+                if cf.invoice_display_name
+                else str(metric.name)
+            )
+
+            fees.append(
+                FeeCreate(
+                    customer_id=customer_id,
+                    subscription_id=subscription_id,
+                    charge_id=UUID(str(charge.id)),
+                    fee_type=FeeType.CHARGE,
+                    amount_cents=amount,
+                    total_amount_cents=amount,
+                    units=quantity,
+                    events_count=events_count,
+                    unit_amount_cents=unit_price if quantity else amount,
+                    description=description,
+                    metric_code=metric_code,
+                    properties=properties,
+                )
+            )
+
+        return fees
 
     def _calculate_charge(
         self,
