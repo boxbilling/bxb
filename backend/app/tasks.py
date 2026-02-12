@@ -44,3 +44,18 @@ async def enqueue_task_ping() -> Job:
 async def enqueue_retry_failed_webhooks() -> Job:
     """Enqueue a task to retry failed webhooks."""
     return await enqueue_task("retry_failed_webhooks_task")
+
+
+async def enqueue_process_pending_downgrades() -> Job:
+    """Enqueue a task to process pending subscription downgrades."""
+    return await enqueue_task("process_pending_downgrades_task")
+
+
+async def enqueue_process_trial_expirations() -> Job:
+    """Enqueue a task to process expired subscription trials."""
+    return await enqueue_task("process_trial_expirations_task")
+
+
+async def enqueue_generate_periodic_invoices() -> Job:
+    """Enqueue a task to generate periodic invoices for active subscriptions."""
+    return await enqueue_task("generate_periodic_invoices_task")

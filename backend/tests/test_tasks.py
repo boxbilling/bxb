@@ -5,6 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tasks import (
+    enqueue_generate_periodic_invoices,
+    enqueue_process_pending_downgrades,
+    enqueue_process_trial_expirations,
     enqueue_retry_failed_webhooks,
     enqueue_task,
     enqueue_task_ping,
@@ -88,3 +91,45 @@ class TestTasks:
 
             assert result == mock_job
             mock_enqueue.assert_called_once_with("retry_failed_webhooks_task")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_process_pending_downgrades(self):
+        """Test enqueue_process_pending_downgrades helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "downgrades-job-001"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_process_pending_downgrades()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("process_pending_downgrades_task")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_process_trial_expirations(self):
+        """Test enqueue_process_trial_expirations helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "trials-job-002"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_process_trial_expirations()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("process_trial_expirations_task")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_generate_periodic_invoices(self):
+        """Test enqueue_generate_periodic_invoices helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "invoices-job-003"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_generate_periodic_invoices()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("generate_periodic_invoices_task")
