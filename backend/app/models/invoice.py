@@ -5,7 +5,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.sqlite import JSON
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class InvoiceStatus(str, Enum):
@@ -19,6 +19,13 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(UUIDType, primary_key=True, default=lambda: uuid.uuid4())
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     invoice_number = Column(String(50), unique=True, index=True, nullable=False)
     customer_id = Column(UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False)
     subscription_id = Column(

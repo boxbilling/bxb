@@ -6,7 +6,7 @@ from enum import Enum
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class CreditNoteType(str, Enum):
@@ -52,6 +52,13 @@ class CreditNote(Base):
     __tablename__ = "credit_notes"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     number = Column(String(50), unique=True, index=True, nullable=False)
 
     invoice_id = Column(

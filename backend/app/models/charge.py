@@ -5,7 +5,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, String, func
 from sqlalchemy.types import JSON
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class ChargeModel(str, Enum):
@@ -23,6 +23,13 @@ class Charge(Base):
     __tablename__ = "charges"
 
     id = Column(UUIDType, primary_key=True, default=lambda: uuid.uuid4())
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     plan_id = Column(
         UUIDType, ForeignKey("plans.id", ondelete="CASCADE"), nullable=False, index=True
     )

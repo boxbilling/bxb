@@ -6,7 +6,7 @@ from enum import Enum
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class TransactionType(str, Enum):
@@ -44,6 +44,13 @@ class WalletTransaction(Base):
     __tablename__ = "wallet_transactions"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     wallet_id = Column(
         UUIDType, ForeignKey("wallets.id", ondelete="RESTRICT"), nullable=False, index=True
     )

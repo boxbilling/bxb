@@ -15,7 +15,7 @@ from sqlalchemy import (
 )
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class WalletStatus(str, Enum):
@@ -37,6 +37,13 @@ class Wallet(Base):
     )
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     customer_id = Column(
         UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True
     )

@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column, DateTime, Integer, String, TypeDecorator, func
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, TypeDecorator, func
 from sqlalchemy.engine import Dialect
 
 from app.core.database import Base
@@ -32,6 +32,9 @@ class UUIDType(TypeDecorator[uuid.UUID]):
         return uuid.UUID(value)
 
 
+DEFAULT_ORGANIZATION_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
 def generate_uuid() -> uuid.UUID:
     """Generate a new UUID."""
     return uuid.uuid4()
@@ -46,6 +49,13 @@ class Customer(Base):
     __tablename__ = "customers"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     external_id = Column(String(255), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
     email = Column(String(255), nullable=True)

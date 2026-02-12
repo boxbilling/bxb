@@ -4,7 +4,7 @@ from enum import Enum
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class SubscriptionStatus(str, Enum):
@@ -29,6 +29,13 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
 
     id = Column(UUIDType, primary_key=True, default=lambda: uuid.uuid4())
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     external_id = Column(String(255), unique=True, index=True, nullable=False)
     customer_id = Column(
         UUIDType,

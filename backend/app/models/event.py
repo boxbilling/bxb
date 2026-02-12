@@ -1,16 +1,23 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, Index, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, Index, String, func
 from sqlalchemy.dialects.sqlite import JSON
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class Event(Base):
     __tablename__ = "events"
 
     id = Column(UUIDType, primary_key=True, default=lambda: uuid.uuid4())
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     transaction_id = Column(String(255), unique=True, index=True, nullable=False)
     external_customer_id = Column(String(255), nullable=False)
     code = Column(String(255), nullable=False)  # billable metric code

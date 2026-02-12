@@ -2,10 +2,10 @@
 
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Numeric, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 def generate_uuid() -> uuid.UUID:
@@ -19,6 +19,13 @@ class Tax(Base):
     __tablename__ = "taxes"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     code = Column(String(255), unique=True, index=True, nullable=False)
     name = Column(String(255), nullable=False)
     rate = Column(Numeric(5, 4), nullable=False)

@@ -1,15 +1,17 @@
 """Shared test fixtures for all test modules."""
 
 import contextlib
+import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core import database as db_module
 from app.core.database import Base
+from app.models.organization import Organization
 
 # Create an in-memory SQLite engine with StaticPool so all connections
 # share the same database state and there are no file-locking issues.
@@ -19,6 +21,21 @@ _test_engine = create_engine(
     poolclass=StaticPool,
 )
 _TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
+
+# Well-known default organization ID used across all tests
+DEFAULT_ORG_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _seed_default_organization(session: Session) -> None:
+    """Insert a default organization used by all tests."""
+    org = session.query(Organization).filter(Organization.id == DEFAULT_ORG_ID).first()
+    if org is None:
+        org = Organization(
+            id=DEFAULT_ORG_ID,
+            name="Default Test Organization",
+        )
+        session.add(org)
+        session.commit()
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +52,14 @@ def setup_database():
     db_module.SessionLocal = _TestSessionLocal
 
     Base.metadata.create_all(bind=_test_engine)
+
+    # Seed default organization so all tests can reference it
+    session = _TestSessionLocal()
+    try:
+        _seed_default_organization(session)
+    finally:
+        session.close()
+
     yield
     with _test_engine.connect() as conn:
         conn.execute(text("PRAGMA foreign_keys = OFF"))

@@ -7,7 +7,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, f
 from sqlalchemy.dialects.sqlite import JSON
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class FeeType(str, Enum):
@@ -40,6 +40,13 @@ class Fee(Base):
     __tablename__ = "fees"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     invoice_id = Column(
         UUIDType, ForeignKey("invoices.id", ondelete="RESTRICT"), nullable=True, index=True
     )

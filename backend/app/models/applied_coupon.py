@@ -6,7 +6,7 @@ from enum import Enum
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class AppliedCouponStatus(str, Enum):
@@ -25,6 +25,13 @@ class AppliedCoupon(Base):
     __tablename__ = "applied_coupons"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     coupon_id = Column(
         UUIDType, ForeignKey("coupons.id", ondelete="RESTRICT"), nullable=False, index=True
     )

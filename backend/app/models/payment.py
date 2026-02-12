@@ -7,7 +7,7 @@ from enum import Enum
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 class PaymentStatus(str, Enum):
@@ -45,6 +45,13 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     invoice_id = Column(
         UUIDType, ForeignKey("invoices.id", ondelete="RESTRICT"), nullable=False, index=True
     )

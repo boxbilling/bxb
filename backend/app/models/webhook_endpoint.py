@@ -2,10 +2,10 @@
 
 import uuid
 
-from sqlalchemy import Column, DateTime, String, func
+from sqlalchemy import Column, DateTime, ForeignKey, String, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 
 
 def generate_uuid() -> uuid.UUID:
@@ -19,6 +19,13 @@ class WebhookEndpoint(Base):
     __tablename__ = "webhook_endpoints"
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
+    organization_id = Column(
+        UUIDType,
+        ForeignKey("organizations.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        default=DEFAULT_ORGANIZATION_ID,
+    )
     url = Column(String(2048), nullable=False)
     signature_algo = Column(String(50), nullable=False, default="hmac")
     status = Column(String(50), nullable=False, default="active")

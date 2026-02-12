@@ -22,6 +22,7 @@ from app.models.event import Event
 from app.models.fee import Fee, FeePaymentStatus, FeeType
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.item import Item
+from app.models.organization import Organization
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
@@ -69,6 +70,7 @@ __all__ = [
     "Invoice",
     "InvoiceStatus",
     "Item",
+    "Organization",
     "Payment",
     "PaymentProvider",
     "PaymentStatus",
