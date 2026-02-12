@@ -870,7 +870,7 @@ class TestSubscriptionsAPI:
         fake_id = str(uuid.uuid4())
         response = client.delete(f"/v1/subscriptions/{fake_id}")
         assert response.status_code == 404
-        assert response.json()["detail"] == "Subscription not found"
+        assert "not found" in response.json()["detail"]
 
     def test_cancel_subscription(self, client: TestClient):
         """Test canceling a subscription."""
@@ -903,7 +903,63 @@ class TestSubscriptionsAPI:
         fake_id = str(uuid.uuid4())
         response = client.post(f"/v1/subscriptions/{fake_id}/cancel")
         assert response.status_code == 404
-        assert response.json()["detail"] == "Subscription not found"
+        assert "not found" in response.json()["detail"]
+
+    def test_terminate_with_skip_action(self, client: TestClient):
+        """Test terminating with skip on_termination_action."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_term_skip", "name": "Skip Customer"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "term_skip_plan", "name": "Skip Plan", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_term_skip",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        response = client.delete(
+            f"/v1/subscriptions/{sub['id']}"
+            "?on_termination_action=skip"
+        )
+        assert response.status_code == 204
+
+        get_response = client.get(f"/v1/subscriptions/{sub['id']}")
+        assert get_response.json()["status"] == "terminated"
+
+    def test_cancel_with_skip_action(self, client: TestClient):
+        """Test canceling with skip on_termination_action."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_can_skip", "name": "Skip Cancel Customer"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "can_skip_plan", "name": "Skip Plan", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_can_skip",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        response = client.post(
+            f"/v1/subscriptions/{sub['id']}/cancel"
+            "?on_termination_action=skip"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "canceled"
+        assert data["canceled_at"] is not None
 
     def test_list_subscriptions_pagination(self, client: TestClient):
         """Test listing subscriptions with pagination."""

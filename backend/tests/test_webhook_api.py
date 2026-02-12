@@ -536,11 +536,15 @@ class TestSubscriptionWebhookTriggers:
                 },
             ).json()
 
-        with patch("app.routers.subscriptions.WebhookService") as mock_webhook_cls:
+        mock_path = "app.services.subscription_lifecycle.WebhookService"
+        with patch(mock_path) as mock_webhook_cls:
             mock_service = MagicMock()
             mock_webhook_cls.return_value = mock_service
 
-            response = client.delete(f"/v1/subscriptions/{sub['id']}")
+            response = client.delete(
+                f"/v1/subscriptions/{sub['id']}"
+                "?on_termination_action=skip"
+            )
 
         assert response.status_code == 204
         mock_service.send_webhook.assert_called_once()
@@ -572,11 +576,15 @@ class TestSubscriptionWebhookTriggers:
                 },
             ).json()
 
-        with patch("app.routers.subscriptions.WebhookService") as mock_webhook_cls:
+        mock_path = "app.services.subscription_lifecycle.WebhookService"
+        with patch(mock_path) as mock_webhook_cls:
             mock_service = MagicMock()
             mock_webhook_cls.return_value = mock_service
 
-            response = client.post(f"/v1/subscriptions/{sub['id']}/cancel")
+            response = client.post(
+                f"/v1/subscriptions/{sub['id']}/cancel"
+                "?on_termination_action=skip"
+            )
 
         assert response.status_code == 200
         mock_service.send_webhook.assert_called_once()

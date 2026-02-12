@@ -1,14 +1,15 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.models.subscription import Subscription
+from app.models.subscription import Subscription, TerminationAction
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.webhook_service import WebhookService
 
 router = APIRouter()
@@ -95,40 +96,36 @@ async def update_subscription(
 @router.delete("/{subscription_id}", status_code=204)
 async def terminate_subscription(
     subscription_id: UUID,
+    on_termination_action: TerminationAction = Query(
+        default=TerminationAction.GENERATE_INVOICE,
+        description="Termination action",
+    ),
     db: Session = Depends(get_db),
 ) -> None:
-    """Terminate a subscription (sets status to TERMINATED and ending_at to now)."""
-    repo = SubscriptionRepository(db)
-    subscription = repo.terminate(subscription_id)
-    if not subscription:
-        raise HTTPException(status_code=404, detail="Subscription not found")
-
-    webhook_service = WebhookService(db)
-    webhook_service.send_webhook(
-        webhook_type="subscription.terminated",
-        object_type="subscription",
-        object_id=subscription_id,
-        payload={"subscription_id": str(subscription_id)},
-    )
+    """Terminate a subscription with configurable financial action."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    try:
+        lifecycle_service.terminate_subscription(subscription_id, on_termination_action.value)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
 
 
 @router.post("/{subscription_id}/cancel", response_model=SubscriptionResponse)
 async def cancel_subscription(
     subscription_id: UUID,
+    on_termination_action: TerminationAction = Query(
+        default=TerminationAction.GENERATE_INVOICE,
+        description="Cancellation action",
+    ),
     db: Session = Depends(get_db),
 ) -> Subscription:
-    """Cancel a subscription (sets status to CANCELED and canceled_at to now)."""
+    """Cancel a subscription with configurable financial action."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    try:
+        lifecycle_service.cancel_subscription(subscription_id, on_termination_action.value)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e)) from e
+
     repo = SubscriptionRepository(db)
-    subscription = repo.cancel(subscription_id)
-    if not subscription:
-        raise HTTPException(status_code=404, detail="Subscription not found")
-
-    webhook_service = WebhookService(db)
-    webhook_service.send_webhook(
-        webhook_type="subscription.canceled",
-        object_type="subscription",
-        object_id=subscription_id,
-        payload={"subscription_id": str(subscription_id)},
-    )
-
-    return subscription
+    subscription = repo.get_by_id(subscription_id)
+    return subscription  # type: ignore[return-value]

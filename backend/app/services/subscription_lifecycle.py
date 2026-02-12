@@ -277,6 +277,191 @@ class SubscriptionLifecycleService:
             payload={"subscription_id": str(subscription.id)},
         )
 
+    def terminate_subscription(
+        self, subscription_id: UUID, on_termination_action: str = "generate_invoice"
+    ) -> None:
+        """Terminate a subscription with configurable financial action.
+
+        1. "generate_invoice": final invoice for used portion
+        2. "generate_credit_note": credit note for unused portion
+        3. "skip": just terminate without financial operations
+        4. Set status=terminated, ending_at=now
+        5. Trigger subscription.terminated webhook
+        """
+        subscription = self.subscription_repo.get_by_id(subscription_id)
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
+
+        if subscription.status not in (
+            SubscriptionStatus.ACTIVE.value,
+            SubscriptionStatus.PENDING.value,
+        ):
+            raise ValueError(
+                "Can only terminate active or pending subscriptions"
+            )
+
+        now = datetime.now(UTC)
+
+        is_active = subscription.status == SubscriptionStatus.ACTIVE.value
+        if is_active and on_termination_action != "skip":
+            plan = self.plan_repo.get_by_id(UUID(str(subscription.plan_id)))
+            if plan and int(plan.amount_cents) > 0:
+                interval = str(plan.interval)
+                period_start, period_end = self.dates_service.calculate_billing_period(
+                    subscription, interval, now
+                )
+                if on_termination_action == "generate_invoice":
+                    prorated = self.dates_service.prorate_amount(
+                        int(plan.amount_cents),
+                        period_start,
+                        period_end,
+                        period_start,
+                        now,
+                    )
+                    if prorated > 0:
+                        self._create_invoice(
+                            subscription,
+                            plan,
+                            period_start,
+                            period_end,
+                            prorated,
+                            f"Final invoice - {plan.name}",
+                        )
+                else:
+                    self._generate_termination_credit_note(
+                        subscription, plan, period_start, period_end, now
+                    )
+
+        subscription.status = SubscriptionStatus.TERMINATED.value  # type: ignore[assignment]
+        subscription.ending_at = now  # type: ignore[assignment]
+        self.db.commit()
+        self.db.refresh(subscription)
+
+        self.webhook_service.send_webhook(
+            webhook_type="subscription.terminated",
+            object_type="subscription",
+            object_id=subscription.id,  # type: ignore[arg-type]
+            payload={
+                "subscription_id": str(subscription.id),
+                "on_termination_action": on_termination_action,
+            },
+        )
+
+    def cancel_subscription(
+        self, subscription_id: UUID, on_termination_action: str = "generate_invoice"
+    ) -> None:
+        """Cancel a subscription with configurable financial action.
+
+        1. "generate_invoice": final invoice for used portion
+        2. "generate_credit_note": credit note for unused portion
+        3. "skip": just cancel without financial operations
+        4. Set status=canceled, canceled_at=now
+        5. Trigger subscription.canceled webhook
+        """
+        subscription = self.subscription_repo.get_by_id(subscription_id)
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
+
+        if subscription.status not in (
+            SubscriptionStatus.ACTIVE.value,
+            SubscriptionStatus.PENDING.value,
+        ):
+            raise ValueError(
+                "Can only cancel active or pending subscriptions"
+            )
+
+        now = datetime.now(UTC)
+
+        is_active = subscription.status == SubscriptionStatus.ACTIVE.value
+        if is_active and on_termination_action != "skip":
+            plan = self.plan_repo.get_by_id(UUID(str(subscription.plan_id)))
+            if plan and int(plan.amount_cents) > 0:
+                interval = str(plan.interval)
+                period_start, period_end = self.dates_service.calculate_billing_period(
+                    subscription, interval, now
+                )
+                if on_termination_action == "generate_invoice":
+                    prorated = self.dates_service.prorate_amount(
+                        int(plan.amount_cents),
+                        period_start,
+                        period_end,
+                        period_start,
+                        now,
+                    )
+                    if prorated > 0:
+                        self._create_invoice(
+                            subscription,
+                            plan,
+                            period_start,
+                            period_end,
+                            prorated,
+                            f"Final invoice - {plan.name}",
+                        )
+                else:
+                    self._generate_termination_credit_note(
+                        subscription, plan, period_start, period_end, now
+                    )
+
+        subscription.status = SubscriptionStatus.CANCELED.value  # type: ignore[assignment]
+        subscription.canceled_at = now  # type: ignore[assignment]
+        self.db.commit()
+        self.db.refresh(subscription)
+
+        self.webhook_service.send_webhook(
+            webhook_type="subscription.canceled",
+            object_type="subscription",
+            object_id=subscription.id,  # type: ignore[arg-type]
+            payload={
+                "subscription_id": str(subscription.id),
+                "on_termination_action": on_termination_action,
+            },
+        )
+
+    def _generate_termination_credit_note(
+        self,
+        subscription: Subscription,
+        plan: Plan,
+        period_start: datetime,
+        period_end: datetime,
+        termination_date: datetime,
+    ) -> None:
+        """Generate a credit note for unused portion of current period on termination."""
+        amount_cents = int(plan.amount_cents)
+        prorated = self.dates_service.prorate_amount(
+            amount_cents, period_start, period_end, termination_date, period_end
+        )
+        if prorated <= 0:
+            return
+
+        customer_id = UUID(str(subscription.customer_id))
+        subscription_id = UUID(str(subscription.id))
+        invoices = self.invoice_repo.get_all(
+            subscription_id=subscription_id,
+            status=InvoiceStatus.DRAFT,
+        )
+        if not invoices:
+            invoices = self.invoice_repo.get_all(
+                subscription_id=subscription_id,
+                status=InvoiceStatus.FINALIZED,
+            )
+        if not invoices:
+            return
+
+        invoice = invoices[0]
+        cn_number = f"CN-{datetime.now(UTC).strftime('%Y%m%d')}-{str(subscription_id)[:8]}"
+        credit_note_data = CreditNoteCreate(
+            number=cn_number,
+            invoice_id=UUID(str(invoice.id)),
+            customer_id=customer_id,
+            credit_note_type=CreditNoteType.CREDIT,
+            reason=CreditNoteReason.ORDER_CANCELLATION,
+            description=f"Credit for unused period - {plan.name}",
+            credit_amount_cents=Decimal(str(prorated)),
+            total_amount_cents=Decimal(str(prorated)),
+            currency=str(plan.currency),
+        )
+        self.credit_note_repo.create(credit_note_data)
+
     def _generate_plan_change_credit_note(
         self,
         subscription: Subscription,

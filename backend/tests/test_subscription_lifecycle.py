@@ -3,6 +3,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 
 import pytest
 
@@ -818,6 +819,463 @@ class TestEdgeCases:
             Invoice.subscription_id == sub.id
         ).all()
         assert len(invoices) == 1  # original only
+
+
+class TestTerminateSubscription:
+    def test_terminate_skip(self, db_session):
+        """Test terminating with skip action (no financial ops)."""
+        customer = _create_customer(db_session, "cust_term_skip")
+        plan = _create_plan(db_session, "plan_term_skip", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_skip"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "skip")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+        assert sub.ending_at is not None
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_terminate_generate_invoice(self, db_session):
+        """Test terminating with generate_invoice action."""
+        customer = _create_customer(db_session, "cust_term_inv")
+        plan = _create_plan(db_session, "plan_term_inv", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_inv"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+        assert sub.ending_at is not None
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        assert "Final invoice" in invoices[0].line_items[0]["description"]
+
+    def test_terminate_generate_credit_note(self, db_session):
+        """Test terminating with generate_credit_note action."""
+        customer = _create_customer(db_session, "cust_term_cn")
+        plan = _create_plan(db_session, "plan_term_cn", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_cn"
+        )
+
+        # Create an existing invoice so credit note can reference it
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_credit_note")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 1
+        assert credit_notes[0].total_amount_cents > 0
+
+    def test_terminate_credit_note_no_invoice(self, db_session):
+        """Test terminating with credit_note but no invoice skips CN."""
+        customer = _create_customer(db_session, "cust_term_cn_noinv")
+        plan = _create_plan(db_session, "plan_term_cn_noinv", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_cn_noinv"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_credit_note")
+
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 0
+
+    def test_terminate_not_found(self, db_session):
+        """Test terminating non-existent subscription."""
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="not found"):
+            service.terminate_subscription(uuid.uuid4(), "skip")
+
+    def test_terminate_already_terminated(self, db_session):
+        """Test terminating already terminated subscription."""
+        customer = _create_customer(db_session, "cust_term_already")
+        plan = _create_plan(db_session, "plan_term_already")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_already"
+        )
+        sub.status = SubscriptionStatus.TERMINATED.value
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="active or pending"):
+            service.terminate_subscription(sub.id, "skip")
+
+    def test_terminate_pending_subscription(self, db_session):
+        """Test terminating a pending subscription (skip financial ops)."""
+        customer = _create_customer(db_session, "cust_term_pend")
+        plan = _create_plan(db_session, "plan_term_pend", 10000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_term_pend"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+        # No invoice for pending subscription
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_terminate_triggers_webhook(self, db_session):
+        """Test termination triggers subscription.terminated webhook."""
+        _create_webhook_endpoint(db_session)
+        customer = _create_customer(db_session, "cust_term_wh")
+        plan = _create_plan(db_session, "plan_term_wh")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_wh"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "skip")
+
+        from app.models.webhook import Webhook
+
+        webhooks = db_session.query(Webhook).filter(
+            Webhook.webhook_type == "subscription.terminated"
+        ).all()
+        assert len(webhooks) == 1
+        assert webhooks[0].payload["on_termination_action"] == "skip"
+
+    def test_terminate_zero_amount_no_invoice(self, db_session):
+        """Test termination with zero-amount plan skips invoice."""
+        customer = _create_customer(db_session, "cust_term_zero")
+        plan = _create_plan(db_session, "plan_term_zero", 0)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_zero"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_invoice")
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_terminate_default_action(self, db_session):
+        """Test termination with default action (generate_invoice)."""
+        customer = _create_customer(db_session, "cust_term_def")
+        plan = _create_plan(db_session, "plan_term_def", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_def"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+
+    def test_terminate_invoice_zero_proration(self, db_session):
+        """Test terminate generate_invoice when proration is 0."""
+        customer = _create_customer(db_session, "cust_term_zerp")
+        plan = _create_plan(db_session, "plan_term_zerp", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_zerp"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        prorate_path = (
+            "app.services.subscription_lifecycle"
+            ".SubscriptionDatesService.prorate_amount"
+        )
+        with patch(prorate_path, return_value=0):
+            service.terminate_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_terminate_credit_note_zero_proration(self, db_session):
+        """Test terminate credit_note when remaining proration is 0."""
+        customer = _create_customer(db_session, "cust_term_cn_zerp")
+        plan = _create_plan(db_session, "plan_term_cn_zerp", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_cn_zerp"
+        )
+
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        prorate_path = (
+            "app.services.subscription_lifecycle"
+            ".SubscriptionDatesService.prorate_amount"
+        )
+        with patch(prorate_path, return_value=0):
+            service.terminate_subscription(
+                sub.id, "generate_credit_note"
+            )
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 0
+
+
+class TestCancelSubscription:
+    def test_cancel_skip(self, db_session):
+        """Test canceling with skip action (no financial ops)."""
+        customer = _create_customer(db_session, "cust_can_skip")
+        plan = _create_plan(db_session, "plan_can_skip", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_skip"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "skip")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+        assert sub.canceled_at is not None
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_cancel_generate_invoice(self, db_session):
+        """Test canceling with generate_invoice action."""
+        customer = _create_customer(db_session, "cust_can_inv")
+        plan = _create_plan(db_session, "plan_can_inv", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_inv"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+
+    def test_cancel_generate_credit_note(self, db_session):
+        """Test canceling with generate_credit_note action."""
+        customer = _create_customer(db_session, "cust_can_cn")
+        plan = _create_plan(db_session, "plan_can_cn", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_cn"
+        )
+
+        # Create an existing invoice for credit note reference
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "generate_credit_note")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 1
+
+    def test_cancel_not_found(self, db_session):
+        """Test canceling non-existent subscription."""
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="not found"):
+            service.cancel_subscription(uuid.uuid4(), "skip")
+
+    def test_cancel_already_canceled(self, db_session):
+        """Test canceling already canceled subscription."""
+        customer = _create_customer(db_session, "cust_can_already")
+        plan = _create_plan(db_session, "plan_can_already")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_already"
+        )
+        sub.status = SubscriptionStatus.CANCELED.value
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="active or pending"):
+            service.cancel_subscription(sub.id, "skip")
+
+    def test_cancel_pending_subscription(self, db_session):
+        """Test canceling a pending subscription."""
+        customer = _create_customer(db_session, "cust_can_pend")
+        plan = _create_plan(db_session, "plan_can_pend", 10000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_can_pend"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+        assert sub.canceled_at is not None
+        # No invoice for pending subscription
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_cancel_triggers_webhook(self, db_session):
+        """Test cancel triggers subscription.canceled webhook."""
+        _create_webhook_endpoint(db_session)
+        customer = _create_customer(db_session, "cust_can_wh")
+        plan = _create_plan(db_session, "plan_can_wh")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_wh"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "skip")
+
+        from app.models.webhook import Webhook
+
+        webhooks = db_session.query(Webhook).filter(
+            Webhook.webhook_type == "subscription.canceled"
+        ).all()
+        assert len(webhooks) == 1
+        assert webhooks[0].payload["on_termination_action"] == "skip"
+
+    def test_cancel_zero_amount_no_invoice(self, db_session):
+        """Test cancel with zero-amount plan skips invoice."""
+        customer = _create_customer(db_session, "cust_can_zero")
+        plan = _create_plan(db_session, "plan_can_zero", 0)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_zero"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "generate_invoice")
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_cancel_invoice_zero_proration(self, db_session):
+        """Test cancel generate_invoice when proration is 0."""
+        customer = _create_customer(db_session, "cust_can_zerp")
+        plan = _create_plan(db_session, "plan_can_zerp", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_zerp"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        prorate_path = (
+            "app.services.subscription_lifecycle"
+            ".SubscriptionDatesService.prorate_amount"
+        )
+        with patch(prorate_path, return_value=0):
+            service.cancel_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_cancel_credit_note_zero_proration(self, db_session):
+        """Test cancel credit_note when remaining proration is 0."""
+        customer = _create_customer(db_session, "cust_can_cn_zerp")
+        plan = _create_plan(db_session, "plan_can_cn_zerp", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_cn_zerp"
+        )
+
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        prorate_path = (
+            "app.services.subscription_lifecycle"
+            ".SubscriptionDatesService.prorate_amount"
+        )
+        with patch(prorate_path, return_value=0):
+            service.cancel_subscription(
+                sub.id, "generate_credit_note"
+            )
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 0
 
 
 class TestWebhookEventTypes:
