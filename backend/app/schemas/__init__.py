@@ -49,6 +49,7 @@ from app.schemas.integration_mapping import (
     IntegrationMappingResponse,
     IntegrationMappingUpdate,
 )
+from app.schemas.invoice_settlement import InvoiceSettlementCreate, InvoiceSettlementResponse
 from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
 from app.schemas.message import Message
 from app.schemas.payment_request import (
@@ -125,6 +126,8 @@ __all__ = [
     "IntegrationMappingCreate",
     "IntegrationMappingResponse",
     "IntegrationMappingUpdate",
+    "InvoiceSettlementCreate",
+    "InvoiceSettlementResponse",
     "IntegrationResponse",
     "IntegrationUpdate",
     "ItemCreate",

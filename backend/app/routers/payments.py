@@ -9,9 +9,12 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.invoice import InvoiceStatus
+from app.models.invoice_settlement import SettlementType
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.repositories.invoice_repository import InvoiceRepository
+from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.repositories.payment_repository import PaymentRepository
+from app.schemas.invoice_settlement import InvoiceSettlementCreate
 from app.schemas.payment import (
     CheckoutSessionCreate,
     CheckoutSessionResponse,
@@ -19,6 +22,34 @@ from app.schemas.payment import (
 )
 from app.services.payment_provider import get_payment_provider
 from app.services.webhook_service import WebhookService
+
+
+def _record_settlement_and_maybe_mark_paid(
+    db: Session,
+    invoice_id: UUID,
+    settlement_type: SettlementType,
+    source_id: UUID,
+    amount_cents: float | int,
+) -> None:
+    """Record a settlement and auto-mark invoice as paid if fully settled."""
+    from decimal import Decimal
+
+    settlement_repo = InvoiceSettlementRepository(db)
+    settlement_repo.create(
+        InvoiceSettlementCreate(
+            invoice_id=invoice_id,
+            settlement_type=settlement_type,
+            source_id=source_id,
+            amount_cents=Decimal(str(amount_cents)),
+        )
+    )
+
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id)
+    if invoice and invoice.status == InvoiceStatus.FINALIZED.value:
+        total_settled = settlement_repo.get_total_settled(invoice_id)
+        if total_settled >= Decimal(str(invoice.total)):
+            invoice_repo.mark_paid(invoice_id)
 
 router = APIRouter()
 
@@ -229,9 +260,14 @@ async def handle_webhook(
     if result.status == "succeeded":
         payment_repo.mark_succeeded(payment.id)  # type: ignore[arg-type]
 
-        # Also mark the invoice as paid
-        invoice_repo = InvoiceRepository(db)
-        invoice_repo.mark_paid(payment.invoice_id)  # type: ignore[arg-type]
+        # Record settlement and auto-mark invoice as paid if fully settled
+        _record_settlement_and_maybe_mark_paid(
+            db,
+            invoice_id=payment.invoice_id,  # type: ignore[arg-type]
+            settlement_type=SettlementType.PAYMENT,
+            source_id=payment.id,  # type: ignore[arg-type]
+            amount_cents=float(payment.amount),
+        )
 
         webhook_service.send_webhook(
             webhook_type="payment.succeeded",
@@ -280,9 +316,14 @@ async def mark_payment_paid(
     if not updated_payment:  # pragma: no cover - race condition
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    # Also mark the invoice as paid
-    invoice_repo = InvoiceRepository(db)
-    invoice_repo.mark_paid(payment.invoice_id)  # type: ignore[arg-type]
+    # Record settlement and auto-mark invoice as paid if fully settled
+    _record_settlement_and_maybe_mark_paid(
+        db,
+        invoice_id=payment.invoice_id,  # type: ignore[arg-type]
+        settlement_type=SettlementType.PAYMENT,
+        source_id=payment_id,
+        amount_cents=float(payment.amount),
+    )
 
     webhook_service = WebhookService(db)
     webhook_service.send_webhook(

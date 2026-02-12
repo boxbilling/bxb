@@ -7,9 +7,12 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.invoice_settlement import SettlementType
 from app.models.wallet import Wallet, WalletStatus
+from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.repositories.wallet_transaction_repository import WalletTransactionRepository
+from app.schemas.invoice_settlement import InvoiceSettlementCreate
 from app.schemas.wallet import WalletCreate
 from app.schemas.wallet_transaction import (
     TransactionSource,
@@ -174,6 +177,18 @@ class WalletService:
                     invoice_id=invoice_id,
                 )
             )
+
+            # Record settlement if this is for an invoice
+            if invoice_id is not None:
+                settlement_repo = InvoiceSettlementRepository(self.db)
+                settlement_repo.create(
+                    InvoiceSettlementCreate(
+                        invoice_id=invoice_id,
+                        settlement_type=SettlementType.WALLET_CREDIT,
+                        source_id=wallet.id,  # type: ignore[arg-type]
+                        amount_cents=consumable,
+                    )
+                )
 
             total_consumed += consumable
             remaining -= consumable

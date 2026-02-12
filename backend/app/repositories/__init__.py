@@ -15,6 +15,7 @@ from app.repositories.fee_repository import FeeRepository
 from app.repositories.integration_customer_repository import IntegrationCustomerRepository
 from app.repositories.integration_mapping_repository import IntegrationMappingRepository
 from app.repositories.integration_repository import IntegrationRepository
+from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.payment_request_repository import PaymentRequestRepository
@@ -44,6 +45,7 @@ __all__ = [
     "IntegrationCustomerRepository",
     "IntegrationMappingRepository",
     "IntegrationRepository",
+    "InvoiceSettlementRepository",
     "ItemRepository",
     "PaymentRepository",
     "PaymentRequestRepository",

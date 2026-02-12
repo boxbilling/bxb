@@ -8,11 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.models.credit_note import CreditNote, CreditNoteStatus, CreditStatus
 from app.models.invoice import InvoiceStatus
+from app.models.invoice_settlement import SettlementType
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
+from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.schemas.credit_note import CreditNoteCreate, CreditNoteItemCreate
+from app.schemas.invoice_settlement import InvoiceSettlementCreate
 
 
 class CreditNoteService:
@@ -201,6 +204,22 @@ class CreditNoteService:
 
         if amount <= 0:
             raise ValueError("Amount must be positive")
+
+        # Record settlement for the credit note application
+        settlement_repo = InvoiceSettlementRepository(self.db)
+        settlement_repo.create(
+            InvoiceSettlementCreate(
+                invoice_id=invoice_id,
+                settlement_type=SettlementType.CREDIT_NOTE,
+                source_id=credit_note_id,
+                amount_cents=amount,
+            )
+        )
+
+        # Auto-mark invoice as paid if fully settled
+        total_settled = settlement_repo.get_total_settled(invoice_id)
+        if total_settled >= Decimal(str(invoice.total)):
+            self.invoice_repo.mark_paid(invoice_id)
 
         # We already validated the credit note exists and has available credit,
         # so consume_credit() will always return a result here.
