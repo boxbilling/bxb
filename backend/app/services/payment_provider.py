@@ -437,10 +437,15 @@ class UCPProvider(PaymentProviderBase):
 
 def get_payment_provider(provider: PaymentProvider) -> PaymentProviderBase:
     """Factory function to get the appropriate payment provider."""
+    from app.services.payment_providers.adyen import AdyenProvider
+    from app.services.payment_providers.gocardless import GoCardlessProvider
+
     providers: dict[PaymentProvider, type[PaymentProviderBase]] = {
         PaymentProvider.STRIPE: StripeProvider,
         PaymentProvider.MANUAL: ManualProvider,
         PaymentProvider.UCP: UCPProvider,
+        PaymentProvider.GOCARDLESS: GoCardlessProvider,
+        PaymentProvider.ADYEN: AdyenProvider,
     }
 
     provider_class = providers.get(provider)

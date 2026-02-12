@@ -27,6 +27,8 @@ class PaymentProvider(str, Enum):
     STRIPE = "stripe"
     MANUAL = "manual"  # For manual/offline payments
     UCP = "ucp"  # Universal Commerce Protocol (https://ucp.dev)
+    GOCARDLESS = "gocardless"
+    ADYEN = "adyen"
 
 
 def generate_uuid() -> uuid.UUID:

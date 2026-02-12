@@ -25,5 +25,17 @@ class Settings(BaseSettings):
     ucp_webhook_secret: str = ""  # Secret for verifying UCP webhooks
     ucp_merchant_id: str = ""  # Merchant ID for UCP
 
+    # GoCardless settings
+    gocardless_access_token: str = ""
+    gocardless_webhook_secret: str = ""
+    gocardless_environment: str = "sandbox"  # "sandbox" or "live"
+
+    # Adyen settings
+    adyen_api_key: str = ""
+    adyen_merchant_account: str = ""
+    adyen_webhook_hmac_key: str = ""
+    adyen_environment: str = "test"  # "test" or "live"
+    adyen_live_url_prefix: str = ""
+
 
 settings = Settings()
