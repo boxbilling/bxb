@@ -3,7 +3,10 @@ from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.applied_tax import AppliedTax
 from app.models.billable_metric import AggregationType, BillableMetric
+from app.models.billable_metric_filter import BillableMetricFilter
 from app.models.charge import Charge, ChargeModel
+from app.models.charge_filter import ChargeFilter
+from app.models.charge_filter_value import ChargeFilterValue
 from app.models.coupon import Coupon, CouponExpiration, CouponFrequency, CouponStatus, CouponType
 from app.models.credit_note import (
     CreditNote,
@@ -42,7 +45,10 @@ __all__ = [
     "AppliedCouponStatus",
     "AppliedTax",
     "BillableMetric",
+    "BillableMetricFilter",
     "Charge",
+    "ChargeFilter",
+    "ChargeFilterValue",
     "ChargeModel",
     "Coupon",
     "CouponExpiration",
