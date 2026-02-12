@@ -30,6 +30,11 @@ class WalletUpdate(BaseModel):
     priority: int | None = Field(default=None, ge=1, le=50)
 
 
+class WalletTopUp(BaseModel):
+    credits: Decimal = Field(gt=0)
+    source: str = Field(default="manual", pattern="^(manual|interval|threshold)$")
+
+
 class WalletResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

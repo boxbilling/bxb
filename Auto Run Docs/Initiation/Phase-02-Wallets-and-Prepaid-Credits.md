@@ -53,7 +53,7 @@ This phase implements the wallet and prepaid credits system, one of Lago's most 
     - `get_customer_balance(customer_id)` — Total balance across all active wallets
     - `check_expired_wallets()` — Background job helper: find and terminate expired wallets
 
-- [ ] Create Wallet API routers:
+- [x] Create Wallet API routers:
   - `backend/app/routers/wallets.py`:
     - `POST /v1/wallets` — Create wallet for customer
     - `GET /v1/wallets` — List wallets (filter by customer_id, status)

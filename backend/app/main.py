@@ -13,6 +13,7 @@ from app.routers import (
     payments,
     plans,
     subscriptions,
+    wallets,
 )
 
 app = FastAPI(title="API", version="0.0.1")
@@ -37,6 +38,7 @@ app.include_router(events.router, prefix="/v1/events", tags=["events"])
 app.include_router(fees.router, prefix="/v1/fees", tags=["fees"])
 app.include_router(invoices.router, prefix="/v1/invoices", tags=["invoices"])
 app.include_router(payments.router, prefix="/v1/payments", tags=["payments"])
+app.include_router(wallets.router, prefix="/v1/wallets", tags=["wallets"])
 
 
 @app.get("/")
