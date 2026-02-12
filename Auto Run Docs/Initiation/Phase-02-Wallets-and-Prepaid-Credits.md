@@ -23,7 +23,7 @@ This phase implements the wallet and prepaid credits system, one of Lago's most 
   - `backend/app/repositories/wallet_repository.py` — WalletRepository: `create()`, `get_by_id()`, `get_by_customer_id()`, `get_active_by_customer_id()` (ordered by priority ASC, created_at ASC), `update()`, `terminate()`, `update_balance()`, `deduct_balance()`
   - Alembic migration for `wallets` table
 
-- [ ] Create the WalletTransaction model, migration, repository, and schema:
+- [x] Create the WalletTransaction model, migration, repository, and schema:
   - `backend/app/models/wallet_transaction.py` — WalletTransaction model:
     - `id` (UUIDType PK), `wallet_id` (FK to wallets, not null), `customer_id` (FK to customers, not null)
     - `transaction_type` (String: "inbound", "outbound")

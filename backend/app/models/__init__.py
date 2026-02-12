@@ -9,6 +9,13 @@ from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.wallet import Wallet, WalletStatus
+from app.models.wallet_transaction import (
+    TransactionSource,
+    TransactionStatus,
+    TransactionType,
+    TransactionTransactionStatus,
+    WalletTransaction,
+)
 
 __all__ = [
     "AggregationType",
@@ -32,4 +39,9 @@ __all__ = [
     "SubscriptionStatus",
     "Wallet",
     "WalletStatus",
+    "WalletTransaction",
+    "TransactionType",
+    "TransactionStatus",
+    "TransactionTransactionStatus",
+    "TransactionSource",
 ]
