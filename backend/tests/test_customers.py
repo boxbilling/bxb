@@ -99,8 +99,25 @@ class TestCustomerModel:
         assert customer.timezone == "UTC"
         assert customer.billing_metadata == {}
         assert customer.email is None
+        assert customer.invoice_grace_period == 0
+        assert customer.net_payment_term == 30
         assert customer.created_at is not None
         assert customer.updated_at is not None
+
+    def test_customer_grace_period_fields(self, db_session):
+        """Test Customer model with custom grace period fields."""
+        customer = Customer(
+            external_id="test-gp",
+            name="Grace Period Customer",
+            invoice_grace_period=5,
+            net_payment_term=45,
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        assert customer.invoice_grace_period == 5
+        assert customer.net_payment_term == 45
 
 
 class TestCustomerRepository:
@@ -155,6 +172,8 @@ class TestCustomersAPI:
         assert data["timezone"] == "UTC"
         assert data["email"] is None
         assert data["billing_metadata"] == {}
+        assert data["invoice_grace_period"] == 0
+        assert data["net_payment_term"] == 30
         assert "id" in data
         assert "created_at" in data
         assert "updated_at" in data
@@ -373,3 +392,97 @@ class TestCustomersAPI:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
+
+    def test_create_customer_with_grace_period(self, client: TestClient):
+        """Test creating a customer with custom grace period settings."""
+        response = client.post(
+            "/v1/customers/",
+            json={
+                "external_id": "gp-001",
+                "name": "Grace Period Corp",
+                "invoice_grace_period": 7,
+                "net_payment_term": 45,
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["invoice_grace_period"] == 7
+        assert data["net_payment_term"] == 45
+
+    def test_create_customer_grace_period_negative(self, client: TestClient):
+        """Test creating a customer with negative grace period is rejected."""
+        response = client.post(
+            "/v1/customers/",
+            json={
+                "external_id": "gp-neg",
+                "name": "Negative GP",
+                "invoice_grace_period": -1,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_create_customer_net_payment_term_negative(self, client: TestClient):
+        """Test creating a customer with negative net_payment_term is rejected."""
+        response = client.post(
+            "/v1/customers/",
+            json={
+                "external_id": "npt-neg",
+                "name": "Negative NPT",
+                "net_payment_term": -5,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_update_customer_grace_period(self, client: TestClient):
+        """Test updating customer grace period settings."""
+        create_response = client.post(
+            "/v1/customers/",
+            json={"external_id": "gp-upd", "name": "Update GP"},
+        )
+        customer_id = create_response.json()["id"]
+
+        response = client.put(
+            f"/v1/customers/{customer_id}",
+            json={"invoice_grace_period": 10, "net_payment_term": 60},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["invoice_grace_period"] == 10
+        assert data["net_payment_term"] == 60
+
+    def test_update_customer_grace_period_partial(self, client: TestClient):
+        """Test partial update of grace period (only one field)."""
+        create_response = client.post(
+            "/v1/customers/",
+            json={
+                "external_id": "gp-partial",
+                "name": "Partial GP",
+                "invoice_grace_period": 5,
+                "net_payment_term": 45,
+            },
+        )
+        customer_id = create_response.json()["id"]
+
+        # Only update net_payment_term
+        response = client.put(
+            f"/v1/customers/{customer_id}",
+            json={"net_payment_term": 90},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["invoice_grace_period"] == 5  # Unchanged
+        assert data["net_payment_term"] == 90  # Updated
+
+    def test_update_customer_grace_period_negative(self, client: TestClient):
+        """Test updating customer with negative grace period is rejected."""
+        create_response = client.post(
+            "/v1/customers/",
+            json={"external_id": "gp-upd-neg", "name": "Update Neg GP"},
+        )
+        customer_id = create_response.json()["id"]
+
+        response = client.put(
+            f"/v1/customers/{customer_id}",
+            json={"invoice_grace_period": -1},
+        )
+        assert response.status_code == 422

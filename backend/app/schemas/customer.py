@@ -12,6 +12,8 @@ class CustomerCreate(BaseModel):
     currency: str = Field(default="USD", min_length=3, max_length=3)
     timezone: str = Field(default="UTC", max_length=50)
     billing_metadata: dict[str, Any] = Field(default_factory=dict)
+    invoice_grace_period: int = Field(default=0, ge=0)
+    net_payment_term: int = Field(default=30, ge=0)
 
 
 class CustomerUpdate(BaseModel):
@@ -20,6 +22,8 @@ class CustomerUpdate(BaseModel):
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     timezone: str | None = Field(default=None, max_length=50)
     billing_metadata: dict[str, Any] | None = None
+    invoice_grace_period: int | None = Field(default=None, ge=0)
+    net_payment_term: int | None = Field(default=None, ge=0)
 
 
 class CustomerResponse(BaseModel):
@@ -30,6 +34,8 @@ class CustomerResponse(BaseModel):
     currency: str
     timezone: str
     billing_metadata: dict[str, Any]
+    invoice_grace_period: int
+    net_payment_term: int
     created_at: datetime
     updated_at: datetime
 

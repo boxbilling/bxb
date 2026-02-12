@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, Column, DateTime, String, TypeDecorator, func
+from sqlalchemy import JSON, Column, DateTime, Integer, String, TypeDecorator, func
 from sqlalchemy.engine import Dialect
 
 from app.core.database import Base
@@ -52,5 +52,7 @@ class Customer(Base):
     currency = Column(String(3), nullable=False, default="USD")
     timezone = Column(String(50), nullable=False, default="UTC")
     billing_metadata = Column(JSON, nullable=False, default=dict)
+    invoice_grace_period = Column(Integer, nullable=False, default=0)
+    net_payment_term = Column(Integer, nullable=False, default=30)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -24,6 +24,7 @@ class InvoiceCreate(BaseModel):
     billing_period_end: datetime
     currency: str = Field(default="USD", min_length=3, max_length=3)
     line_items: list[InvoiceLineItem] = Field(default_factory=list)
+    issued_at: datetime | None = None
     due_date: datetime | None = None
 
 

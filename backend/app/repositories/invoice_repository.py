@@ -82,6 +82,7 @@ class InvoiceRepository:
             tax_amount=Decimal(0),  # Tax calculation can be added later
             total=subtotal,  # Total = subtotal + tax
             line_items=line_items_json,
+            issued_at=data.issued_at,
             due_date=data.due_date,
         )
         self.db.add(invoice)

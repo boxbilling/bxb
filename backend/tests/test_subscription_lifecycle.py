@@ -1278,6 +1278,208 @@ class TestCancelSubscription:
         assert len(credit_notes) == 0
 
 
+class TestGracePeriodInvoiceDates:
+    def test_invoice_dates_default_grace_period(self, db_session):
+        """Test invoice dates with default grace period (0 days, 30 day term)."""
+        customer = _create_customer(db_session, "cust_gp_default")
+        plan = _create_plan(db_session, "plan_gp_default", 15000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_gp_default", pay_in_advance=True
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.activate_pending_subscription(sub.id)
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+        # Default: grace_period=0, net_payment_term=30
+        # issued_at = billing_period_end + 0 days
+        assert invoice.issued_at is not None
+        assert invoice.due_date is not None
+        # due_date should be 30 days after issued_at
+        diff = invoice.due_date - invoice.issued_at
+        assert diff.days == 30
+
+    def test_invoice_dates_custom_grace_period(self, db_session):
+        """Test invoice dates with custom grace period and payment term."""
+        customer = _create_customer(db_session, "cust_gp_custom")
+        customer.invoice_grace_period = 5
+        customer.net_payment_term = 45
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = _create_plan(db_session, "plan_gp_custom", 20000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_gp_custom", pay_in_advance=True
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.activate_pending_subscription(sub.id)
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+
+        # issued_at = billing_period_end + 5 days
+        issued_to_period_end = invoice.issued_at - invoice.billing_period_end
+        assert issued_to_period_end.days == 5
+
+        # due_date = issued_at + 45 days
+        due_to_issued = invoice.due_date - invoice.issued_at
+        assert due_to_issued.days == 45
+
+    def test_invoice_dates_zero_net_payment_term(self, db_session):
+        """Test invoice with zero net_payment_term (due immediately on issuance)."""
+        customer = _create_customer(db_session, "cust_gp_zero_npt")
+        customer.invoice_grace_period = 3
+        customer.net_payment_term = 0
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = _create_plan(db_session, "plan_gp_zero_npt", 10000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_gp_zero_npt", pay_in_advance=True
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.activate_pending_subscription(sub.id)
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+
+        # issued_at = billing_period_end + 3 days
+        issued_to_period_end = invoice.issued_at - invoice.billing_period_end
+        assert issued_to_period_end.days == 3
+
+        # due_date = issued_at + 0 days (same as issued_at)
+        assert invoice.due_date == invoice.issued_at
+
+    def test_termination_invoice_respects_grace_period(self, db_session):
+        """Test that termination invoices also respect grace period settings."""
+        customer = _create_customer(db_session, "cust_gp_term")
+        customer.invoice_grace_period = 7
+        customer.net_payment_term = 60
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = _create_plan(db_session, "plan_gp_term", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_gp_term"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_invoice")
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+
+        assert invoice.issued_at is not None
+        assert invoice.due_date is not None
+        # due_date = issued_at + 60 days
+        diff = invoice.due_date - invoice.issued_at
+        assert diff.days == 60
+
+    def test_cancel_invoice_respects_grace_period(self, db_session):
+        """Test that cancellation invoices respect grace period settings."""
+        customer = _create_customer(db_session, "cust_gp_cancel")
+        customer.invoice_grace_period = 10
+        customer.net_payment_term = 15
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = _create_plan(db_session, "plan_gp_cancel", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_gp_cancel"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "generate_invoice")
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+
+        assert invoice.issued_at is not None
+        assert invoice.due_date is not None
+        diff = invoice.due_date - invoice.issued_at
+        assert diff.days == 15
+
+    def test_trial_end_invoice_respects_grace_period(self, db_session):
+        """Test that trial end invoices respect grace period settings."""
+        customer = _create_customer(db_session, "cust_gp_trial")
+        customer.invoice_grace_period = 2
+        customer.net_payment_term = 14
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = _create_plan(db_session, "plan_gp_trial", 10000)
+        sub = _create_active_subscription(
+            db_session,
+            customer,
+            plan,
+            "sub_gp_trial",
+            pay_in_advance=True,
+            trial_period_days=14,
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.process_trial_end(sub.id)
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+
+        assert invoice.issued_at is not None
+        assert invoice.due_date is not None
+        diff = invoice.due_date - invoice.issued_at
+        assert diff.days == 14
+
+    def test_invoice_no_dates_when_customer_not_found(self, db_session):
+        """Test invoice created without dates when customer lookup fails."""
+        customer = _create_customer(db_session, "cust_gp_nocust")
+        plan = _create_plan(db_session, "plan_gp_nocust", 10000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_gp_nocust", pay_in_advance=True
+        )
+
+        # Point customer_id to a non-existent UUID
+        fake_cust_id = uuid.uuid4()
+        db_session.execute(
+            Subscription.__table__.update()
+            .where(Subscription.id == sub.id)
+            .values(customer_id=str(fake_cust_id))
+        )
+        db_session.commit()
+        db_session.expire(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        service.activate_pending_subscription(sub.id)
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        invoice = invoices[0]
+        # No customer found, so no grace period dates set
+        assert invoice.issued_at is None
+        assert invoice.due_date is None
+
+
 class TestWebhookEventTypes:
     def test_new_event_types_in_list(self):
         """Test that new subscription lifecycle events are in WEBHOOK_EVENT_TYPES."""

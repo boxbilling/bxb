@@ -1,6 +1,6 @@
 """Service for subscription lifecycle management: upgrades, downgrades, activation, and trials."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -11,6 +11,7 @@ from app.models.invoice import InvoiceStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.credit_note_repository import CreditNoteRepository
+from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
@@ -29,6 +30,7 @@ class SubscriptionLifecycleService:
         self.plan_repo = PlanRepository(db)
         self.invoice_repo = InvoiceRepository(db)
         self.credit_note_repo = CreditNoteRepository(db)
+        self.customer_repo = CustomerRepository(db)
         self.dates_service = SubscriptionDatesService()
         self.webhook_service = WebhookService(db)
 
@@ -543,13 +545,33 @@ class SubscriptionLifecycleService:
         amount_cents: int,
         description: str,
     ) -> None:
-        """Create an invoice for a subscription."""
+        """Create an invoice for a subscription.
+
+        Respects the customer's invoice_grace_period and net_payment_term:
+        - issued_at = billing_period_end + invoice_grace_period days
+        - due_date = issued_at + net_payment_term days
+        """
         line_item = InvoiceLineItem(
             description=description,
             quantity=Decimal("1"),
             unit_price=Decimal(str(amount_cents)),
             amount=Decimal(str(amount_cents)),
         )
+
+        # Look up customer grace period settings
+        customer = self.customer_repo.get_by_id(UUID(str(subscription.customer_id)))
+        issued_at: datetime | None = None
+        due_date: datetime | None = None
+        if customer:
+            grace_period = int(customer.invoice_grace_period or 0)
+            net_payment_term = int(
+                customer.net_payment_term
+                if customer.net_payment_term is not None
+                else 30
+            )
+            issued_at = period_end + timedelta(days=grace_period)
+            due_date = issued_at + timedelta(days=net_payment_term)
+
         invoice_data = InvoiceCreate(
             customer_id=UUID(str(subscription.customer_id)),
             subscription_id=UUID(str(subscription.id)),
@@ -557,6 +579,8 @@ class SubscriptionLifecycleService:
             billing_period_end=period_end,
             currency=str(plan.currency),
             line_items=[line_item],
+            issued_at=issued_at,
+            due_date=due_date,
         )
         self.invoice_repo.create(invoice_data)
 
