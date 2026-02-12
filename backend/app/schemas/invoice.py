@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.invoice import InvoiceStatus
+from app.models.invoice import InvoiceStatus, InvoiceType
 
 
 class InvoiceLineItem(BaseModel):
@@ -22,6 +22,7 @@ class InvoiceCreate(BaseModel):
     subscription_id: UUID | None = None
     billing_period_start: datetime
     billing_period_end: datetime
+    invoice_type: InvoiceType = InvoiceType.SUBSCRIPTION
     currency: str = Field(default="USD", min_length=3, max_length=3)
     line_items: list[InvoiceLineItem] = Field(default_factory=list)
     issued_at: datetime | None = None
@@ -41,6 +42,7 @@ class InvoiceResponse(BaseModel):
     customer_id: UUID
     subscription_id: UUID | None
     status: str
+    invoice_type: str
     billing_period_start: datetime
     billing_period_end: datetime
     subtotal: Decimal
@@ -48,6 +50,7 @@ class InvoiceResponse(BaseModel):
     total: Decimal
     prepaid_credit_amount: Decimal
     coupons_amount_cents: Decimal
+    progressive_billing_credit_amount_cents: Decimal
     currency: str
     line_items: list[dict[str, Any]]
     due_date: datetime | None

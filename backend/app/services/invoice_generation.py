@@ -179,6 +179,23 @@ class InvoiceGenerationService:
             self.tax_service.apply_taxes_to_invoice(invoice_uuid)
             self.db.refresh(invoice)
 
+        # Subtract progressive billing credits for end-of-period invoices
+        from app.services.progressive_billing_service import ProgressiveBillingService
+
+        progressive_service = ProgressiveBillingService(self.db)
+        progressive_credit = progressive_service.calculate_progressive_billing_credit(
+            subscription_id=subscription_id,
+            billing_period_start=billing_period_start,
+            billing_period_end=billing_period_end,
+        )
+        if progressive_credit > 0:
+            current_total = Decimal(str(invoice.total))
+            invoice.progressive_billing_credit_amount_cents = progressive_credit  # type: ignore[assignment]
+            adjusted = current_total - progressive_credit
+            invoice.total = adjusted if adjusted > 0 else Decimal("0")  # type: ignore[assignment]
+            self.db.commit()
+            self.db.refresh(invoice)
+
         return invoice
 
     def _generate_commitment_true_up_fees(

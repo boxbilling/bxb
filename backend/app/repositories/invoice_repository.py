@@ -5,7 +5,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.invoice import Invoice, InvoiceStatus
+from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 
 
@@ -84,6 +84,7 @@ class InvoiceRepository:
             "subscription_id": data.subscription_id,
             "billing_period_start": data.billing_period_start,
             "billing_period_end": data.billing_period_end,
+            "invoice_type": data.invoice_type.value,
             "currency": data.currency,
             "subtotal": subtotal,
             "tax_amount": Decimal(0),
@@ -161,6 +162,26 @@ class InvoiceRepository:
         self.db.commit()
         self.db.refresh(invoice)
         return invoice
+
+    def get_progressive_billing_invoices(
+        self,
+        subscription_id: UUID,
+        billing_period_start: datetime,
+        billing_period_end: datetime,
+    ) -> list[Invoice]:
+        """Get all progressive billing invoices for a subscription in a billing period."""
+        return (
+            self.db.query(Invoice)
+            .filter(
+                Invoice.subscription_id == subscription_id,
+                Invoice.invoice_type == InvoiceType.PROGRESSIVE_BILLING.value,
+                Invoice.billing_period_start == billing_period_start,
+                Invoice.billing_period_end == billing_period_end,
+                Invoice.status != InvoiceStatus.VOIDED.value,
+            )
+            .order_by(Invoice.created_at.asc())
+            .all()
+        )
 
     def delete(self, invoice_id: UUID, organization_id: UUID | None = None) -> bool:
         """Delete a draft invoice."""
