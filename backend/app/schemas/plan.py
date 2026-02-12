@@ -8,12 +8,22 @@ from app.models.charge import ChargeModel
 from app.models.plan import PlanInterval
 
 
+class ChargeFilterInput(BaseModel):
+    """Filter configuration for a charge within a plan."""
+
+    billable_metric_filter_id: UUID
+    values: list[str] = Field(default_factory=list)
+    properties: dict[str, Any] = Field(default_factory=dict)
+    invoice_display_name: str | None = Field(default=None, max_length=255)
+
+
 class ChargeInput(BaseModel):
     """Charge input when creating/updating a plan."""
 
     billable_metric_id: UUID
     charge_model: ChargeModel
     properties: dict[str, Any] = Field(default_factory=dict)
+    filters: list[ChargeFilterInput] = Field(default_factory=list)
 
 
 class ChargeOutput(BaseModel):

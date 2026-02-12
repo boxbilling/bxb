@@ -5,11 +5,37 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.repositories.billable_metric_filter_repository import BillableMetricFilterRepository
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.plan_repository import PlanRepository
-from app.schemas.plan import PlanCreate, PlanResponse, PlanUpdate
+from app.schemas.plan import ChargeInput, PlanCreate, PlanResponse, PlanUpdate
 
 router = APIRouter()
+
+
+def _validate_charge_filters(
+    charges: list[ChargeInput],
+    filter_repo: BillableMetricFilterRepository,
+) -> None:
+    """Validate that all billable_metric_filter_ids in charge filters exist."""
+    for charge in charges:
+        for filter_input in charge.filters:
+            bmf = filter_repo.get_by_id(filter_input.billable_metric_filter_id)
+            if not bmf:
+                fid = filter_input.billable_metric_filter_id
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Billable metric filter {fid} not found",
+                )
+            for value in filter_input.values:
+                if bmf.values and value not in bmf.values:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Value '{value}' is not allowed for filter '{bmf.key}'. "
+                            f"Allowed values: {bmf.values}"
+                        ),
+                    )
 
 
 def _plan_to_response(repo: PlanRepository, plan: Any) -> dict[str, Any]:
@@ -73,6 +99,10 @@ async def create_plan(
                 status_code=400, detail=f"Billable metric {charge.billable_metric_id} not found"
             )
 
+    # Validate all billable_metric_filter_ids in charge filters
+    filter_repo = BillableMetricFilterRepository(db)
+    _validate_charge_filters(data.charges, filter_repo)
+
     plan = repo.create(data)
     return _plan_to_response(repo, plan)
 
@@ -94,6 +124,10 @@ async def update_plan(
                 raise HTTPException(
                     status_code=400, detail=f"Billable metric {charge.billable_metric_id} not found"
                 )
+
+        # Validate all billable_metric_filter_ids in charge filters
+        filter_repo = BillableMetricFilterRepository(db)
+        _validate_charge_filters(data.charges, filter_repo)
 
     plan = repo.update(plan_id, data)
     if not plan:

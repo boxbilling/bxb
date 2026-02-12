@@ -3,8 +3,10 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.charge import Charge
+from app.models.charge_filter import ChargeFilter
+from app.models.charge_filter_value import ChargeFilterValue
 from app.models.plan import Plan
-from app.schemas.plan import PlanCreate, PlanUpdate
+from app.schemas.plan import ChargeInput, PlanCreate, PlanUpdate
 
 
 class PlanRepository:
@@ -23,6 +25,41 @@ class PlanRepository:
     def get_charges(self, plan_id: UUID) -> list[Charge]:
         return self.db.query(Charge).filter(Charge.plan_id == plan_id).all()
 
+    def _create_charge_with_filters(self, plan_id: UUID, charge_data: ChargeInput) -> Charge:
+        """Create a charge and its associated filters.
+
+        Each filter input creates one ChargeFilter per value, since the
+        unique constraint on ChargeFilterValue only allows one value per
+        (charge_filter_id, billable_metric_filter_id) combination.
+        """
+        charge = Charge(
+            plan_id=plan_id,
+            billable_metric_id=charge_data.billable_metric_id,
+            charge_model=charge_data.charge_model.value,
+            properties=charge_data.properties,
+        )
+        self.db.add(charge)
+        self.db.flush()
+
+        for filter_input in charge_data.filters:
+            for value in filter_input.values:
+                charge_filter = ChargeFilter(
+                    charge_id=charge.id,
+                    properties=filter_input.properties,
+                    invoice_display_name=filter_input.invoice_display_name,
+                )
+                self.db.add(charge_filter)
+                self.db.flush()
+
+                cfv = ChargeFilterValue(
+                    charge_filter_id=charge_filter.id,
+                    billable_metric_filter_id=filter_input.billable_metric_filter_id,
+                    value=value,
+                )
+                self.db.add(cfv)
+
+        return charge
+
     def create(self, data: PlanCreate) -> Plan:
         plan = Plan(
             code=data.code,
@@ -36,15 +73,9 @@ class PlanRepository:
         self.db.add(plan)
         self.db.flush()  # Get the plan ID
 
-        # Create charges
+        # Create charges with filters
         for charge_data in data.charges:
-            charge = Charge(
-                plan_id=plan.id,
-                billable_metric_id=charge_data.billable_metric_id,
-                charge_model=charge_data.charge_model.value,
-                properties=charge_data.properties,
-            )
-            self.db.add(charge)
+            self._create_charge_with_filters(plan.id, charge_data)  # type: ignore[arg-type]
 
         self.db.commit()
         self.db.refresh(plan)
@@ -62,18 +93,25 @@ class PlanRepository:
 
         # Handle charges if provided
         if data.charges is not None:
+            # Delete existing charge filters and values first
+            existing_charges = self.db.query(Charge).filter(Charge.plan_id == plan_id).all()
+            for existing_charge in existing_charges:
+                existing_filters = (
+                    self.db.query(ChargeFilter)
+                    .filter(ChargeFilter.charge_id == existing_charge.id)
+                    .all()
+                )
+                for ef in existing_filters:
+                    self.db.query(ChargeFilterValue).filter(
+                        ChargeFilterValue.charge_filter_id == ef.id
+                    ).delete()
+                    self.db.delete(ef)
             # Delete existing charges
             self.db.query(Charge).filter(Charge.plan_id == plan_id).delete()
 
-            # Create new charges
+            # Create new charges with filters
             for charge_data in data.charges:
-                charge = Charge(
-                    plan_id=plan_id,
-                    billable_metric_id=charge_data.billable_metric_id,
-                    charge_model=charge_data.charge_model.value,
-                    properties=charge_data.properties,
-                )
-                self.db.add(charge)
+                self._create_charge_with_filters(plan_id, charge_data)
 
         self.db.commit()
         self.db.refresh(plan)
