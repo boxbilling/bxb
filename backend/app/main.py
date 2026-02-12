@@ -9,11 +9,13 @@ from app.routers import (
     credit_notes,
     customers,
     dashboard,
+    dunning_campaigns,
     events,
     fees,
     invoices,
     items,
     organizations,
+    payment_requests,
     payments,
     plans,
     subscriptions,
@@ -58,6 +60,16 @@ app.include_router(
     organizations.router,
     prefix="/v1/organizations",
     tags=["organizations"],
+)
+app.include_router(
+    dunning_campaigns.router,
+    prefix="/v1/dunning_campaigns",
+    tags=["dunning_campaigns"],
+)
+app.include_router(
+    payment_requests.router,
+    prefix="/v1/payment_requests",
+    tags=["payment_requests"],
 )
 
 
