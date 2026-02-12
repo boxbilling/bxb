@@ -1,0 +1,136 @@
+"""Webhook Endpoint and Webhook API endpoints."""
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.webhook import Webhook
+from app.models.webhook_endpoint import WebhookEndpoint
+from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
+from app.repositories.webhook_repository import WebhookRepository
+from app.schemas.webhook import (
+    WebhookEndpointCreate,
+    WebhookEndpointResponse,
+    WebhookEndpointUpdate,
+    WebhookResponse,
+)
+from app.services.webhook_service import WebhookService
+
+router = APIRouter()
+
+
+@router.post("/", response_model=WebhookEndpointResponse, status_code=201)
+async def create_webhook_endpoint(
+    data: WebhookEndpointCreate,
+    db: Session = Depends(get_db),
+) -> WebhookEndpoint:
+    """Create a new webhook endpoint."""
+    repo = WebhookEndpointRepository(db)
+    return repo.create(data)
+
+
+@router.get("/", response_model=list[WebhookEndpointResponse])
+async def list_webhook_endpoints(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+) -> list[WebhookEndpoint]:
+    """List all webhook endpoints."""
+    repo = WebhookEndpointRepository(db)
+    return repo.get_all(skip=skip, limit=limit)
+
+
+@router.get("/{endpoint_id}", response_model=WebhookEndpointResponse)
+async def get_webhook_endpoint(
+    endpoint_id: UUID,
+    db: Session = Depends(get_db),
+) -> WebhookEndpoint:
+    """Get a webhook endpoint by ID."""
+    repo = WebhookEndpointRepository(db)
+    endpoint = repo.get_by_id(endpoint_id)
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Webhook endpoint not found")
+    return endpoint
+
+
+@router.put("/{endpoint_id}", response_model=WebhookEndpointResponse)
+async def update_webhook_endpoint(
+    endpoint_id: UUID,
+    data: WebhookEndpointUpdate,
+    db: Session = Depends(get_db),
+) -> WebhookEndpoint:
+    """Update a webhook endpoint."""
+    repo = WebhookEndpointRepository(db)
+    endpoint = repo.update(endpoint_id, data)
+    if not endpoint:
+        raise HTTPException(status_code=404, detail="Webhook endpoint not found")
+    return endpoint
+
+
+@router.delete("/{endpoint_id}", status_code=204)
+async def delete_webhook_endpoint(
+    endpoint_id: UUID,
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete a webhook endpoint."""
+    repo = WebhookEndpointRepository(db)
+    if not repo.delete(endpoint_id):
+        raise HTTPException(status_code=404, detail="Webhook endpoint not found")
+
+
+@router.get("/hooks/list", response_model=list[WebhookResponse])
+async def list_webhooks(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    webhook_type: str | None = None,
+    status: str | None = None,
+    db: Session = Depends(get_db),
+) -> list[Webhook]:
+    """List recent webhooks with optional filters."""
+    repo = WebhookRepository(db)
+    return repo.get_all(
+        skip=skip,
+        limit=limit,
+        webhook_type=webhook_type,
+        status=status,
+    )
+
+
+@router.get("/hooks/{webhook_id}", response_model=WebhookResponse)
+async def get_webhook(
+    webhook_id: UUID,
+    db: Session = Depends(get_db),
+) -> Webhook:
+    """Get webhook details."""
+    repo = WebhookRepository(db)
+    webhook = repo.get_by_id(webhook_id)
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    return webhook
+
+
+@router.post("/hooks/{webhook_id}/retry", response_model=WebhookResponse)
+async def retry_webhook(
+    webhook_id: UUID,
+    db: Session = Depends(get_db),
+) -> Webhook:
+    """Manually retry a failed webhook."""
+    repo = WebhookRepository(db)
+    webhook = repo.get_by_id(webhook_id)
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+
+    if webhook.status != "failed":
+        raise HTTPException(status_code=400, detail="Only failed webhooks can be retried")
+
+    service = WebhookService(db)
+    repo.increment_retry(webhook_id)
+    service.deliver_webhook(webhook_id)
+
+    # Re-fetch to return updated state
+    updated = repo.get_by_id(webhook_id)
+    if not updated:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    return updated

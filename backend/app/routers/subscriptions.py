@@ -9,6 +9,7 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.services.webhook_service import WebhookService
 
 router = APIRouter()
 
@@ -64,7 +65,17 @@ async def create_subscription(
     if not plan_repo.get_by_id(data.plan_id):
         raise HTTPException(status_code=400, detail=f"Plan {data.plan_id} not found")
 
-    return repo.create(data)
+    subscription = repo.create(data)
+
+    webhook_service = WebhookService(db)
+    webhook_service.send_webhook(
+        webhook_type="subscription.created",
+        object_type="subscription",
+        object_id=subscription.id,  # type: ignore[arg-type]
+        payload={"subscription_id": str(subscription.id)},
+    )
+
+    return subscription
 
 
 @router.put("/{subscription_id}", response_model=SubscriptionResponse)
@@ -92,6 +103,14 @@ async def terminate_subscription(
     if not subscription:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
+    webhook_service = WebhookService(db)
+    webhook_service.send_webhook(
+        webhook_type="subscription.terminated",
+        object_type="subscription",
+        object_id=subscription_id,
+        payload={"subscription_id": str(subscription_id)},
+    )
+
 
 @router.post("/{subscription_id}/cancel", response_model=SubscriptionResponse)
 async def cancel_subscription(
@@ -103,4 +122,13 @@ async def cancel_subscription(
     subscription = repo.cancel(subscription_id)
     if not subscription:
         raise HTTPException(status_code=404, detail="Subscription not found")
+
+    webhook_service = WebhookService(db)
+    webhook_service.send_webhook(
+        webhook_type="subscription.canceled",
+        object_type="subscription",
+        object_id=subscription_id,
+        payload={"subscription_id": str(subscription_id)},
+    )
+
     return subscription

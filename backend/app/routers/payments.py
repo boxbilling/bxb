@@ -17,6 +17,7 @@ from app.schemas.payment import (
     PaymentResponse,
 )
 from app.services.payment_provider import get_payment_provider
+from app.services.webhook_service import WebhookService
 
 router = APIRouter()
 
@@ -213,6 +214,7 @@ async def handle_webhook(
         )
 
     # Update payment status
+    webhook_service = WebhookService(db)
     if result.status == "succeeded":
         payment_repo.mark_succeeded(payment.id)  # type: ignore[arg-type]
 
@@ -220,8 +222,22 @@ async def handle_webhook(
         invoice_repo = InvoiceRepository(db)
         invoice_repo.mark_paid(payment.invoice_id)  # type: ignore[arg-type]
 
+        webhook_service.send_webhook(
+            webhook_type="payment.succeeded",
+            object_type="payment",
+            object_id=payment.id,  # type: ignore[arg-type]
+            payload={"payment_id": str(payment.id)},
+        )
+
     elif result.status == "failed":
         payment_repo.mark_failed(payment.id, result.failure_reason)  # type: ignore[arg-type]
+
+        webhook_service.send_webhook(
+            webhook_type="payment.failed",
+            object_type="payment",
+            object_id=payment.id,  # type: ignore[arg-type]
+            payload={"payment_id": str(payment.id)},
+        )
 
     elif result.status == "canceled":
         payment_repo.mark_canceled(payment.id)  # type: ignore[arg-type]
@@ -255,6 +271,14 @@ async def mark_payment_paid(
     # Also mark the invoice as paid
     invoice_repo = InvoiceRepository(db)
     invoice_repo.mark_paid(payment.invoice_id)  # type: ignore[arg-type]
+
+    webhook_service = WebhookService(db)
+    webhook_service.send_webhook(
+        webhook_type="payment.succeeded",
+        object_type="payment",
+        object_id=payment_id,
+        payload={"payment_id": str(payment_id)},
+    )
 
     return updated_payment
 

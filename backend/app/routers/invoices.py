@@ -9,6 +9,7 @@ from app.models.invoice import Invoice, InvoiceStatus
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
 from app.services.wallet_service import WalletService
+from app.services.webhook_service import WebhookService
 
 router = APIRouter()
 
@@ -95,6 +96,14 @@ async def finalize_invoice(
                 db.commit()
                 db.refresh(invoice)
 
+        webhook_service = WebhookService(db)
+        webhook_service.send_webhook(
+            webhook_type="invoice.finalized",
+            object_type="invoice",
+            object_id=invoice.id,  # type: ignore[arg-type]
+            payload={"invoice_id": str(invoice.id)},
+        )
+
         return invoice
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
@@ -111,6 +120,15 @@ async def mark_invoice_paid(
         invoice = repo.mark_paid(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
+
+        webhook_service = WebhookService(db)
+        webhook_service.send_webhook(
+            webhook_type="invoice.paid",
+            object_type="invoice",
+            object_id=invoice.id,  # type: ignore[arg-type]
+            payload={"invoice_id": str(invoice.id)},
+        )
+
         return invoice
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
@@ -127,6 +145,15 @@ async def void_invoice(
         invoice = repo.void(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
+
+        webhook_service = WebhookService(db)
+        webhook_service.send_webhook(
+            webhook_type="invoice.voided",
+            object_type="invoice",
+            object_id=invoice.id,  # type: ignore[arg-type]
+            payload={"invoice_id": str(invoice.id)},
+        )
+
         return invoice
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None

@@ -18,6 +18,7 @@ from app.routers import (
     subscriptions,
     taxes,
     wallets,
+    webhook_endpoints,
 )
 
 app = FastAPI(title="API", version="0.0.1")
@@ -47,6 +48,11 @@ app.include_router(coupons.router, prefix="/v1/coupons", tags=["coupons"])
 app.include_router(add_ons.router, prefix="/v1/add_ons", tags=["add_ons"])
 app.include_router(credit_notes.router, prefix="/v1/credit_notes", tags=["credit_notes"])
 app.include_router(taxes.router, prefix="/v1/taxes", tags=["taxes"])
+app.include_router(
+    webhook_endpoints.router,
+    prefix="/v1/webhook_endpoints",
+    tags=["webhook_endpoints"],
+)
 
 
 @app.get("/")
