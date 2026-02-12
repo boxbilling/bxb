@@ -38,6 +38,17 @@ from app.schemas.dunning_campaign import (
     DunningCampaignUpdate,
 )
 from app.schemas.fee import FeeCreate, FeeResponse, FeeUpdate
+from app.schemas.integration import IntegrationCreate, IntegrationResponse, IntegrationUpdate
+from app.schemas.integration_customer import (
+    IntegrationCustomerCreate,
+    IntegrationCustomerResponse,
+    IntegrationCustomerUpdate,
+)
+from app.schemas.integration_mapping import (
+    IntegrationMappingCreate,
+    IntegrationMappingResponse,
+    IntegrationMappingUpdate,
+)
 from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
 from app.schemas.message import Message
 from app.schemas.payment_request import (
@@ -107,6 +118,15 @@ __all__ = [
     "FeeCreate",
     "FeeResponse",
     "FeeUpdate",
+    "IntegrationCreate",
+    "IntegrationCustomerCreate",
+    "IntegrationCustomerResponse",
+    "IntegrationCustomerUpdate",
+    "IntegrationMappingCreate",
+    "IntegrationMappingResponse",
+    "IntegrationMappingUpdate",
+    "IntegrationResponse",
+    "IntegrationUpdate",
     "ItemCreate",
     "ItemResponse",
     "ItemUpdate",

@@ -25,6 +25,14 @@ from app.models.dunning_campaign import DunningCampaign
 from app.models.dunning_campaign_threshold import DunningCampaignThreshold
 from app.models.event import Event
 from app.models.fee import Fee, FeePaymentStatus, FeeType
+from app.models.integration import (
+    Integration,
+    IntegrationProviderType,
+    IntegrationStatus,
+    IntegrationType,
+)
+from app.models.integration_customer import IntegrationCustomer
+from app.models.integration_mapping import IntegrationMapping
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.item import Item
 from app.models.organization import Organization
@@ -80,6 +88,12 @@ __all__ = [
     "Fee",
     "FeePaymentStatus",
     "FeeType",
+    "Integration",
+    "IntegrationCustomer",
+    "IntegrationMapping",
+    "IntegrationProviderType",
+    "IntegrationStatus",
+    "IntegrationType",
     "Invoice",
     "InvoiceStatus",
     "Item",

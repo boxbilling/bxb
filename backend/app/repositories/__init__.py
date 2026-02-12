@@ -12,6 +12,9 @@ from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.repositories.fee_repository import FeeRepository
+from app.repositories.integration_customer_repository import IntegrationCustomerRepository
+from app.repositories.integration_mapping_repository import IntegrationMappingRepository
+from app.repositories.integration_repository import IntegrationRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.payment_request_repository import PaymentRequestRepository
@@ -38,6 +41,9 @@ __all__ = [
     "CustomerRepository",
     "DunningCampaignRepository",
     "FeeRepository",
+    "IntegrationCustomerRepository",
+    "IntegrationMappingRepository",
+    "IntegrationRepository",
     "ItemRepository",
     "PaymentRepository",
     "PaymentRequestRepository",
