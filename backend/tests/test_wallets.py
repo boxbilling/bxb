@@ -194,9 +194,15 @@ class TestWalletRepository:
         """Test getting wallets by customer ID, ordered by priority then created_at."""
         repo = WalletRepository(db_session)
         # Create wallets with different priorities
-        w1 = repo.create(WalletCreate(customer_id=customer.id, name="Priority 3", code="w3", priority=3))
-        w2 = repo.create(WalletCreate(customer_id=customer.id, name="Priority 1", code="w1", priority=1))
-        w3 = repo.create(WalletCreate(customer_id=customer.id, name="Priority 2", code="w2", priority=2))
+        w1 = repo.create(
+            WalletCreate(customer_id=customer.id, name="Priority 3", code="w3", priority=3)
+        )
+        w2 = repo.create(
+            WalletCreate(customer_id=customer.id, name="Priority 1", code="w1", priority=1)
+        )
+        w3 = repo.create(
+            WalletCreate(customer_id=customer.id, name="Priority 2", code="w2", priority=2)
+        )
 
         wallets = repo.get_by_customer_id(customer.id)
         assert len(wallets) == 3
@@ -208,26 +214,34 @@ class TestWalletRepository:
         """Test getting only active, non-expired wallets."""
         repo = WalletRepository(db_session)
         # Active wallet
-        active = repo.create(WalletCreate(customer_id=customer.id, name="Active", code="active", priority=1))
+        active = repo.create(
+            WalletCreate(customer_id=customer.id, name="Active", code="active", priority=1)
+        )
         # Terminated wallet
-        terminated = repo.create(WalletCreate(customer_id=customer.id, name="Terminated", code="terminated", priority=2))
+        terminated = repo.create(
+            WalletCreate(customer_id=customer.id, name="Terminated", code="terminated", priority=2)
+        )
         repo.terminate(terminated.id)
         # Expired wallet
-        expired = repo.create(WalletCreate(
-            customer_id=customer.id,
-            name="Expired",
-            code="expired",
-            priority=3,
-            expiration_at=datetime.now(UTC) - timedelta(days=1),
-        ))
+        expired = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Expired",
+                code="expired",
+                priority=3,
+                expiration_at=datetime.now(UTC) - timedelta(days=1),
+            )
+        )
         # Future expiry wallet (still valid)
-        future = repo.create(WalletCreate(
-            customer_id=customer.id,
-            name="Future",
-            code="future",
-            priority=4,
-            expiration_at=datetime.now(UTC) + timedelta(days=30),
-        ))
+        future = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Future",
+                code="future",
+                priority=4,
+                expiration_at=datetime.now(UTC) + timedelta(days=30),
+            )
+        )
 
         wallets = repo.get_active_by_customer_id(customer.id)
         wallet_ids = [w.id for w in wallets]
@@ -240,8 +254,12 @@ class TestWalletRepository:
     def test_get_active_by_customer_id_priority_ordering(self, db_session, customer):
         """Test that active wallets are returned ordered by priority ASC, created_at ASC."""
         repo = WalletRepository(db_session)
-        w_high = repo.create(WalletCreate(customer_id=customer.id, name="High", code="high", priority=10))
-        w_low = repo.create(WalletCreate(customer_id=customer.id, name="Low", code="low", priority=1))
+        w_high = repo.create(
+            WalletCreate(customer_id=customer.id, name="High", code="high", priority=10)
+        )
+        w_low = repo.create(
+            WalletCreate(customer_id=customer.id, name="Low", code="low", priority=1)
+        )
 
         wallets = repo.get_active_by_customer_id(customer.id)
         assert wallets[0].id == w_low.id
@@ -526,14 +544,17 @@ class TestWalletAPI:
 
     def test_create_wallet(self, client, db_session, customer):
         """Test POST /v1/wallets/ creates a wallet."""
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "name": "API Wallet",
-            "code": "api-wallet",
-            "rate_amount": "2.5",
-            "currency": "EUR",
-            "priority": 5,
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "name": "API Wallet",
+                "code": "api-wallet",
+                "rate_amount": "2.5",
+                "currency": "EUR",
+                "priority": 5,
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["name"] == "API Wallet"
@@ -547,13 +568,16 @@ class TestWalletAPI:
 
     def test_create_wallet_with_initial_credits(self, client, db_session, customer):
         """Test POST /v1/wallets/ with initial granted credits."""
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "name": "Funded Wallet",
-            "code": "funded-api",
-            "rate_amount": "100",
-            "initial_granted_credits": "50",
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "name": "Funded Wallet",
+                "code": "funded-api",
+                "rate_amount": "100",
+                "initial_granted_credits": "50",
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert Decimal(data["credits_balance"]) == Decimal("50.0000")
@@ -561,9 +585,12 @@ class TestWalletAPI:
 
     def test_create_wallet_minimal(self, client, db_session, customer):
         """Test POST /v1/wallets/ with only required fields."""
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["name"] is None
@@ -574,32 +601,44 @@ class TestWalletAPI:
 
     def test_create_wallet_invalid_priority(self, client, db_session, customer):
         """Test POST /v1/wallets/ with invalid priority."""
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "priority": 0,
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "priority": 0,
+            },
+        )
         assert response.status_code == 422
 
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "priority": 51,
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "priority": 51,
+            },
+        )
         assert response.status_code == 422
 
     def test_create_wallet_duplicate_code(self, client, db_session, customer):
         """Test POST /v1/wallets/ returns 400 for duplicate code on same customer."""
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "name": "First",
-            "code": "dup-code",
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "name": "First",
+                "code": "dup-code",
+            },
+        )
         assert response.status_code == 201
 
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "name": "Second",
-            "code": "dup-code",
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "name": "Second",
+                "code": "dup-code",
+            },
+        )
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
@@ -678,10 +717,13 @@ class TestWalletAPI:
 
     def test_update_wallet(self, client, db_session, wallet):
         """Test PUT /v1/wallets/{id} updates wallet."""
-        response = client.put(f"/v1/wallets/{wallet.id}", json={
-            "name": "Updated Name",
-            "priority": 10,
-        })
+        response = client.put(
+            f"/v1/wallets/{wallet.id}",
+            json={
+                "name": "Updated Name",
+                "priority": 10,
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Updated Name"
@@ -689,9 +731,12 @@ class TestWalletAPI:
 
     def test_update_wallet_partial(self, client, db_session, wallet):
         """Test PUT /v1/wallets/{id} with partial update."""
-        response = client.put(f"/v1/wallets/{wallet.id}", json={
-            "name": "Only Name",
-        })
+        response = client.put(
+            f"/v1/wallets/{wallet.id}",
+            json={
+                "name": "Only Name",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["name"] == "Only Name"
@@ -699,9 +744,12 @@ class TestWalletAPI:
 
     def test_update_wallet_not_found(self, client):
         """Test PUT /v1/wallets/{id} returns 404."""
-        response = client.put(f"/v1/wallets/{uuid4()}", json={
-            "name": "Nope",
-        })
+        response = client.put(
+            f"/v1/wallets/{uuid4()}",
+            json={
+                "name": "Nope",
+            },
+        )
         assert response.status_code == 404
 
     def test_terminate_wallet(self, client, db_session, wallet):
@@ -727,9 +775,12 @@ class TestWalletAPI:
 
     def test_top_up_wallet(self, client, db_session, wallet):
         """Test POST /v1/wallets/{id}/top_up adds credits."""
-        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
-            "credits": "50",
-        })
+        response = client.post(
+            f"/v1/wallets/{wallet.id}/top_up",
+            json={
+                "credits": "50",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert Decimal(data["credits_balance"]) == Decimal("50.0000")
@@ -737,44 +788,60 @@ class TestWalletAPI:
 
     def test_top_up_wallet_with_source(self, client, db_session, wallet):
         """Test POST /v1/wallets/{id}/top_up with specific source."""
-        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
-            "credits": "25",
-            "source": "interval",
-        })
+        response = client.post(
+            f"/v1/wallets/{wallet.id}/top_up",
+            json={
+                "credits": "25",
+                "source": "interval",
+            },
+        )
         assert response.status_code == 200
         assert Decimal(response.json()["credits_balance"]) == Decimal("25.0000")
 
     def test_top_up_wallet_not_found(self, client):
         """Test POST /v1/wallets/{id}/top_up returns 400 for non-existent wallet."""
-        response = client.post(f"/v1/wallets/{uuid4()}/top_up", json={
-            "credits": "50",
-        })
+        response = client.post(
+            f"/v1/wallets/{uuid4()}/top_up",
+            json={
+                "credits": "50",
+            },
+        )
         assert response.status_code == 400
 
     def test_top_up_terminated_wallet(self, client, db_session, wallet):
         """Test POST /v1/wallets/{id}/top_up returns 400 for terminated wallet."""
         client.delete(f"/v1/wallets/{wallet.id}")
-        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
-            "credits": "50",
-        })
+        response = client.post(
+            f"/v1/wallets/{wallet.id}/top_up",
+            json={
+                "credits": "50",
+            },
+        )
         assert response.status_code == 400
 
     def test_top_up_invalid_credits(self, client, db_session, wallet):
         """Test POST /v1/wallets/{id}/top_up rejects zero/negative credits."""
-        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
-            "credits": "0",
-        })
+        response = client.post(
+            f"/v1/wallets/{wallet.id}/top_up",
+            json={
+                "credits": "0",
+            },
+        )
         assert response.status_code == 422
 
-        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
-            "credits": "-10",
-        })
+        response = client.post(
+            f"/v1/wallets/{wallet.id}/top_up",
+            json={
+                "credits": "-10",
+            },
+        )
         assert response.status_code == 422
 
     def test_list_wallet_transactions(self, client, db_session, customer, wallet):
         """Test GET /v1/wallets/{id}/transactions lists transactions."""
         # Top up to generate a transaction
         from app.services.wallet_service import WalletService
+
         service = WalletService(db_session)
         service.top_up_wallet(wallet.id, Decimal("100"))
 
@@ -799,6 +866,7 @@ class TestWalletAPI:
     def test_list_wallet_transactions_pagination(self, client, db_session, customer, wallet):
         """Test GET /v1/wallets/{id}/transactions with pagination."""
         from app.services.wallet_service import WalletService
+
         service = WalletService(db_session)
         for _ in range(5):
             service.top_up_wallet(wallet.id, Decimal("10"))
@@ -810,12 +878,15 @@ class TestWalletAPI:
     def test_wallet_expiration_in_response(self, client, db_session, customer):
         """Test that expiration_at is properly returned in API response."""
         expiry = (datetime.now(UTC) + timedelta(days=30)).isoformat()
-        response = client.post("/v1/wallets/", json={
-            "customer_id": str(customer.id),
-            "name": "Expiring",
-            "code": "expiring-api",
-            "expiration_at": expiry,
-        })
+        response = client.post(
+            "/v1/wallets/",
+            json={
+                "customer_id": str(customer.id),
+                "name": "Expiring",
+                "code": "expiring-api",
+                "expiration_at": expiry,
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["expiration_at"] is not None

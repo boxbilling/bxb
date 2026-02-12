@@ -284,9 +284,14 @@ class TestFeeRepository:
         from app.schemas.plan import PlanCreate
 
         plan_repo = PlanRepository(db_session)
-        plan = plan_repo.create(PlanCreate(code=f"fee_charge_plan_{uuid4()}", name="Test", interval="monthly"), DEFAULT_ORG_ID)
+        plan = plan_repo.create(
+            PlanCreate(code=f"fee_charge_plan_{uuid4()}", name="Test", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
 
-        metric = BillableMetric(code=f"fee_test_metric_{uuid4()}", name="Test Metric", aggregation_type="count")
+        metric = BillableMetric(
+            code=f"fee_test_metric_{uuid4()}", name="Test Metric", aggregation_type="count"
+        )
         db_session.add(metric)
         db_session.commit()
         db_session.refresh(metric)
@@ -518,11 +523,25 @@ class TestFeesAPI:
 
         # Verify all expected fields are present
         expected_fields = {
-            "id", "invoice_id", "charge_id", "subscription_id", "commitment_id",
+            "id",
+            "invoice_id",
+            "charge_id",
+            "subscription_id",
+            "commitment_id",
             "customer_id",
-            "fee_type", "amount_cents", "taxes_amount_cents", "total_amount_cents",
-            "units", "events_count", "unit_amount_cents", "payment_status",
-            "description", "metric_code", "properties", "created_at", "updated_at",
+            "fee_type",
+            "amount_cents",
+            "taxes_amount_cents",
+            "total_amount_cents",
+            "units",
+            "events_count",
+            "unit_amount_cents",
+            "payment_status",
+            "description",
+            "metric_code",
+            "properties",
+            "created_at",
+            "updated_at",
         }
         assert set(data.keys()) == expected_fields
 
@@ -549,9 +568,7 @@ class TestFeesAPI:
         )
 
         # Filter by both customer and fee_type
-        response = client.get(
-            f"/v1/fees/?customer_id={customer.id}&fee_type=charge"
-        )
+        response = client.get(f"/v1/fees/?customer_id={customer.id}&fee_type=charge")
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]["fee_type"] == "charge"

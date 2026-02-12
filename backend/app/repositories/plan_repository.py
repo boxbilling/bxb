@@ -13,9 +13,7 @@ class PlanRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
-    ) -> list[Plan]:
+    def get_all(self, organization_id: UUID, skip: int = 0, limit: int = 100) -> list[Plan]:
         return (
             self.db.query(Plan)
             .filter(Plan.organization_id == organization_id)
@@ -97,9 +95,7 @@ class PlanRepository:
         self.db.refresh(plan)
         return plan
 
-    def update(
-        self, plan_id: UUID, data: PlanUpdate, organization_id: UUID
-    ) -> Plan | None:
+    def update(self, plan_id: UUID, data: PlanUpdate, organization_id: UUID) -> Plan | None:
         plan = self.get_by_id(plan_id, organization_id)
         if not plan:
             return None

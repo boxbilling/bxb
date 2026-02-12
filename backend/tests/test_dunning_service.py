@@ -120,7 +120,10 @@ class TestCheckAndCreatePaymentRequests:
         assert result == []
 
     def test_no_overdue_invoices_returns_empty(
-        self, db_session: Session, campaign: DunningCampaign, threshold: DunningCampaignThreshold,
+        self,
+        db_session: Session,
+        campaign: DunningCampaign,
+        threshold: DunningCampaignThreshold,
     ) -> None:
         service = DunningService(db_session)
         result = service.check_and_create_payment_requests(DEFAULT_ORG_ID)
@@ -187,7 +190,9 @@ class TestCheckAndCreatePaymentRequests:
         assert result == []
 
     def test_inactive_campaign_ignored(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         # Create an inactive campaign
         c = DunningCampaign(
@@ -269,7 +274,9 @@ class TestProcessPaymentRequests:
     """Tests for DunningService.process_payment_requests."""
 
     def test_processes_pending_ready_requests(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -291,7 +298,9 @@ class TestProcessPaymentRequests:
         assert result[0].ready_for_payment_processing is False
 
     def test_skips_non_pending_requests(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -309,7 +318,9 @@ class TestProcessPaymentRequests:
         assert result == []
 
     def test_skips_not_ready_requests(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -328,7 +339,10 @@ class TestProcessPaymentRequests:
         assert result == []
 
     def test_skips_ineligible_retry(
-        self, db_session: Session, customer: Customer, campaign: DunningCampaign,
+        self,
+        db_session: Session,
+        customer: Customer,
+        campaign: DunningCampaign,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -354,7 +368,9 @@ class TestMarkPaymentRequestSucceeded:
     """Tests for DunningService.mark_payment_request_succeeded."""
 
     def test_marks_succeeded_and_pays_invoices(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         assert inv.status == InvoiceStatus.FINALIZED.value
@@ -380,7 +396,9 @@ class TestMarkPaymentRequestSucceeded:
         assert inv.paid_at is not None
 
     def test_does_not_pay_already_paid_invoices(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         # Mark as paid before the payment request
@@ -411,7 +429,9 @@ class TestMarkPaymentRequestSucceeded:
         assert result is None
 
     def test_triggers_webhook(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -435,7 +455,9 @@ class TestMarkPaymentRequestFailed:
     """Tests for DunningService.mark_payment_request_failed."""
 
     def test_marks_failed(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -460,7 +482,9 @@ class TestMarkPaymentRequestFailed:
         assert result is None
 
     def test_triggers_webhook(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = _make_overdue_invoice(db_session, customer, Decimal("100"))
         pr_repo = PaymentRequestRepository(db_session)
@@ -484,7 +508,9 @@ class TestEvaluateRetryEligibility:
     """Tests for DunningService.evaluate_retry_eligibility."""
 
     def test_first_attempt_always_eligible(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         pr = PaymentRequest(
             organization_id=DEFAULT_ORG_ID,
@@ -501,7 +527,9 @@ class TestEvaluateRetryEligibility:
         assert service.evaluate_retry_eligibility(pr) is True
 
     def test_no_campaign_always_eligible(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         pr = PaymentRequest(
             organization_id=DEFAULT_ORG_ID,
@@ -588,7 +616,9 @@ class TestEvaluateRetryEligibility:
         assert service.evaluate_retry_eligibility(pr) is True
 
     def test_campaign_not_found_eligible(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         pr = PaymentRequest(
             organization_id=DEFAULT_ORG_ID,

@@ -39,7 +39,9 @@ class IntegrationCustomerRepository:
         )
 
     def get_by_customer(
-        self, integration_id: UUID, customer_id: UUID,
+        self,
+        integration_id: UUID,
+        customer_id: UUID,
     ) -> IntegrationCustomer | None:
         """Get an integration customer by integration and customer ID."""
         return (
@@ -52,7 +54,9 @@ class IntegrationCustomerRepository:
         )
 
     def get_by_external_customer_id(
-        self, integration_id: UUID, external_customer_id: str,
+        self,
+        integration_id: UUID,
+        external_customer_id: str,
     ) -> IntegrationCustomer | None:
         """Get an integration customer by external customer ID."""
         return (
@@ -78,7 +82,9 @@ class IntegrationCustomerRepository:
         return ic
 
     def update(
-        self, integration_customer_id: UUID, data: IntegrationCustomerUpdate,
+        self,
+        integration_customer_id: UUID,
+        data: IntegrationCustomerUpdate,
     ) -> IntegrationCustomer | None:
         """Update an integration customer."""
         ic = self.get_by_id(integration_customer_id)

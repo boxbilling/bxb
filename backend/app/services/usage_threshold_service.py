@@ -284,9 +284,7 @@ class UsageThresholdService:
                 )
                 .all()
             )
-            event_properties_list = [
-                dict(e.properties) if e.properties else {} for e in raw_events
-            ]
+            event_properties_list = [dict(e.properties) if e.properties else {} for e in raw_events]
 
         calculator = get_charge_calculator(charge_model)
         assert calculator is not None  # All ChargeModel values have calculators

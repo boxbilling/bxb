@@ -332,7 +332,10 @@ class TestGoCardlessCheckoutSession:
         request_obj = call_args[0][0]
         assert request_obj.get_header("Content-type") == "application/json"
         assert request_obj.get_header("Authorization") == "Bearer gc_test_token_123"
-        assert "Gocardless-version" in request_obj.headers or "GoCardless-Version" in request_obj.headers
+        assert (
+            "Gocardless-version" in request_obj.headers
+            or "GoCardless-Version" in request_obj.headers
+        )
 
 
 class TestGoCardlessWebhookSignature:

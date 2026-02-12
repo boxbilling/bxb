@@ -172,9 +172,7 @@ class TestOrganizationRepository:
     def test_update_organization_partial(self, db_session):
         """Test partial update of an organization."""
         repo = OrganizationRepository(db_session)
-        created = repo.create(
-            OrganizationCreate(name="Partial Org", default_currency="GBP")
-        )
+        created = repo.create(OrganizationCreate(name="Partial Org", default_currency="GBP"))
 
         updated = repo.update(created.id, OrganizationUpdate(name="Renamed Org"))
         assert updated is not None

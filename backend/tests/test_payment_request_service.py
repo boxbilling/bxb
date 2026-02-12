@@ -128,7 +128,9 @@ class TestCreateManualPaymentRequest:
             )
 
     def test_invoice_not_found_raises(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         service = PaymentRequestService(db_session)
         with pytest.raises(ValueError, match="Invoice .* not found"):
@@ -163,7 +165,9 @@ class TestCreateManualPaymentRequest:
             )
 
     def test_invoice_not_finalized_raises(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         draft_inv = Invoice(
             organization_id=DEFAULT_ORG_ID,
@@ -189,7 +193,9 @@ class TestCreateManualPaymentRequest:
             )
 
     def test_empty_invoice_ids_raises(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         service = PaymentRequestService(db_session)
         with pytest.raises(ValueError, match="No invoices provided"):
@@ -200,7 +206,10 @@ class TestCreateManualPaymentRequest:
             )
 
     def test_mixed_currency_raises(
-        self, db_session: Session, customer: Customer, finalized_invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        finalized_invoices: list[Invoice],
     ) -> None:
         eur_inv = Invoice(
             organization_id=DEFAULT_ORG_ID,
@@ -255,7 +264,9 @@ class TestGetCustomerOutstanding:
         assert total == Decimal("200")
 
     def test_excludes_draft_invoices(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         inv = Invoice(
             organization_id=DEFAULT_ORG_ID,
@@ -276,7 +287,9 @@ class TestGetCustomerOutstanding:
         assert total == Decimal("0")
 
     def test_no_invoices_returns_zero(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         service = PaymentRequestService(db_session)
         total = service.get_customer_outstanding(customer.id, DEFAULT_ORG_ID)

@@ -198,9 +198,7 @@ class CreditNoteService:
         # Validate amount does not exceed available balance
         balance = Decimal(str(credit_note.balance_amount_cents))
         if amount > balance:
-            raise ValueError(
-                f"Amount {amount} exceeds available balance {balance}"
-            )
+            raise ValueError(f"Amount {amount} exceeds available balance {balance}")
 
         if amount <= 0:
             raise ValueError("Amount must be positive")

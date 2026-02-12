@@ -23,7 +23,8 @@ class DunningService:
         self.webhook_service = WebhookService(db)
 
     def check_and_create_payment_requests(
-        self, organization_id: UUID,
+        self,
+        organization_id: UUID,
     ) -> list[PaymentRequest]:
         """Background job: find overdue invoices and create payment requests.
 
@@ -37,7 +38,8 @@ class DunningService:
 
         # Get active dunning campaigns for this organization
         active_campaigns = self.campaign_repo.get_all(
-            organization_id, status="active",
+            organization_id,
+            status="active",
         )
         if not active_campaigns:
             return created_requests
@@ -58,9 +60,7 @@ class DunningService:
             return created_requests
 
         # Group invoices by customer_id and currency
-        customer_currency_invoices: dict[
-            tuple[UUID, str], list[Invoice]
-        ] = {}
+        customer_currency_invoices: dict[tuple[UUID, str], list[Invoice]] = {}
         for inv in overdue_invoices:
             cust_id: UUID = inv.customer_id  # type: ignore[assignment]
             curr: str = inv.currency  # type: ignore[assignment]
@@ -68,9 +68,7 @@ class DunningService:
             customer_currency_invoices.setdefault(key, []).append(inv)
 
         # For each customer+currency group, check campaign thresholds
-        for (customer_id, currency), invoices in (
-            customer_currency_invoices.items()
-        ):
+        for (customer_id, currency), invoices in customer_currency_invoices.items():
             # Check if any existing pending PR already covers these invoices
             existing_prs = self.pr_repo.get_all(
                 organization_id,
@@ -85,10 +83,7 @@ class DunningService:
                     existing_invoice_ids.add(inv_id)
 
             # Filter out invoices already in a pending payment request
-            new_invoices = [
-                inv for inv in invoices
-                if inv.id not in existing_invoice_ids
-            ]
+            new_invoices = [inv for inv in invoices if inv.id not in existing_invoice_ids]
             if not new_invoices:
                 continue
 
@@ -145,7 +140,8 @@ class DunningService:
         return created_requests
 
     def process_payment_requests(
-        self, organization_id: UUID,
+        self,
+        organization_id: UUID,
     ) -> list[PaymentRequest]:
         """Background job: process pending payment requests.
 
@@ -186,11 +182,15 @@ class DunningService:
         return processed
 
     def mark_payment_request_succeeded(
-        self, payment_request_id: UUID, organization_id: UUID,
+        self,
+        payment_request_id: UUID,
+        organization_id: UUID,
     ) -> PaymentRequest | None:
         """Mark a payment request as succeeded and update linked invoices."""
         pr = self.pr_repo.update_status(
-            payment_request_id, organization_id, "succeeded",
+            payment_request_id,
+            organization_id,
+            "succeeded",
         )
         if not pr:
             return None
@@ -198,11 +198,7 @@ class DunningService:
         # Mark linked invoices as paid
         join_rows = self.pr_repo.get_invoices(payment_request_id)
         for join_row in join_rows:
-            invoice = (
-                self.db.query(Invoice)
-                .filter(Invoice.id == join_row.invoice_id)
-                .first()
-            )
+            invoice = self.db.query(Invoice).filter(Invoice.id == join_row.invoice_id).first()
             if invoice and invoice.status == InvoiceStatus.FINALIZED.value:
                 invoice.status = InvoiceStatus.PAID.value  # type: ignore[assignment]
                 invoice.paid_at = datetime.now(UTC)  # type: ignore[assignment]
@@ -223,11 +219,15 @@ class DunningService:
         return pr
 
     def mark_payment_request_failed(
-        self, payment_request_id: UUID, organization_id: UUID,
+        self,
+        payment_request_id: UUID,
+        organization_id: UUID,
     ) -> PaymentRequest | None:
         """Mark a payment request as failed and trigger webhook."""
         pr = self.pr_repo.update_status(
-            payment_request_id, organization_id, "failed",
+            payment_request_id,
+            organization_id,
+            "failed",
         )
         if not pr:
             return None
@@ -245,7 +245,8 @@ class DunningService:
         return pr
 
     def evaluate_retry_eligibility(
-        self, payment_request: PaymentRequest,
+        self,
+        payment_request: PaymentRequest,
     ) -> bool:
         """Check if enough days have passed since last attempt for retry.
 

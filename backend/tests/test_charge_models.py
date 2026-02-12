@@ -802,9 +802,7 @@ class TestCustomCalculator:
 
     def test_custom_amount_takes_precedence(self):
         """Test that custom_amount takes precedence over unit_price."""
-        result = custom.calculate(
-            Decimal("10"), {"custom_amount": "99", "unit_price": "5"}
-        )
+        result = custom.calculate(Decimal("10"), {"custom_amount": "99", "unit_price": "5"})
         assert result == Decimal("99")
 
     def test_custom_zero_units(self):

@@ -30,11 +30,7 @@ class UsageThresholdRepository:
         return query.first()
 
     def get_by_plan_id(self, plan_id: UUID) -> list[UsageThreshold]:
-        return (
-            self.db.query(UsageThreshold)
-            .filter(UsageThreshold.plan_id == plan_id)
-            .all()
-        )
+        return self.db.query(UsageThreshold).filter(UsageThreshold.plan_id == plan_id).all()
 
     def get_by_subscription_id(self, subscription_id: UUID) -> list[UsageThreshold]:
         return (

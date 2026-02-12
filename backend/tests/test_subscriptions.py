@@ -145,7 +145,6 @@ class TestSubscriptionModel:
         assert subscription.created_at is not None
         assert subscription.updated_at is not None
 
-
     def test_subscription_lifecycle_fields(self, db_session):
         """Test Subscription model with advanced lifecycle fields."""
         customer = create_test_customer(db_session, "cust_lifecycle")
@@ -943,10 +942,7 @@ class TestSubscriptionsAPI:
             },
         ).json()
 
-        response = client.delete(
-            f"/v1/subscriptions/{sub['id']}"
-            "?on_termination_action=skip"
-        )
+        response = client.delete(f"/v1/subscriptions/{sub['id']}?on_termination_action=skip")
         assert response.status_code == 204
 
         get_response = client.get(f"/v1/subscriptions/{sub['id']}")
@@ -971,10 +967,7 @@ class TestSubscriptionsAPI:
             },
         ).json()
 
-        response = client.post(
-            f"/v1/subscriptions/{sub['id']}/cancel"
-            "?on_termination_action=skip"
-        )
+        response = client.post(f"/v1/subscriptions/{sub['id']}/cancel?on_termination_action=skip")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "canceled"

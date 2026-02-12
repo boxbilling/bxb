@@ -35,7 +35,10 @@ class IntegrationMappingRepository:
         return self.db.query(IntegrationMapping).filter(IntegrationMapping.id == mapping_id).first()
 
     def get_by_mappable(
-        self, integration_id: UUID, mappable_type: str, mappable_id: UUID,
+        self,
+        integration_id: UUID,
+        mappable_type: str,
+        mappable_id: UUID,
     ) -> IntegrationMapping | None:
         """Get a mapping by integration, type, and resource ID."""
         return (
@@ -49,7 +52,9 @@ class IntegrationMappingRepository:
         )
 
     def get_by_external_id(
-        self, integration_id: UUID, external_id: str,
+        self,
+        integration_id: UUID,
+        external_id: str,
     ) -> list[IntegrationMapping]:
         """Get mappings by external ID."""
         return (

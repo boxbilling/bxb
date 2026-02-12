@@ -196,7 +196,9 @@ class TestAdyenCheckoutSession:
     def test_create_checkout_session_without_email(self, mock_urlopen):
         """Test creating Adyen session without email."""
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{"id": "CS_NO_EMAIL", "url": "https://checkout.adyen.com/session"}'
+        mock_response.read.return_value = (
+            b'{"id": "CS_NO_EMAIL", "url": "https://checkout.adyen.com/session"}'
+        )
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -231,7 +233,9 @@ class TestAdyenCheckoutSession:
     def test_create_checkout_session_redirect_url_fallback(self, mock_urlopen):
         """Test Adyen checkout session falls back to redirectUrl."""
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{"id": "CS_REDIRECT", "redirectUrl": "https://checkout.adyen.com/redirect"}'
+        mock_response.read.return_value = (
+            b'{"id": "CS_REDIRECT", "redirectUrl": "https://checkout.adyen.com/redirect"}'
+        )
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -259,7 +263,7 @@ class TestAdyenCheckoutSession:
         """Test Adyen checkout session with minimal response."""
         payment_id = uuid4()
         mock_response = MagicMock()
-        mock_response.read.return_value = b'{}'
+        mock_response.read.return_value = b"{}"
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
         mock_urlopen.return_value = mock_response
@@ -830,9 +834,7 @@ class TestAdyenAPI:
         )
         assert response.status_code == 401
 
-    def test_list_payments_by_adyen_provider(
-        self, client, db_session, finalized_invoice, customer
-    ):
+    def test_list_payments_by_adyen_provider(self, client, db_session, finalized_invoice, customer):
         """Test filtering payments by Adyen provider."""
         repo = PaymentRepository(db_session)
         repo.create(

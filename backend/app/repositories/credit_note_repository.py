@@ -40,7 +40,9 @@ class CreditNoteRepository:
         return query.order_by(CreditNote.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_by_id(
-        self, credit_note_id: UUID, organization_id: UUID | None = None,
+        self,
+        credit_note_id: UUID,
+        organization_id: UUID | None = None,
     ) -> CreditNote | None:
         """Get a credit note by ID."""
         query = self.db.query(CreditNote).filter(CreditNote.id == credit_note_id)

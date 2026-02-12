@@ -140,9 +140,7 @@ class AdyenProvider(PaymentProviderBase):
         except ValueError:
             key_bytes = self.webhook_hmac_key.encode()
 
-        expected = base64.b64encode(
-            hmac.new(key_bytes, payload, hashlib.sha256).digest()
-        ).decode()
+        expected = base64.b64encode(hmac.new(key_bytes, payload, hashlib.sha256).digest()).decode()
 
         return hmac.compare_digest(expected, signature)
 

@@ -53,8 +53,11 @@ async def list_wallets(
     """List wallets with optional filters."""
     repo = WalletRepository(db)
     return repo.get_all(
-        organization_id, skip=skip, limit=limit,
-        customer_id=customer_id, status=status,
+        organization_id,
+        skip=skip,
+        limit=limit,
+        customer_id=customer_id,
+        status=status,
     )
 
 

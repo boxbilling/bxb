@@ -251,9 +251,7 @@ class TestWebhookListAPI:
             payload={"event": "2"},
         )
 
-        response = client.get(
-            "/v1/webhook_endpoints/hooks/list?webhook_type=invoice.created"
-        )
+        response = client.get("/v1/webhook_endpoints/hooks/list?webhook_type=invoice.created")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -321,9 +319,7 @@ class TestWebhookListAPI:
             mock_client.post.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
-            response = client.post(
-                f"/v1/webhook_endpoints/hooks/{failed_webhook.id}/retry"
-            )
+            response = client.post(f"/v1/webhook_endpoints/hooks/{failed_webhook.id}/retry")
 
         assert response.status_code == 200
         data = response.json()
@@ -331,17 +327,13 @@ class TestWebhookListAPI:
 
     def test_retry_non_failed_webhook(self, client: TestClient, sample_webhook):
         """Test retrying a webhook that is not in failed status."""
-        response = client.post(
-            f"/v1/webhook_endpoints/hooks/{sample_webhook.id}/retry"
-        )
+        response = client.post(f"/v1/webhook_endpoints/hooks/{sample_webhook.id}/retry")
         assert response.status_code == 400
         assert response.json()["detail"] == "Only failed webhooks can be retried"
 
     def test_retry_webhook_not_found(self, client: TestClient):
         """Test retrying a non-existent webhook."""
-        response = client.post(
-            f"/v1/webhook_endpoints/hooks/{uuid4()}/retry"
-        )
+        response = client.post(f"/v1/webhook_endpoints/hooks/{uuid4()}/retry")
         assert response.status_code == 404
         assert response.json()["detail"] == "Webhook not found"
 
@@ -358,9 +350,7 @@ class TestWebhookListAPI:
             mock_client.post.return_value = mock_response
             mock_client_cls.return_value = mock_client
 
-            response = client.post(
-                f"/v1/webhook_endpoints/hooks/{failed_webhook.id}/retry"
-            )
+            response = client.post(f"/v1/webhook_endpoints/hooks/{failed_webhook.id}/retry")
 
         assert response.status_code == 200
         data = response.json()
@@ -418,9 +408,7 @@ class TestInvoiceWebhookTriggers:
 
         return {"customer": customer, "plan": plan, "subscription": sub, "invoice": invoice}
 
-    def test_finalize_invoice_triggers_webhook(
-        self, client: TestClient, invoice_fixtures
-    ):
+    def test_finalize_invoice_triggers_webhook(self, client: TestClient, invoice_fixtures):
         """Test that finalizing an invoice triggers a webhook."""
         invoice = invoice_fixtures["invoice"]
 
@@ -436,9 +424,7 @@ class TestInvoiceWebhookTriggers:
         assert call_kwargs["webhook_type"] == "invoice.finalized"
         assert call_kwargs["object_type"] == "invoice"
 
-    def test_pay_invoice_triggers_webhook(
-        self, client: TestClient, db_session, invoice_fixtures
-    ):
+    def test_pay_invoice_triggers_webhook(self, client: TestClient, db_session, invoice_fixtures):
         """Test that paying an invoice triggers a webhook."""
         invoice = invoice_fixtures["invoice"]
 
@@ -458,9 +444,7 @@ class TestInvoiceWebhookTriggers:
         assert call_kwargs["webhook_type"] == "invoice.paid"
         assert call_kwargs["object_type"] == "invoice"
 
-    def test_void_invoice_triggers_webhook(
-        self, client: TestClient, db_session, invoice_fixtures
-    ):
+    def test_void_invoice_triggers_webhook(self, client: TestClient, db_session, invoice_fixtures):
         """Test that voiding an invoice triggers a webhook."""
         invoice = invoice_fixtures["invoice"]
 
@@ -543,10 +527,7 @@ class TestSubscriptionWebhookTriggers:
             mock_service = MagicMock()
             mock_webhook_cls.return_value = mock_service
 
-            response = client.delete(
-                f"/v1/subscriptions/{sub['id']}"
-                "?on_termination_action=skip"
-            )
+            response = client.delete(f"/v1/subscriptions/{sub['id']}?on_termination_action=skip")
 
         assert response.status_code == 204
         mock_service.send_webhook.assert_called_once()
@@ -584,8 +565,7 @@ class TestSubscriptionWebhookTriggers:
             mock_webhook_cls.return_value = mock_service
 
             response = client.post(
-                f"/v1/subscriptions/{sub['id']}/cancel"
-                "?on_termination_action=skip"
+                f"/v1/subscriptions/{sub['id']}/cancel?on_termination_action=skip"
             )
 
         assert response.status_code == 200

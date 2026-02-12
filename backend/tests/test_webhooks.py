@@ -278,7 +278,9 @@ class TestWebhookEndpointRepository:
     def test_update_not_found(self, db_session):
         """Test updating a non-existent webhook endpoint."""
         repo = WebhookEndpointRepository(db_session)
-        assert repo.update(uuid4(), WebhookEndpointUpdate(url="https://x.com"), DEFAULT_ORG_ID) is None
+        assert (
+            repo.update(uuid4(), WebhookEndpointUpdate(url="https://x.com"), DEFAULT_ORG_ID) is None
+        )
 
     def test_delete(self, db_session, active_endpoint):
         """Test deleting a webhook endpoint."""

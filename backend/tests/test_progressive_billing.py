@@ -144,9 +144,7 @@ class TestGenerateProgressiveInvoice:
                 external_customer_id="test_cust",
             )
 
-    def test_inactive_subscription(
-        self, db_session, pending_subscription, billing_period
-    ):
+    def test_inactive_subscription(self, db_session, pending_subscription, billing_period):
         """Test error when subscription is not active."""
         service = ProgressiveBillingService(db_session)
         start, end = billing_period
@@ -196,9 +194,7 @@ class TestGenerateProgressiveInvoice:
         assert invoice.subscription_id == active_subscription.id
         assert len(invoice.line_items) == 1
 
-    def test_progressive_invoice_no_usage(
-        self, db_session, active_subscription, billing_period
-    ):
+    def test_progressive_invoice_no_usage(self, db_session, active_subscription, billing_period):
         """Test progressive invoice with no usage results in zero amount."""
         start, end = billing_period
         service = ProgressiveBillingService(db_session)
@@ -315,9 +311,7 @@ class TestGenerateProgressiveInvoice:
 class TestCalculateProgressiveBillingCredit:
     """Test calculate_progressive_billing_credit method."""
 
-    def test_no_progressive_invoices(
-        self, db_session, active_subscription, billing_period
-    ):
+    def test_no_progressive_invoices(self, db_session, active_subscription, billing_period):
         """Test credit is zero when no progressive invoices exist."""
         start, end = billing_period
         service = ProgressiveBillingService(db_session)
@@ -613,9 +607,7 @@ class TestInvoiceTypeField:
 
         assert invoice.invoice_type == InvoiceType.PROGRESSIVE_BILLING.value
 
-    def test_regular_invoice_type(
-        self, db_session, active_subscription, billing_period
-    ):
+    def test_regular_invoice_type(self, db_session, active_subscription, billing_period):
         """Test that regular invoices have subscription type."""
         start, end = billing_period
         service = InvoiceGenerationService(db_session)

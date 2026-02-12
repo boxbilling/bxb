@@ -51,6 +51,7 @@ def _record_settlement_and_maybe_mark_paid(
         if total_settled >= Decimal(str(invoice.total)):
             invoice_repo.mark_paid(invoice_id)
 
+
 router = APIRouter()
 
 

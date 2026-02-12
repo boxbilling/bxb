@@ -100,7 +100,9 @@ class TestPaymentRequestModel:
         assert pr.updated_at is not None
 
     def test_payment_request_with_campaign(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         campaign = DunningCampaign(
             organization_id=DEFAULT_ORG_ID,
@@ -134,7 +136,10 @@ class TestPaymentRequestInvoiceModel:
     """Test PaymentRequestInvoice join table."""
 
     def test_join_creation(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         pr = PaymentRequest(
             organization_id=DEFAULT_ORG_ID,
@@ -174,7 +179,9 @@ class TestPaymentRequestSchemas:
             PaymentRequestCreate(customer_id=uuid.uuid4(), invoice_ids=[])
 
     def test_response_schema(
-        self, db_session: Session, customer: Customer,
+        self,
+        db_session: Session,
+        customer: Customer,
     ) -> None:
         pr = PaymentRequest(
             organization_id=DEFAULT_ORG_ID,
@@ -192,7 +199,10 @@ class TestPaymentRequestSchemas:
         assert resp.invoices == []
 
     def test_invoice_response_schema(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         pr = PaymentRequest(
             organization_id=DEFAULT_ORG_ID,
@@ -220,7 +230,10 @@ class TestPaymentRequestRepository:
     """Test PaymentRequestRepository CRUD operations."""
 
     def test_create_payment_request(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(
@@ -239,7 +252,10 @@ class TestPaymentRequestRepository:
         assert len(join_rows) == 3
 
     def test_create_with_dunning_campaign(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         campaign = DunningCampaign(
             organization_id=DEFAULT_ORG_ID,
@@ -261,7 +277,10 @@ class TestPaymentRequestRepository:
         assert pr.dunning_campaign_id == campaign.id
 
     def test_get_by_id(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         created = repo.create(
@@ -282,7 +301,10 @@ class TestPaymentRequestRepository:
         assert result is None
 
     def test_get_all(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         repo.create(
@@ -304,7 +326,10 @@ class TestPaymentRequestRepository:
         assert len(all_prs) == 2
 
     def test_get_all_filter_by_customer(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         # Create a second customer
         c2 = Customer(
@@ -332,7 +357,10 @@ class TestPaymentRequestRepository:
         assert len(filtered_other) == 0
 
     def test_get_all_filter_by_status(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(
@@ -351,7 +379,10 @@ class TestPaymentRequestRepository:
         assert len(succeeded) == 1
 
     def test_get_all_pagination(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         for i, inv in enumerate(invoices):
@@ -367,7 +398,10 @@ class TestPaymentRequestRepository:
         assert len(page) == 1
 
     def test_update_status(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(
@@ -388,7 +422,10 @@ class TestPaymentRequestRepository:
         assert result is None
 
     def test_increment_attempts(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(
@@ -414,7 +451,10 @@ class TestPaymentRequestRepository:
         assert result is None
 
     def test_get_invoices(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(
@@ -437,7 +477,10 @@ class TestPaymentRequestRepository:
         assert result == []
 
     def test_delete_payment_request(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(
@@ -458,7 +501,10 @@ class TestPaymentRequestRepository:
         assert result is False
 
     def test_delete_non_pending_raises(
-        self, db_session: Session, customer: Customer, invoices: list[Invoice],
+        self,
+        db_session: Session,
+        customer: Customer,
+        invoices: list[Invoice],
     ) -> None:
         repo = PaymentRequestRepository(db_session)
         pr = repo.create(

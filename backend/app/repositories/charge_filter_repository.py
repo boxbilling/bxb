@@ -13,18 +13,10 @@ class ChargeFilterRepository:
         self.db = db
 
     def get_by_id(self, filter_id: UUID) -> ChargeFilter | None:
-        return (
-            self.db.query(ChargeFilter)
-            .filter(ChargeFilter.id == filter_id)
-            .first()
-        )
+        return self.db.query(ChargeFilter).filter(ChargeFilter.id == filter_id).first()
 
     def get_by_charge_id(self, charge_id: UUID) -> list[ChargeFilter]:
-        return (
-            self.db.query(ChargeFilter)
-            .filter(ChargeFilter.charge_id == charge_id)
-            .all()
-        )
+        return self.db.query(ChargeFilter).filter(ChargeFilter.charge_id == charge_id).all()
 
     def get_filter_values(self, charge_filter_id: UUID) -> list[ChargeFilterValue]:
         return (

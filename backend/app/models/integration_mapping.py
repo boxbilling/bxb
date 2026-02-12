@@ -19,7 +19,9 @@ class IntegrationMapping(Base):
     __tablename__ = "integration_mappings"
     __table_args__ = (
         UniqueConstraint(
-            "integration_id", "mappable_type", "mappable_id",
+            "integration_id",
+            "mappable_type",
+            "mappable_id",
             name="uq_integration_mappings_integration_type_id",
         ),
     )

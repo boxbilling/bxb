@@ -54,11 +54,7 @@ def _get_active_subscription_ids(
         customer_id=UUID(str(customer.id)),
         organization_id=organization_id,
     )
-    return [
-        str(sub.id)
-        for sub in subscriptions
-        if sub.status == SubscriptionStatus.ACTIVE.value
-    ]
+    return [str(sub.id) for sub in subscriptions if sub.status == SubscriptionStatus.ACTIVE.value]
 
 
 async def _enqueue_threshold_checks(subscription_ids: list[str]) -> None:
@@ -67,9 +63,7 @@ async def _enqueue_threshold_checks(subscription_ids: list[str]) -> None:
         try:
             await enqueue_check_usage_thresholds(sub_id)
         except Exception:
-            logger.exception(
-                "Failed to enqueue threshold check for subscription %s", sub_id
-            )
+            logger.exception("Failed to enqueue threshold check for subscription %s", sub_id)
 
 
 @router.get("/", response_model=list[EventResponse])
@@ -128,9 +122,7 @@ async def create_event(
     event, is_new = repo.create_or_get_existing(data, organization_id)
 
     if is_new:
-        sub_ids = _get_active_subscription_ids(
-            data.external_customer_id, db, organization_id
-        )
+        sub_ids = _get_active_subscription_ids(data.external_customer_id, db, organization_id)
         if sub_ids:
             background_tasks.add_task(_enqueue_threshold_checks, sub_ids)
 
@@ -162,9 +154,7 @@ async def create_events_batch(
         unique_customer_ids = {event.external_customer_id for event in data.events}
         all_sub_ids: list[str] = []
         for ext_cust_id in unique_customer_ids:
-            all_sub_ids.extend(
-                _get_active_subscription_ids(ext_cust_id, db, organization_id)
-            )
+            all_sub_ids.extend(_get_active_subscription_ids(ext_cust_id, db, organization_id))
         # Deduplicate subscription IDs
         unique_sub_ids = list(set(all_sub_ids))
         if unique_sub_ids:

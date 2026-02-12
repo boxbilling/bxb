@@ -29,9 +29,7 @@ class AppliedAddOnRepository:
 
     def get_by_id(self, applied_add_on_id: UUID) -> AppliedAddOn | None:
         """Get an applied add-on by ID."""
-        return (
-            self.db.query(AppliedAddOn).filter(AppliedAddOn.id == applied_add_on_id).first()
-        )
+        return self.db.query(AppliedAddOn).filter(AppliedAddOn.id == applied_add_on_id).first()
 
     def get_by_customer_id(self, customer_id: UUID) -> list[AppliedAddOn]:
         """Get all applied add-ons for a customer."""

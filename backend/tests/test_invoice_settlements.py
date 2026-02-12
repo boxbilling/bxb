@@ -256,9 +256,7 @@ class TestInvoiceSettlementRepository:
 class TestRecordSettlementAndMaybeMarkPaid:
     """Tests for the _record_settlement_and_maybe_mark_paid helper."""
 
-    def test_settlement_marks_invoice_paid_when_fully_settled(
-        self, db_session, finalized_invoice
-    ):
+    def test_settlement_marks_invoice_paid_when_fully_settled(self, db_session, finalized_invoice):
         """Test that creating a settlement >= invoice total auto-marks invoice as paid."""
         _record_settlement_and_maybe_mark_paid(
             db_session,
@@ -332,9 +330,7 @@ class TestPaymentWebhookSettlement:
     """Tests for settlement creation via payment webhooks."""
 
     @patch("app.services.payment_provider.StripeProvider.verify_webhook_signature")
-    def test_webhook_succeeded_creates_settlement(
-        self, mock_verify, client, payment, db_session
-    ):
+    def test_webhook_succeeded_creates_settlement(self, mock_verify, client, payment, db_session):
         """Test that a succeeded webhook creates an InvoiceSettlement."""
         mock_verify.return_value = True
 

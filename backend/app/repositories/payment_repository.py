@@ -92,7 +92,9 @@ class PaymentRepository:
         return payment
 
     def update(
-        self, payment_id: UUID, data: PaymentUpdate,
+        self,
+        payment_id: UUID,
+        data: PaymentUpdate,
         organization_id: UUID | None = None,
     ) -> Payment | None:
         """Update a payment."""

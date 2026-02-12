@@ -308,7 +308,9 @@ class TestDunningCampaignRepository:
         campaign = repo.create(data, DEFAULT_ORG_ID)
 
         updated = repo.update(
-            campaign.id, DunningCampaignUpdate(name="Updated"), DEFAULT_ORG_ID,
+            campaign.id,
+            DunningCampaignUpdate(name="Updated"),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.name == "Updated"

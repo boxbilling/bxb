@@ -196,11 +196,7 @@ class UsageAggregationService:
         # Apply property-based filters
         if filters:
             events = [
-                e
-                for e in events
-                if all(
-                    e.properties.get(k) == v for k, v in filters.items()
-                )
+                e for e in events if all(e.properties.get(k) == v for k, v in filters.items())
             ]
 
         events_count = len(events)
@@ -220,9 +216,7 @@ class UsageAggregationService:
             str(metric.rounding_function) if metric.rounding_function else None
         )
         rounding_prec: int | None = (
-            int(metric.rounding_precision)
-            if metric.rounding_precision is not None
-            else None
+            int(metric.rounding_precision) if metric.rounding_precision is not None else None
         )
         result = UsageResult(
             value=_apply_rounding(result.value, rounding_fn, rounding_prec),
@@ -284,9 +278,7 @@ class UsageAggregationService:
                 )
             if not events:
                 return UsageResult(value=Decimal(0), events_count=0)
-            total_seconds = Decimal(
-                str((to_timestamp - from_timestamp).total_seconds())
-            )
+            total_seconds = Decimal(str((to_timestamp - from_timestamp).total_seconds()))
             if total_seconds == 0:
                 return UsageResult(value=Decimal(0), events_count=events_count)
             # Sort events by timestamp
@@ -307,9 +299,7 @@ class UsageAggregationService:
 
         elif aggregation_type == AggregationType.LATEST:
             if not metric.field_name:
-                raise ValueError(
-                    f"Metric '{code}' requires field_name for LATEST aggregation"
-                )
+                raise ValueError(f"Metric '{code}' requires field_name for LATEST aggregation")
             if not events:
                 return UsageResult(value=Decimal(0), events_count=0)
             latest_event = max(events, key=lambda e: e.timestamp)
@@ -318,9 +308,7 @@ class UsageAggregationService:
 
         elif aggregation_type == AggregationType.CUSTOM:
             if not metric.expression:
-                raise ValueError(
-                    f"Metric '{code}' requires expression for CUSTOM aggregation"
-                )
+                raise ValueError(f"Metric '{code}' requires expression for CUSTOM aggregation")
             if not events:
                 return UsageResult(value=Decimal(0), events_count=0)
             total = Decimal(0)
@@ -328,8 +316,7 @@ class UsageAggregationService:
                 variables = {
                     k: Decimal(str(v))
                     for k, v in event.properties.items()
-                    if isinstance(v, (int, float, str))
-                    and _is_numeric(v)
+                    if isinstance(v, (int, float, str)) and _is_numeric(v)
                 }
                 total += _evaluate_expression(str(metric.expression), variables)
             return UsageResult(value=total, events_count=events_count)
@@ -371,7 +358,10 @@ class UsageAggregationService:
         for (code,) in codes:
             try:
                 summary[code] = self.aggregate_usage(
-                    external_customer_id, code, from_timestamp, to_timestamp,
+                    external_customer_id,
+                    code,
+                    from_timestamp,
+                    to_timestamp,
                     organization_id=organization_id,
                 )
             except ValueError:

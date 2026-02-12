@@ -10,9 +10,7 @@ class CommitmentRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
-    ) -> list[Commitment]:
+    def get_all(self, organization_id: UUID, skip: int = 0, limit: int = 100) -> list[Commitment]:
         return (
             self.db.query(Commitment)
             .filter(Commitment.organization_id == organization_id)
@@ -30,11 +28,7 @@ class CommitmentRepository:
         return query.first()
 
     def get_by_plan_id(self, plan_id: UUID) -> list[Commitment]:
-        return (
-            self.db.query(Commitment)
-            .filter(Commitment.plan_id == plan_id)
-            .all()
-        )
+        return self.db.query(Commitment).filter(Commitment.plan_id == plan_id).all()
 
     def create(self, data: CommitmentCreate, organization_id: UUID) -> Commitment:
         commitment = Commitment(

@@ -15,7 +15,8 @@ class WalletTransactionRepository:
         self.db = db
 
     def create(
-        self, data: WalletTransactionCreate,
+        self,
+        data: WalletTransactionCreate,
         organization_id: UUID | None = None,
     ) -> WalletTransaction:
         """Create a new wallet transaction."""
@@ -39,9 +40,7 @@ class WalletTransactionRepository:
     def get_by_id(self, transaction_id: UUID) -> WalletTransaction | None:
         """Get a wallet transaction by ID."""
         return (
-            self.db.query(WalletTransaction)
-            .filter(WalletTransaction.id == transaction_id)
-            .first()
+            self.db.query(WalletTransaction).filter(WalletTransaction.id == transaction_id).first()
         )
 
     def get_by_wallet_id(

@@ -25,16 +25,12 @@ class AppliedUsageThresholdRepository:
     def get_by_id(
         self, record_id: UUID, organization_id: UUID | None = None
     ) -> AppliedUsageThreshold | None:
-        query = self.db.query(AppliedUsageThreshold).filter(
-            AppliedUsageThreshold.id == record_id
-        )
+        query = self.db.query(AppliedUsageThreshold).filter(AppliedUsageThreshold.id == record_id)
         if organization_id is not None:
             query = query.filter(AppliedUsageThreshold.organization_id == organization_id)
         return query.first()
 
-    def get_by_subscription_id(
-        self, subscription_id: UUID
-    ) -> list[AppliedUsageThreshold]:
+    def get_by_subscription_id(self, subscription_id: UUID) -> list[AppliedUsageThreshold]:
         return (
             self.db.query(AppliedUsageThreshold)
             .filter(AppliedUsageThreshold.subscription_id == subscription_id)

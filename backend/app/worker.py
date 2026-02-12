@@ -11,6 +11,7 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.services.data_export_service import DataExportService
 from app.services.subscription_dates import SubscriptionDatesService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.usage_threshold_service import UsageThresholdService
@@ -79,9 +80,7 @@ async def process_pending_downgrades_task(ctx: dict[str, Any]) -> int:
             if not plan:
                 continue
             interval = str(plan.interval)
-            _, period_end = dates_service.calculate_billing_period(
-                sub, interval, now
-            )
+            _, period_end = dates_service.calculate_billing_period(sub, interval, now)
             if now >= period_end:
                 lifecycle = SubscriptionLifecycleService(db)
                 lifecycle.execute_pending_downgrade(UUID(str(sub.id)))
@@ -242,10 +241,28 @@ async def check_usage_thresholds_task(ctx: dict[str, Any], subscription_id: str)
         )
 
         if crossed:
-            logger.info(
-                "Subscription %s crossed %d threshold(s)", subscription_id, len(crossed)
-            )
+            logger.info("Subscription %s crossed %d threshold(s)", subscription_id, len(crossed))
         return len(crossed)
+    finally:
+        db.close()
+
+
+async def process_data_export_task(ctx: dict[str, Any], export_id: str) -> str:
+    """Background task: process a data export and generate CSV file.
+
+    Args:
+        ctx: ARQ worker context.
+        export_id: UUID string of the DataExport to process.
+
+    Returns:
+        Status of the export after processing.
+    """
+    db = SessionLocal()
+    try:
+        service = DataExportService(db)
+        result = service.process_export(UUID(export_id))
+        logger.info("Processed data export %s: status=%s", export_id, result.status)
+        return str(result.status)
     finally:
         db.close()
 
@@ -258,6 +275,7 @@ class WorkerSettings:
         process_trial_expirations_task,
         generate_periodic_invoices_task,
         check_usage_thresholds_task,
+        process_data_export_task,
     ]
     cron_jobs = [
         cron(update_item_prices, hour=0, minute=0),  # midnight daily

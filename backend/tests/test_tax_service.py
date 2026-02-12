@@ -152,9 +152,7 @@ class TestTaxCalculationService:
             tax_rate=Decimal("0.2000"),
         )
 
-        taxes = tax_service.get_applicable_taxes(
-            customer_id=customer.id, charge_id=charge_id
-        )
+        taxes = tax_service.get_applicable_taxes(customer_id=customer.id, charge_id=charge_id)
         assert len(taxes) == 1
         assert taxes[0].code == "VAT_20"
 
@@ -171,9 +169,7 @@ class TestTaxCalculationService:
             tax_rate=Decimal("0.2000"),
         )
 
-        taxes = tax_service.get_applicable_taxes(
-            customer_id=customer.id, plan_id=plan_id
-        )
+        taxes = tax_service.get_applicable_taxes(customer_id=customer.id, plan_id=plan_id)
         assert len(taxes) == 1
         assert taxes[0].code == "VAT_20"
 
@@ -193,9 +189,7 @@ class TestTaxCalculationService:
         assert len(taxes) == 1
         assert taxes[0].code == "SALES_TAX"
 
-    def test_get_applicable_taxes_org_defaults(
-        self, tax_service, customer, org_tax
-    ):
+    def test_get_applicable_taxes_org_defaults(self, tax_service, customer, org_tax):
         """Organization default taxes used as fallback."""
         taxes = tax_service.get_applicable_taxes(customer_id=customer.id)
         assert len(taxes) == 1
@@ -247,9 +241,7 @@ class TestTaxCalculationService:
             taxable_id=customer.id,
         )
 
-        taxes = tax_service.get_applicable_taxes(
-            customer_id=customer.id, plan_id=plan_id
-        )
+        taxes = tax_service.get_applicable_taxes(customer_id=customer.id, plan_id=plan_id)
         assert len(taxes) == 1
         assert taxes[0].code == "VAT_20"
 
@@ -268,23 +260,15 @@ class TestTaxCalculationService:
         assert len(taxes) == 1
         assert taxes[0].code == "SALES_TAX"
 
-    def test_get_applicable_taxes_no_charge_id(
-        self, tax_service, db_session, customer, org_tax
-    ):
+    def test_get_applicable_taxes_no_charge_id(self, tax_service, db_session, customer, org_tax):
         """When charge_id is None, skip charge-level check."""
-        taxes = tax_service.get_applicable_taxes(
-            customer_id=customer.id, charge_id=None
-        )
+        taxes = tax_service.get_applicable_taxes(customer_id=customer.id, charge_id=None)
         assert len(taxes) == 1
         assert taxes[0].code == "ORG_TAX"
 
-    def test_get_applicable_taxes_no_plan_id(
-        self, tax_service, db_session, customer, org_tax
-    ):
+    def test_get_applicable_taxes_no_plan_id(self, tax_service, db_session, customer, org_tax):
         """When plan_id is None, skip plan-level check."""
-        taxes = tax_service.get_applicable_taxes(
-            customer_id=customer.id, plan_id=None
-        )
+        taxes = tax_service.get_applicable_taxes(customer_id=customer.id, plan_id=None)
         assert len(taxes) == 1
         assert taxes[0].code == "ORG_TAX"
 
@@ -319,9 +303,7 @@ class TestTaxCalculationService:
             taxable_id=customer.id,
         )
 
-        taxes = tax_service.get_applicable_taxes(
-            customer_id=customer.id, plan_id=plan_id
-        )
+        taxes = tax_service.get_applicable_taxes(customer_id=customer.id, plan_id=plan_id)
         assert len(taxes) == 1
         assert taxes[0].code == "SALES_TAX"
 
@@ -424,9 +406,7 @@ class TestTaxCalculationService:
         assert updated_fee.taxes_amount_cents == Decimal("0")
         assert updated_fee.total_amount_cents == Decimal("10000")
 
-    def test_apply_taxes_to_invoice(
-        self, tax_service, db_session, invoice_with_fees, vat_tax
-    ):
+    def test_apply_taxes_to_invoice(self, tax_service, db_session, invoice_with_fees, vat_tax):
         """Apply taxes to invoice aggregates fee taxes."""
         invoice, fee = invoice_with_fees
 
@@ -464,9 +444,7 @@ class TestTaxCalculationService:
         total_tax = tax_service.apply_taxes_to_invoice(invoice.id)
         assert total_tax == Decimal("0")
 
-    def test_apply_taxes_to_invoice_with_coupons(
-        self, tax_service, db_session, customer, vat_tax
-    ):
+    def test_apply_taxes_to_invoice_with_coupons(self, tax_service, db_session, customer, vat_tax):
         """Invoice total accounts for coupons and tax."""
         invoice_repo = InvoiceRepository(db_session)
         fee_repo = FeeRepository(db_session)
@@ -538,9 +516,7 @@ class TestTaxCalculationService:
         result = tax_service.remove_tax_from_entity("VAT_20", "customer", uuid4())
         assert result is False
 
-    def test_remove_tax_from_entity_different_tax_applied(
-        self, tax_service, vat_tax, sales_tax
-    ):
+    def test_remove_tax_from_entity_different_tax_applied(self, tax_service, vat_tax, sales_tax):
         """Remove tax when entity has different taxes applied returns False."""
         entity_id = uuid4()
         # Apply sales_tax but try to remove vat_tax

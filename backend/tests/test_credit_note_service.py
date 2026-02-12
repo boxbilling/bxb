@@ -148,9 +148,7 @@ def credit_note_repo(db_session):
 class TestCreateCreditNote:
     """Tests for CreditNoteService.create_credit_note()."""
 
-    def test_create_credit_note_basic(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_create_credit_note_basic(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test creating a basic credit note for a finalized invoice."""
         items = [
             CreditNoteItemCreate(
@@ -240,9 +238,7 @@ class TestCreateCreditNote:
 
     def test_create_credit_note_invoice_not_found(self, credit_note_service):
         """Test creating a credit note for a non-existent invoice."""
-        items = [
-            CreditNoteItemCreate(fee_id=uuid4(), amount_cents=Decimal("100.0000"))
-        ]
+        items = [CreditNoteItemCreate(fee_id=uuid4(), amount_cents=Decimal("100.0000"))]
         with pytest.raises(ValueError, match="not found"):
             credit_note_service.create_credit_note(
                 invoice_id=uuid4(),
@@ -265,9 +261,7 @@ class TestCreateCreditNote:
                 billing_period_end=datetime.now(),
             )
         )
-        items = [
-            CreditNoteItemCreate(fee_id=uuid4(), amount_cents=Decimal("100.0000"))
-        ]
+        items = [CreditNoteItemCreate(fee_id=uuid4(), amount_cents=Decimal("100.0000"))]
         with pytest.raises(ValueError, match="finalized"):
             credit_note_service.create_credit_note(
                 invoice_id=draft_invoice.id,
@@ -275,9 +269,7 @@ class TestCreateCreditNote:
                 reason="other",
             )
 
-    def test_create_credit_note_empty_items(
-        self, credit_note_service, finalized_invoice
-    ):
+    def test_create_credit_note_empty_items(self, credit_note_service, finalized_invoice):
         """Test creating a credit note with no items raises ValueError."""
         with pytest.raises(ValueError, match="at least one item"):
             credit_note_service.create_credit_note(
@@ -329,9 +321,7 @@ class TestCreateCreditNote:
 class TestFinalizeCreditNote:
     """Tests for CreditNoteService.finalize_credit_note()."""
 
-    def test_finalize_credit_note(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_finalize_credit_note(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test finalizing a draft credit note."""
         items = [
             CreditNoteItemCreate(
@@ -355,9 +345,7 @@ class TestFinalizeCreditNote:
         with pytest.raises(ValueError, match="not found"):
             credit_note_service.finalize_credit_note(uuid4())
 
-    def test_finalize_already_finalized(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_finalize_already_finalized(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test finalizing an already finalized credit note raises ValueError."""
         items = [
             CreditNoteItemCreate(
@@ -378,9 +366,7 @@ class TestFinalizeCreditNote:
 class TestVoidCreditNote:
     """Tests for CreditNoteService.void_credit_note()."""
 
-    def test_void_credit_note(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_void_credit_note(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test voiding a finalized credit note."""
         items = [
             CreditNoteItemCreate(
@@ -404,9 +390,7 @@ class TestVoidCreditNote:
         with pytest.raises(ValueError, match="not found"):
             credit_note_service.void_credit_note(uuid4())
 
-    def test_void_draft_credit_note(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_void_draft_credit_note(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test voiding a draft credit note raises ValueError."""
         items = [
             CreditNoteItemCreate(
@@ -426,9 +410,7 @@ class TestVoidCreditNote:
 class TestApplyCreditToInvoice:
     """Tests for CreditNoteService.apply_credit_to_invoice()."""
 
-    def test_apply_credit_to_invoice(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_apply_credit_to_invoice(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test applying credit from a finalized credit note to an invoice."""
         items = [
             CreditNoteItemCreate(
@@ -524,9 +506,7 @@ class TestApplyCreditToInvoice:
                 amount=Decimal("-100"),
             )
 
-    def test_apply_credit_zero_amount(
-        self, credit_note_service, finalized_invoice, invoice_fees
-    ):
+    def test_apply_credit_zero_amount(self, credit_note_service, finalized_invoice, invoice_fees):
         """Test applying zero credit raises ValueError."""
         items = [
             CreditNoteItemCreate(

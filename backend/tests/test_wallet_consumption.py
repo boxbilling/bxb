@@ -169,16 +169,25 @@ class TestMultiWalletPriorityConsumption:
     def test_priority_order_lower_first(self, wallet_service, customer, wallet_repo):
         """Test that lower priority wallets are consumed first."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="P3", code="p3",
-            priority=3, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="P3",
+            code="p3",
+            priority=3,
+            initial_granted_credits=Decimal("50"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="P1", code="p1",
-            priority=1, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="P1",
+            code="p1",
+            priority=1,
+            initial_granted_credits=Decimal("50"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="P2", code="p2",
-            priority=2, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="P2",
+            code="p2",
+            priority=2,
+            initial_granted_credits=Decimal("50"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("80"))
@@ -194,12 +203,18 @@ class TestMultiWalletPriorityConsumption:
     def test_drain_first_wallet_then_second(self, wallet_service, customer, wallet_repo):
         """Test draining first wallet completely then moving to second."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="First", code="first",
-            priority=1, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="First",
+            code="first",
+            priority=1,
+            initial_granted_credits=Decimal("30"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Second", code="second",
-            priority=2, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="Second",
+            code="second",
+            priority=2,
+            initial_granted_credits=Decimal("30"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("50"))
@@ -213,12 +228,18 @@ class TestMultiWalletPriorityConsumption:
     def test_drain_all_wallets_with_remainder(self, wallet_service, customer):
         """Test when all wallets are drained but amount isn't fully covered."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="W1", code="w1",
-            priority=1, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="W1",
+            code="w1",
+            priority=1,
+            initial_granted_credits=Decimal("30"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="W2", code="w2",
-            priority=2, initial_granted_credits=Decimal("20"),
+            customer_id=customer.id,
+            name="W2",
+            code="w2",
+            priority=2,
+            initial_granted_credits=Decimal("20"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("100"))
@@ -228,12 +249,18 @@ class TestMultiWalletPriorityConsumption:
     def test_same_priority_uses_created_at_order(self, wallet_service, customer, wallet_repo):
         """Test that wallets with same priority are consumed by created_at ASC."""
         w1 = wallet_service.create_wallet(
-            customer_id=customer.id, name="Older", code="older",
-            priority=1, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="Older",
+            code="older",
+            priority=1,
+            initial_granted_credits=Decimal("30"),
         )
         w2 = wallet_service.create_wallet(
-            customer_id=customer.id, name="Newer", code="newer",
-            priority=1, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="Newer",
+            code="newer",
+            priority=1,
+            initial_granted_credits=Decimal("30"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("40"))
@@ -248,12 +275,18 @@ class TestMultiWalletPriorityConsumption:
     def test_outbound_transactions_per_wallet(self, wallet_service, customer, txn_repo):
         """Test that each consumed wallet gets its own outbound transaction."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="WA", code="wa",
-            priority=1, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="WA",
+            code="wa",
+            priority=1,
+            initial_granted_credits=Decimal("30"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="WB", code="wb",
-            priority=2, initial_granted_credits=Decimal("30"),
+            customer_id=customer.id,
+            name="WB",
+            code="wb",
+            priority=2,
+            initial_granted_credits=Decimal("30"),
         )
 
         wallet_service.consume_credits(customer.id, Decimal("50"))
@@ -273,13 +306,17 @@ class TestSkippedWalletConsumption:
     def test_terminated_wallet_skipped(self, wallet_service, customer):
         """Test that terminated wallets are not consumed."""
         wallet = wallet_service.create_wallet(
-            customer_id=customer.id, name="Term", code="term",
+            customer_id=customer.id,
+            name="Term",
+            code="term",
             initial_granted_credits=Decimal("100"),
         )
         wallet_service.terminate_wallet(wallet.id)
 
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Active", code="active",
+            customer_id=customer.id,
+            name="Active",
+            code="active",
             initial_granted_credits=Decimal("50"),
         )
 
@@ -290,14 +327,19 @@ class TestSkippedWalletConsumption:
     def test_expired_wallet_skipped(self, wallet_service, customer):
         """Test that expired wallets are not consumed."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Expired", code="expired",
+            customer_id=customer.id,
+            name="Expired",
+            code="expired",
             priority=1,
             expiration_at=datetime.now(UTC) - timedelta(days=1),
             initial_granted_credits=Decimal("100"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Valid", code="valid",
-            priority=2, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="Valid",
+            code="valid",
+            priority=2,
+            initial_granted_credits=Decimal("50"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("70"))
@@ -307,12 +349,17 @@ class TestSkippedWalletConsumption:
     def test_zero_balance_wallet_skipped(self, wallet_service, customer, wallet_repo):
         """Test that zero-balance wallets are skipped."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Empty", code="empty",
+            customer_id=customer.id,
+            name="Empty",
+            code="empty",
             priority=1,
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Funded", code="funded",
-            priority=2, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="Funded",
+            code="funded",
+            priority=2,
+            initial_granted_credits=Decimal("50"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("30"))
@@ -333,11 +380,15 @@ class TestSkippedWalletConsumption:
     def test_all_wallets_terminated(self, wallet_service, customer):
         """Test consuming when all wallets are terminated."""
         w1 = wallet_service.create_wallet(
-            customer_id=customer.id, name="T1", code="t1",
+            customer_id=customer.id,
+            name="T1",
+            code="t1",
             initial_granted_credits=Decimal("100"),
         )
         w2 = wallet_service.create_wallet(
-            customer_id=customer.id, name="T2", code="t2",
+            customer_id=customer.id,
+            name="T2",
+            code="t2",
             initial_granted_credits=Decimal("100"),
         )
         wallet_service.terminate_wallet(w1.id)
@@ -350,12 +401,16 @@ class TestSkippedWalletConsumption:
     def test_all_wallets_expired(self, wallet_service, customer):
         """Test consuming when all wallets are expired."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="E1", code="e1",
+            customer_id=customer.id,
+            name="E1",
+            code="e1",
             expiration_at=datetime.now(UTC) - timedelta(days=1),
             initial_granted_credits=Decimal("100"),
         )
         wallet_service.create_wallet(
-            customer_id=customer.id, name="E2", code="e2",
+            customer_id=customer.id,
+            name="E2",
+            code="e2",
             expiration_at=datetime.now(UTC) - timedelta(hours=1),
             initial_granted_credits=Decimal("100"),
         )
@@ -368,14 +423,19 @@ class TestSkippedWalletConsumption:
         """Test consumption with a mix of terminated, expired, empty, and active wallets."""
         # Terminated
         w_term = wallet_service.create_wallet(
-            customer_id=customer.id, name="Terminated", code="mix-term",
-            priority=1, initial_granted_credits=Decimal("100"),
+            customer_id=customer.id,
+            name="Terminated",
+            code="mix-term",
+            priority=1,
+            initial_granted_credits=Decimal("100"),
         )
         wallet_service.terminate_wallet(w_term.id)
 
         # Expired
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Expired", code="mix-exp",
+            customer_id=customer.id,
+            name="Expired",
+            code="mix-exp",
             priority=2,
             expiration_at=datetime.now(UTC) - timedelta(days=1),
             initial_granted_credits=Decimal("100"),
@@ -383,14 +443,19 @@ class TestSkippedWalletConsumption:
 
         # Empty
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Empty", code="mix-empty",
+            customer_id=customer.id,
+            name="Empty",
+            code="mix-empty",
             priority=3,
         )
 
         # Active with balance (only one that should be consumed)
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Active", code="mix-active",
-            priority=4, initial_granted_credits=Decimal("40"),
+            customer_id=customer.id,
+            name="Active",
+            code="mix-active",
+            priority=4,
+            initial_granted_credits=Decimal("40"),
         )
 
         result = wallet_service.consume_credits(customer.id, Decimal("60"))
@@ -404,7 +469,9 @@ class TestConsumptionWithRateAmount:
     def test_rate_amount_conversion(self, wallet_service, customer, wallet_repo):
         """Test that rate_amount is used to convert between credits and currency."""
         wallet = wallet_service.create_wallet(
-            customer_id=customer.id, name="Rate", code="rate",
+            customer_id=customer.id,
+            name="Rate",
+            code="rate",
             rate_amount=Decimal("200"),  # 1 credit = 200 cents
             initial_granted_credits=Decimal("10"),  # 10 credits = 2000 cents
         )
@@ -418,16 +485,24 @@ class TestConsumptionWithRateAmount:
         assert updated.credits_balance == Decimal("5.0000")
         assert updated.balance_cents == Decimal("1000.0000")
 
-    def test_different_rate_amounts_across_wallets(self, wallet_service, customer, wallet_repo, txn_repo):
+    def test_different_rate_amounts_across_wallets(
+        self, wallet_service, customer, wallet_repo, txn_repo
+    ):
         """Test consumption across wallets with different rate amounts."""
         w1 = wallet_service.create_wallet(
-            customer_id=customer.id, name="Rate100", code="r100",
-            priority=1, rate_amount=Decimal("100"),
+            customer_id=customer.id,
+            name="Rate100",
+            code="r100",
+            priority=1,
+            rate_amount=Decimal("100"),
             initial_granted_credits=Decimal("5"),  # 500 cents
         )
         w2 = wallet_service.create_wallet(
-            customer_id=customer.id, name="Rate50", code="r50",
-            priority=2, rate_amount=Decimal("50"),
+            customer_id=customer.id,
+            name="Rate50",
+            code="r50",
+            priority=2,
+            rate_amount=Decimal("50"),
             initial_granted_credits=Decimal("10"),  # 500 cents
         )
 
@@ -452,7 +527,9 @@ class TestConsumptionTransactions:
     def test_outbound_transaction_fields(self, wallet_service, customer, txn_repo):
         """Test that outbound transactions have correct field values."""
         wallet = wallet_service.create_wallet(
-            customer_id=customer.id, name="Txn Fields", code="txn-fields",
+            customer_id=customer.id,
+            name="Txn Fields",
+            code="txn-fields",
             initial_granted_credits=Decimal("100"),
         )
 
@@ -469,7 +546,9 @@ class TestConsumptionTransactions:
         assert Decimal(str(txn.credit_amount)) == Decimal("40.0000")
         assert txn.invoice_id is None
 
-    def test_outbound_transaction_with_invoice_id(self, wallet_service, customer, db_session, txn_repo):
+    def test_outbound_transaction_with_invoice_id(
+        self, wallet_service, customer, db_session, txn_repo
+    ):
         """Test that invoice_id is recorded on outbound transactions."""
         from app.repositories.invoice_repository import InvoiceRepository
         from app.repositories.plan_repository import PlanRepository
@@ -497,15 +576,21 @@ class TestConsumptionTransactions:
                 subscription_id=sub.id,
                 billing_period_start=now,
                 billing_period_end=now + timedelta(days=30),
-                line_items=[InvoiceLineItem(
-                    description="Test", unit_price=Decimal("5000"),
-                    amount=Decimal("5000"), quantity=Decimal("1"),
-                )],
+                line_items=[
+                    InvoiceLineItem(
+                        description="Test",
+                        unit_price=Decimal("5000"),
+                        amount=Decimal("5000"),
+                        quantity=Decimal("1"),
+                    )
+                ],
             )
         )
 
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Invoice Txn", code="inv-txn",
+            customer_id=customer.id,
+            name="Invoice Txn",
+            code="inv-txn",
             initial_granted_credits=Decimal("200"),
         )
         wallet_service.consume_credits(customer.id, Decimal("50"), invoice_id=invoice.id)
@@ -518,7 +603,9 @@ class TestConsumptionTransactions:
     def test_no_transaction_created_for_zero_consumption(self, wallet_service, customer, txn_repo):
         """Test that no outbound transaction is created when nothing is consumed."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="Zero Txn", code="zero-txn",
+            customer_id=customer.id,
+            name="Zero Txn",
+            code="zero-txn",
             initial_granted_credits=Decimal("100"),
         )
         wallet_service.consume_credits(customer.id, Decimal("0"))
@@ -538,14 +625,20 @@ class TestConsumptionTransactions:
 class TestConsumptionCustomerIsolation:
     """Tests for customer isolation during consumption."""
 
-    def test_consumption_isolated_between_customers(self, wallet_service, customer, customer2, wallet_repo):
+    def test_consumption_isolated_between_customers(
+        self, wallet_service, customer, customer2, wallet_repo
+    ):
         """Test that consuming from one customer doesn't affect another."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="C1", code="c1",
+            customer_id=customer.id,
+            name="C1",
+            code="c1",
             initial_granted_credits=Decimal("100"),
         )
         wallet_service.create_wallet(
-            customer_id=customer2.id, name="C2", code="c2",
+            customer_id=customer2.id,
+            name="C2",
+            code="c2",
             initial_granted_credits=Decimal("100"),
         )
 
@@ -559,11 +652,15 @@ class TestConsumptionCustomerIsolation:
     def test_consumption_result_independent(self, wallet_service, customer, customer2):
         """Test that consumption results are independent per customer."""
         wallet_service.create_wallet(
-            customer_id=customer.id, name="C1", code="c1",
+            customer_id=customer.id,
+            name="C1",
+            code="c1",
             initial_granted_credits=Decimal("50"),
         )
         wallet_service.create_wallet(
-            customer_id=customer2.id, name="C2", code="c2",
+            customer_id=customer2.id,
+            name="C2",
+            code="c2",
             initial_granted_credits=Decimal("100"),
         )
 

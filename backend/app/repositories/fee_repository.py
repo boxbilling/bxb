@@ -109,7 +109,9 @@ class FeeRepository:
         return fee
 
     def create_bulk(
-        self, fees_data: list[FeeCreate], organization_id: UUID | None = None,
+        self,
+        fees_data: list[FeeCreate],
+        organization_id: UUID | None = None,
     ) -> list[Fee]:
         """Create multiple fees at once."""
         fees = []

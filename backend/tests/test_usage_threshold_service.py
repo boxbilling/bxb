@@ -636,9 +636,7 @@ class TestCheckThresholds:
 class TestGetCurrentUsageAmount:
     """Tests for UsageThresholdService.get_current_usage_amount."""
 
-    def test_zero_usage_no_charges(
-        self, db_session, active_subscription, customer, billing_period
-    ):
+    def test_zero_usage_no_charges(self, db_session, active_subscription, customer, billing_period):
         """Subscription with no charges should return zero."""
         start, end = billing_period
         service = UsageThresholdService(db_session)
@@ -691,7 +689,15 @@ class TestGetCurrentUsageAmount:
         assert amount == Decimal("5000")
 
     def test_multiple_charges_summed(
-        self, db_session, active_subscription, customer, plan, metric, charge, sum_metric, billing_period
+        self,
+        db_session,
+        active_subscription,
+        customer,
+        plan,
+        metric,
+        charge,
+        sum_metric,
+        billing_period,
     ):
         """Multiple charges on the same plan should be summed."""
         start, end = billing_period
@@ -855,7 +861,12 @@ class TestGetCurrentUsageAmount:
             properties={
                 "graduated_ranges": [
                     {"from_value": 0, "to_value": 10, "per_unit_amount": "100", "flat_amount": "0"},
-                    {"from_value": 10, "to_value": None, "per_unit_amount": "50", "flat_amount": "0"},
+                    {
+                        "from_value": 10,
+                        "to_value": None,
+                        "per_unit_amount": "50",
+                        "flat_amount": "0",
+                    },
                 ]
             },
         )
@@ -932,7 +943,12 @@ class TestGetCurrentUsageAmount:
             properties={
                 "volume_ranges": [
                     {"from_value": 0, "to_value": 10, "per_unit_amount": "200", "flat_amount": "0"},
-                    {"from_value": 10, "to_value": None, "per_unit_amount": "100", "flat_amount": "0"},
+                    {
+                        "from_value": 10,
+                        "to_value": None,
+                        "per_unit_amount": "100",
+                        "flat_amount": "0",
+                    },
                 ]
             },
         )
@@ -977,9 +993,7 @@ class TestResetRecurringThresholds:
         )
         assert count == 0
 
-    def test_non_recurring_thresholds_not_counted(
-        self, db_session, active_subscription, plan
-    ):
+    def test_non_recurring_thresholds_not_counted(self, db_session, active_subscription, plan):
         """Non-recurring thresholds should not be counted."""
         threshold_repo = UsageThresholdRepository(db_session)
         threshold_repo.create(
@@ -1102,9 +1116,7 @@ class TestResetRecurringThresholds:
                 period_start=datetime.now(UTC),
             )
 
-    def test_mixed_recurring_and_non_recurring(
-        self, db_session, active_subscription, plan
-    ):
+    def test_mixed_recurring_and_non_recurring(self, db_session, active_subscription, plan):
         """Only recurring thresholds should be counted."""
         threshold_repo = UsageThresholdRepository(db_session)
         threshold_repo.create(
@@ -1150,9 +1162,7 @@ class TestGetEffectiveThresholds:
 
     def test_empty_when_no_thresholds(self, db_session, active_subscription, plan):
         service = UsageThresholdService(db_session)
-        result = service._get_effective_thresholds(
-            active_subscription.id, UUID(str(plan.id))
-        )
+        result = service._get_effective_thresholds(active_subscription.id, UUID(str(plan.id)))
         assert result == []
 
     def test_plan_thresholds_only(self, db_session, active_subscription, plan):
@@ -1167,17 +1177,13 @@ class TestGetEffectiveThresholds:
         )
 
         service = UsageThresholdService(db_session)
-        result = service._get_effective_thresholds(
-            active_subscription.id, UUID(str(plan.id))
-        )
+        result = service._get_effective_thresholds(active_subscription.id, UUID(str(plan.id)))
         assert len(result) == 2
         # Should be sorted by amount ascending
         amounts = [Decimal(str(t.amount_cents)) for t in result]
         assert amounts == [Decimal("1000"), Decimal("5000")]
 
-    def test_subscription_and_plan_thresholds_combined(
-        self, db_session, active_subscription, plan
-    ):
+    def test_subscription_and_plan_thresholds_combined(self, db_session, active_subscription, plan):
         threshold_repo = UsageThresholdRepository(db_session)
         threshold_repo.create(
             UsageThresholdCreate(plan_id=plan.id, amount_cents=Decimal("5000")),
@@ -1191,9 +1197,7 @@ class TestGetEffectiveThresholds:
         )
 
         service = UsageThresholdService(db_session)
-        result = service._get_effective_thresholds(
-            active_subscription.id, UUID(str(plan.id))
-        )
+        result = service._get_effective_thresholds(active_subscription.id, UUID(str(plan.id)))
         assert len(result) == 2
         amounts = [Decimal(str(t.amount_cents)) for t in result]
         assert amounts == [Decimal("3000"), Decimal("5000")]
@@ -1255,9 +1259,7 @@ class TestCalculateChargeAmount:
         )
         assert amount == Decimal("0")  # 0 events * 500
 
-    def test_percentage_charge(
-        self, db_session, plan, metric, customer, billing_period
-    ):
+    def test_percentage_charge(self, db_session, plan, metric, customer, billing_period):
         """Percentage charge model should calculate correctly."""
         start, end = billing_period
         c = Charge(
@@ -1292,9 +1294,7 @@ class TestCalculateChargeAmount:
         # 10% of 10000 = 1000
         assert amount == Decimal("1000")
 
-    def test_graduated_percentage_charge(
-        self, db_session, plan, metric, customer, billing_period
-    ):
+    def test_graduated_percentage_charge(self, db_session, plan, metric, customer, billing_period):
         """Graduated percentage charge model should calculate correctly."""
         start, end = billing_period
         c = Charge(
@@ -1333,9 +1333,7 @@ class TestCalculateChargeAmount:
         # 5% of first 5000 = 250, 10% of remaining 5000 = 500, total = 750
         assert amount == Decimal("750")
 
-    def test_custom_charge(
-        self, db_session, plan, metric, customer, billing_period
-    ):
+    def test_custom_charge(self, db_session, plan, metric, customer, billing_period):
         """Custom charge model should calculate correctly."""
         start, end = billing_period
         c = Charge(
@@ -1367,9 +1365,7 @@ class TestCalculateChargeAmount:
         )
         assert amount == Decimal("999")
 
-    def test_dynamic_charge(
-        self, db_session, plan, metric, customer, billing_period
-    ):
+    def test_dynamic_charge(self, db_session, plan, metric, customer, billing_period):
         """Dynamic charge model should calculate correctly."""
         start, end = billing_period
         c = Charge(

@@ -11,9 +11,7 @@ class SubscriptionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
-    ) -> list[Subscription]:
+    def get_all(self, organization_id: UUID, skip: int = 0, limit: int = 100) -> list[Subscription]:
         return (
             self.db.query(Subscription)
             .filter(Subscription.organization_id == organization_id)
@@ -30,9 +28,7 @@ class SubscriptionRepository:
             query = query.filter(Subscription.organization_id == organization_id)
         return query.first()
 
-    def get_by_external_id(
-        self, external_id: str, organization_id: UUID
-    ) -> Subscription | None:
+    def get_by_external_id(self, external_id: str, organization_id: UUID) -> Subscription | None:
         return (
             self.db.query(Subscription)
             .filter(
@@ -42,9 +38,7 @@ class SubscriptionRepository:
             .first()
         )
 
-    def get_by_customer_id(
-        self, customer_id: UUID, organization_id: UUID
-    ) -> list[Subscription]:
+    def get_by_customer_id(self, customer_id: UUID, organization_id: UUID) -> list[Subscription]:
         return (
             self.db.query(Subscription)
             .filter(

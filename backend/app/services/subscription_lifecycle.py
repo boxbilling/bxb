@@ -81,9 +81,7 @@ class SubscriptionLifecycleService:
             period_start, period_end = self.dates_service.calculate_billing_period(
                 subscription, interval, now
             )
-            self._generate_prorated_invoice(
-                subscription, new_plan, period_start, period_end, now
-            )
+            self._generate_prorated_invoice(subscription, new_plan, period_start, period_end, now)
 
         self.webhook_service.send_webhook(
             webhook_type="subscription.plan_changed",
@@ -298,9 +296,7 @@ class SubscriptionLifecycleService:
             SubscriptionStatus.ACTIVE.value,
             SubscriptionStatus.PENDING.value,
         ):
-            raise ValueError(
-                "Can only terminate active or pending subscriptions"
-            )
+            raise ValueError("Can only terminate active or pending subscriptions")
 
         now = datetime.now(UTC)
 
@@ -368,9 +364,7 @@ class SubscriptionLifecycleService:
             SubscriptionStatus.ACTIVE.value,
             SubscriptionStatus.PENDING.value,
         ):
-            raise ValueError(
-                "Can only cancel active or pending subscriptions"
-            )
+            raise ValueError("Can only cancel active or pending subscriptions")
 
         now = datetime.now(UTC)
 
@@ -565,9 +559,7 @@ class SubscriptionLifecycleService:
         if customer:
             grace_period = int(customer.invoice_grace_period or 0)
             net_payment_term = int(
-                customer.net_payment_term
-                if customer.net_payment_term is not None
-                else 30
+                customer.net_payment_term if customer.net_payment_term is not None else 30
             )
             issued_at = period_end + timedelta(days=grace_period)
             due_date = issued_at + timedelta(days=net_payment_term)

@@ -10,9 +10,7 @@ class CustomerRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
-    ) -> list[Customer]:
+    def get_all(self, organization_id: UUID, skip: int = 0, limit: int = 100) -> list[Customer]:
         return (
             self.db.query(Customer)
             .filter(Customer.organization_id == organization_id)

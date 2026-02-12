@@ -32,9 +32,7 @@ class Wallet(Base):
     """Wallet model for prepaid credits."""
 
     __tablename__ = "wallets"
-    __table_args__ = (
-        UniqueConstraint("customer_id", "code", name="uq_wallets_customer_id_code"),
-    )
+    __table_args__ = (UniqueConstraint("customer_id", "code", name="uq_wallets_customer_id_code"),)
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
     organization_id = Column(

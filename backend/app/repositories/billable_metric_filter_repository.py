@@ -12,9 +12,7 @@ class BillableMetricFilterRepository:
 
     def get_by_id(self, filter_id: UUID) -> BillableMetricFilter | None:
         return (
-            self.db.query(BillableMetricFilter)
-            .filter(BillableMetricFilter.id == filter_id)
-            .first()
+            self.db.query(BillableMetricFilter).filter(BillableMetricFilter.id == filter_id).first()
         )
 
     def get_by_metric_id(self, billable_metric_id: UUID) -> list[BillableMetricFilter]:

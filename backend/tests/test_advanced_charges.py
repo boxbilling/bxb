@@ -219,9 +219,7 @@ class TestGraduatedPercentageCharge:
         # All $1000 in first tier: 1000 * 5% = $50
         assert invoice.total == Decimal("50")
 
-    def test_zero_base_amount(
-        self, db_session, active_sub, count_metric, customer, billing_period
-    ):
+    def test_zero_base_amount(self, db_session, active_sub, count_metric, customer, billing_period):
         """Test graduated_percentage with zero base amount."""
         start, end = billing_period
         charge = Charge(
@@ -609,21 +607,25 @@ class TestFilteredCharges:
 
         # Create events: 3 us-east, 2 eu-west
         for i in range(3):
-            db_session.add(Event(
-                external_customer_id=customer.external_id,
-                code=count_metric.code,
-                transaction_id=f"txn_filt_us_{uuid4()}",
-                timestamp=start + timedelta(hours=i + 1),
-                properties={"region": "us-east"},
-            ))
+            db_session.add(
+                Event(
+                    external_customer_id=customer.external_id,
+                    code=count_metric.code,
+                    transaction_id=f"txn_filt_us_{uuid4()}",
+                    timestamp=start + timedelta(hours=i + 1),
+                    properties={"region": "us-east"},
+                )
+            )
         for i in range(2):
-            db_session.add(Event(
-                external_customer_id=customer.external_id,
-                code=count_metric.code,
-                transaction_id=f"txn_filt_eu_{uuid4()}",
-                timestamp=start + timedelta(hours=i + 4),
-                properties={"region2": "eu-west"},
-            ))
+            db_session.add(
+                Event(
+                    external_customer_id=customer.external_id,
+                    code=count_metric.code,
+                    transaction_id=f"txn_filt_eu_{uuid4()}",
+                    timestamp=start + timedelta(hours=i + 4),
+                    properties={"region2": "eu-west"},
+                )
+            )
         db_session.commit()
 
         service = InvoiceGenerationService(db_session)
@@ -690,11 +692,13 @@ class TestFilteredCharges:
         db_session.commit()
         db_session.refresh(bmf_std)
 
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf_std.id,
-            billable_metric_filter_id=bmf_std.id,
-            value="standard",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf_std.id,
+                billable_metric_filter_id=bmf_std.id,
+                value="standard",
+            )
+        )
         db_session.commit()
 
         # Premium tier: $0.05/byte
@@ -716,29 +720,35 @@ class TestFilteredCharges:
         db_session.commit()
         db_session.refresh(bmf_prem)
 
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf_prem.id,
-            billable_metric_filter_id=bmf_prem.id,
-            value="premium",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf_prem.id,
+                billable_metric_filter_id=bmf_prem.id,
+                value="premium",
+            )
+        )
         db_session.commit()
 
         # Create events: 1000 bytes standard, 200 bytes premium
         for i in range(2):
-            db_session.add(Event(
+            db_session.add(
+                Event(
+                    external_customer_id=customer.external_id,
+                    code=sum_metric.code,
+                    transaction_id=f"txn_std_{uuid4()}",
+                    timestamp=start + timedelta(hours=i + 1),
+                    properties={"bytes": 500, "tier_std": "standard"},
+                )
+            )
+        db_session.add(
+            Event(
                 external_customer_id=customer.external_id,
                 code=sum_metric.code,
-                transaction_id=f"txn_std_{uuid4()}",
-                timestamp=start + timedelta(hours=i + 1),
-                properties={"bytes": 500, "tier_std": "standard"},
-            ))
-        db_session.add(Event(
-            external_customer_id=customer.external_id,
-            code=sum_metric.code,
-            transaction_id=f"txn_prem_{uuid4()}",
-            timestamp=start + timedelta(hours=5),
-            properties={"bytes": 200, "tier_prem": "premium"},
-        ))
+                transaction_id=f"txn_prem_{uuid4()}",
+                timestamp=start + timedelta(hours=5),
+                properties={"bytes": 200, "tier_prem": "premium"},
+            )
+        )
         db_session.commit()
 
         service = InvoiceGenerationService(db_session)
@@ -792,15 +802,18 @@ class TestFilteredCharges:
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="us-east",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="us-east",
+            )
+        )
         db_session.commit()
 
-        _create_events(db_session, customer, count_metric, start, count=2,
-                       properties={"region": "us-east"})
+        _create_events(
+            db_session, customer, count_metric, start, count=2, properties={"region": "us-east"}
+        )
 
         service = InvoiceGenerationService(db_session)
         invoice = service.generate_invoice(
@@ -849,15 +862,18 @@ class TestFilteredCharges:
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="us-east",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="us-east",
+            )
+        )
         db_session.commit()
 
-        _create_events(db_session, customer, count_metric, start, count=2,
-                       properties={"region": "us-east"})
+        _create_events(
+            db_session, customer, count_metric, start, count=2, properties={"region": "us-east"}
+        )
 
         service = InvoiceGenerationService(db_session)
         invoice = service.generate_invoice(
@@ -933,28 +949,34 @@ class TestFilteredCharges:
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="web",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="web",
+            )
+        )
         db_session.commit()
 
         # Create web events with pricing and API events (should be filtered out)
-        db_session.add(Event(
-            external_customer_id=customer.external_id,
-            code=count_metric.code,
-            transaction_id=f"txn_web_{uuid4()}",
-            timestamp=start + timedelta(hours=1),
-            properties={"channel": "web", "unit_price": "10", "quantity": "2"},
-        ))
-        db_session.add(Event(
-            external_customer_id=customer.external_id,
-            code=count_metric.code,
-            transaction_id=f"txn_api_{uuid4()}",
-            timestamp=start + timedelta(hours=2),
-            properties={"channel": "api", "unit_price": "100", "quantity": "5"},
-        ))
+        db_session.add(
+            Event(
+                external_customer_id=customer.external_id,
+                code=count_metric.code,
+                transaction_id=f"txn_web_{uuid4()}",
+                timestamp=start + timedelta(hours=1),
+                properties={"channel": "web", "unit_price": "10", "quantity": "2"},
+            )
+        )
+        db_session.add(
+            Event(
+                external_customer_id=customer.external_id,
+                code=count_metric.code,
+                transaction_id=f"txn_api_{uuid4()}",
+                timestamp=start + timedelta(hours=2),
+                properties={"channel": "api", "unit_price": "100", "quantity": "5"},
+            )
+        )
         db_session.commit()
 
         service = InvoiceGenerationService(db_session)
@@ -1040,16 +1062,19 @@ class TestFilteredCharges:
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="us-east",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="us-east",
+            )
+        )
         db_session.commit()
 
         # Create events that DON'T match the filter
-        _create_events(db_session, customer, count_metric, start, count=5,
-                       properties={"region": "eu-west"})
+        _create_events(
+            db_session, customer, count_metric, start, count=5, properties={"region": "eu-west"}
+        )
 
         service = InvoiceGenerationService(db_session)
         invoice = service.generate_invoice(
@@ -1083,7 +1108,12 @@ class TestFilteredCharges:
             properties={
                 "graduated_ranges": [
                     {"from_value": 0, "to_value": 5, "per_unit_amount": "2.00", "flat_amount": "0"},
-                    {"from_value": 5, "to_value": None, "per_unit_amount": "1.00", "flat_amount": "0"},
+                    {
+                        "from_value": 5,
+                        "to_value": None,
+                        "per_unit_amount": "1.00",
+                        "flat_amount": "0",
+                    },
                 ]
             },
         )
@@ -1096,22 +1126,35 @@ class TestFilteredCharges:
             properties={
                 "graduated_ranges": [
                     {"from_value": 0, "to_value": 5, "per_unit_amount": "3.00", "flat_amount": "0"},
-                    {"from_value": 5, "to_value": None, "per_unit_amount": "1.50", "flat_amount": "0"},
+                    {
+                        "from_value": 5,
+                        "to_value": None,
+                        "per_unit_amount": "1.50",
+                        "flat_amount": "0",
+                    },
                 ]
             },
         )
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="enterprise",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="enterprise",
+            )
+        )
         db_session.commit()
 
-        _create_events(db_session, customer, count_metric, start, count=10,
-                       properties={"plan_type": "enterprise"})
+        _create_events(
+            db_session,
+            customer,
+            count_metric,
+            start,
+            count=10,
+            properties={"plan_type": "enterprise"},
+        )
 
         service = InvoiceGenerationService(db_session)
         invoice = service.generate_invoice(
@@ -1202,15 +1245,18 @@ class TestFilteredCharges:
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="us-east",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="us-east",
+            )
+        )
         db_session.commit()
 
-        _create_events(db_session, customer, count_metric, start, count=3,
-                       properties={"region": "us-east"})
+        _create_events(
+            db_session, customer, count_metric, start, count=3, properties={"region": "us-east"}
+        )
 
         service = InvoiceGenerationService(db_session)
         invoice = service.generate_invoice(
@@ -1256,11 +1302,13 @@ class TestFilteredCharges:
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
-        db_session.add(ChargeFilterValue(
-            charge_filter_id=cf.id,
-            billable_metric_filter_id=bmf.id,
-            value="us-east",
-        ))
+        db_session.add(
+            ChargeFilterValue(
+                charge_filter_id=cf.id,
+                billable_metric_filter_id=bmf.id,
+                value="us-east",
+            )
+        )
         db_session.commit()
 
         # No events matching = 0 usage, amount=0, quantity=0 -> skipped

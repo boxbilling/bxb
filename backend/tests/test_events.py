@@ -896,9 +896,7 @@ class TestGetActiveSubscriptionIds:
         """Test returns active subscription IDs for the customer."""
         customer = _create_customer(db_session, "cust-active-sub")
         plan = _create_plan(db_session, "plan-active-sub")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub-active-test"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub-active-test")
 
         result = _get_active_subscription_ids("cust-active-sub", db_session, DEFAULT_ORG_ID)
         assert result == [str(sub.id)]
@@ -908,9 +906,7 @@ class TestGetActiveSubscriptionIds:
         customer = _create_customer(db_session, "cust-mixed-subs")
         plan = _create_plan(db_session, "plan-mixed-subs")
 
-        active_sub = _create_active_subscription(
-            db_session, customer, plan, "sub-active-only"
-        )
+        active_sub = _create_active_subscription(db_session, customer, plan, "sub-active-only")
 
         canceled_sub = Subscription(
             external_id="sub-canceled",
@@ -977,9 +973,7 @@ class TestEventThresholdIntegration:
         """Test single event ingestion enqueues threshold checks for active subscriptions."""
         customer = _create_customer(db_session, "cust-evt-threshold")
         plan = _create_plan(db_session, "plan-evt-threshold")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub-evt-threshold"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub-evt-threshold")
 
         with patch(
             "app.routers.events.enqueue_check_usage_thresholds",
@@ -1004,9 +998,7 @@ class TestEventThresholdIntegration:
         """Test duplicate event does not enqueue threshold checks."""
         customer = _create_customer(db_session, "cust-evt-dup-thresh")
         plan = _create_plan(db_session, "plan-evt-dup-thresh")
-        _create_active_subscription(
-            db_session, customer, plan, "sub-evt-dup-thresh"
-        )
+        _create_active_subscription(db_session, customer, plan, "sub-evt-dup-thresh")
 
         # Create the first event
         client.post(
@@ -1037,9 +1029,7 @@ class TestEventThresholdIntegration:
         assert response.status_code == 201
         mock_enqueue.assert_not_called()
 
-    def test_create_event_no_enqueue_without_customer(
-        self, client: TestClient, billable_metric
-    ):
+    def test_create_event_no_enqueue_without_customer(self, client: TestClient, billable_metric):
         """Test no threshold check when customer doesn't exist."""
         with patch(
             "app.routers.events.enqueue_check_usage_thresholds",
@@ -1064,9 +1054,7 @@ class TestEventThresholdIntegration:
         """Test batch event ingestion enqueues threshold checks."""
         customer = _create_customer(db_session, "cust-batch-thresh")
         plan = _create_plan(db_session, "plan-batch-thresh")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub-batch-thresh"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub-batch-thresh")
 
         with patch(
             "app.routers.events.enqueue_check_usage_thresholds",
@@ -1103,9 +1091,7 @@ class TestEventThresholdIntegration:
         """Test batch with all duplicates does not enqueue threshold checks."""
         customer = _create_customer(db_session, "cust-batch-alldup")
         plan = _create_plan(db_session, "plan-batch-alldup")
-        _create_active_subscription(
-            db_session, customer, plan, "sub-batch-alldup"
-        )
+        _create_active_subscription(db_session, customer, plan, "sub-batch-alldup")
 
         # Pre-create the events
         client.post(
@@ -1141,19 +1127,13 @@ class TestEventThresholdIntegration:
         assert response.json()["ingested"] == 0
         mock_enqueue.assert_not_called()
 
-    def test_batch_create_multiple_customers(
-        self, client: TestClient, db_session, billable_metric
-    ):
+    def test_batch_create_multiple_customers(self, client: TestClient, db_session, billable_metric):
         """Test batch events for multiple customers enqueue for all subscriptions."""
         cust1 = _create_customer(db_session, "cust-multi-batch-1")
         cust2 = _create_customer(db_session, "cust-multi-batch-2")
         plan = _create_plan(db_session, "plan-multi-batch")
-        sub1 = _create_active_subscription(
-            db_session, cust1, plan, "sub-multi-batch-1"
-        )
-        sub2 = _create_active_subscription(
-            db_session, cust2, plan, "sub-multi-batch-2"
-        )
+        sub1 = _create_active_subscription(db_session, cust1, plan, "sub-multi-batch-1")
+        sub2 = _create_active_subscription(db_session, cust2, plan, "sub-multi-batch-2")
 
         with patch(
             "app.routers.events.enqueue_check_usage_thresholds",

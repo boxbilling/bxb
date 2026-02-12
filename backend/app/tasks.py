@@ -74,3 +74,8 @@ async def enqueue_process_payment_requests() -> Job:
 async def enqueue_check_usage_thresholds(subscription_id: str) -> Job:
     """Enqueue a task to check usage thresholds for a subscription."""
     return await enqueue_task("check_usage_thresholds_task", subscription_id)
+
+
+async def enqueue_process_data_export(export_id: str) -> Job:
+    """Enqueue a task to process a data export."""
+    return await enqueue_task("process_data_export_task", export_id)

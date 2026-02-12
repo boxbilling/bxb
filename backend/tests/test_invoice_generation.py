@@ -1124,9 +1124,7 @@ class TestGenerateInvoiceFeeRecords:
         assert total_from_fees == Decimal("20")
         assert invoice.total == Decimal("20")
 
-    def test_no_fee_records_when_no_charges(
-        self, db_session, active_subscription, billing_period
-    ):
+    def test_no_fee_records_when_no_charges(self, db_session, active_subscription, billing_period):
         """Test that no Fee records are created when there are no charges."""
         start, end = billing_period
         service = InvoiceGenerationService(db_session)
@@ -1328,9 +1326,7 @@ class TestCalculateChargeFee:
         assert fee_data.metric_code is None
         assert fee_data.events_count == 0
 
-    def test_fee_metric_not_found(
-        self, db_session, active_subscription, customer, billing_period
-    ):
+    def test_fee_metric_not_found(self, db_session, active_subscription, customer, billing_period):
         """Test fee calculation when metric doesn't exist."""
         start, end = billing_period
         fake_metric_id = uuid4()
@@ -1457,7 +1453,12 @@ class TestCalculateChargeFee:
             properties={
                 "graduated_ranges": [
                     {"from_value": 0, "to_value": 5, "per_unit_amount": "2.00", "flat_amount": "0"},
-                    {"from_value": 5, "to_value": None, "per_unit_amount": "1.00", "flat_amount": "0"},
+                    {
+                        "from_value": 5,
+                        "to_value": None,
+                        "per_unit_amount": "1.00",
+                        "flat_amount": "0",
+                    },
                 ]
             },
         )
@@ -1583,9 +1584,7 @@ class TestCalculateChargeFee:
         assert fee_data is not None
         assert fee_data.amount_cents == Decimal("0")
 
-    def test_fee_min_price(
-        self, db_session, active_subscription, metric, customer, billing_period
-    ):
+    def test_fee_min_price(self, db_session, active_subscription, metric, customer, billing_period):
         """Test fee calculation with min_price applied."""
         start, end = billing_period
         charge = Charge(
@@ -1612,9 +1611,7 @@ class TestCalculateChargeFee:
         assert fee_data is not None
         assert fee_data.amount_cents == Decimal("50.00")
 
-    def test_fee_max_price(
-        self, db_session, active_subscription, metric, customer, billing_period
-    ):
+    def test_fee_max_price(self, db_session, active_subscription, metric, customer, billing_period):
         """Test fee calculation with max_price applied."""
         start, end = billing_period
         charge = Charge(
@@ -2577,9 +2574,7 @@ class TestTaxIntegration:
         assert invoice.tax_amount == Decimal("15")
         assert invoice.total == Decimal("115")
 
-    def test_no_tax_on_zero_subtotal_invoice(
-        self, db_session, active_subscription, billing_period
-    ):
+    def test_no_tax_on_zero_subtotal_invoice(self, db_session, active_subscription, billing_period):
         """Test that no taxes are applied when invoice has no fees."""
         start, end = billing_period
 
@@ -3047,7 +3042,12 @@ class TestFilteredChargeCalculation:
             properties={
                 "graduated_ranges": [
                     {"from_value": 0, "to_value": 5, "per_unit_amount": "2.00", "flat_amount": "0"},
-                    {"from_value": 5, "to_value": None, "per_unit_amount": "1.00", "flat_amount": "0"},
+                    {
+                        "from_value": 5,
+                        "to_value": None,
+                        "per_unit_amount": "1.00",
+                        "flat_amount": "0",
+                    },
                 ]
             },
         )
@@ -3595,9 +3595,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(metric)
 
-        bmf = BillableMetricFilter(
-            billable_metric_id=metric.id, key="region", values=["us"]
-        )
+        bmf = BillableMetricFilter(billable_metric_id=metric.id, key="region", values=["us"])
         db_session.add(bmf)
         db_session.commit()
         db_session.refresh(bmf)
@@ -3612,9 +3610,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(charge)
 
-        cf = ChargeFilter(
-            charge_id=charge.id, properties={}, invoice_display_name="US"
-        )
+        cf = ChargeFilter(charge_id=charge.id, properties={}, invoice_display_name="US")
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)
@@ -3667,9 +3663,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(metric)
 
-        bmf = BillableMetricFilter(
-            billable_metric_id=metric.id, key="region", values=["us", "eu"]
-        )
+        bmf = BillableMetricFilter(billable_metric_id=metric.id, key="region", values=["us", "eu"])
         db_session.add(bmf)
         db_session.commit()
         db_session.refresh(bmf)
@@ -3774,9 +3768,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(metric)
 
-        bmf = BillableMetricFilter(
-            billable_metric_id=metric.id, key="region", values=["us"]
-        )
+        bmf = BillableMetricFilter(billable_metric_id=metric.id, key="region", values=["us"])
         db_session.add(bmf)
         db_session.commit()
         db_session.refresh(bmf)
@@ -3856,9 +3848,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(metric)
 
-        bmf = BillableMetricFilter(
-            billable_metric_id=metric.id, key="type", values=["api"]
-        )
+        bmf = BillableMetricFilter(billable_metric_id=metric.id, key="type", values=["api"])
         db_session.add(bmf)
         db_session.commit()
         db_session.refresh(bmf)
@@ -3938,9 +3928,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(metric)
 
-        bmf = BillableMetricFilter(
-            billable_metric_id=metric.id, key="tier", values=["pro"]
-        )
+        bmf = BillableMetricFilter(billable_metric_id=metric.id, key="tier", values=["pro"])
         db_session.add(bmf)
         db_session.commit()
         db_session.refresh(bmf)
@@ -4014,9 +4002,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(metric)
 
-        bmf = BillableMetricFilter(
-            billable_metric_id=metric.id, key="region", values=["us"]
-        )
+        bmf = BillableMetricFilter(billable_metric_id=metric.id, key="region", values=["us"])
         db_session.add(bmf)
         db_session.commit()
         db_session.refresh(bmf)
@@ -4031,9 +4017,7 @@ class TestFilteredChargeCalculation:
         db_session.commit()
         db_session.refresh(charge)
 
-        cf = ChargeFilter(
-            charge_id=charge.id, properties={}, invoice_display_name="US"
-        )
+        cf = ChargeFilter(charge_id=charge.id, properties={}, invoice_display_name="US")
         db_session.add(cf)
         db_session.commit()
         db_session.refresh(cf)

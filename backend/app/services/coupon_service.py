@@ -63,10 +63,7 @@ class CouponApplicationService:
             raise ValueError("Coupon is not active")
 
         # Check expiration
-        if (
-            coupon.expiration == CouponExpiration.TIME_LIMIT.value
-            and coupon.expiration_at
-        ):
+        if coupon.expiration == CouponExpiration.TIME_LIMIT.value and coupon.expiration_at:
             expiration_at = coupon.expiration_at
             if expiration_at.tzinfo is None:
                 expiration_at = expiration_at.replace(tzinfo=UTC)
@@ -81,24 +78,19 @@ class CouponApplicationService:
         # Check reusable constraint
         if not coupon.reusable:
             existing = self.applied_coupon_repo.get_by_coupon_and_customer(
-                coupon.id, customer_id  # type: ignore[arg-type]
+                coupon.id,  # type: ignore[arg-type]
+                customer_id,
             )
             if existing:
                 raise ValueError("Coupon already applied to this customer")
 
         # Determine amount/rate values (override or coupon defaults)
-        amount_cents = (
-            amount_override if amount_override is not None else coupon.amount_cents
-        )
+        amount_cents = amount_override if amount_override is not None else coupon.amount_cents
         amount_currency = (
-            coupon.amount_currency
-            if coupon.coupon_type == CouponType.FIXED_AMOUNT.value
-            else None
+            coupon.amount_currency if coupon.coupon_type == CouponType.FIXED_AMOUNT.value else None
         )
         percentage_rate = (
-            percentage_override
-            if percentage_override is not None
-            else coupon.percentage_rate
+            percentage_override if percentage_override is not None else coupon.percentage_rate
         )
 
         return self.applied_coupon_repo.create(

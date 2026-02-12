@@ -31,7 +31,9 @@ class DunningCampaignRepository:
         return query.order_by(DunningCampaign.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_by_id(
-        self, campaign_id: UUID, organization_id: UUID,
+        self,
+        campaign_id: UUID,
+        organization_id: UUID,
     ) -> DunningCampaign | None:
         """Get a dunning campaign by ID."""
         return (
@@ -44,7 +46,9 @@ class DunningCampaignRepository:
         )
 
     def get_by_code(
-        self, code: str, organization_id: UUID,
+        self,
+        code: str,
+        organization_id: UUID,
     ) -> DunningCampaign | None:
         """Get a dunning campaign by code."""
         return (
@@ -57,7 +61,9 @@ class DunningCampaignRepository:
         )
 
     def create(
-        self, data: DunningCampaignCreate, organization_id: UUID,
+        self,
+        data: DunningCampaignCreate,
+        organization_id: UUID,
     ) -> DunningCampaign:
         """Create a new dunning campaign with thresholds."""
         thresholds_data = data.thresholds

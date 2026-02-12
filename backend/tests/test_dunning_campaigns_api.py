@@ -50,7 +50,8 @@ def campaign(db_session: Session) -> DunningCampaign:
             bcc_emails=["test@example.com"],
             thresholds=[
                 DunningCampaignThresholdCreate(
-                    currency="USD", amount_cents=Decimal("1000"),
+                    currency="USD",
+                    amount_cents=Decimal("1000"),
                 ),
             ],
         ),
@@ -111,7 +112,9 @@ class TestCreateDunningCampaign:
         assert currencies == {"USD", "EUR"}
 
     def test_create_campaign_duplicate_code(
-        self, client: TestClient, campaign: DunningCampaign,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
     ) -> None:
         """Test creating a campaign with a duplicate code returns 409."""
         response = client.post(
@@ -138,7 +141,9 @@ class TestListDunningCampaigns:
         assert response.json() == []
 
     def test_list_campaigns(
-        self, client: TestClient, campaign: DunningCampaign,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
     ) -> None:
         """Test listing campaigns returns existing campaigns."""
         response = client.get("/v1/dunning_campaigns/")
@@ -149,14 +154,19 @@ class TestListDunningCampaigns:
         assert len(data[0]["thresholds"]) == 1
 
     def test_list_campaigns_with_status_filter(
-        self, client: TestClient, campaign: DunningCampaign, db_session: Session,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
     ) -> None:
         """Test listing campaigns with status filter."""
         # Create an inactive campaign
         repo = DunningCampaignRepository(db_session)
         repo.create(
             DunningCampaignCreate(
-                code="dc-inactive", name="Inactive", status="inactive",
+                code="dc-inactive",
+                name="Inactive",
+                status="inactive",
             ),
             DEFAULT_ORG_ID,
         )
@@ -172,7 +182,9 @@ class TestListDunningCampaigns:
         assert inactive.json()[0]["code"] == "dc-inactive"
 
     def test_list_campaigns_pagination(
-        self, client: TestClient, db_session: Session,
+        self,
+        client: TestClient,
+        db_session: Session,
     ) -> None:
         """Test listing campaigns with pagination."""
         repo = DunningCampaignRepository(db_session)
@@ -189,7 +201,9 @@ class TestListDunningCampaigns:
 
 class TestGetDunningCampaign:
     def test_get_campaign(
-        self, client: TestClient, campaign: DunningCampaign,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
     ) -> None:
         """Test getting a campaign by ID."""
         response = client.get(f"/v1/dunning_campaigns/{campaign.id}")
@@ -211,7 +225,9 @@ class TestGetDunningCampaign:
 
 class TestUpdateDunningCampaign:
     def test_update_campaign(
-        self, client: TestClient, campaign: DunningCampaign,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
     ) -> None:
         """Test updating a campaign."""
         response = client.put(
@@ -224,7 +240,9 @@ class TestUpdateDunningCampaign:
         assert data["code"] == "test-dc"  # unchanged
 
     def test_update_campaign_with_thresholds(
-        self, client: TestClient, campaign: DunningCampaign,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
     ) -> None:
         """Test updating a campaign's thresholds."""
         response = client.put(
@@ -253,7 +271,9 @@ class TestUpdateDunningCampaign:
 
 class TestDeleteDunningCampaign:
     def test_delete_campaign(
-        self, client: TestClient, campaign: DunningCampaign,
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
     ) -> None:
         """Test deleting a campaign."""
         response = client.delete(f"/v1/dunning_campaigns/{campaign.id}")

@@ -8,6 +8,7 @@ from app.tasks import (
     enqueue_check_dunning,
     enqueue_check_usage_thresholds,
     enqueue_generate_periodic_invoices,
+    enqueue_process_data_export,
     enqueue_process_payment_requests,
     enqueue_process_pending_downgrades,
     enqueue_process_trial_expirations,
@@ -177,6 +178,18 @@ class TestTasks:
             result = await enqueue_check_usage_thresholds("sub-uuid-123")
 
             assert result == mock_job
-            mock_enqueue.assert_called_once_with(
-                "check_usage_thresholds_task", "sub-uuid-123"
-            )
+            mock_enqueue.assert_called_once_with("check_usage_thresholds_task", "sub-uuid-123")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_process_data_export(self):
+        """Test enqueue_process_data_export helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "export-job-007"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_process_data_export("export-uuid-123")
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("process_data_export_task", "export-uuid-123")

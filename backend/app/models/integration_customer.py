@@ -19,7 +19,8 @@ class IntegrationCustomer(Base):
     __tablename__ = "integration_customers"
     __table_args__ = (
         UniqueConstraint(
-            "integration_id", "customer_id",
+            "integration_id",
+            "customer_id",
             name="uq_integration_customers_integration_customer",
         ),
     )

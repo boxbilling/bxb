@@ -59,9 +59,7 @@ class WalletRepository:
                 Wallet.customer_id == customer_id,
                 Wallet.status == WalletStatus.ACTIVE.value,
             )
-            .filter(
-                (Wallet.expiration_at.is_(None)) | (Wallet.expiration_at > now)
-            )
+            .filter((Wallet.expiration_at.is_(None)) | (Wallet.expiration_at > now))
             .order_by(Wallet.priority.asc(), Wallet.created_at.asc())
             .all()
         )

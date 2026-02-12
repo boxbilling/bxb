@@ -10,6 +10,7 @@ from app.routers import (
     credit_notes,
     customers,
     dashboard,
+    data_exports,
     dunning_campaigns,
     events,
     fees,
@@ -82,6 +83,11 @@ app.include_router(
     usage_thresholds.router,
     prefix="/v1",
     tags=["usage_thresholds"],
+)
+app.include_router(
+    data_exports.router,
+    prefix="/v1/data_exports",
+    tags=["data_exports"],
 )
 
 

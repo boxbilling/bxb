@@ -460,7 +460,9 @@ class TestCreditNoteRepository:
         notes = repo.get_by_customer_id(customer.id)
         assert len(notes) == 2
 
-    def test_get_by_customer_id_with_pagination(self, db_session, credit_note, refund_note, customer):
+    def test_get_by_customer_id_with_pagination(
+        self, db_session, credit_note, refund_note, customer
+    ):
         """Test getting credit notes with pagination."""
         repo = CreditNoteRepository(db_session)
         notes = repo.get_by_customer_id(customer.id, skip=0, limit=1)
@@ -842,18 +844,20 @@ class TestCreditNoteItemRepository:
     def test_create_bulk(self, db_session, credit_note, fee, fee2):
         """Test bulk creation of credit note items."""
         repo = CreditNoteItemRepository(db_session)
-        items = repo.create_bulk([
-            {
-                "credit_note_id": credit_note.id,
-                "fee_id": fee.id,
-                "amount_cents": Decimal("3000.0000"),
-            },
-            {
-                "credit_note_id": credit_note.id,
-                "fee_id": fee2.id,
-                "amount_cents": Decimal("2000.0000"),
-            },
-        ])
+        items = repo.create_bulk(
+            [
+                {
+                    "credit_note_id": credit_note.id,
+                    "fee_id": fee.id,
+                    "amount_cents": Decimal("3000.0000"),
+                },
+                {
+                    "credit_note_id": credit_note.id,
+                    "fee_id": fee2.id,
+                    "amount_cents": Decimal("2000.0000"),
+                },
+            ]
+        )
 
         assert len(items) == 2
         assert items[0].amount_cents == Decimal("3000.0000")
@@ -1109,17 +1113,20 @@ class TestCreditNoteAPI:
 
     def test_create_credit_note(self, client, db_session, customer, invoice):
         """Test POST /v1/credit_notes/ creates a credit note."""
-        response = client.post("/v1/credit_notes/", json={
-            "number": "CN-API-001",
-            "invoice_id": str(invoice.id),
-            "customer_id": str(customer.id),
-            "credit_note_type": "credit",
-            "reason": "duplicated_charge",
-            "description": "API test credit note",
-            "credit_amount_cents": "5000.0000",
-            "total_amount_cents": "5000.0000",
-            "currency": "USD",
-        })
+        response = client.post(
+            "/v1/credit_notes/",
+            json={
+                "number": "CN-API-001",
+                "invoice_id": str(invoice.id),
+                "customer_id": str(customer.id),
+                "credit_note_type": "credit",
+                "reason": "duplicated_charge",
+                "description": "API test credit note",
+                "credit_amount_cents": "5000.0000",
+                "total_amount_cents": "5000.0000",
+                "currency": "USD",
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["number"] == "CN-API-001"
@@ -1129,48 +1136,57 @@ class TestCreditNoteAPI:
 
     def test_create_credit_note_with_items(self, client, db_session, customer, invoice, fee):
         """Test POST /v1/credit_notes/ with items."""
-        response = client.post("/v1/credit_notes/", json={
-            "number": "CN-API-ITEMS",
-            "invoice_id": str(invoice.id),
-            "customer_id": str(customer.id),
-            "credit_note_type": "credit",
-            "reason": "order_change",
-            "credit_amount_cents": "3000.0000",
-            "total_amount_cents": "3000.0000",
-            "currency": "USD",
-            "items": [
-                {
-                    "fee_id": str(fee.id),
-                    "amount_cents": "3000.0000",
-                }
-            ],
-        })
+        response = client.post(
+            "/v1/credit_notes/",
+            json={
+                "number": "CN-API-ITEMS",
+                "invoice_id": str(invoice.id),
+                "customer_id": str(customer.id),
+                "credit_note_type": "credit",
+                "reason": "order_change",
+                "credit_amount_cents": "3000.0000",
+                "total_amount_cents": "3000.0000",
+                "currency": "USD",
+                "items": [
+                    {
+                        "fee_id": str(fee.id),
+                        "amount_cents": "3000.0000",
+                    }
+                ],
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["number"] == "CN-API-ITEMS"
 
     def test_create_credit_note_duplicate_number(self, client, db_session, customer, invoice):
         """Test POST /v1/credit_notes/ returns 409 for duplicate number."""
-        client.post("/v1/credit_notes/", json={
-            "number": "CN-DUP",
-            "invoice_id": str(invoice.id),
-            "customer_id": str(customer.id),
-            "credit_note_type": "credit",
-            "reason": "other",
-            "credit_amount_cents": "1000",
-            "total_amount_cents": "1000",
-            "currency": "USD",
-        })
-        response = client.post("/v1/credit_notes/", json={
-            "number": "CN-DUP",
-            "invoice_id": str(invoice.id),
-            "customer_id": str(customer.id),
-            "credit_note_type": "credit",
-            "reason": "other",
-            "credit_amount_cents": "2000",
-            "total_amount_cents": "2000",
-            "currency": "USD",
-        })
+        client.post(
+            "/v1/credit_notes/",
+            json={
+                "number": "CN-DUP",
+                "invoice_id": str(invoice.id),
+                "customer_id": str(customer.id),
+                "credit_note_type": "credit",
+                "reason": "other",
+                "credit_amount_cents": "1000",
+                "total_amount_cents": "1000",
+                "currency": "USD",
+            },
+        )
+        response = client.post(
+            "/v1/credit_notes/",
+            json={
+                "number": "CN-DUP",
+                "invoice_id": str(invoice.id),
+                "customer_id": str(customer.id),
+                "credit_note_type": "credit",
+                "reason": "other",
+                "credit_amount_cents": "2000",
+                "total_amount_cents": "2000",
+                "currency": "USD",
+            },
+        )
         assert response.status_code == 409
         assert "already exists" in response.json()["detail"]
 
@@ -1212,16 +1228,18 @@ class TestCreditNoteAPI:
         """Test GET /v1/credit_notes/ with pagination."""
         repo = CreditNoteRepository(db_session)
         for i in range(5):
-            repo.create(CreditNoteCreate(
-                number=f"CN-PAG-{i}",
-                invoice_id=invoice.id,
-                customer_id=customer.id,
-                credit_note_type=CreditNoteType.CREDIT,
-                reason=CreditNoteReason.OTHER,
-                credit_amount_cents=Decimal("1000"),
-                total_amount_cents=Decimal("1000"),
-                currency="USD",
-            ))
+            repo.create(
+                CreditNoteCreate(
+                    number=f"CN-PAG-{i}",
+                    invoice_id=invoice.id,
+                    customer_id=customer.id,
+                    credit_note_type=CreditNoteType.CREDIT,
+                    reason=CreditNoteReason.OTHER,
+                    credit_amount_cents=Decimal("1000"),
+                    total_amount_cents=Decimal("1000"),
+                    currency="USD",
+                )
+            )
         response = client.get("/v1/credit_notes/?skip=2&limit=2")
         assert response.status_code == 200
         assert len(response.json()) == 2
@@ -1241,10 +1259,13 @@ class TestCreditNoteAPI:
 
     def test_update_credit_note(self, client, db_session, credit_note):
         """Test PUT /v1/credit_notes/{id} updates a draft credit note."""
-        response = client.put(f"/v1/credit_notes/{credit_note.id}", json={
-            "description": "Updated description",
-            "credit_amount_cents": "6000.0000",
-        })
+        response = client.put(
+            f"/v1/credit_notes/{credit_note.id}",
+            json={
+                "description": "Updated description",
+                "credit_amount_cents": "6000.0000",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["description"] == "Updated description"
@@ -1252,9 +1273,12 @@ class TestCreditNoteAPI:
 
     def test_update_credit_note_not_found(self, client):
         """Test PUT /v1/credit_notes/{id} returns 404."""
-        response = client.put(f"/v1/credit_notes/{uuid4()}", json={
-            "description": "Nope",
-        })
+        response = client.put(
+            f"/v1/credit_notes/{uuid4()}",
+            json={
+                "description": "Nope",
+            },
+        )
         assert response.status_code == 404
 
     def test_update_credit_note_not_draft(self, client, db_session, credit_note):
@@ -1262,9 +1286,12 @@ class TestCreditNoteAPI:
         repo = CreditNoteRepository(db_session)
         repo.finalize(credit_note.id)
 
-        response = client.put(f"/v1/credit_notes/{credit_note.id}", json={
-            "description": "Should fail",
-        })
+        response = client.put(
+            f"/v1/credit_notes/{credit_note.id}",
+            json={
+                "description": "Should fail",
+            },
+        )
         assert response.status_code == 400
         assert "draft" in response.json()["detail"].lower()
 

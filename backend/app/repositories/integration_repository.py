@@ -31,7 +31,9 @@ class IntegrationRepository:
         )
 
     def get_by_id(
-        self, integration_id: UUID, organization_id: UUID | None = None,
+        self,
+        integration_id: UUID,
+        organization_id: UUID | None = None,
     ) -> Integration | None:
         """Get an integration by ID."""
         query = self.db.query(Integration).filter(Integration.id == integration_id)
@@ -40,7 +42,9 @@ class IntegrationRepository:
         return query.first()
 
     def get_by_provider(
-        self, organization_id: UUID, provider_type: str,
+        self,
+        organization_id: UUID,
+        provider_type: str,
     ) -> Integration | None:
         """Get an integration by provider type for an organization."""
         return (
@@ -67,7 +71,10 @@ class IntegrationRepository:
         return integration
 
     def update(
-        self, integration_id: UUID, data: IntegrationUpdate, organization_id: UUID,
+        self,
+        integration_id: UUID,
+        data: IntegrationUpdate,
+        organization_id: UUID,
     ) -> Integration | None:
         """Update an integration."""
         integration = self.get_by_id(integration_id, organization_id)

@@ -44,7 +44,9 @@ def db_session():
 def customer(db_session):
     """Create a test customer."""
     repo = CustomerRepository(db_session)
-    return repo.create(CustomerCreate(external_id="inv_test_cust", name="Invoice Test Customer"), DEFAULT_ORG_ID)
+    return repo.create(
+        CustomerCreate(external_id="inv_test_cust", name="Invoice Test Customer"), DEFAULT_ORG_ID
+    )
 
 
 @pytest.fixture
@@ -848,12 +850,18 @@ class TestInvoiceWalletIntegration:
 
         wallet_service = WalletService(db_session)
         w1 = wallet_service.create_wallet(
-            customer_id=customer.id, name="P2", code="p2",
-            priority=2, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="P2",
+            code="p2",
+            priority=2,
+            initial_granted_credits=Decimal("50"),
         )
         w2 = wallet_service.create_wallet(
-            customer_id=customer.id, name="P1", code="p1",
-            priority=1, initial_granted_credits=Decimal("50"),
+            customer_id=customer.id,
+            name="P1",
+            code="p1",
+            priority=1,
+            initial_granted_credits=Decimal("50"),
         )
 
         repo = InvoiceRepository(db_session)
@@ -921,6 +929,7 @@ class TestInvoiceWalletIntegration:
 
         # Wallet balance should be untouched
         from app.repositories.wallet_repository import WalletRepository
+
         wallet_repo = WalletRepository(db_session)
         updated = wallet_repo.get_by_id(wallet.id)
         assert Decimal(str(updated.balance_cents)) == Decimal("100.0000")
@@ -971,7 +980,12 @@ class TestInvoiceRouterEdgeCases:
     """Tests for defensive checks in invoice router actions."""
 
     def test_finalize_returns_none_race_condition(
-        self, client, db_session, customer, subscription, sample_line_items,
+        self,
+        client,
+        db_session,
+        customer,
+        subscription,
+        sample_line_items,
     ):
         """Test finalize endpoint when repo.finalize returns None (race condition)."""
         repo = InvoiceRepository(db_session)
@@ -989,7 +1003,12 @@ class TestInvoiceRouterEdgeCases:
             assert response.status_code == 404
 
     def test_mark_paid_returns_none_race_condition(
-        self, client, db_session, customer, subscription, sample_line_items,
+        self,
+        client,
+        db_session,
+        customer,
+        subscription,
+        sample_line_items,
     ):
         """Test mark_paid endpoint when repo.mark_paid returns None (race condition)."""
         repo = InvoiceRepository(db_session)
@@ -1008,7 +1027,12 @@ class TestInvoiceRouterEdgeCases:
             assert response.status_code == 404
 
     def test_void_returns_none_race_condition(
-        self, client, db_session, customer, subscription, sample_line_items,
+        self,
+        client,
+        db_session,
+        customer,
+        subscription,
+        sample_line_items,
     ):
         """Test void endpoint when repo.void returns None (race condition)."""
         repo = InvoiceRepository(db_session)

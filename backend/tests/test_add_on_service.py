@@ -159,9 +159,7 @@ class TestApplyAddOn:
                 customer_id=uuid4(),
             )
 
-    def test_apply_add_on_invoice_has_no_subscription(
-        self, add_on_service, basic_add_on, customer
-    ):
+    def test_apply_add_on_invoice_has_no_subscription(self, add_on_service, basic_add_on, customer):
         """Test that one-off invoice has no subscription_id."""
         _, invoice = add_on_service.apply_add_on(
             add_on_code="SVC_ADDON_BASIC",

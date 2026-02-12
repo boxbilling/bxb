@@ -114,12 +114,11 @@ async def apply_coupon(
     applied_repo = AppliedCouponRepository(db)
     if not coupon.reusable:
         existing = applied_repo.get_by_coupon_and_customer(
-            coupon.id, data.customer_id  # type: ignore[arg-type]
+            coupon.id,  # type: ignore[arg-type]
+            data.customer_id,
         )
         if existing:
-            raise HTTPException(
-                status_code=409, detail="Coupon already applied to this customer"
-            )
+            raise HTTPException(status_code=409, detail="Coupon already applied to this customer")
 
     return applied_repo.create(
         coupon_id=coupon.id,  # type: ignore[arg-type]

@@ -34,7 +34,9 @@ class PaymentRequestRepository:
         return query.order_by(PaymentRequest.created_at.desc()).offset(skip).limit(limit).all()
 
     def get_by_id(
-        self, request_id: UUID, organization_id: UUID,
+        self,
+        request_id: UUID,
+        organization_id: UUID,
     ) -> PaymentRequest | None:
         """Get a payment request by ID."""
         return (
@@ -93,7 +95,9 @@ class PaymentRequestRepository:
         return payment_request
 
     def increment_attempts(
-        self, request_id: UUID, organization_id: UUID,
+        self,
+        request_id: UUID,
+        organization_id: UUID,
     ) -> PaymentRequest | None:
         """Increment payment attempts counter."""
         payment_request = self.get_by_id(request_id, organization_id)

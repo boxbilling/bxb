@@ -76,7 +76,9 @@ def invoices(db_session: Session, customer: Customer) -> list[Invoice]:
 
 @pytest.fixture
 def payment_request(
-    db_session: Session, customer: Customer, invoices: list[Invoice],
+    db_session: Session,
+    customer: Customer,
+    invoices: list[Invoice],
 ) -> PaymentRequest:
     """Create a test payment request."""
     repo = PaymentRequestRepository(db_session)
@@ -118,7 +120,8 @@ class TestCreatePaymentRequest:
         assert "updated_at" in data
 
     def test_create_payment_request_customer_not_found(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         """Test creating a payment request with non-existent customer."""
         response = client.post(
@@ -132,7 +135,9 @@ class TestCreatePaymentRequest:
         assert "not found" in response.json()["detail"]
 
     def test_create_payment_request_invoice_not_found(
-        self, client: TestClient, customer: Customer,
+        self,
+        client: TestClient,
+        customer: Customer,
     ) -> None:
         """Test creating a payment request with non-existent invoice."""
         response = client.post(
@@ -146,7 +151,8 @@ class TestCreatePaymentRequest:
         assert "not found" in response.json()["detail"]
 
     def test_create_payment_request_validation_error(
-        self, client: TestClient,
+        self,
+        client: TestClient,
     ) -> None:
         """Test creating a payment request with empty invoice_ids returns 422."""
         response = client.post(
@@ -167,7 +173,9 @@ class TestListPaymentRequests:
         assert response.json() == []
 
     def test_list_payment_requests(
-        self, client: TestClient, payment_request: PaymentRequest,
+        self,
+        client: TestClient,
+        payment_request: PaymentRequest,
     ) -> None:
         """Test listing payment requests."""
         response = client.get("/v1/payment_requests/")

@@ -26,9 +26,7 @@ def _pr_to_response(
     """Build a PaymentRequestResponse with invoice join rows loaded."""
     pr_id: UUID = pr.id  # type: ignore[assignment]
     invoices = repo.get_invoices(pr_id)
-    invoice_responses = [
-        PaymentRequestInvoiceResponse.model_validate(inv) for inv in invoices
-    ]
+    invoice_responses = [PaymentRequestInvoiceResponse.model_validate(inv) for inv in invoices]
     resp = PaymentRequestResponse.model_validate(pr)
     resp.invoices = invoice_responses
     return resp

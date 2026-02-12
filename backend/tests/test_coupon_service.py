@@ -278,9 +278,7 @@ class TestApplyCouponToCustomer:
                 customer_id=uuid4(),
             )
 
-    def test_apply_non_reusable_coupon_duplicate(
-        self, coupon_service, recurring_coupon, customer
-    ):
+    def test_apply_non_reusable_coupon_duplicate(self, coupon_service, recurring_coupon, customer):
         """Test applying a non-reusable coupon to the same customer twice raises ValueError."""
         coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_RECURRING5",
@@ -351,9 +349,7 @@ class TestCalculateCouponDiscount:
         assert result.total_discount_cents == Decimal("500.0000")
         assert len(result.applied_coupon_ids) == 1
 
-    def test_multiple_coupons(
-        self, coupon_service, fixed_coupon, percentage_coupon, customer
-    ):
+    def test_multiple_coupons(self, coupon_service, fixed_coupon, percentage_coupon, customer):
         """Test multiple coupons applied to same customer."""
         coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_FIXED10",
@@ -393,9 +389,7 @@ class TestCalculateCouponDiscount:
         assert result.total_discount_cents == Decimal("0")
         assert result.applied_coupon_ids == []
 
-    def test_discount_does_not_exceed_subtotal(
-        self, coupon_service, customer, coupon_repo
-    ):
+    def test_discount_does_not_exceed_subtotal(self, coupon_service, customer, coupon_repo):
         """Test total discount from multiple coupons doesn't exceed subtotal."""
         # Create two large fixed coupons
         coupon_repo.create(
@@ -422,12 +416,8 @@ class TestCalculateCouponDiscount:
             ),
             DEFAULT_ORG_ID,
         )
-        coupon_service.apply_coupon_to_customer(
-            coupon_code="SVC_BIG1", customer_id=customer.id
-        )
-        coupon_service.apply_coupon_to_customer(
-            coupon_code="SVC_BIG2", customer_id=customer.id
-        )
+        coupon_service.apply_coupon_to_customer(coupon_code="SVC_BIG1", customer_id=customer.id)
+        coupon_service.apply_coupon_to_customer(coupon_code="SVC_BIG2", customer_id=customer.id)
 
         result = coupon_service.calculate_coupon_discount(
             customer_id=customer.id,
@@ -505,9 +495,7 @@ class TestConsumeAppliedCoupon:
         assert result.status == AppliedCouponStatus.TERMINATED.value
         assert result.terminated_at is not None
 
-    def test_consume_recurring_coupon_decrements(
-        self, coupon_service, recurring_coupon, customer
-    ):
+    def test_consume_recurring_coupon_decrements(self, coupon_service, recurring_coupon, customer):
         """Test consuming a 'recurring' coupon decrements remaining count."""
         applied = coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_RECURRING5",
@@ -558,17 +546,13 @@ class TestConsumeAppliedCoupon:
 class TestCalculateSingleDiscount:
     """Tests for CouponApplicationService._calculate_single_discount()."""
 
-    def test_percentage_discount_calculation(
-        self, coupon_service, percentage_coupon, customer
-    ):
+    def test_percentage_discount_calculation(self, coupon_service, percentage_coupon, customer):
         """Test _calculate_single_discount for percentage type."""
         applied = coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_PERCENT20",
             customer_id=customer.id,
         )
-        discount = coupon_service._calculate_single_discount(
-            applied, Decimal("10000.0000")
-        )
+        discount = coupon_service._calculate_single_discount(applied, Decimal("10000.0000"))
         assert discount == Decimal("2000.000000")
 
     def test_fixed_discount_calculation(self, coupon_service, fixed_coupon, customer):
@@ -577,9 +561,7 @@ class TestCalculateSingleDiscount:
             coupon_code="SVC_FIXED10",
             customer_id=customer.id,
         )
-        discount = coupon_service._calculate_single_discount(
-            applied, Decimal("5000.0000")
-        )
+        discount = coupon_service._calculate_single_discount(applied, Decimal("5000.0000"))
         assert discount == Decimal("1000.0000")
 
     def test_fixed_discount_capped(self, coupon_service, fixed_coupon, customer):
@@ -588,14 +570,10 @@ class TestCalculateSingleDiscount:
             coupon_code="SVC_FIXED10",
             customer_id=customer.id,
         )
-        discount = coupon_service._calculate_single_discount(
-            applied, Decimal("300.0000")
-        )
+        discount = coupon_service._calculate_single_discount(applied, Decimal("300.0000"))
         assert discount == Decimal("300.0000")
 
-    def test_zero_amount_coupon(
-        self, coupon_service, customer, coupon_repo
-    ):
+    def test_zero_amount_coupon(self, coupon_service, customer, coupon_repo):
         """Test _calculate_single_discount with zero amount coupon."""
         coupon_repo.create(
             CouponCreate(
@@ -613,14 +591,10 @@ class TestCalculateSingleDiscount:
             coupon_code="SVC_ZERO",
             customer_id=customer.id,
         )
-        discount = coupon_service._calculate_single_discount(
-            applied, Decimal("5000.0000")
-        )
+        discount = coupon_service._calculate_single_discount(applied, Decimal("5000.0000"))
         assert discount == Decimal("0")
 
-    def test_no_amount_no_percentage_coupon(
-        self, coupon_service, customer, coupon_repo
-    ):
+    def test_no_amount_no_percentage_coupon(self, coupon_service, customer, coupon_repo):
         """Test _calculate_single_discount with neither amount nor percentage."""
         coupon_repo.create(
             CouponCreate(
@@ -636,7 +610,5 @@ class TestCalculateSingleDiscount:
             coupon_code="SVC_EMPTY",
             customer_id=customer.id,
         )
-        discount = coupon_service._calculate_single_discount(
-            applied, Decimal("5000.0000")
-        )
+        discount = coupon_service._calculate_single_discount(applied, Decimal("5000.0000"))
         assert discount == Decimal("0")

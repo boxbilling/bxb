@@ -40,9 +40,7 @@ class Invoice(Base):
         UUIDType, ForeignKey("subscriptions.id", ondelete="RESTRICT"), nullable=True
     )
     status = Column(String(20), nullable=False, default=InvoiceStatus.DRAFT.value)
-    invoice_type = Column(
-        String(30), nullable=False, default=InvoiceType.SUBSCRIPTION.value
-    )
+    invoice_type = Column(String(30), nullable=False, default=InvoiceType.SUBSCRIPTION.value)
 
     # Billing period
     billing_period_start = Column(DateTime(timezone=True), nullable=False)
@@ -54,9 +52,7 @@ class Invoice(Base):
     total = Column(Numeric(12, 4), nullable=False, default=0)
     prepaid_credit_amount = Column(Numeric(12, 4), nullable=False, default=0)
     coupons_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
-    progressive_billing_credit_amount_cents = Column(
-        Numeric(12, 4), nullable=False, default=0
-    )
+    progressive_billing_credit_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
 
     currency = Column(String(3), nullable=False, default="USD")
 

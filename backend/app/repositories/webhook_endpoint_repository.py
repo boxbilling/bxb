@@ -15,7 +15,10 @@ class WebhookEndpointRepository:
         self.db = db
 
     def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100,
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
     ) -> list[WebhookEndpoint]:
         """Get all webhook endpoints."""
         return (
@@ -28,7 +31,9 @@ class WebhookEndpointRepository:
         )
 
     def get_by_id(
-        self, endpoint_id: UUID, organization_id: UUID | None = None,
+        self,
+        endpoint_id: UUID,
+        organization_id: UUID | None = None,
     ) -> WebhookEndpoint | None:
         """Get a webhook endpoint by ID."""
         query = self.db.query(WebhookEndpoint).filter(WebhookEndpoint.id == endpoint_id)
@@ -56,7 +61,9 @@ class WebhookEndpointRepository:
         return endpoint
 
     def update(
-        self, endpoint_id: UUID, data: WebhookEndpointUpdate,
+        self,
+        endpoint_id: UUID,
+        data: WebhookEndpointUpdate,
         organization_id: UUID,
     ) -> WebhookEndpoint | None:
         """Update a webhook endpoint by ID."""

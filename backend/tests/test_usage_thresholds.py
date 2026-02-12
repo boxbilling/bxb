@@ -227,9 +227,7 @@ class TestAppliedUsageThresholdModel:
         assert record.lifetime_usage_amount_cents == Decimal("6000")
         assert record.created_at is not None
 
-    def test_creation_with_invoice(
-        self, db_session, plan_threshold, subscription, invoice
-    ):
+    def test_creation_with_invoice(self, db_session, plan_threshold, subscription, invoice):
         now = datetime.now(UTC)
         record = AppliedUsageThreshold(
             usage_threshold_id=plan_threshold.id,
@@ -359,15 +357,11 @@ class TestUsageThresholdRepository:
     def test_get_by_subscription_id_multiple(self, db_session, subscription):
         repo = UsageThresholdRepository(db_session)
         repo.create(
-            UsageThresholdCreate(
-                subscription_id=subscription.id, amount_cents=Decimal("3000")
-            ),
+            UsageThresholdCreate(subscription_id=subscription.id, amount_cents=Decimal("3000")),
             DEFAULT_ORG_ID,
         )
         repo.create(
-            UsageThresholdCreate(
-                subscription_id=subscription.id, amount_cents=Decimal("7000")
-            ),
+            UsageThresholdCreate(subscription_id=subscription.id, amount_cents=Decimal("7000")),
             DEFAULT_ORG_ID,
         )
         thresholds = repo.get_by_subscription_id(subscription.id)
@@ -439,9 +433,7 @@ class TestAppliedUsageThresholdRepository:
         assert record.lifetime_usage_amount_cents == Decimal("6000")
         assert record.created_at is not None
 
-    def test_create_with_invoice(
-        self, db_session, plan_threshold, subscription, invoice
-    ):
+    def test_create_with_invoice(self, db_session, plan_threshold, subscription, invoice):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         record = repo.create(
@@ -467,9 +459,7 @@ class TestAppliedUsageThresholdRepository:
         assert fetched is not None
         assert fetched.id == created.id
 
-    def test_get_by_id_with_organization(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_get_by_id_with_organization(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         created = repo.create(
@@ -481,9 +471,7 @@ class TestAppliedUsageThresholdRepository:
         fetched = repo.get_by_id(created.id, DEFAULT_ORG_ID)
         assert fetched is not None
 
-    def test_get_by_id_wrong_organization(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_get_by_id_wrong_organization(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         created = repo.create(
@@ -499,9 +487,7 @@ class TestAppliedUsageThresholdRepository:
         repo = AppliedUsageThresholdRepository(db_session)
         assert repo.get_by_id(uuid4()) is None
 
-    def test_get_by_subscription_id(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_get_by_subscription_id(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         created = repo.create(
@@ -514,9 +500,7 @@ class TestAppliedUsageThresholdRepository:
         assert len(records) == 1
         assert records[0].id == created.id
 
-    def test_get_by_subscription_id_multiple(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_get_by_subscription_id_multiple(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         repo.create(
@@ -564,9 +548,7 @@ class TestAppliedUsageThresholdRepository:
         records = repo.get_all(DEFAULT_ORG_ID, skip=2, limit=2)
         assert len(records) == 2
 
-    def test_has_been_crossed_true(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_has_been_crossed_true(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         period_start = now - timedelta(days=30)
@@ -576,25 +558,15 @@ class TestAppliedUsageThresholdRepository:
             crossed_at=now - timedelta(days=5),
             organization_id=DEFAULT_ORG_ID,
         )
-        assert (
-            repo.has_been_crossed(plan_threshold.id, subscription.id, period_start)
-            is True
-        )
+        assert repo.has_been_crossed(plan_threshold.id, subscription.id, period_start) is True
 
-    def test_has_been_crossed_false_no_records(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_has_been_crossed_false_no_records(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         period_start = now - timedelta(days=30)
-        assert (
-            repo.has_been_crossed(plan_threshold.id, subscription.id, period_start)
-            is False
-        )
+        assert repo.has_been_crossed(plan_threshold.id, subscription.id, period_start) is False
 
-    def test_has_been_crossed_false_before_period(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_has_been_crossed_false_before_period(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         period_start = now - timedelta(days=5)
@@ -605,10 +577,7 @@ class TestAppliedUsageThresholdRepository:
             crossed_at=now - timedelta(days=10),
             organization_id=DEFAULT_ORG_ID,
         )
-        assert (
-            repo.has_been_crossed(plan_threshold.id, subscription.id, period_start)
-            is False
-        )
+        assert repo.has_been_crossed(plan_threshold.id, subscription.id, period_start) is False
 
     def test_has_been_crossed_different_threshold(
         self, db_session, plan, plan_threshold, subscription
@@ -633,10 +602,7 @@ class TestAppliedUsageThresholdRepository:
             organization_id=DEFAULT_ORG_ID,
         )
         # The second threshold should not be considered crossed
-        assert (
-            repo.has_been_crossed(other_threshold.id, subscription.id, period_start)
-            is False
-        )
+        assert repo.has_been_crossed(other_threshold.id, subscription.id, period_start) is False
 
     def test_has_been_crossed_different_subscription(
         self, db_session, plan_threshold, subscription, customer
@@ -662,10 +628,7 @@ class TestAppliedUsageThresholdRepository:
             organization_id=DEFAULT_ORG_ID,
         )
         # The second subscription should not see it as crossed
-        assert (
-            repo.has_been_crossed(plan_threshold.id, other_sub.id, period_start)
-            is False
-        )
+        assert repo.has_been_crossed(plan_threshold.id, other_sub.id, period_start) is False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -723,9 +686,7 @@ class TestUsageThresholdSchemas:
         assert response.plan_id is None
         assert response.recurring is True
 
-    def test_applied_response_from_model(
-        self, db_session, plan_threshold, subscription
-    ):
+    def test_applied_response_from_model(self, db_session, plan_threshold, subscription):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         record = repo.create(
@@ -742,9 +703,7 @@ class TestUsageThresholdSchemas:
         assert response.invoice_id is None
         assert response.lifetime_usage_amount_cents == Decimal("7500")
 
-    def test_applied_response_with_invoice(
-        self, db_session, plan_threshold, subscription, invoice
-    ):
+    def test_applied_response_with_invoice(self, db_session, plan_threshold, subscription, invoice):
         repo = AppliedUsageThresholdRepository(db_session)
         now = datetime.now(UTC)
         record = repo.create(

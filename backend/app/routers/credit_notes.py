@@ -28,9 +28,7 @@ async def create_credit_note(
     """Create a new credit note with optional items."""
     repo = CreditNoteRepository(db)
     if repo.get_by_number(data.number):
-        raise HTTPException(
-            status_code=409, detail="Credit note with this number already exists"
-        )
+        raise HTTPException(status_code=409, detail="Credit note with this number already exists")
 
     credit_note = repo.create(data, organization_id)
 
@@ -137,9 +135,7 @@ async def void_credit_note(
         raise HTTPException(status_code=404, detail="Credit note not found")
 
     if credit_note.status != CreditNoteStatus.FINALIZED.value:
-        raise HTTPException(
-            status_code=400, detail="Only finalized credit notes can be voided"
-        )
+        raise HTTPException(status_code=400, detail="Only finalized credit notes can be voided")
 
     voided = repo.void(credit_note_id)
     return voided  # type: ignore[return-value]

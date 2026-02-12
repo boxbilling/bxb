@@ -33,9 +33,7 @@ class AppliedCouponRepository:
 
     def get_by_id(self, applied_coupon_id: UUID) -> AppliedCoupon | None:
         """Get an applied coupon by ID."""
-        return (
-            self.db.query(AppliedCoupon).filter(AppliedCoupon.id == applied_coupon_id).first()
-        )
+        return self.db.query(AppliedCoupon).filter(AppliedCoupon.id == applied_coupon_id).first()
 
     def get_active_by_customer_id(self, customer_id: UUID) -> list[AppliedCoupon]:
         """Get all active applied coupons for a customer."""

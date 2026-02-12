@@ -435,9 +435,7 @@ class InvoiceGenerationService:
 
         for cf in charge_filters:
             # Build filter dict from ChargeFilterValues
-            filter_values = self.charge_filter_repo.get_filter_values(
-                UUID(str(cf.id))
-            )
+            filter_values = self.charge_filter_repo.get_filter_values(UUID(str(cf.id)))
             if not filter_values:
                 continue
 
@@ -468,12 +466,8 @@ class InvoiceGenerationService:
 
             # Use the ChargeFilter's properties (override), falling back to
             # the charge's base properties for any missing keys
-            base_properties: dict[str, Any] = (
-                dict(charge.properties) if charge.properties else {}
-            )
-            filter_properties: dict[str, Any] = (
-                dict(cf.properties) if cf.properties else {}
-            )
+            base_properties: dict[str, Any] = dict(charge.properties) if charge.properties else {}
+            filter_properties: dict[str, Any] = dict(cf.properties) if cf.properties else {}
             properties = {**base_properties, **filter_properties}
 
             unit_price = Decimal(str(properties.get("unit_price", 0)))
@@ -497,10 +491,7 @@ class InvoiceGenerationService:
                 event_properties_list = [
                     dict(e.properties) if e.properties else {}
                     for e in raw_events
-                    if all(
-                        dict(e.properties or {}).get(k) == v
-                        for k, v in filters.items()
-                    )
+                    if all(dict(e.properties or {}).get(k) == v for k, v in filters.items())
                 ]
 
             # Get calculator and compute amount
@@ -548,9 +539,7 @@ class InvoiceGenerationService:
 
             elif charge_model == ChargeModel.DYNAMIC:
                 quantity = Decimal(events_count)
-                amount = calculator(
-                    events=event_properties_list, properties=properties
-                )
+                amount = calculator(events=event_properties_list, properties=properties)
 
             else:
                 continue
@@ -560,9 +549,7 @@ class InvoiceGenerationService:
 
             # Use filter's invoice_display_name if set, otherwise metric name
             description = (
-                str(cf.invoice_display_name)
-                if cf.invoice_display_name
-                else str(metric.name)
+                str(cf.invoice_display_name) if cf.invoice_display_name else str(metric.name)
             )
 
             fees.append(

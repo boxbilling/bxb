@@ -267,7 +267,10 @@ class TestProcessPendingDowngradesTask:
         customer = _create_customer(db_session, external_id="cust_no_plan")
         plan_a = _create_plan(db_session, code="plan_no_plan")
         sub = _create_active_subscription(
-            db_session, customer, plan_a, external_id="sub_no_plan",
+            db_session,
+            customer,
+            plan_a,
+            external_id="sub_no_plan",
             started_at=datetime.now(UTC) - timedelta(days=40),
         )
         sub.downgraded_at = datetime.now(UTC) - timedelta(days=39)
@@ -465,9 +468,7 @@ class TestGeneratePeriodicInvoicesTask:
         """Test skips subscription with zero-amount plan."""
         customer = _create_customer(db_session, external_id="cust_inv_free")
         plan = _create_plan(db_session, code="plan_inv_free", amount_cents=0)
-        _create_active_subscription(
-            db_session, customer, plan, external_id="sub_inv_free"
-        )
+        _create_active_subscription(db_session, customer, plan, external_id="sub_inv_free")
 
         with patch("app.worker.SessionLocal", db_module.SessionLocal):
             result = await generate_periodic_invoices_task({})
@@ -532,7 +533,10 @@ class TestGeneratePeriodicInvoicesTask:
         customer = _create_customer(db_session, external_id="cust_inv_noplan")
         plan = _create_plan(db_session, code="plan_inv_noplan")
         _create_active_subscription(
-            db_session, customer, plan, external_id="sub_inv_noplan",
+            db_session,
+            customer,
+            plan,
+            external_id="sub_inv_noplan",
             started_at=datetime.now(UTC) - timedelta(days=40),
         )
 
@@ -553,7 +557,10 @@ class TestGeneratePeriodicInvoicesTask:
         customer = _create_customer(db_session, external_id="cust_inv_nbd_none")
         plan = _create_plan(db_session, code="plan_inv_nbd_none", amount_cents=10000)
         _create_active_subscription(
-            db_session, customer, plan, external_id="sub_inv_nbd_none",
+            db_session,
+            customer,
+            plan,
+            external_id="sub_inv_nbd_none",
             started_at=datetime.now(UTC) - timedelta(days=40),
         )
 
@@ -758,9 +765,7 @@ class TestCheckUsageThresholdsTask:
         """Test calls UsageThresholdService.check_thresholds and returns crossed count."""
         customer = _create_customer(db_session, external_id="cust_thresh_ok")
         plan = _create_plan(db_session, code="plan_thresh_ok")
-        sub = _create_active_subscription(
-            db_session, customer, plan, external_id="sub_thresh_ok"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, external_id="sub_thresh_ok")
 
         mock_service = MagicMock()
         mock_service.check_thresholds.return_value = ["crossed1", "crossed2"]
@@ -779,9 +784,7 @@ class TestCheckUsageThresholdsTask:
         """Test returns 0 when no thresholds are crossed."""
         customer = _create_customer(db_session, external_id="cust_thresh_none")
         plan = _create_plan(db_session, code="plan_thresh_none")
-        sub = _create_active_subscription(
-            db_session, customer, plan, external_id="sub_thresh_none"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, external_id="sub_thresh_none")
 
         mock_service = MagicMock()
         mock_service.check_thresholds.return_value = []

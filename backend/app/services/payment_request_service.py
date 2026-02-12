@@ -48,13 +48,9 @@ class PaymentRequestService:
                 raise ValueError(f"Invoice {invoice_id} not found")
             inv_customer_id: UUID = invoice.customer_id  # type: ignore[assignment]
             if inv_customer_id != customer_id:
-                raise ValueError(
-                    f"Invoice {invoice_id} does not belong to customer {customer_id}"
-                )
+                raise ValueError(f"Invoice {invoice_id} does not belong to customer {customer_id}")
             if invoice.status != InvoiceStatus.FINALIZED.value:
-                raise ValueError(
-                    f"Invoice {invoice_id} is not in finalized status"
-                )
+                raise ValueError(f"Invoice {invoice_id} is not in finalized status")
 
             # Ensure all invoices have the same currency
             if currency is None:
@@ -90,7 +86,9 @@ class PaymentRequestService:
         return pr
 
     def get_customer_outstanding(
-        self, customer_id: UUID, organization_id: UUID,
+        self,
+        customer_id: UUID,
+        organization_id: UUID,
     ) -> Decimal:
         """Sum all unpaid (finalized) invoice totals for a customer."""
         invoices = self.invoice_repo.get_all(

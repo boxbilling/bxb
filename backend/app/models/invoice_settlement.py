@@ -42,6 +42,4 @@ class InvoiceSettlement(Base):
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    __table_args__ = (
-        Index("ix_invoice_settlements_type_source", "settlement_type", "source_id"),
-    )
+    __table_args__ = (Index("ix_invoice_settlements_type_source", "settlement_type", "source_id"),)

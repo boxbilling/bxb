@@ -92,6 +92,5 @@ def get_integration_adapter(integration: Integration) -> IntegrationAdapter:
         return CrmAdapter(integration)
 
     raise ValueError(
-        f"No adapter registered for integration_type={integration_type}, "
-        f"provider_type={provider}"
+        f"No adapter registered for integration_type={integration_type}, provider_type={provider}"
     )

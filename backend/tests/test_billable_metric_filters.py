@@ -233,9 +233,7 @@ class TestChargeFilterModel:
         db_session.commit()
 
         filters = (
-            db_session.query(ChargeFilter)
-            .filter(ChargeFilter.charge_id == sample_charge.id)
-            .all()
+            db_session.query(ChargeFilter).filter(ChargeFilter.charge_id == sample_charge.id).all()
         )
         assert len(filters) == 2
 
@@ -512,7 +510,9 @@ class TestBillableMetricFilterRepository:
         """Test getting filters by metric ID."""
         repo = BillableMetricFilterRepository(db_session)
         repo.create(sample_metric.id, BillableMetricFilterCreate(key="region", values=["us-east"]))
-        repo.create(sample_metric.id, BillableMetricFilterCreate(key="tier", values=["free", "pro"]))
+        repo.create(
+            sample_metric.id, BillableMetricFilterCreate(key="tier", values=["free", "pro"])
+        )
 
         filters = repo.get_by_metric_id(sample_metric.id)
         assert len(filters) == 2
@@ -686,7 +686,9 @@ class TestChargeFilterRepository:
         result = repo.get_matching_filter(sample_charge.id, {"region": "us-east"})
         assert result is None
 
-    def test_get_matching_filter_missing_property(self, db_session, sample_charge, sample_metric_filter):
+    def test_get_matching_filter_missing_property(
+        self, db_session, sample_charge, sample_metric_filter
+    ):
         """Test matching when event is missing the required property."""
         repo = ChargeFilterRepository(db_session)
 
@@ -804,7 +806,9 @@ class TestChargeFilterRepository:
         result = repo.get_matching_filter(charge.id, {"region": "us-east"})
         assert result is None
 
-    def test_get_matching_filter_orphaned_metric_filter(self, db_session, sample_charge, sample_metric_filter):
+    def test_get_matching_filter_orphaned_metric_filter(
+        self, db_session, sample_charge, sample_metric_filter
+    ):
         """Test matching when the BillableMetricFilter has been deleted (orphaned reference)."""
         repo = ChargeFilterRepository(db_session)
 

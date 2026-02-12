@@ -103,7 +103,9 @@ def customer_b(db_session: Session, org_b: Organization) -> Customer:
 
 @pytest.fixture
 def invoice_a(
-    db_session: Session, org_a_id: uuid.UUID, customer_a: Customer,
+    db_session: Session,
+    org_a_id: uuid.UUID,
+    customer_a: Customer,
 ) -> Invoice:
     inv = Invoice(
         organization_id=org_a_id,
@@ -125,7 +127,9 @@ def invoice_a(
 
 @pytest.fixture
 def invoice_b(
-    db_session: Session, org_b: Organization, customer_b: Customer,
+    db_session: Session,
+    org_b: Organization,
+    customer_b: Customer,
 ) -> Invoice:
     inv = Invoice(
         organization_id=org_b.id,
@@ -187,7 +191,9 @@ class TestCustomerIsolation:
         assert resp.status_code == 404
 
     def test_create_customer_scoped_to_org(
-        self, client_a: TestClient, client_b: TestClient,
+        self,
+        client_a: TestClient,
+        client_b: TestClient,
     ) -> None:
         resp = client_a.post(
             "/v1/customers/",
@@ -521,6 +527,9 @@ class TestApiKeyIsolation:
         key_id = resp.json()["id"]
 
         # Org B cannot revoke Org A's key
-        assert client_b.delete(
-            f"/v1/organizations/current/api_keys/{key_id}",
-        ).status_code == 404
+        assert (
+            client_b.delete(
+                f"/v1/organizations/current/api_keys/{key_id}",
+            ).status_code
+            == 404
+        )

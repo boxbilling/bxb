@@ -26,9 +26,7 @@ def _campaign_to_response(
     """Build a DunningCampaignResponse with thresholds loaded."""
     campaign_id: UUID = campaign.id  # type: ignore[assignment]
     thresholds = repo.get_thresholds(campaign_id)
-    threshold_responses = [
-        DunningCampaignThresholdResponse.model_validate(t) for t in thresholds
-    ]
+    threshold_responses = [DunningCampaignThresholdResponse.model_validate(t) for t in thresholds]
     resp = DunningCampaignResponse.model_validate(campaign)
     resp.thresholds = threshold_responses
     return resp

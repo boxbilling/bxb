@@ -484,31 +484,39 @@ class TestConsumeCredits:
 
         # Create supporting entities for invoice
         plan_repo = PlanRepository(db_session)
-        plan = plan_repo.create(PlanCreate(code=f"ws_plan_{uuid4()}", name="WS Plan", interval="monthly"), DEFAULT_ORG_ID)
+        plan = plan_repo.create(
+            PlanCreate(code=f"ws_plan_{uuid4()}", name="WS Plan", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
 
         sub_repo = SubscriptionRepository(db_session)
-        sub = sub_repo.create(SubscriptionCreate(
-            external_id=f"ws_sub_{uuid4()}",
-            customer_id=customer.id,
-            plan_id=plan.id,
-        ),
-        DEFAULT_ORG_ID,
+        sub = sub_repo.create(
+            SubscriptionCreate(
+                external_id=f"ws_sub_{uuid4()}",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            ),
+            DEFAULT_ORG_ID,
         )
 
         invoice_repo = InvoiceRepository(db_session)
         now = datetime.now(UTC)
-        invoice = invoice_repo.create(InvoiceCreate(
-            customer_id=customer.id,
-            subscription_id=sub.id,
-            billing_period_start=now,
-            billing_period_end=now + timedelta(days=30),
-            line_items=[InvoiceLineItem(
-                description="Test",
-                unit_price=Decimal("10000"),
-                amount=Decimal("10000"),
-                quantity=Decimal("1"),
-            )],
-        ))
+        invoice = invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=now,
+                billing_period_end=now + timedelta(days=30),
+                line_items=[
+                    InvoiceLineItem(
+                        description="Test",
+                        unit_price=Decimal("10000"),
+                        amount=Decimal("10000"),
+                        quantity=Decimal("1"),
+                    )
+                ],
+            )
+        )
 
         wallet_service.create_wallet(
             customer_id=customer.id,

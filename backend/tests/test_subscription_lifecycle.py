@@ -185,16 +185,14 @@ class TestUpgradePlan:
         assert str(sub.plan_id) == str(plan_b.id)
 
         # Should have created a credit note
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
         assert credit_notes[0].total_amount_cents > 0
 
         # Should have created a prorated invoice (original + new prorated)
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 2  # original + prorated
 
     def test_upgrade_plan_pay_in_advance_no_invoice_no_credit_note(self, db_session):
@@ -210,9 +208,9 @@ class TestUpgradePlan:
         service.upgrade_plan(sub.id, plan_b.id)
 
         # No credit note should be created (no existing invoice)
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
     def test_upgrade_plan_triggers_webhook(self, db_session):
@@ -228,9 +226,11 @@ class TestUpgradePlan:
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.plan_changed"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.plan_changed")
+            .all()
+        )
         assert len(webhooks) == 1
         assert webhooks[0].payload["change_type"] == "upgrade"
 
@@ -334,9 +334,9 @@ class TestDowngradePlan:
         assert str(sub.plan_id) == str(plan_b.id)
 
         # Credit note from old plan
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
 
     def test_downgrade_plan_end_of_period_triggers_webhook(self, db_session):
@@ -352,9 +352,11 @@ class TestDowngradePlan:
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.plan_changed"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.plan_changed")
+            .all()
+        )
         assert len(webhooks) == 1
         assert webhooks[0].payload["effective_at"] == "end_of_period"
 
@@ -371,9 +373,11 @@ class TestDowngradePlan:
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.plan_changed"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.plan_changed")
+            .all()
+        )
         assert len(webhooks) == 1
         assert webhooks[0].payload["effective_at"] == "immediate"
         assert webhooks[0].payload["change_type"] == "downgrade"
@@ -420,9 +424,7 @@ class TestActivatePendingSubscription:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         assert invoices[0].total == Decimal("15000")
 
@@ -446,9 +448,7 @@ class TestActivatePendingSubscription:
         assert sub.status == SubscriptionStatus.ACTIVE.value
 
         # No invoice because of trial
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_activate_no_pay_in_advance_no_invoice(self, db_session):
@@ -460,9 +460,7 @@ class TestActivatePendingSubscription:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_activate_triggers_webhook(self, db_session):
@@ -477,9 +475,9 @@ class TestActivatePendingSubscription:
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.started"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook).filter(Webhook.webhook_type == "subscription.started").all()
+        )
         assert len(webhooks) == 1
 
     def test_activate_pay_in_advance_zero_amount_no_invoice(self, db_session):
@@ -493,9 +491,7 @@ class TestActivatePendingSubscription:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
 
@@ -546,9 +542,7 @@ class TestProcessTrialEnd:
         service = SubscriptionLifecycleService(db_session)
         service.process_trial_end(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
 
     def test_process_trial_end_already_ended(self, db_session):
@@ -586,9 +580,11 @@ class TestProcessTrialEnd:
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.trial_ended"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.trial_ended")
+            .all()
+        )
         assert len(webhooks) == 1
 
     def test_process_trial_end_no_pay_in_advance_no_invoice(self, db_session):
@@ -602,9 +598,7 @@ class TestProcessTrialEnd:
         service = SubscriptionLifecycleService(db_session)
         service.process_trial_end(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_process_trial_end_pay_in_advance_zero_amount_no_invoice(self, db_session):
@@ -623,9 +617,7 @@ class TestProcessTrialEnd:
         service = SubscriptionLifecycleService(db_session)
         service.process_trial_end(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
 
@@ -684,9 +676,11 @@ class TestExecutePendingDowngrade:
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.plan_changed"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.plan_changed")
+            .all()
+        )
         assert len(webhooks) == 1
         assert webhooks[0].payload["change_type"] == "downgrade_executed"
 
@@ -718,9 +712,9 @@ class TestPlanChangeCreditNote:
         service = SubscriptionLifecycleService(db_session)
         service.upgrade_plan(sub.id, plan_b.id)
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
 
 
@@ -749,9 +743,7 @@ class TestEdgeCases:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.ACTIVE.value
         # No invoice because plan wasn't found
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_process_trial_end_plan_not_found(self, db_session):
@@ -759,8 +751,12 @@ class TestEdgeCases:
         customer = _create_customer(db_session, "cust_te_nop")
         plan = _create_plan(db_session, "plan_te_nop", 10000)
         sub = _create_active_subscription(
-            db_session, customer, plan, "sub_te_nop",
-            pay_in_advance=True, trial_period_days=14,
+            db_session,
+            customer,
+            plan,
+            "sub_te_nop",
+            pay_in_advance=True,
+            trial_period_days=14,
         )
 
         # Point plan_id to a non-existent UUID
@@ -778,9 +774,7 @@ class TestEdgeCases:
 
         db_session.refresh(sub)
         assert sub.trial_ended_at is not None
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_upgrade_pay_in_advance_zero_amount_plan_no_credit_or_invoice(self, db_session):
@@ -809,15 +803,13 @@ class TestEdgeCases:
         service.upgrade_plan(sub.id, plan_b.id)
 
         # No credit note because prorated amount is 0
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
         # Only the original invoice, no prorated invoice
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1  # original only
 
 
@@ -826,9 +818,7 @@ class TestTerminateSubscription:
         """Test terminating with skip action (no financial ops)."""
         customer = _create_customer(db_session, "cust_term_skip")
         plan = _create_plan(db_session, "plan_term_skip", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_skip"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_skip")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "skip")
@@ -837,18 +827,14 @@ class TestTerminateSubscription:
         assert sub.status == SubscriptionStatus.TERMINATED.value
         assert sub.ending_at is not None
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_terminate_generate_invoice(self, db_session):
         """Test terminating with generate_invoice action."""
         customer = _create_customer(db_session, "cust_term_inv")
         plan = _create_plan(db_session, "plan_term_inv", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_inv"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_inv")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_invoice")
@@ -857,9 +843,7 @@ class TestTerminateSubscription:
         assert sub.status == SubscriptionStatus.TERMINATED.value
         assert sub.ending_at is not None
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         assert "Final invoice" in invoices[0].line_items[0]["description"]
 
@@ -867,9 +851,7 @@ class TestTerminateSubscription:
         """Test terminating with generate_credit_note action."""
         customer = _create_customer(db_session, "cust_term_cn")
         plan = _create_plan(db_session, "plan_term_cn", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_cn"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_cn")
 
         # Create an existing invoice so credit note can reference it
         invoice_repo = InvoiceRepository(db_session)
@@ -890,9 +872,9 @@ class TestTerminateSubscription:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.TERMINATED.value
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
         assert credit_notes[0].total_amount_cents > 0
 
@@ -900,16 +882,14 @@ class TestTerminateSubscription:
         """Test terminating with credit_note but no invoice skips CN."""
         customer = _create_customer(db_session, "cust_term_cn_noinv")
         plan = _create_plan(db_session, "plan_term_cn_noinv", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_cn_noinv"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_cn_noinv")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_credit_note")
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
     def test_terminate_not_found(self, db_session):
@@ -922,9 +902,7 @@ class TestTerminateSubscription:
         """Test terminating already terminated subscription."""
         customer = _create_customer(db_session, "cust_term_already")
         plan = _create_plan(db_session, "plan_term_already")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_already"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_already")
         sub.status = SubscriptionStatus.TERMINATED.value
         db_session.commit()
         db_session.refresh(sub)
@@ -937,9 +915,7 @@ class TestTerminateSubscription:
         """Test terminating a pending subscription (skip financial ops)."""
         customer = _create_customer(db_session, "cust_term_pend")
         plan = _create_plan(db_session, "plan_term_pend", 10000)
-        sub = _create_pending_subscription(
-            db_session, customer, plan, "sub_term_pend"
-        )
+        sub = _create_pending_subscription(db_session, customer, plan, "sub_term_pend")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_invoice")
@@ -947,9 +923,7 @@ class TestTerminateSubscription:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.TERMINATED.value
         # No invoice for pending subscription
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_terminate_triggers_webhook(self, db_session):
@@ -957,18 +931,18 @@ class TestTerminateSubscription:
         _create_webhook_endpoint(db_session)
         customer = _create_customer(db_session, "cust_term_wh")
         plan = _create_plan(db_session, "plan_term_wh")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_wh"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_wh")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "skip")
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.terminated"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.terminated")
+            .all()
+        )
         assert len(webhooks) == 1
         assert webhooks[0].payload["on_termination_action"] == "skip"
 
@@ -976,25 +950,19 @@ class TestTerminateSubscription:
         """Test termination with zero-amount plan skips invoice."""
         customer = _create_customer(db_session, "cust_term_zero")
         plan = _create_plan(db_session, "plan_term_zero", 0)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_zero"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_zero")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_invoice")
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_terminate_default_action(self, db_session):
         """Test termination with default action (generate_invoice)."""
         customer = _create_customer(db_session, "cust_term_def")
         plan = _create_plan(db_session, "plan_term_def", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_def"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_def")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id)
@@ -1002,41 +970,30 @@ class TestTerminateSubscription:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.TERMINATED.value
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
 
     def test_terminate_invoice_zero_proration(self, db_session):
         """Test terminate generate_invoice when proration is 0."""
         customer = _create_customer(db_session, "cust_term_zerp")
         plan = _create_plan(db_session, "plan_term_zerp", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_zerp"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_zerp")
 
         service = SubscriptionLifecycleService(db_session)
-        prorate_path = (
-            "app.services.subscription_lifecycle"
-            ".SubscriptionDatesService.prorate_amount"
-        )
+        prorate_path = "app.services.subscription_lifecycle.SubscriptionDatesService.prorate_amount"
         with patch(prorate_path, return_value=0):
             service.terminate_subscription(sub.id, "generate_invoice")
 
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.TERMINATED.value
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_terminate_credit_note_zero_proration(self, db_session):
         """Test terminate credit_note when remaining proration is 0."""
         customer = _create_customer(db_session, "cust_term_cn_zerp")
         plan = _create_plan(db_session, "plan_term_cn_zerp", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_cn_zerp"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_cn_zerp")
 
         invoice_repo = InvoiceRepository(db_session)
         from app.schemas.invoice import InvoiceCreate
@@ -1051,20 +1008,15 @@ class TestTerminateSubscription:
         )
 
         service = SubscriptionLifecycleService(db_session)
-        prorate_path = (
-            "app.services.subscription_lifecycle"
-            ".SubscriptionDatesService.prorate_amount"
-        )
+        prorate_path = "app.services.subscription_lifecycle.SubscriptionDatesService.prorate_amount"
         with patch(prorate_path, return_value=0):
-            service.terminate_subscription(
-                sub.id, "generate_credit_note"
-            )
+            service.terminate_subscription(sub.id, "generate_credit_note")
 
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.TERMINATED.value
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
 
@@ -1073,9 +1025,7 @@ class TestCancelSubscription:
         """Test canceling with skip action (no financial ops)."""
         customer = _create_customer(db_session, "cust_can_skip")
         plan = _create_plan(db_session, "plan_can_skip", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_skip"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_skip")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "skip")
@@ -1084,18 +1034,14 @@ class TestCancelSubscription:
         assert sub.status == SubscriptionStatus.CANCELED.value
         assert sub.canceled_at is not None
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_cancel_generate_invoice(self, db_session):
         """Test canceling with generate_invoice action."""
         customer = _create_customer(db_session, "cust_can_inv")
         plan = _create_plan(db_session, "plan_can_inv", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_inv"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_inv")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "generate_invoice")
@@ -1103,18 +1049,14 @@ class TestCancelSubscription:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.CANCELED.value
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
 
     def test_cancel_generate_credit_note(self, db_session):
         """Test canceling with generate_credit_note action."""
         customer = _create_customer(db_session, "cust_can_cn")
         plan = _create_plan(db_session, "plan_can_cn", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_cn"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_cn")
 
         # Create an existing invoice for credit note reference
         invoice_repo = InvoiceRepository(db_session)
@@ -1135,9 +1077,9 @@ class TestCancelSubscription:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.CANCELED.value
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
 
     def test_cancel_not_found(self, db_session):
@@ -1150,9 +1092,7 @@ class TestCancelSubscription:
         """Test canceling already canceled subscription."""
         customer = _create_customer(db_session, "cust_can_already")
         plan = _create_plan(db_session, "plan_can_already")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_already"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_already")
         sub.status = SubscriptionStatus.CANCELED.value
         db_session.commit()
         db_session.refresh(sub)
@@ -1165,9 +1105,7 @@ class TestCancelSubscription:
         """Test canceling a pending subscription."""
         customer = _create_customer(db_session, "cust_can_pend")
         plan = _create_plan(db_session, "plan_can_pend", 10000)
-        sub = _create_pending_subscription(
-            db_session, customer, plan, "sub_can_pend"
-        )
+        sub = _create_pending_subscription(db_session, customer, plan, "sub_can_pend")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "generate_invoice")
@@ -1176,9 +1114,7 @@ class TestCancelSubscription:
         assert sub.status == SubscriptionStatus.CANCELED.value
         assert sub.canceled_at is not None
         # No invoice for pending subscription
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_cancel_triggers_webhook(self, db_session):
@@ -1186,18 +1122,16 @@ class TestCancelSubscription:
         _create_webhook_endpoint(db_session)
         customer = _create_customer(db_session, "cust_can_wh")
         plan = _create_plan(db_session, "plan_can_wh")
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_wh"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_wh")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "skip")
 
         from app.models.webhook import Webhook
 
-        webhooks = db_session.query(Webhook).filter(
-            Webhook.webhook_type == "subscription.canceled"
-        ).all()
+        webhooks = (
+            db_session.query(Webhook).filter(Webhook.webhook_type == "subscription.canceled").all()
+        )
         assert len(webhooks) == 1
         assert webhooks[0].payload["on_termination_action"] == "skip"
 
@@ -1205,48 +1139,35 @@ class TestCancelSubscription:
         """Test cancel with zero-amount plan skips invoice."""
         customer = _create_customer(db_session, "cust_can_zero")
         plan = _create_plan(db_session, "plan_can_zero", 0)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_zero"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_zero")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "generate_invoice")
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_cancel_invoice_zero_proration(self, db_session):
         """Test cancel generate_invoice when proration is 0."""
         customer = _create_customer(db_session, "cust_can_zerp")
         plan = _create_plan(db_session, "plan_can_zerp", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_zerp"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_zerp")
 
         service = SubscriptionLifecycleService(db_session)
-        prorate_path = (
-            "app.services.subscription_lifecycle"
-            ".SubscriptionDatesService.prorate_amount"
-        )
+        prorate_path = "app.services.subscription_lifecycle.SubscriptionDatesService.prorate_amount"
         with patch(prorate_path, return_value=0):
             service.cancel_subscription(sub.id, "generate_invoice")
 
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.CANCELED.value
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_cancel_credit_note_zero_proration(self, db_session):
         """Test cancel credit_note when remaining proration is 0."""
         customer = _create_customer(db_session, "cust_can_cn_zerp")
         plan = _create_plan(db_session, "plan_can_cn_zerp", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_cn_zerp"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_cn_zerp")
 
         invoice_repo = InvoiceRepository(db_session)
         from app.schemas.invoice import InvoiceCreate
@@ -1261,20 +1182,15 @@ class TestCancelSubscription:
         )
 
         service = SubscriptionLifecycleService(db_session)
-        prorate_path = (
-            "app.services.subscription_lifecycle"
-            ".SubscriptionDatesService.prorate_amount"
-        )
+        prorate_path = "app.services.subscription_lifecycle.SubscriptionDatesService.prorate_amount"
         with patch(prorate_path, return_value=0):
-            service.cancel_subscription(
-                sub.id, "generate_credit_note"
-            )
+            service.cancel_subscription(sub.id, "generate_credit_note")
 
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.CANCELED.value
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
 
@@ -1290,9 +1206,7 @@ class TestGracePeriodInvoiceDates:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
         # Default: grace_period=0, net_payment_term=30
@@ -1319,9 +1233,7 @@ class TestGracePeriodInvoiceDates:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
 
@@ -1349,9 +1261,7 @@ class TestGracePeriodInvoiceDates:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
 
@@ -1371,16 +1281,12 @@ class TestGracePeriodInvoiceDates:
         db_session.refresh(customer)
 
         plan = _create_plan(db_session, "plan_gp_term", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_gp_term"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_gp_term")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_invoice")
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
 
@@ -1399,16 +1305,12 @@ class TestGracePeriodInvoiceDates:
         db_session.refresh(customer)
 
         plan = _create_plan(db_session, "plan_gp_cancel", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_gp_cancel"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_gp_cancel")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "generate_invoice")
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
 
@@ -1438,9 +1340,7 @@ class TestGracePeriodInvoiceDates:
         service = SubscriptionLifecycleService(db_session)
         service.process_trial_end(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
 
@@ -1470,9 +1370,7 @@ class TestGracePeriodInvoiceDates:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         invoice = invoices[0]
         # No customer found, so no grace period dates set
@@ -1516,18 +1414,16 @@ class TestBillingTimeLifecycleInteractions:
         assert sub.billing_time == "anniversary"
 
         # Should have credit note
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
 
     def test_terminate_anniversary_billing_prorates_correctly(self, db_session):
         """Test termination with anniversary billing generates correct prorated invoice."""
         customer = _create_customer(db_session, "cust_bt_term")
         plan = _create_plan(db_session, "plan_bt_term", 30000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_bt_term"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_bt_term")
         sub.billing_time = "anniversary"
         db_session.commit()
         db_session.refresh(sub)
@@ -1538,9 +1434,7 @@ class TestBillingTimeLifecycleInteractions:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.TERMINATED.value
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         # Prorated amount should be less than full plan amount
         assert invoices[0].total < 30000
@@ -1550,9 +1444,7 @@ class TestBillingTimeLifecycleInteractions:
         customer = _create_customer(db_session, "cust_bt_dg")
         plan_a = _create_plan(db_session, "plan_bt_dg_a", 20000)
         plan_b = _create_plan(db_session, "plan_bt_dg_b", 5000)
-        sub = _create_active_subscription(
-            db_session, customer, plan_a, "sub_bt_dg"
-        )
+        sub = _create_active_subscription(db_session, customer, plan_a, "sub_bt_dg")
         sub.billing_time = "anniversary"
         db_session.commit()
         db_session.refresh(sub)
@@ -1581,9 +1473,7 @@ class TestPayInAdvanceInvoiceGeneration:
         service = SubscriptionLifecycleService(db_session)
         service.activate_pending_subscription(sub.id)
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         assert invoices[0].total == Decimal("25000")
         # Invoice should have proper billing period
@@ -1615,16 +1505,14 @@ class TestPayInAdvanceInvoiceGeneration:
         service.upgrade_plan(sub.id, plan_b.id)
 
         # Verify credit note for old plan
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
         assert "plan change" in credit_notes[0].description.lower()
 
         # Verify prorated invoice for new plan
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 2  # original + prorated
 
     def test_no_pay_in_advance_upgrade_skips_financials(self, db_session):
@@ -1639,14 +1527,12 @@ class TestPayInAdvanceInvoiceGeneration:
         service = SubscriptionLifecycleService(db_session)
         service.upgrade_plan(sub.id, plan_b.id)
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
 
@@ -1673,9 +1559,7 @@ class TestTrialActivationAndProcessing:
         assert sub.status == SubscriptionStatus.ACTIVE.value
         assert sub.started_at is not None
         # No invoice during trial even with pay_in_advance
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 0
 
     def test_trial_end_processing_generates_invoice_pay_in_advance(self, db_session):
@@ -1697,9 +1581,7 @@ class TestTrialActivationAndProcessing:
         db_session.refresh(sub)
         assert sub.trial_ended_at is not None
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         # Invoice should have proper description
         assert "post-trial" in invoices[0].line_items[0]["description"].lower()
@@ -1737,16 +1619,12 @@ class TestTerminationActionsComprehensive:
         """Test termination with generate_invoice creates prorated final invoice."""
         customer = _create_customer(db_session, "cust_term_prorate")
         plan = _create_plan(db_session, "plan_term_prorate", 30000)  # $300/month
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_prorate"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_prorate")
 
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_invoice")
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
         # Prorated amount should be less than full amount
         assert 0 < invoices[0].total < 30000
@@ -1755,26 +1633,22 @@ class TestTerminationActionsComprehensive:
         """Test cancel with generate_credit_note only creates CN when invoice exists."""
         customer = _create_customer(db_session, "cust_can_cn_req")
         plan = _create_plan(db_session, "plan_can_cn_req", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_cn_req"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_cn_req")
 
         # No existing invoice
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id, "generate_credit_note")
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 0
 
     def test_terminate_credit_note_with_finalized_invoice(self, db_session):
         """Test terminate with credit_note works when only finalized invoice exists."""
         customer = _create_customer(db_session, "cust_term_cn_fin")
         plan = _create_plan(db_session, "plan_term_cn_fin", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_term_cn_fin"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_cn_fin")
 
         invoice_repo = InvoiceRepository(db_session)
         from app.schemas.invoice import InvoiceCreate
@@ -1792,9 +1666,9 @@ class TestTerminationActionsComprehensive:
         service = SubscriptionLifecycleService(db_session)
         service.terminate_subscription(sub.id, "generate_credit_note")
 
-        credit_notes = db_session.query(CreditNote).filter(
-            CreditNote.customer_id == customer.id
-        ).all()
+        credit_notes = (
+            db_session.query(CreditNote).filter(CreditNote.customer_id == customer.id).all()
+        )
         assert len(credit_notes) == 1
         assert credit_notes[0].total_amount_cents > 0
 
@@ -1802,9 +1676,7 @@ class TestTerminationActionsComprehensive:
         """Test cancel with default action (generate_invoice) generates an invoice."""
         customer = _create_customer(db_session, "cust_can_def")
         plan = _create_plan(db_session, "plan_can_def", 10000)
-        sub = _create_active_subscription(
-            db_session, customer, plan, "sub_can_def"
-        )
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_def")
 
         service = SubscriptionLifecycleService(db_session)
         service.cancel_subscription(sub.id)
@@ -1812,9 +1684,7 @@ class TestTerminationActionsComprehensive:
         db_session.refresh(sub)
         assert sub.status == SubscriptionStatus.CANCELED.value
 
-        invoices = db_session.query(Invoice).filter(
-            Invoice.subscription_id == sub.id
-        ).all()
+        invoices = db_session.query(Invoice).filter(Invoice.subscription_id == sub.id).all()
         assert len(invoices) == 1
 
 
