@@ -16,6 +16,7 @@ class FeeCreate(BaseModel):
     invoice_id: UUID | None = None
     charge_id: UUID | None = None
     subscription_id: UUID | None = None
+    commitment_id: UUID | None = None
     customer_id: UUID
     fee_type: FeeType = FeeType.CHARGE
     amount_cents: Decimal = Decimal("0")
@@ -48,6 +49,7 @@ class FeeResponse(BaseModel):
     invoice_id: UUID | None = None
     charge_id: UUID | None = None
     subscription_id: UUID | None = None
+    commitment_id: UUID | None = None
     customer_id: UUID
     fee_type: str
     amount_cents: Decimal

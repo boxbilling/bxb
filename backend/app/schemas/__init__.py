@@ -21,6 +21,7 @@ from app.schemas.charge_filter import (
     ChargeFilterValueCreate,
     ChargeFilterValueResponse,
 )
+from app.schemas.commitment import CommitmentCreate, CommitmentResponse, CommitmentUpdate
 from app.schemas.credit_note import (
     CreditNoteCreate,
     CreditNoteItemCreate,
@@ -82,6 +83,9 @@ __all__ = [
     "ChargeOutput",
     "ChargeResponse",
     "ChargeUpdate",
+    "CommitmentCreate",
+    "CommitmentResponse",
+    "CommitmentUpdate",
     "CreditNoteCreate",
     "CreditNoteItemCreate",
     "CreditNoteItemResponse",

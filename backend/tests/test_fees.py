@@ -518,7 +518,8 @@ class TestFeesAPI:
 
         # Verify all expected fields are present
         expected_fields = {
-            "id", "invoice_id", "charge_id", "subscription_id", "customer_id",
+            "id", "invoice_id", "charge_id", "subscription_id", "commitment_id",
+            "customer_id",
             "fee_type", "amount_cents", "taxes_amount_cents", "total_amount_cents",
             "units", "events_count", "unit_amount_cents", "payment_status",
             "description", "metric_code", "properties", "created_at", "updated_at",

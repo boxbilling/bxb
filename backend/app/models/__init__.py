@@ -8,6 +8,7 @@ from app.models.billable_metric_filter import BillableMetricFilter
 from app.models.charge import Charge, ChargeModel
 from app.models.charge_filter import ChargeFilter
 from app.models.charge_filter_value import ChargeFilterValue
+from app.models.commitment import Commitment
 from app.models.coupon import Coupon, CouponExpiration, CouponFrequency, CouponStatus, CouponType
 from app.models.credit_note import (
     CreditNote,
@@ -57,6 +58,7 @@ __all__ = [
     "ChargeFilter",
     "ChargeFilterValue",
     "ChargeModel",
+    "Commitment",
     "Coupon",
     "CouponExpiration",
     "CouponFrequency",

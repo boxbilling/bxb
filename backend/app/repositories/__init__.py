@@ -5,6 +5,7 @@ from app.repositories.billable_metric_filter_repository import BillableMetricFil
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.charge_filter_repository import ChargeFilterRepository
 from app.repositories.charge_repository import ChargeRepository
+from app.repositories.commitment_repository import CommitmentRepository
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
@@ -28,6 +29,7 @@ __all__ = [
     "BillableMetricRepository",
     "ChargeFilterRepository",
     "ChargeRepository",
+    "CommitmentRepository",
     "CreditNoteItemRepository",
     "CreditNoteRepository",
     "CustomerRepository",

@@ -59,6 +59,9 @@ class Fee(Base):
     customer_id = Column(
         UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
+    commitment_id = Column(
+        UUIDType, ForeignKey("commitments.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
 
     # Fee classification
     fee_type = Column(String(20), nullable=False, default=FeeType.CHARGE.value, index=True)
