@@ -7,10 +7,13 @@ from arq import cron
 
 from app.core.database import SessionLocal
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.repositories.customer_repository import CustomerRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.plan_repository import PlanRepository
+from app.repositories.subscription_repository import SubscriptionRepository
 from app.services.subscription_dates import SubscriptionDatesService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
+from app.services.usage_threshold_service import UsageThresholdService
 from app.services.webhook_service import WebhookService
 from app.tasks import redis_settings
 
@@ -188,6 +191,65 @@ async def generate_periodic_invoices_task(ctx: dict[str, Any]) -> int:
         db.close()
 
 
+async def check_usage_thresholds_task(ctx: dict[str, Any], subscription_id: str) -> int:
+    """Background task: check usage thresholds for a subscription after event ingestion.
+
+    Looks up the subscription, determines its billing period, and checks
+    whether any usage thresholds have been crossed.
+
+    Args:
+        ctx: ARQ worker context.
+        subscription_id: UUID string of the subscription to check.
+
+    Returns:
+        Number of newly crossed thresholds.
+    """
+    db = SessionLocal()
+    try:
+        sub_uuid = UUID(subscription_id)
+        sub_repo = SubscriptionRepository(db)
+        subscription = sub_repo.get_by_id(sub_uuid)
+        if not subscription:
+            logger.warning("Subscription %s not found for threshold check", subscription_id)
+            return 0
+
+        if subscription.status != SubscriptionStatus.ACTIVE.value:
+            return 0
+
+        plan_repo = PlanRepository(db)
+        plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)))
+        if not plan:
+            return 0
+
+        customer_repo = CustomerRepository(db)
+        customer = customer_repo.get_by_id(UUID(str(subscription.customer_id)))
+        if not customer:
+            return 0
+
+        dates_service = SubscriptionDatesService()
+        interval = str(plan.interval)
+        now = datetime.now(UTC)
+        period_start, period_end = dates_service.calculate_billing_period(
+            subscription, interval, now
+        )
+
+        service = UsageThresholdService(db)
+        crossed = service.check_thresholds(
+            subscription_id=sub_uuid,
+            billing_period_start=period_start,
+            billing_period_end=period_end,
+            external_customer_id=str(customer.external_id),
+        )
+
+        if crossed:
+            logger.info(
+                "Subscription %s crossed %d threshold(s)", subscription_id, len(crossed)
+            )
+        return len(crossed)
+    finally:
+        db.close()
+
+
 class WorkerSettings:
     functions = [
         update_item_prices,
@@ -195,6 +257,7 @@ class WorkerSettings:
         process_pending_downgrades_task,
         process_trial_expirations_task,
         generate_periodic_invoices_task,
+        check_usage_thresholds_task,
     ]
     cron_jobs = [
         cron(update_item_prices, hour=0, minute=0),  # midnight daily

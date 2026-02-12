@@ -1,20 +1,27 @@
+import logging
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.event import Event
+from app.models.subscription import SubscriptionStatus
 from app.repositories.billable_metric_repository import BillableMetricRepository
+from app.repositories.customer_repository import CustomerRepository
 from app.repositories.event_repository import EventRepository
+from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.event import (
     EventBatchCreate,
     EventBatchResponse,
     EventCreate,
     EventResponse,
 )
+from app.tasks import enqueue_check_usage_thresholds
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -27,6 +34,42 @@ def validate_billable_metric_code(code: str, db: Session, organization_id: UUID)
             status_code=422,
             detail=f"Billable metric with code '{code}' does not exist",
         )
+
+
+def _get_active_subscription_ids(
+    external_customer_id: str, db: Session, organization_id: UUID
+) -> list[str]:
+    """Find active subscription IDs for the given external customer.
+
+    Looks up the customer by external_id and returns the IDs of all
+    active subscriptions as strings (for task serialization).
+    """
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_external_id(external_customer_id, organization_id)
+    if not customer:
+        return []
+
+    sub_repo = SubscriptionRepository(db)
+    subscriptions = sub_repo.get_by_customer_id(
+        customer_id=UUID(str(customer.id)),
+        organization_id=organization_id,
+    )
+    return [
+        str(sub.id)
+        for sub in subscriptions
+        if sub.status == SubscriptionStatus.ACTIVE.value
+    ]
+
+
+async def _enqueue_threshold_checks(subscription_ids: list[str]) -> None:
+    """Enqueue threshold check tasks for the given subscription IDs."""
+    for sub_id in subscription_ids:
+        try:
+            await enqueue_check_usage_thresholds(sub_id)
+        except Exception:
+            logger.exception(
+                "Failed to enqueue threshold check for subscription %s", sub_id
+            )
 
 
 @router.get("/", response_model=list[EventResponse])
@@ -70,6 +113,7 @@ async def get_event(
 @router.post("/", response_model=EventResponse, status_code=201)
 async def create_event(
     data: EventCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> Event:
@@ -82,12 +126,21 @@ async def create_event(
 
     repo = EventRepository(db)
     event, is_new = repo.create_or_get_existing(data, organization_id)
+
+    if is_new:
+        sub_ids = _get_active_subscription_ids(
+            data.external_customer_id, db, organization_id
+        )
+        if sub_ids:
+            background_tasks.add_task(_enqueue_threshold_checks, sub_ids)
+
     return event
 
 
 @router.post("/batch", response_model=EventBatchResponse, status_code=201)
 async def create_events_batch(
     data: EventBatchCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> EventBatchResponse:
@@ -103,6 +156,19 @@ async def create_events_batch(
 
     repo = EventRepository(db)
     events, ingested, duplicates = repo.create_batch(data.events, organization_id)
+
+    if ingested > 0:
+        # Collect unique external_customer_ids from the batch
+        unique_customer_ids = {event.external_customer_id for event in data.events}
+        all_sub_ids: list[str] = []
+        for ext_cust_id in unique_customer_ids:
+            all_sub_ids.extend(
+                _get_active_subscription_ids(ext_cust_id, db, organization_id)
+            )
+        # Deduplicate subscription IDs
+        unique_sub_ids = list(set(all_sub_ids))
+        if unique_sub_ids:
+            background_tasks.add_task(_enqueue_threshold_checks, unique_sub_ids)
 
     return EventBatchResponse(
         ingested=ingested,

@@ -6,6 +6,7 @@ import pytest
 
 from app.tasks import (
     enqueue_check_dunning,
+    enqueue_check_usage_thresholds,
     enqueue_generate_periodic_invoices,
     enqueue_process_payment_requests,
     enqueue_process_pending_downgrades,
@@ -163,3 +164,19 @@ class TestTasks:
 
             assert result == mock_job
             mock_enqueue.assert_called_once_with("process_payment_requests_task")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_check_usage_thresholds(self):
+        """Test enqueue_check_usage_thresholds helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "thresholds-job-006"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_check_usage_thresholds("sub-uuid-123")
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with(
+                "check_usage_thresholds_task", "sub-uuid-123"
+            )

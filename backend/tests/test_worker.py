@@ -1,5 +1,6 @@
 """Tests for worker background tasks and cron job registration."""
 
+import uuid
 from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
@@ -15,6 +16,7 @@ from app.repositories.webhook_repository import WebhookRepository
 from app.schemas.webhook import WebhookEndpointCreate
 from app.worker import (
     WorkerSettings,
+    check_usage_thresholds_task,
     generate_periodic_invoices_task,
     process_pending_downgrades_task,
     process_trial_expirations_task,
@@ -670,8 +672,142 @@ class TestWorkerSettings:
         assert job is not None
         assert job.minute == {0}
 
+    def test_functions_includes_thresholds_task(self):
+        """Test that check_usage_thresholds_task is registered as a worker function."""
+        func_names = [f.__name__ for f in WorkerSettings.functions]
+        assert "check_usage_thresholds_task" in func_names
+
     def test_redis_settings_configured(self):
         """Test that redis settings are properly configured."""
         from app.tasks import redis_settings
 
         assert WorkerSettings.redis_settings is redis_settings
+
+
+class TestCheckUsageThresholdsTask:
+    """Tests for the check_usage_thresholds_task worker function."""
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_subscription_not_found(self, db_session):
+        """Test returns 0 when subscription doesn't exist."""
+        fake_id = str(uuid.uuid4())
+        with patch("app.worker.SessionLocal", db_module.SessionLocal):
+            result = await check_usage_thresholds_task({}, fake_id)
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_for_inactive_subscription(self, db_session):
+        """Test returns 0 for a canceled subscription."""
+        customer = _create_customer(db_session, external_id="cust_thresh_inactive")
+        plan = _create_plan(db_session, code="plan_thresh_inactive")
+        sub = Subscription(
+            external_id="sub_thresh_inactive",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.CANCELED.value,
+            started_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        with patch("app.worker.SessionLocal", db_module.SessionLocal):
+            result = await check_usage_thresholds_task({}, str(sub.id))
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_plan_not_found(self, db_session):
+        """Test returns 0 when the plan doesn't exist."""
+        customer = _create_customer(db_session, external_id="cust_thresh_noplan")
+        plan = _create_plan(db_session, code="plan_thresh_noplan")
+        sub = _create_active_subscription(
+            db_session, customer, plan, external_id="sub_thresh_noplan"
+        )
+
+        mock_plan_repo = MagicMock()
+        mock_plan_repo.get_by_id.return_value = None
+
+        with (
+            patch("app.worker.SessionLocal", db_module.SessionLocal),
+            patch("app.worker.PlanRepository", return_value=mock_plan_repo),
+        ):
+            result = await check_usage_thresholds_task({}, str(sub.id))
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_customer_not_found(self, db_session):
+        """Test returns 0 when the customer doesn't exist."""
+        customer = _create_customer(db_session, external_id="cust_thresh_nocust")
+        plan = _create_plan(db_session, code="plan_thresh_nocust")
+        sub = _create_active_subscription(
+            db_session, customer, plan, external_id="sub_thresh_nocust"
+        )
+
+        mock_cust_repo = MagicMock()
+        mock_cust_repo.get_by_id.return_value = None
+
+        with (
+            patch("app.worker.SessionLocal", db_module.SessionLocal),
+            patch("app.worker.CustomerRepository", return_value=mock_cust_repo),
+        ):
+            result = await check_usage_thresholds_task({}, str(sub.id))
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_calls_check_thresholds_and_returns_count(self, db_session):
+        """Test calls UsageThresholdService.check_thresholds and returns crossed count."""
+        customer = _create_customer(db_session, external_id="cust_thresh_ok")
+        plan = _create_plan(db_session, code="plan_thresh_ok")
+        sub = _create_active_subscription(
+            db_session, customer, plan, external_id="sub_thresh_ok"
+        )
+
+        mock_service = MagicMock()
+        mock_service.check_thresholds.return_value = ["crossed1", "crossed2"]
+
+        with (
+            patch("app.worker.SessionLocal", db_module.SessionLocal),
+            patch("app.worker.UsageThresholdService", return_value=mock_service),
+        ):
+            result = await check_usage_thresholds_task({}, str(sub.id))
+
+        assert result == 2
+        mock_service.check_thresholds.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_when_no_thresholds_crossed(self, db_session):
+        """Test returns 0 when no thresholds are crossed."""
+        customer = _create_customer(db_session, external_id="cust_thresh_none")
+        plan = _create_plan(db_session, code="plan_thresh_none")
+        sub = _create_active_subscription(
+            db_session, customer, plan, external_id="sub_thresh_none"
+        )
+
+        mock_service = MagicMock()
+        mock_service.check_thresholds.return_value = []
+
+        with (
+            patch("app.worker.SessionLocal", db_module.SessionLocal),
+            patch("app.worker.UsageThresholdService", return_value=mock_service),
+        ):
+            result = await check_usage_thresholds_task({}, str(sub.id))
+
+        assert result == 0
+
+    @pytest.mark.asyncio
+    async def test_closes_session_on_exception(self, db_session):
+        """Test that DB session is closed even when an exception occurs."""
+        mock_db = MagicMock()
+        mock_db.close = MagicMock()
+
+        mock_sub_repo = MagicMock()
+        mock_sub_repo.get_by_id.side_effect = RuntimeError("DB error")
+
+        with (
+            patch("app.worker.SessionLocal", return_value=mock_db),
+            patch("app.worker.SubscriptionRepository", return_value=mock_sub_repo),
+            pytest.raises(RuntimeError, match="DB error"),
+        ):
+            await check_usage_thresholds_task({}, str(uuid.uuid4()))
+
+        mock_db.close.assert_called_once()

@@ -69,3 +69,8 @@ async def enqueue_check_dunning() -> Job:
 async def enqueue_process_payment_requests() -> Job:
     """Enqueue a task to process pending payment requests."""
     return await enqueue_task("process_payment_requests_task")
+
+
+async def enqueue_check_usage_thresholds(subscription_id: str) -> Job:
+    """Enqueue a task to check usage thresholds for a subscription."""
+    return await enqueue_task("check_usage_thresholds_task", subscription_id)

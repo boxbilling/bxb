@@ -1,16 +1,21 @@
 """Event API tests for bxb."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.customer import Customer
 from app.models.event import Event
+from app.models.plan import Plan, PlanInterval
+from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.event_repository import EventRepository
+from app.routers.events import _enqueue_threshold_checks, _get_active_subscription_ids
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
 from tests.conftest import DEFAULT_ORG_ID
@@ -840,3 +845,341 @@ class TestEventsAPI:
         assert response.status_code == 201
         data = response.json()
         assert data["ingested"] == 2
+
+
+def _create_customer(db, external_id: str = "cust-threshold") -> Customer:
+    customer = Customer(external_id=external_id, name="Test", email="t@t.com")
+    db.add(customer)
+    db.commit()
+    db.refresh(customer)
+    return customer
+
+
+def _create_plan(db, code: str = "plan-threshold") -> Plan:
+    plan = Plan(
+        code=code,
+        name=f"Plan {code}",
+        interval=PlanInterval.MONTHLY.value,
+        amount_cents=10000,
+    )
+    db.add(plan)
+    db.commit()
+    db.refresh(plan)
+    return plan
+
+
+def _create_active_subscription(
+    db, customer: Customer, plan: Plan, external_id: str = "sub-threshold"
+) -> Subscription:
+    sub = Subscription(
+        external_id=external_id,
+        customer_id=customer.id,
+        plan_id=plan.id,
+        status=SubscriptionStatus.ACTIVE.value,
+        started_at=datetime.now(UTC) - timedelta(days=5),
+    )
+    db.add(sub)
+    db.commit()
+    db.refresh(sub)
+    return sub
+
+
+class TestGetActiveSubscriptionIds:
+    """Tests for _get_active_subscription_ids helper."""
+
+    def test_returns_empty_when_customer_not_found(self, db_session):
+        """Test returns empty list when customer does not exist."""
+        result = _get_active_subscription_ids("nonexistent", db_session, DEFAULT_ORG_ID)
+        assert result == []
+
+    def test_returns_active_subscription_ids(self, db_session):
+        """Test returns active subscription IDs for the customer."""
+        customer = _create_customer(db_session, "cust-active-sub")
+        plan = _create_plan(db_session, "plan-active-sub")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub-active-test"
+        )
+
+        result = _get_active_subscription_ids("cust-active-sub", db_session, DEFAULT_ORG_ID)
+        assert result == [str(sub.id)]
+
+    def test_excludes_non_active_subscriptions(self, db_session):
+        """Test excludes canceled/terminated subscriptions."""
+        customer = _create_customer(db_session, "cust-mixed-subs")
+        plan = _create_plan(db_session, "plan-mixed-subs")
+
+        active_sub = _create_active_subscription(
+            db_session, customer, plan, "sub-active-only"
+        )
+
+        canceled_sub = Subscription(
+            external_id="sub-canceled",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.CANCELED.value,
+            started_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        db_session.add(canceled_sub)
+        db_session.commit()
+
+        result = _get_active_subscription_ids("cust-mixed-subs", db_session, DEFAULT_ORG_ID)
+        assert result == [str(active_sub.id)]
+
+    def test_returns_multiple_active_subscriptions(self, db_session):
+        """Test returns multiple active subscription IDs."""
+        customer = _create_customer(db_session, "cust-multi-sub")
+        plan1 = _create_plan(db_session, "plan-multi-1")
+        plan2 = _create_plan(db_session, "plan-multi-2")
+        sub1 = _create_active_subscription(db_session, customer, plan1, "sub-multi-1")
+        sub2 = _create_active_subscription(db_session, customer, plan2, "sub-multi-2")
+
+        result = _get_active_subscription_ids("cust-multi-sub", db_session, DEFAULT_ORG_ID)
+        assert set(result) == {str(sub1.id), str(sub2.id)}
+
+
+class TestEnqueueThresholdChecks:
+    """Tests for _enqueue_threshold_checks helper."""
+
+    @pytest.mark.asyncio
+    async def test_enqueues_for_each_subscription(self):
+        """Test enqueues a task for each subscription ID."""
+        sub_ids = ["sub-1", "sub-2"]
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            await _enqueue_threshold_checks(sub_ids)
+
+        assert mock_enqueue.call_count == 2
+        mock_enqueue.assert_any_call("sub-1")
+        mock_enqueue.assert_any_call("sub-2")
+
+    @pytest.mark.asyncio
+    async def test_continues_on_error(self):
+        """Test continues processing if one enqueue fails."""
+        sub_ids = ["sub-fail", "sub-ok"]
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            mock_enqueue.side_effect = [Exception("Redis error"), None]
+            await _enqueue_threshold_checks(sub_ids)
+
+        assert mock_enqueue.call_count == 2
+
+
+class TestEventThresholdIntegration:
+    """Tests for threshold checking integration with event ingestion API."""
+
+    def test_create_event_enqueues_threshold_check(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test single event ingestion enqueues threshold checks for active subscriptions."""
+        customer = _create_customer(db_session, "cust-evt-threshold")
+        plan = _create_plan(db_session, "plan-evt-threshold")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub-evt-threshold"
+        )
+
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            response = client.post(
+                "/v1/events/",
+                json={
+                    "transaction_id": "tx-threshold-001",
+                    "external_customer_id": "cust-evt-threshold",
+                    "code": "api_calls",
+                    "timestamp": "2026-01-15T10:30:00Z",
+                },
+            )
+
+        assert response.status_code == 201
+        mock_enqueue.assert_called_once_with(str(sub.id))
+
+    def test_create_event_no_enqueue_for_duplicate(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test duplicate event does not enqueue threshold checks."""
+        customer = _create_customer(db_session, "cust-evt-dup-thresh")
+        plan = _create_plan(db_session, "plan-evt-dup-thresh")
+        _create_active_subscription(
+            db_session, customer, plan, "sub-evt-dup-thresh"
+        )
+
+        # Create the first event
+        client.post(
+            "/v1/events/",
+            json={
+                "transaction_id": "tx-dup-threshold",
+                "external_customer_id": "cust-evt-dup-thresh",
+                "code": "api_calls",
+                "timestamp": "2026-01-15T10:30:00Z",
+            },
+        )
+
+        # Send duplicate - should not enqueue
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            response = client.post(
+                "/v1/events/",
+                json={
+                    "transaction_id": "tx-dup-threshold",
+                    "external_customer_id": "cust-evt-dup-thresh",
+                    "code": "api_calls",
+                    "timestamp": "2026-01-15T10:30:00Z",
+                },
+            )
+
+        assert response.status_code == 201
+        mock_enqueue.assert_not_called()
+
+    def test_create_event_no_enqueue_without_customer(
+        self, client: TestClient, billable_metric
+    ):
+        """Test no threshold check when customer doesn't exist."""
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            response = client.post(
+                "/v1/events/",
+                json={
+                    "transaction_id": "tx-no-cust-001",
+                    "external_customer_id": "nonexistent-customer",
+                    "code": "api_calls",
+                    "timestamp": "2026-01-15T10:30:00Z",
+                },
+            )
+
+        assert response.status_code == 201
+        mock_enqueue.assert_not_called()
+
+    def test_batch_create_enqueues_threshold_checks(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test batch event ingestion enqueues threshold checks."""
+        customer = _create_customer(db_session, "cust-batch-thresh")
+        plan = _create_plan(db_session, "plan-batch-thresh")
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub-batch-thresh"
+        )
+
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            response = client.post(
+                "/v1/events/batch",
+                json={
+                    "events": [
+                        {
+                            "transaction_id": "tx-batch-thresh-001",
+                            "external_customer_id": "cust-batch-thresh",
+                            "code": "api_calls",
+                            "timestamp": "2026-01-15T10:00:00Z",
+                        },
+                        {
+                            "transaction_id": "tx-batch-thresh-002",
+                            "external_customer_id": "cust-batch-thresh",
+                            "code": "api_calls",
+                            "timestamp": "2026-01-15T10:01:00Z",
+                        },
+                    ]
+                },
+            )
+
+        assert response.status_code == 201
+        assert response.json()["ingested"] == 2
+        # Should enqueue once per subscription (deduplicated)
+        mock_enqueue.assert_called_once_with(str(sub.id))
+
+    def test_batch_create_no_enqueue_all_duplicates(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test batch with all duplicates does not enqueue threshold checks."""
+        customer = _create_customer(db_session, "cust-batch-alldup")
+        plan = _create_plan(db_session, "plan-batch-alldup")
+        _create_active_subscription(
+            db_session, customer, plan, "sub-batch-alldup"
+        )
+
+        # Pre-create the events
+        client.post(
+            "/v1/events/",
+            json={
+                "transaction_id": "tx-batch-alldup-001",
+                "external_customer_id": "cust-batch-alldup",
+                "code": "api_calls",
+                "timestamp": "2026-01-15T10:00:00Z",
+            },
+        )
+
+        # Send batch with only duplicates
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            response = client.post(
+                "/v1/events/batch",
+                json={
+                    "events": [
+                        {
+                            "transaction_id": "tx-batch-alldup-001",
+                            "external_customer_id": "cust-batch-alldup",
+                            "code": "api_calls",
+                            "timestamp": "2026-01-15T10:00:00Z",
+                        },
+                    ]
+                },
+            )
+
+        assert response.status_code == 201
+        assert response.json()["ingested"] == 0
+        mock_enqueue.assert_not_called()
+
+    def test_batch_create_multiple_customers(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test batch events for multiple customers enqueue for all subscriptions."""
+        cust1 = _create_customer(db_session, "cust-multi-batch-1")
+        cust2 = _create_customer(db_session, "cust-multi-batch-2")
+        plan = _create_plan(db_session, "plan-multi-batch")
+        sub1 = _create_active_subscription(
+            db_session, cust1, plan, "sub-multi-batch-1"
+        )
+        sub2 = _create_active_subscription(
+            db_session, cust2, plan, "sub-multi-batch-2"
+        )
+
+        with patch(
+            "app.routers.events.enqueue_check_usage_thresholds",
+            new_callable=AsyncMock,
+        ) as mock_enqueue:
+            response = client.post(
+                "/v1/events/batch",
+                json={
+                    "events": [
+                        {
+                            "transaction_id": "tx-multi-batch-001",
+                            "external_customer_id": "cust-multi-batch-1",
+                            "code": "api_calls",
+                            "timestamp": "2026-01-15T10:00:00Z",
+                        },
+                        {
+                            "transaction_id": "tx-multi-batch-002",
+                            "external_customer_id": "cust-multi-batch-2",
+                            "code": "api_calls",
+                            "timestamp": "2026-01-15T10:01:00Z",
+                        },
+                    ]
+                },
+            )
+
+        assert response.status_code == 201
+        assert mock_enqueue.call_count == 2
+        enqueued_ids = {call.args[0] for call in mock_enqueue.call_args_list}
+        assert enqueued_ids == {str(sub1.id), str(sub2.id)}
