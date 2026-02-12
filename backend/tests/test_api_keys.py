@@ -407,10 +407,9 @@ class TestAuthMiddleware:
             "/v1/customers/",
             headers={"Authorization": "Basic abc123"},
         )
-        # Without the auth dependency wired into customers, this should still work
-        # because the dependency is not yet applied to existing routers
-        # This test validates the auth module itself
-        assert response.status_code == 200
+        # The auth dependency is wired into all routers, so a non-Bearer header
+        # should be rejected with 401.
+        assert response.status_code == 401
 
     def test_get_current_organization_no_header(self, db_session):
         """Test get_current_organization with no auth header."""

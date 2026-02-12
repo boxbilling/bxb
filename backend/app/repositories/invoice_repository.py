@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -39,6 +40,7 @@ class InvoiceRepository:
 
     def get_all(
         self,
+        organization_id: UUID | None = None,
         skip: int = 0,
         limit: int = 100,
         customer_id: UUID | None = None,
@@ -47,6 +49,8 @@ class InvoiceRepository:
     ) -> list[Invoice]:
         query = self.db.query(Invoice)
 
+        if organization_id is not None:
+            query = query.filter(Invoice.organization_id == organization_id)
         if customer_id:
             query = query.filter(Invoice.customer_id == customer_id)
         if subscription_id:
@@ -56,13 +60,16 @@ class InvoiceRepository:
 
         return query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
 
-    def get_by_id(self, invoice_id: UUID) -> Invoice | None:
-        return self.db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    def get_by_id(self, invoice_id: UUID, organization_id: UUID | None = None) -> Invoice | None:
+        query = self.db.query(Invoice).filter(Invoice.id == invoice_id)
+        if organization_id is not None:
+            query = query.filter(Invoice.organization_id == organization_id)
+        return query.first()
 
     def get_by_invoice_number(self, invoice_number: str) -> Invoice | None:
         return self.db.query(Invoice).filter(Invoice.invoice_number == invoice_number).first()
 
-    def create(self, data: InvoiceCreate) -> Invoice:
+    def create(self, data: InvoiceCreate, organization_id: UUID | None = None) -> Invoice:
         # Calculate totals from line items
         subtotal = Decimal(0)
         for item in data.line_items:
@@ -71,27 +78,33 @@ class InvoiceRepository:
         # Convert line items to dict format for JSON storage
         line_items_json = [item.model_dump(mode="json") for item in data.line_items]
 
-        invoice = Invoice(
-            invoice_number=self._generate_invoice_number(),
-            customer_id=data.customer_id,
-            subscription_id=data.subscription_id,
-            billing_period_start=data.billing_period_start,
-            billing_period_end=data.billing_period_end,
-            currency=data.currency,
-            subtotal=subtotal,
-            tax_amount=Decimal(0),  # Tax calculation can be added later
-            total=subtotal,  # Total = subtotal + tax
-            line_items=line_items_json,
-            issued_at=data.issued_at,
-            due_date=data.due_date,
-        )
+        kwargs: dict[str, Any] = {
+            "invoice_number": self._generate_invoice_number(),
+            "customer_id": data.customer_id,
+            "subscription_id": data.subscription_id,
+            "billing_period_start": data.billing_period_start,
+            "billing_period_end": data.billing_period_end,
+            "currency": data.currency,
+            "subtotal": subtotal,
+            "tax_amount": Decimal(0),
+            "total": subtotal,
+            "line_items": line_items_json,
+            "issued_at": data.issued_at,
+            "due_date": data.due_date,
+        }
+        if organization_id is not None:
+            kwargs["organization_id"] = organization_id
+
+        invoice = Invoice(**kwargs)
         self.db.add(invoice)
         self.db.commit()
         self.db.refresh(invoice)
         return invoice
 
-    def update(self, invoice_id: UUID, data: InvoiceUpdate) -> Invoice | None:
-        invoice = self.get_by_id(invoice_id)
+    def update(
+        self, invoice_id: UUID, data: InvoiceUpdate, organization_id: UUID | None = None
+    ) -> Invoice | None:
+        invoice = self.get_by_id(invoice_id, organization_id)
         if not invoice:
             return None
 
@@ -149,9 +162,9 @@ class InvoiceRepository:
         self.db.refresh(invoice)
         return invoice
 
-    def delete(self, invoice_id: UUID) -> bool:
+    def delete(self, invoice_id: UUID, organization_id: UUID | None = None) -> bool:
         """Delete a draft invoice."""
-        invoice = self.get_by_id(invoice_id)
+        invoice = self.get_by_id(invoice_id, organization_id)
         if not invoice:
             return False
         if invoice.status != InvoiceStatus.DRAFT.value:

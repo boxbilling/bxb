@@ -15,6 +15,7 @@ from app.repositories.customer_repository import CustomerRepository
 from app.schemas.coupon import CouponCreate
 from app.schemas.customer import CustomerCreate
 from app.services.coupon_service import CouponApplicationService, CouponDiscount
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -38,7 +39,8 @@ def customer(db_session):
             external_id=f"cs_test_cust_{uuid4()}",
             name="CouponService Test Customer",
             email="couponservice@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -50,7 +52,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"cs_test_cust2_{uuid4()}",
             name="CouponService Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -84,7 +87,8 @@ def fixed_coupon(coupon_repo):
             amount_currency="USD",
             frequency=CouponFrequency.ONCE,
             reusable=True,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -99,7 +103,8 @@ def percentage_coupon(coupon_repo):
             percentage_rate=Decimal("20.00"),
             frequency=CouponFrequency.FOREVER,
             reusable=True,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -116,7 +121,8 @@ def recurring_coupon(coupon_repo):
             frequency=CouponFrequency.RECURRING,
             frequency_duration=3,
             reusable=False,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -133,7 +139,8 @@ def expired_coupon(coupon_repo):
             frequency=CouponFrequency.ONCE,
             expiration=CouponExpiration.TIME_LIMIT,
             expiration_at=datetime.now(UTC) - timedelta(days=1),
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -150,7 +157,8 @@ def future_expiration_coupon(coupon_repo):
             frequency=CouponFrequency.ONCE,
             expiration=CouponExpiration.TIME_LIMIT,
             expiration_at=datetime.now(UTC) + timedelta(days=30),
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -220,7 +228,7 @@ class TestApplyCouponToCustomer:
 
     def test_apply_terminated_coupon(self, coupon_service, fixed_coupon, customer, coupon_repo):
         """Test applying a terminated coupon raises ValueError."""
-        coupon_repo.terminate("SVC_FIXED10")
+        coupon_repo.terminate("SVC_FIXED10", DEFAULT_ORG_ID)
         with pytest.raises(ValueError, match="not active"):
             coupon_service.apply_coupon_to_customer(
                 coupon_code="SVC_FIXED10",
@@ -399,7 +407,8 @@ class TestCalculateCouponDiscount:
                 amount_currency="USD",
                 frequency=CouponFrequency.ONCE,
                 reusable=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         coupon_repo.create(
             CouponCreate(
@@ -410,7 +419,8 @@ class TestCalculateCouponDiscount:
                 amount_currency="USD",
                 frequency=CouponFrequency.ONCE,
                 reusable=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_BIG1", customer_id=customer.id
@@ -457,7 +467,8 @@ class TestCalculateCouponDiscount:
                 amount_currency="USD",
                 frequency=CouponFrequency.ONCE,
                 reusable=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_ZERO_DISC",
@@ -595,7 +606,8 @@ class TestCalculateSingleDiscount:
                 amount_currency="USD",
                 frequency=CouponFrequency.ONCE,
                 reusable=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         applied = coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_ZERO",
@@ -617,7 +629,8 @@ class TestCalculateSingleDiscount:
                 coupon_type=CouponType.FIXED_AMOUNT,
                 frequency=CouponFrequency.ONCE,
                 reusable=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         applied = coupon_service.apply_coupon_to_customer(
             coupon_code="SVC_EMPTY",

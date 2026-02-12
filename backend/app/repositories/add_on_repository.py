@@ -16,27 +16,36 @@ class AddOnRepository:
 
     def get_all(
         self,
+        organization_id: UUID,
         skip: int = 0,
         limit: int = 100,
     ) -> list[AddOn]:
         """Get all add-ons with pagination."""
         return (
             self.db.query(AddOn)
+            .filter(AddOn.organization_id == organization_id)
             .order_by(AddOn.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
 
-    def get_by_id(self, add_on_id: UUID) -> AddOn | None:
+    def get_by_id(self, add_on_id: UUID, organization_id: UUID | None = None) -> AddOn | None:
         """Get an add-on by ID."""
-        return self.db.query(AddOn).filter(AddOn.id == add_on_id).first()
+        query = self.db.query(AddOn).filter(AddOn.id == add_on_id)
+        if organization_id is not None:
+            query = query.filter(AddOn.organization_id == organization_id)
+        return query.first()
 
-    def get_by_code(self, code: str) -> AddOn | None:
+    def get_by_code(self, code: str, organization_id: UUID) -> AddOn | None:
         """Get an add-on by code."""
-        return self.db.query(AddOn).filter(AddOn.code == code).first()
+        return (
+            self.db.query(AddOn)
+            .filter(AddOn.code == code, AddOn.organization_id == organization_id)
+            .first()
+        )
 
-    def create(self, data: AddOnCreate) -> AddOn:
+    def create(self, data: AddOnCreate, organization_id: UUID) -> AddOn:
         """Create a new add-on."""
         add_on = AddOn(
             code=data.code,
@@ -45,15 +54,16 @@ class AddOnRepository:
             amount_cents=data.amount_cents,
             amount_currency=data.amount_currency,
             invoice_display_name=data.invoice_display_name,
+            organization_id=organization_id,
         )
         self.db.add(add_on)
         self.db.commit()
         self.db.refresh(add_on)
         return add_on
 
-    def update(self, code: str, data: AddOnUpdate) -> AddOn | None:
+    def update(self, code: str, data: AddOnUpdate, organization_id: UUID) -> AddOn | None:
         """Update an add-on by code."""
-        add_on = self.get_by_code(code)
+        add_on = self.get_by_code(code, organization_id=organization_id)
         if not add_on:
             return None
 
@@ -66,9 +76,9 @@ class AddOnRepository:
         self.db.refresh(add_on)
         return add_on
 
-    def delete(self, code: str) -> bool:
+    def delete(self, code: str, organization_id: UUID) -> bool:
         """Delete an add-on by code."""
-        add_on = self.get_by_code(code)
+        add_on = self.get_by_code(code, organization_id=organization_id)
         if not add_on:
             return False
 

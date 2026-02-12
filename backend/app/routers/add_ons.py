@@ -1,8 +1,11 @@
 """AddOn and AppliedAddOn API endpoints."""
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.add_on import AddOn
 from app.models.applied_add_on import AppliedAddOn
@@ -24,12 +27,13 @@ router = APIRouter()
 async def create_add_on(
     data: AddOnCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> AddOn:
     """Create a new add-on."""
     repo = AddOnRepository(db)
-    if repo.get_by_code(data.code):
+    if repo.get_by_code(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Add-on with this code already exists")
-    return repo.create(data)
+    return repo.create(data, organization_id)
 
 
 @router.get("/", response_model=list[AddOnResponse])
@@ -37,20 +41,22 @@ async def list_add_ons(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[AddOn]:
     """List add-ons with pagination."""
     repo = AddOnRepository(db)
-    return repo.get_all(skip=skip, limit=limit)
+    return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
 @router.get("/{code}", response_model=AddOnResponse)
 async def get_add_on(
     code: str,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> AddOn:
     """Get an add-on by code."""
     repo = AddOnRepository(db)
-    add_on = repo.get_by_code(code)
+    add_on = repo.get_by_code(code, organization_id)
     if not add_on:
         raise HTTPException(status_code=404, detail="Add-on not found")
     return add_on
@@ -61,10 +67,11 @@ async def update_add_on(
     code: str,
     data: AddOnUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> AddOn:
     """Update an add-on by code."""
     repo = AddOnRepository(db)
-    add_on = repo.update(code, data)
+    add_on = repo.update(code, data, organization_id)
     if not add_on:
         raise HTTPException(status_code=404, detail="Add-on not found")
     return add_on
@@ -74,10 +81,11 @@ async def update_add_on(
 async def delete_add_on(
     code: str,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Delete an add-on by code."""
     repo = AddOnRepository(db)
-    if not repo.delete(code):
+    if not repo.delete(code, organization_id):
         raise HTTPException(status_code=404, detail="Add-on not found")
 
 
@@ -85,15 +93,16 @@ async def delete_add_on(
 async def apply_add_on(
     data: ApplyAddOnRequest,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> AppliedAddOn:
     """Apply an add-on to a customer."""
     add_on_repo = AddOnRepository(db)
-    add_on = add_on_repo.get_by_code(data.add_on_code)
+    add_on = add_on_repo.get_by_code(data.add_on_code, organization_id)
     if not add_on:
         raise HTTPException(status_code=404, detail="Add-on not found")
 
     customer_repo = CustomerRepository(db)
-    customer = customer_repo.get_by_id(data.customer_id)
+    customer = customer_repo.get_by_id(data.customer_id, organization_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 

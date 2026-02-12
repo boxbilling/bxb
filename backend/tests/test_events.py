@@ -13,6 +13,7 @@ from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.event_repository import EventRepository
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -44,7 +45,7 @@ def billable_metric(db_session):
         name="API Calls",
         aggregation_type=AggregationType.COUNT,
     )
-    return repo.create(data)
+    return repo.create(data, DEFAULT_ORG_ID)
 
 
 @pytest.fixture
@@ -59,7 +60,7 @@ def billable_metric_sum(db_session):
         aggregation_type=AggregationType.SUM,
         field_name="bytes",
     )
-    return repo.create(data)
+    return repo.create(data, DEFAULT_ORG_ID)
 
 
 class TestEventModel:
@@ -111,7 +112,7 @@ class TestEventRepository:
             code="api_calls",
             timestamp=now,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
         event = repo.get_by_transaction_id("tx-find-001")
         assert event is not None
@@ -130,10 +131,10 @@ class TestEventRepository:
             code="api_calls",
             timestamp=now,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        assert repo.transaction_id_exists("exists-tx-001") is True
-        assert repo.transaction_id_exists("not-exists") is False
+        assert repo.transaction_id_exists("exists-tx-001", DEFAULT_ORG_ID) is True
+        assert repo.transaction_id_exists("not-exists", DEFAULT_ORG_ID) is False
 
     def test_create_or_get_existing_new(self, db_session, billable_metric):
         """Test create_or_get_existing creates new event."""
@@ -145,7 +146,7 @@ class TestEventRepository:
             code="api_calls",
             timestamp=now,
         )
-        event, is_new = repo.create_or_get_existing(data)
+        event, is_new = repo.create_or_get_existing(data, DEFAULT_ORG_ID)
 
         assert is_new is True
         assert event.transaction_id == "new-tx-001"
@@ -160,8 +161,8 @@ class TestEventRepository:
             code="api_calls",
             timestamp=now,
         )
-        event1, is_new1 = repo.create_or_get_existing(data)
-        event2, is_new2 = repo.create_or_get_existing(data)
+        event1, is_new1 = repo.create_or_get_existing(data, DEFAULT_ORG_ID)
+        event2, is_new2 = repo.create_or_get_existing(data, DEFAULT_ORG_ID)
 
         assert is_new1 is True
         assert is_new2 is False
@@ -179,7 +180,7 @@ class TestEventRepository:
             code="api_calls",
             timestamp=now,
         )
-        repo.create(data1)
+        repo.create(data1, DEFAULT_ORG_ID)
 
         # Batch with 1 duplicate and 2 new
         batch_data = [
@@ -202,7 +203,7 @@ class TestEventRepository:
                 timestamp=now,
             ),
         ]
-        events, ingested, duplicates = repo.create_batch(batch_data)
+        events, ingested, duplicates = repo.create_batch(batch_data, DEFAULT_ORG_ID)
 
         assert len(events) == 3
         assert ingested == 2
@@ -221,7 +222,7 @@ class TestEventRepository:
                 code="api_calls",
                 timestamp=now,
             )
-            repo.create(data)
+            repo.create(data, DEFAULT_ORG_ID)
 
         # Batch with all duplicates - should not commit
         batch_data = [
@@ -244,7 +245,7 @@ class TestEventRepository:
                 timestamp=now,
             ),
         ]
-        events, ingested, duplicates = repo.create_batch(batch_data)
+        events, ingested, duplicates = repo.create_batch(batch_data, DEFAULT_ORG_ID)
 
         assert len(events) == 3
         assert ingested == 0
@@ -277,18 +278,18 @@ class TestEventRepository:
             ),
         ]
         for data in events_data:
-            repo.create(data)
+            repo.create(data, DEFAULT_ORG_ID)
 
         # Filter by customer
-        cust1_events = repo.get_all(external_customer_id="cust-001")
+        cust1_events = repo.get_all(DEFAULT_ORG_ID, external_customer_id="cust-001")
         assert len(cust1_events) == 2
 
         # Filter by code
-        api_events = repo.get_all(code="api_calls")
+        api_events = repo.get_all(DEFAULT_ORG_ID, code="api_calls")
         assert len(api_events) == 2
 
         # Filter by customer and code
-        cust1_api = repo.get_all(external_customer_id="cust-001", code="api_calls")
+        cust1_api = repo.get_all(DEFAULT_ORG_ID, external_customer_id="cust-001", code="api_calls")
         assert len(cust1_api) == 1
 
     def test_get_all_with_timestamp_filters(self, db_session, billable_metric):
@@ -307,18 +308,18 @@ class TestEventRepository:
                 code="api_calls",
                 timestamp=t,
             )
-            repo.create(data)
+            repo.create(data, DEFAULT_ORG_ID)
 
         # Filter from t2
-        from_t2 = repo.get_all(from_timestamp=t2)
+        from_t2 = repo.get_all(DEFAULT_ORG_ID, from_timestamp=t2)
         assert len(from_t2) == 2
 
         # Filter to t2
-        to_t2 = repo.get_all(to_timestamp=t2)
+        to_t2 = repo.get_all(DEFAULT_ORG_ID, to_timestamp=t2)
         assert len(to_t2) == 2
 
         # Filter between t1 and t2
-        between = repo.get_all(from_timestamp=t1, to_timestamp=t2)
+        between = repo.get_all(DEFAULT_ORG_ID, from_timestamp=t1, to_timestamp=t2)
         assert len(between) == 2
 
     def test_delete_event(self, db_session, billable_metric):
@@ -331,17 +332,17 @@ class TestEventRepository:
             code="api_calls",
             timestamp=now,
         )
-        event = repo.create(data)
+        event = repo.create(data, DEFAULT_ORG_ID)
         event_id = event.id
 
-        assert repo.delete(event_id) is True
+        assert repo.delete(event_id, DEFAULT_ORG_ID) is True
         assert repo.get_by_id(event_id) is None
 
     def test_delete_event_not_found(self, db_session):
         """Test deleting non-existent event."""
         repo = EventRepository(db_session)
         fake_id = uuid.uuid4()
-        assert repo.delete(fake_id) is False
+        assert repo.delete(fake_id, DEFAULT_ORG_ID) is False
 
 
 class TestEventSchemaValidation:

@@ -19,6 +19,7 @@ from app.services.webhook_service import (
     WebhookService,
     generate_hmac_signature,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -47,7 +48,8 @@ def active_endpoint(db_session):
         WebhookEndpointCreate(
             url="https://example.com/webhooks",
             signature_algo="hmac",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -59,7 +61,8 @@ def second_active_endpoint(db_session):
         WebhookEndpointCreate(
             url="https://example.com/webhooks-2",
             signature_algo="hmac",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -70,9 +73,10 @@ def inactive_endpoint(db_session):
     endpoint = repo.create(
         WebhookEndpointCreate(
             url="https://example.com/webhooks-inactive",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
-    return repo.update(endpoint.id, WebhookEndpointUpdate(status="inactive"))
+    return repo.update(endpoint.id, WebhookEndpointUpdate(status="inactive"), DEFAULT_ORG_ID)
 
 
 class TestGenerateHmacSignature:

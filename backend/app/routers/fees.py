@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.fee import Fee, FeePaymentStatus, FeeType
 from app.repositories.fee_repository import FeeRepository
@@ -23,10 +24,12 @@ async def list_fees(
     fee_type: FeeType | None = None,
     payment_status: FeePaymentStatus | None = None,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Fee]:
     """List fees with optional filters."""
     repo = FeeRepository(db)
     return repo.get_all(
+        organization_id=organization_id,
         skip=skip,
         limit=limit,
         invoice_id=invoice_id,
@@ -41,10 +44,11 @@ async def list_fees(
 async def get_fee(
     fee_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Fee:
     """Get a fee by ID."""
     repo = FeeRepository(db)
-    fee = repo.get_by_id(fee_id)
+    fee = repo.get_by_id(fee_id, organization_id)
     if not fee:
         raise HTTPException(status_code=404, detail="Fee not found")
     return fee
@@ -55,6 +59,7 @@ async def update_fee(
     fee_id: UUID,
     data: FeeUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Fee:
     """Update a fee."""
     repo = FeeRepository(db)

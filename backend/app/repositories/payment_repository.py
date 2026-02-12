@@ -24,10 +24,13 @@ class PaymentRepository:
         customer_id: UUID | None = None,
         status: PaymentStatus | None = None,
         provider: PaymentProvider | None = None,
+        organization_id: UUID | None = None,
     ) -> list[Payment]:
         """Get all payments with optional filters."""
         query = self.db.query(Payment)
 
+        if organization_id is not None:
+            query = query.filter(Payment.organization_id == organization_id)
         if invoice_id:
             query = query.filter(Payment.invoice_id == invoice_id)
         if customer_id:
@@ -39,9 +42,12 @@ class PaymentRepository:
 
         return query.order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
 
-    def get_by_id(self, payment_id: UUID) -> Payment | None:
+    def get_by_id(self, payment_id: UUID, organization_id: UUID | None = None) -> Payment | None:
         """Get a payment by ID."""
-        return self.db.query(Payment).filter(Payment.id == payment_id).first()
+        query = self.db.query(Payment).filter(Payment.id == payment_id)
+        if organization_id is not None:
+            query = query.filter(Payment.organization_id == organization_id)
+        return query.first()
 
     def get_by_provider_payment_id(self, provider_payment_id: str) -> Payment | None:
         """Get a payment by provider payment ID (e.g., Stripe PaymentIntent ID)."""
@@ -67,6 +73,7 @@ class PaymentRepository:
         currency: str,
         provider: PaymentProvider = PaymentProvider.STRIPE,
         metadata: dict[str, Any] | None = None,
+        organization_id: UUID | None = None,
     ) -> Payment:
         """Create a new payment."""
         payment = Payment(
@@ -77,15 +84,19 @@ class PaymentRepository:
             provider=provider.value,
             status=PaymentStatus.PENDING.value,
             payment_metadata=metadata or {},
+            organization_id=organization_id,
         )
         self.db.add(payment)
         self.db.commit()
         self.db.refresh(payment)
         return payment
 
-    def update(self, payment_id: UUID, data: PaymentUpdate) -> Payment | None:
+    def update(
+        self, payment_id: UUID, data: PaymentUpdate,
+        organization_id: UUID | None = None,
+    ) -> Payment | None:
         """Update a payment."""
-        payment = self.get_by_id(payment_id)
+        payment = self.get_by_id(payment_id, organization_id=organization_id)
         if not payment:
             return None
 
@@ -189,9 +200,9 @@ class PaymentRepository:
         self.db.refresh(payment)
         return payment
 
-    def delete(self, payment_id: UUID) -> bool:
+    def delete(self, payment_id: UUID, organization_id: UUID | None = None) -> bool:
         """Delete a payment (only pending payments can be deleted)."""
-        payment = self.get_by_id(payment_id)
+        payment = self.get_by_id(payment_id, organization_id=organization_id)
         if not payment:
             return False
         if payment.status != PaymentStatus.PENDING.value:

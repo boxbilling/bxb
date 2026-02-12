@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.tax import Tax
 from app.repositories.applied_tax_repository import AppliedTaxRepository
@@ -25,12 +26,13 @@ router = APIRouter()
 async def create_tax(
     data: TaxCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Tax:
     """Create a new tax."""
     repo = TaxRepository(db)
-    if repo.get_by_code(data.code):
+    if repo.get_by_code(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Tax with this code already exists")
-    return repo.create(data)
+    return repo.create(data, organization_id)
 
 
 @router.get("/", response_model=list[TaxResponse])
@@ -38,20 +40,22 @@ async def list_taxes(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Tax]:
     """List all taxes."""
     repo = TaxRepository(db)
-    return repo.get_all(skip=skip, limit=limit)
+    return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
 @router.get("/{code}", response_model=TaxResponse)
 async def get_tax(
     code: str,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Tax:
     """Get a tax by code."""
     repo = TaxRepository(db)
-    tax = repo.get_by_code(code)
+    tax = repo.get_by_code(code, organization_id)
     if not tax:
         raise HTTPException(status_code=404, detail="Tax not found")
     return tax
@@ -62,10 +66,11 @@ async def update_tax(
     code: str,
     data: TaxUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Tax:
     """Update a tax by code."""
     repo = TaxRepository(db)
-    tax = repo.update(code, data)
+    tax = repo.update(code, data, organization_id)
     if not tax:
         raise HTTPException(status_code=404, detail="Tax not found")
     return tax
@@ -75,10 +80,11 @@ async def update_tax(
 async def delete_tax(
     code: str,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Delete a tax by code."""
     repo = TaxRepository(db)
-    if not repo.delete(code):
+    if not repo.delete(code, organization_id):
         raise HTTPException(status_code=404, detail="Tax not found")
 
 
@@ -86,6 +92,7 @@ async def delete_tax(
 async def apply_tax(
     data: ApplyTaxRequest,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> AppliedTaxResponse:
     """Apply a tax to an entity."""
     service = TaxCalculationService(db)
@@ -104,6 +111,7 @@ async def apply_tax(
 async def remove_applied_tax(
     applied_tax_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Remove an applied tax by ID."""
     repo = AppliedTaxRepository(db)

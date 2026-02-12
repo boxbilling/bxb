@@ -14,43 +14,53 @@ class WebhookEndpointRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> list[WebhookEndpoint]:
+    def get_all(
+        self, organization_id: UUID, skip: int = 0, limit: int = 100,
+    ) -> list[WebhookEndpoint]:
         """Get all webhook endpoints."""
         return (
             self.db.query(WebhookEndpoint)
+            .filter(WebhookEndpoint.organization_id == organization_id)
             .order_by(WebhookEndpoint.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
         )
 
-    def get_by_id(self, endpoint_id: UUID) -> WebhookEndpoint | None:
+    def get_by_id(
+        self, endpoint_id: UUID, organization_id: UUID | None = None,
+    ) -> WebhookEndpoint | None:
         """Get a webhook endpoint by ID."""
-        return self.db.query(WebhookEndpoint).filter(WebhookEndpoint.id == endpoint_id).first()
+        query = self.db.query(WebhookEndpoint).filter(WebhookEndpoint.id == endpoint_id)
+        if organization_id is not None:
+            query = query.filter(WebhookEndpoint.organization_id == organization_id)
+        return query.first()
 
-    def get_active(self) -> list[WebhookEndpoint]:
+    def get_active(self, organization_id: UUID | None = None) -> list[WebhookEndpoint]:
         """Get all active webhook endpoints."""
-        return (
-            self.db.query(WebhookEndpoint)
-            .filter(WebhookEndpoint.status == "active")
-            .order_by(WebhookEndpoint.created_at.desc())
-            .all()
-        )
+        query = self.db.query(WebhookEndpoint).filter(WebhookEndpoint.status == "active")
+        if organization_id is not None:
+            query = query.filter(WebhookEndpoint.organization_id == organization_id)
+        return query.order_by(WebhookEndpoint.created_at.desc()).all()
 
-    def create(self, data: WebhookEndpointCreate) -> WebhookEndpoint:
+    def create(self, data: WebhookEndpointCreate, organization_id: UUID) -> WebhookEndpoint:
         """Create a new webhook endpoint."""
         endpoint = WebhookEndpoint(
             url=data.url,
             signature_algo=data.signature_algo,
+            organization_id=organization_id,
         )
         self.db.add(endpoint)
         self.db.commit()
         self.db.refresh(endpoint)
         return endpoint
 
-    def update(self, endpoint_id: UUID, data: WebhookEndpointUpdate) -> WebhookEndpoint | None:
+    def update(
+        self, endpoint_id: UUID, data: WebhookEndpointUpdate,
+        organization_id: UUID,
+    ) -> WebhookEndpoint | None:
         """Update a webhook endpoint by ID."""
-        endpoint = self.get_by_id(endpoint_id)
+        endpoint = self.get_by_id(endpoint_id, organization_id=organization_id)
         if not endpoint:
             return None
 
@@ -62,9 +72,9 @@ class WebhookEndpointRepository:
         self.db.refresh(endpoint)
         return endpoint
 
-    def delete(self, endpoint_id: UUID) -> bool:
+    def delete(self, endpoint_id: UUID, organization_id: UUID) -> bool:
         """Delete a webhook endpoint by ID."""
-        endpoint = self.get_by_id(endpoint_id)
+        endpoint = self.get_by_id(endpoint_id, organization_id=organization_id)
         if not endpoint:
             return False
 

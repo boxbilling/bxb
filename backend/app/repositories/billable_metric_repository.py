@@ -10,16 +10,36 @@ class BillableMetricRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> list[BillableMetric]:
-        return self.db.query(BillableMetric).offset(skip).limit(limit).all()
+    def get_all(
+        self, organization_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[BillableMetric]:
+        return (
+            self.db.query(BillableMetric)
+            .filter(BillableMetric.organization_id == organization_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
-    def get_by_id(self, metric_id: UUID) -> BillableMetric | None:
-        return self.db.query(BillableMetric).filter(BillableMetric.id == metric_id).first()
+    def get_by_id(
+        self, metric_id: UUID, organization_id: UUID | None = None
+    ) -> BillableMetric | None:
+        query = self.db.query(BillableMetric).filter(BillableMetric.id == metric_id)
+        if organization_id is not None:
+            query = query.filter(BillableMetric.organization_id == organization_id)
+        return query.first()
 
-    def get_by_code(self, code: str) -> BillableMetric | None:
-        return self.db.query(BillableMetric).filter(BillableMetric.code == code).first()
+    def get_by_code(self, code: str, organization_id: UUID) -> BillableMetric | None:
+        return (
+            self.db.query(BillableMetric)
+            .filter(
+                BillableMetric.code == code,
+                BillableMetric.organization_id == organization_id,
+            )
+            .first()
+        )
 
-    def create(self, data: BillableMetricCreate) -> BillableMetric:
+    def create(self, data: BillableMetricCreate, organization_id: UUID) -> BillableMetric:
         metric = BillableMetric(
             code=data.code,
             name=data.name,
@@ -30,14 +50,17 @@ class BillableMetricRepository:
             rounding_function=data.rounding_function,
             rounding_precision=data.rounding_precision,
             expression=data.expression,
+            organization_id=organization_id,
         )
         self.db.add(metric)
         self.db.commit()
         self.db.refresh(metric)
         return metric
 
-    def update(self, metric_id: UUID, data: BillableMetricUpdate) -> BillableMetric | None:
-        metric = self.get_by_id(metric_id)
+    def update(
+        self, metric_id: UUID, data: BillableMetricUpdate, organization_id: UUID
+    ) -> BillableMetric | None:
+        metric = self.get_by_id(metric_id, organization_id)
         if not metric:
             return None
         for key, value in data.model_dump(exclude_unset=True).items():
@@ -46,15 +69,18 @@ class BillableMetricRepository:
         self.db.refresh(metric)
         return metric
 
-    def delete(self, metric_id: UUID) -> bool:
-        metric = self.get_by_id(metric_id)
+    def delete(self, metric_id: UUID, organization_id: UUID) -> bool:
+        metric = self.get_by_id(metric_id, organization_id)
         if not metric:
             return False
         self.db.delete(metric)
         self.db.commit()
         return True
 
-    def code_exists(self, code: str) -> bool:
+    def code_exists(self, code: str, organization_id: UUID) -> bool:
         """Check if a billable metric with the given code already exists."""
-        query = self.db.query(BillableMetric).filter(BillableMetric.code == code)
+        query = self.db.query(BillableMetric).filter(
+            BillableMetric.code == code,
+            BillableMetric.organization_id == organization_id,
+        )
         return query.first() is not None

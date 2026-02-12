@@ -23,10 +23,13 @@ class CreditNoteRepository:
         customer_id: UUID | None = None,
         invoice_id: UUID | None = None,
         status: CreditNoteStatus | None = None,
+        organization_id: UUID | None = None,
     ) -> list[CreditNote]:
         """Get all credit notes with optional filters."""
         query = self.db.query(CreditNote)
 
+        if organization_id is not None:
+            query = query.filter(CreditNote.organization_id == organization_id)
         if customer_id:
             query = query.filter(CreditNote.customer_id == customer_id)
         if invoice_id:
@@ -36,9 +39,14 @@ class CreditNoteRepository:
 
         return query.order_by(CreditNote.created_at.desc()).offset(skip).limit(limit).all()
 
-    def get_by_id(self, credit_note_id: UUID) -> CreditNote | None:
+    def get_by_id(
+        self, credit_note_id: UUID, organization_id: UUID | None = None,
+    ) -> CreditNote | None:
         """Get a credit note by ID."""
-        return self.db.query(CreditNote).filter(CreditNote.id == credit_note_id).first()
+        query = self.db.query(CreditNote).filter(CreditNote.id == credit_note_id)
+        if organization_id is not None:
+            query = query.filter(CreditNote.organization_id == organization_id)
+        return query.first()
 
     def get_by_number(self, number: str) -> CreditNote | None:
         """Get a credit note by number."""
@@ -82,7 +90,7 @@ class CreditNoteRepository:
             total += Decimal(str(cn.balance_amount_cents))
         return total
 
-    def create(self, data: CreditNoteCreate) -> CreditNote:
+    def create(self, data: CreditNoteCreate, organization_id: UUID | None = None) -> CreditNote:
         """Create a new credit note."""
         credit_note = CreditNote(
             number=data.number,
@@ -96,6 +104,7 @@ class CreditNoteRepository:
             total_amount_cents=data.total_amount_cents,
             taxes_amount_cents=data.taxes_amount_cents,
             currency=data.currency,
+            organization_id=organization_id,
         )
         self.db.add(credit_note)
         self.db.commit()
@@ -175,9 +184,9 @@ class CreditNoteRepository:
         self.db.refresh(credit_note)
         return credit_note
 
-    def delete(self, credit_note_id: UUID) -> bool:
+    def delete(self, credit_note_id: UUID, organization_id: UUID | None = None) -> bool:
         """Delete a credit note by ID."""
-        credit_note = self.get_by_id(credit_note_id)
+        credit_note = self.get_by_id(credit_note_id, organization_id=organization_id)
         if not credit_note:
             return False
 

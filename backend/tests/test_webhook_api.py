@@ -18,6 +18,7 @@ from app.repositories.webhook_endpoint_repository import WebhookEndpointReposito
 from app.repositories.webhook_repository import WebhookRepository
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.webhook import WebhookEndpointCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -46,7 +47,8 @@ def active_endpoint(db_session):
         WebhookEndpointCreate(
             url="https://example.com/webhooks",
             signature_algo="hmac",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 

@@ -18,13 +18,14 @@ class WalletRepository:
 
     def get_all(
         self,
+        organization_id: UUID,
         skip: int = 0,
         limit: int = 100,
         customer_id: UUID | None = None,
         status: WalletStatus | None = None,
     ) -> list[Wallet]:
         """Get all wallets with optional filters."""
-        query = self.db.query(Wallet)
+        query = self.db.query(Wallet).filter(Wallet.organization_id == organization_id)
 
         if customer_id:
             query = query.filter(Wallet.customer_id == customer_id)
@@ -33,9 +34,12 @@ class WalletRepository:
 
         return query.order_by(Wallet.created_at.desc()).offset(skip).limit(limit).all()
 
-    def get_by_id(self, wallet_id: UUID) -> Wallet | None:
+    def get_by_id(self, wallet_id: UUID, organization_id: UUID | None = None) -> Wallet | None:
         """Get a wallet by ID."""
-        return self.db.query(Wallet).filter(Wallet.id == wallet_id).first()
+        query = self.db.query(Wallet).filter(Wallet.id == wallet_id)
+        if organization_id is not None:
+            query = query.filter(Wallet.organization_id == organization_id)
+        return query.first()
 
     def get_by_customer_id(self, customer_id: UUID) -> list[Wallet]:
         """Get all wallets for a customer."""
@@ -62,7 +66,7 @@ class WalletRepository:
             .all()
         )
 
-    def create(self, data: WalletCreate) -> Wallet:
+    def create(self, data: WalletCreate, organization_id: UUID | None = None) -> Wallet:
         """Create a new wallet."""
         wallet = Wallet(
             customer_id=data.customer_id,
@@ -72,6 +76,7 @@ class WalletRepository:
             currency=data.currency,
             expiration_at=data.expiration_at,
             priority=data.priority,
+            organization_id=organization_id,
         )
         self.db.add(wallet)
         self.db.commit()

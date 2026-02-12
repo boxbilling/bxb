@@ -13,6 +13,7 @@ class EventRepository:
 
     def get_all(
         self,
+        organization_id: UUID,
         skip: int = 0,
         limit: int = 100,
         external_customer_id: str | None = None,
@@ -20,7 +21,7 @@ class EventRepository:
         from_timestamp: datetime | None = None,
         to_timestamp: datetime | None = None,
     ) -> list[Event]:
-        query = self.db.query(Event)
+        query = self.db.query(Event).filter(Event.organization_id == organization_id)
 
         if external_customer_id:
             query = query.filter(Event.external_customer_id == external_customer_id)
@@ -33,42 +34,58 @@ class EventRepository:
 
         return query.order_by(Event.timestamp.desc()).offset(skip).limit(limit).all()
 
-    def get_by_id(self, event_id: UUID) -> Event | None:
-        return self.db.query(Event).filter(Event.id == event_id).first()
+    def get_by_id(self, event_id: UUID, organization_id: UUID | None = None) -> Event | None:
+        query = self.db.query(Event).filter(Event.id == event_id)
+        if organization_id is not None:
+            query = query.filter(Event.organization_id == organization_id)
+        return query.first()
 
-    def get_by_transaction_id(self, transaction_id: str) -> Event | None:
-        return self.db.query(Event).filter(Event.transaction_id == transaction_id).first()
-
-    def transaction_id_exists(self, transaction_id: str) -> bool:
-        """Check if an event with the given transaction_id already exists."""
+    def get_by_transaction_id(
+        self, transaction_id: str, organization_id: UUID | None = None
+    ) -> Event | None:
         query = self.db.query(Event).filter(Event.transaction_id == transaction_id)
+        if organization_id is not None:
+            query = query.filter(Event.organization_id == organization_id)
+        return query.first()
+
+    def transaction_id_exists(self, transaction_id: str, organization_id: UUID) -> bool:
+        """Check if an event with the given transaction_id already exists."""
+        query = self.db.query(Event).filter(
+            Event.transaction_id == transaction_id,
+            Event.organization_id == organization_id,
+        )
         return query.first() is not None
 
-    def create(self, data: EventCreate) -> Event:
+    def create(self, data: EventCreate, organization_id: UUID) -> Event:
         event = Event(
             transaction_id=data.transaction_id,
             external_customer_id=data.external_customer_id,
             code=data.code,
             timestamp=data.timestamp,
             properties=data.properties,
+            organization_id=organization_id,
         )
         self.db.add(event)
         self.db.commit()
         self.db.refresh(event)
         return event
 
-    def create_or_get_existing(self, data: EventCreate) -> tuple[Event, bool]:
+    def create_or_get_existing(
+        self, data: EventCreate, organization_id: UUID
+    ) -> tuple[Event, bool]:
         """Create an event or return existing one if transaction_id exists.
 
         Returns:
             Tuple of (event, is_new) where is_new is True if created, False if existing.
         """
-        existing = self.get_by_transaction_id(data.transaction_id)
+        existing = self.get_by_transaction_id(data.transaction_id, organization_id)
         if existing:
             return existing, False
-        return self.create(data), True
+        return self.create(data, organization_id), True
 
-    def create_batch(self, events_data: list[EventCreate]) -> tuple[list[Event], int, int]:
+    def create_batch(
+        self, events_data: list[EventCreate], organization_id: UUID
+    ) -> tuple[list[Event], int, int]:
         """Create multiple events, handling duplicates gracefully.
 
         Returns:
@@ -81,7 +98,7 @@ class EventRepository:
 
         # First pass: check for existing events and create new ones (without commit)
         for data in events_data:
-            existing = self.get_by_transaction_id(data.transaction_id)
+            existing = self.get_by_transaction_id(data.transaction_id, organization_id)
             if existing:
                 events.append(existing)
                 duplicates += 1
@@ -92,6 +109,7 @@ class EventRepository:
                     code=data.code,
                     timestamp=data.timestamp,
                     properties=data.properties,
+                    organization_id=organization_id,
                 )
                 self.db.add(event)
                 new_events.append(event)
@@ -106,8 +124,8 @@ class EventRepository:
 
         return events, ingested, duplicates
 
-    def delete(self, event_id: UUID) -> bool:
-        event = self.get_by_id(event_id)
+    def delete(self, event_id: UUID, organization_id: UUID) -> bool:
+        event = self.get_by_id(event_id, organization_id)
         if not event:
             return False
         self.db.delete(event)

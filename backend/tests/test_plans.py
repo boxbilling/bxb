@@ -14,6 +14,7 @@ from app.repositories.charge_repository import ChargeRepository
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.charge import ChargeCreate, ChargeUpdate
 from app.schemas.plan import PlanCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -116,13 +117,13 @@ class TestPlanRepository:
             interval=PlanInterval.MONTHLY,
             amount_cents=4999,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        plan = repo.get_by_code("pro")
+        plan = repo.get_by_code("pro", DEFAULT_ORG_ID)
         assert plan is not None
         assert plan.code == "pro"
 
-        not_found = repo.get_by_code("nonexistent")
+        not_found = repo.get_by_code("nonexistent", DEFAULT_ORG_ID)
         assert not_found is None
 
     def test_code_exists(self, db_session):
@@ -133,10 +134,10 @@ class TestPlanRepository:
             name="Exists Test",
             interval=PlanInterval.MONTHLY,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        assert repo.code_exists("exists_test") is True
-        assert repo.code_exists("not_exists") is False
+        assert repo.code_exists("exists_test", DEFAULT_ORG_ID) is True
+        assert repo.code_exists("not_exists", DEFAULT_ORG_ID) is False
 
 
 class TestPlansAPI:

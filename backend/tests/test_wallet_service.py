@@ -13,6 +13,7 @@ from app.repositories.wallet_repository import WalletRepository
 from app.repositories.wallet_transaction_repository import WalletTransactionRepository
 from app.schemas.customer import CustomerCreate
 from app.services.wallet_service import ConsumptionResult, WalletService
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -36,7 +37,8 @@ def customer(db_session):
             external_id=f"ws_test_cust_{uuid4()}",
             name="WalletService Test Customer",
             email="walletservice@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -48,7 +50,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"ws_test_cust2_{uuid4()}",
             name="WalletService Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -481,14 +484,16 @@ class TestConsumeCredits:
 
         # Create supporting entities for invoice
         plan_repo = PlanRepository(db_session)
-        plan = plan_repo.create(PlanCreate(code=f"ws_plan_{uuid4()}", name="WS Plan", interval="monthly"))
+        plan = plan_repo.create(PlanCreate(code=f"ws_plan_{uuid4()}", name="WS Plan", interval="monthly"), DEFAULT_ORG_ID)
 
         sub_repo = SubscriptionRepository(db_session)
         sub = sub_repo.create(SubscriptionCreate(
             external_id=f"ws_sub_{uuid4()}",
             customer_id=customer.id,
             plan_id=plan.id,
-        ))
+        ),
+        DEFAULT_ORG_ID,
+        )
 
         invoice_repo = InvoiceRepository(db_session)
         now = datetime.now(UTC)
@@ -727,7 +732,7 @@ class TestCheckExpiredWallets:
         assert len(terminated_ids) == 1
 
         # Verify the expired wallet was terminated
-        wallets = wallet_repo.get_all(customer_id=customer.id)
+        wallets = wallet_repo.get_all(DEFAULT_ORG_ID, customer_id=customer.id)
         statuses = {w.name: w.status for w in wallets}
         assert statuses["Expired"] == WalletStatus.TERMINATED.value
         assert statuses["Valid"] == WalletStatus.ACTIVE.value
@@ -755,7 +760,7 @@ class TestCheckExpiredWallets:
         terminated_ids = wallet_service.check_expired_wallets()
         assert len(terminated_ids) == 0
 
-        wallet = wallet_repo.get_all(customer_id=customer.id)[0]
+        wallet = wallet_repo.get_all(DEFAULT_ORG_ID, customer_id=customer.id)[0]
         assert wallet.status == WalletStatus.ACTIVE.value
 
     def test_already_terminated_not_reprocessed(self, wallet_service, customer):

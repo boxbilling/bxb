@@ -72,3 +72,9 @@ def setup_database():
     # Restore originals
     db_module.engine = original_engine
     db_module.SessionLocal = original_session
+
+
+@pytest.fixture
+def default_org_id():
+    """Return the default organization ID for tests."""
+    return DEFAULT_ORG_ID

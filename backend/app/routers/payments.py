@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.invoice import InvoiceStatus
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
@@ -31,10 +32,12 @@ async def list_payments(
     status: PaymentStatus | None = None,
     provider: PaymentProvider | None = None,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Payment]:
     """List payments with optional filters."""
     repo = PaymentRepository(db)
     return repo.get_all(
+        organization_id=organization_id,
         skip=skip,
         limit=limit,
         invoice_id=invoice_id,
@@ -48,10 +51,11 @@ async def list_payments(
 async def get_payment(
     payment_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Payment:
     """Get a payment by ID."""
     repo = PaymentRepository(db)
-    payment = repo.get_by_id(payment_id)
+    payment = repo.get_by_id(payment_id, organization_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
     return payment
@@ -61,6 +65,7 @@ async def get_payment(
 async def create_checkout_session(
     data: CheckoutSessionCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> CheckoutSessionResponse:
     """Create a checkout session for an invoice.
 
@@ -69,7 +74,7 @@ async def create_checkout_session(
     """
     # Get the invoice
     invoice_repo = InvoiceRepository(db)
-    invoice = invoice_repo.get_by_id(data.invoice_id)
+    invoice = invoice_repo.get_by_id(data.invoice_id, organization_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
@@ -249,10 +254,11 @@ async def handle_webhook(
 async def mark_payment_paid(
     payment_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Payment:
     """Manually mark a payment as paid (for manual/offline payments)."""
     payment_repo = PaymentRepository(db)
-    payment = payment_repo.get_by_id(payment_id)
+    payment = payment_repo.get_by_id(payment_id, organization_id)
 
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -287,10 +293,11 @@ async def mark_payment_paid(
 async def refund_payment(
     payment_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Payment:
     """Refund a succeeded payment."""
     payment_repo = PaymentRepository(db)
-    payment = payment_repo.get_by_id(payment_id)
+    payment = payment_repo.get_by_id(payment_id, organization_id)
 
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -308,12 +315,13 @@ async def refund_payment(
 async def delete_payment(
     payment_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Delete a pending payment."""
     payment_repo = PaymentRepository(db)
 
     try:
-        if not payment_repo.delete(payment_id):
+        if not payment_repo.delete(payment_id, organization_id):
             raise HTTPException(status_code=404, detail="Payment not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None

@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -18,6 +19,7 @@ from app.schemas.customer import CustomerCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem, InvoiceUpdate
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -42,7 +44,7 @@ def db_session():
 def customer(db_session):
     """Create a test customer."""
     repo = CustomerRepository(db_session)
-    return repo.create(CustomerCreate(external_id="inv_test_cust", name="Invoice Test Customer"))
+    return repo.create(CustomerCreate(external_id="inv_test_cust", name="Invoice Test Customer"), DEFAULT_ORG_ID)
 
 
 @pytest.fixture
@@ -50,7 +52,8 @@ def plan(db_session):
     """Create a test plan."""
     repo = PlanRepository(db_session)
     return repo.create(
-        PlanCreate(code="inv_test_plan", name="Invoice Test Plan", interval="monthly")
+        PlanCreate(code="inv_test_plan", name="Invoice Test Plan", interval="monthly"),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -63,7 +66,8 @@ def subscription(db_session, customer, plan):
             external_id="inv_test_sub",
             customer_id=customer.id,
             plan_id=plan.id,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -101,7 +105,7 @@ class TestInvoiceRepository:
             due_date=datetime.now(UTC) + timedelta(days=14),
         )
 
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         assert invoice.id is not None
         assert invoice.invoice_number.startswith("INV-")
@@ -126,8 +130,8 @@ class TestInvoiceRepository:
             line_items=sample_line_items,
         )
 
-        invoice1 = repo.create(data)
-        invoice2 = repo.create(data)
+        invoice1 = repo.create(data, DEFAULT_ORG_ID)
+        invoice2 = repo.create(data, DEFAULT_ORG_ID)
 
         # Extract sequence numbers
         seq1 = int(invoice1.invoice_number.split("-")[-1])
@@ -145,7 +149,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         fetched = repo.get_by_id(invoice.id)
         assert fetched is not None
@@ -165,7 +169,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         fetched = repo.get_by_invoice_number(invoice.invoice_number)
         assert fetched is not None
@@ -188,9 +192,9 @@ class TestInvoiceRepository:
                 billing_period_end=datetime.now(UTC) + timedelta(days=30 + i),
                 line_items=sample_line_items,
             )
-            invoices_created.append(repo.create(data))
+            invoices_created.append(repo.create(data, DEFAULT_ORG_ID))
 
-        invoices = repo.get_all()
+        invoices = repo.get_all(DEFAULT_ORG_ID)
         assert len(invoices) >= 3
 
     def test_get_all_with_filters(self, db_session, customer, subscription, sample_line_items):
@@ -204,22 +208,22 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
         # Test customer_id filter
-        invoices = repo.get_all(customer_id=customer.id)
+        invoices = repo.get_all(DEFAULT_ORG_ID, customer_id=customer.id)
         assert len(invoices) == 1
 
         # Test subscription_id filter
-        invoices = repo.get_all(subscription_id=subscription.id)
+        invoices = repo.get_all(DEFAULT_ORG_ID, subscription_id=subscription.id)
         assert len(invoices) == 1
 
         # Test status filter
-        invoices = repo.get_all(status=InvoiceStatus.DRAFT)
+        invoices = repo.get_all(DEFAULT_ORG_ID, status=InvoiceStatus.DRAFT)
         assert len(invoices) == 1
 
         # Test no match
-        invoices = repo.get_all(customer_id=uuid4())
+        invoices = repo.get_all(DEFAULT_ORG_ID, customer_id=uuid4())
         assert len(invoices) == 0
 
     def test_get_all_pagination(self, db_session, customer, subscription, sample_line_items):
@@ -234,10 +238,10 @@ class TestInvoiceRepository:
                 billing_period_end=datetime.now(UTC) + timedelta(days=30 + i * 10),
                 line_items=sample_line_items,
             )
-            repo.create(data)
+            repo.create(data, DEFAULT_ORG_ID)
 
         # Test pagination
-        invoices = repo.get_all(skip=2, limit=2)
+        invoices = repo.get_all(DEFAULT_ORG_ID, skip=2, limit=2)
         assert len(invoices) == 2
 
     def test_generate_invoice_number_with_invalid_format(
@@ -254,7 +258,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         # Manually corrupt the invoice number to have today's prefix but invalid suffix
         today = datetime.now().strftime("%Y%m%d")
@@ -269,7 +273,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=60),
             line_items=sample_line_items,
         )
-        invoice2 = repo.create(data2)
+        invoice2 = repo.create(data2, DEFAULT_ORG_ID)
 
         # Should still generate a valid invoice number with sequence 1
         assert invoice2.invoice_number.startswith("INV-")
@@ -285,7 +289,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         # Update due date
         new_due_date = datetime.now(UTC) + timedelta(days=30)
@@ -304,7 +308,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         # Update status via update method
         updated = repo.update(invoice.id, InvoiceUpdate(status=InvoiceStatus.FINALIZED))
@@ -325,7 +329,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         finalized = repo.finalize(invoice.id)
 
@@ -349,7 +353,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
 
         # Try to finalize again
@@ -366,7 +370,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
 
         paid = repo.mark_paid(invoice.id)
@@ -389,7 +393,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         with pytest.raises(ValueError, match="Only finalized invoices can be marked as paid"):
             repo.mark_paid(invoice.id)
@@ -404,7 +408,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         voided = repo.void(invoice.id)
 
@@ -425,7 +429,7 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
         repo.mark_paid(invoice.id)
 
@@ -442,16 +446,16 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
-        result = repo.delete(invoice.id)
+        result = repo.delete(invoice.id, DEFAULT_ORG_ID)
 
         assert result is True
         assert repo.get_by_id(invoice.id) is None
 
     def test_delete_invoice_not_found(self, db_session):
         repo = InvoiceRepository(db_session)
-        assert repo.delete(uuid4()) is False
+        assert repo.delete(uuid4(), DEFAULT_ORG_ID) is False
 
     def test_delete_finalized_invoice(self, db_session, customer, subscription, sample_line_items):
         repo = InvoiceRepository(db_session)
@@ -463,11 +467,11 @@ class TestInvoiceRepository:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
 
         with pytest.raises(ValueError, match="Only draft invoices can be deleted"):
-            repo.delete(invoice.id)
+            repo.delete(invoice.id, DEFAULT_ORG_ID)
 
 
 class TestInvoicesAPI:
@@ -486,7 +490,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
         response = client.get("/v1/invoices/")
         assert response.status_code == 200
@@ -504,7 +508,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
         # Filter by customer_id
         response = client.get(f"/v1/invoices/?customer_id={customer.id}")
@@ -525,7 +529,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         response = client.get(f"/v1/invoices/{invoice.id}")
         assert response.status_code == 200
@@ -546,7 +550,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         response = client.put(
             f"/v1/invoices/{invoice.id}",
@@ -570,7 +574,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
         assert response.status_code == 200
@@ -591,7 +595,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
@@ -606,7 +610,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
 
         response = client.post(f"/v1/invoices/{invoice.id}/pay")
@@ -626,7 +630,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/pay")
         assert response.status_code == 400
@@ -640,7 +644,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/void")
         assert response.status_code == 200
@@ -659,7 +663,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
         repo.mark_paid(invoice.id)
 
@@ -675,7 +679,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
 
         response = client.delete(f"/v1/invoices/{invoice.id}")
         assert response.status_code == 204
@@ -695,7 +699,7 @@ class TestInvoicesAPI:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(data)
+        invoice = repo.create(data, DEFAULT_ORG_ID)
         repo.finalize(invoice.id)
 
         response = client.delete(f"/v1/invoices/{invoice.id}")
@@ -729,7 +733,7 @@ class TestInvoiceWalletIntegration:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
         assert response.status_code == 200
@@ -770,7 +774,7 @@ class TestInvoiceWalletIntegration:
                 ),
             ],
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
         assert response.status_code == 200
@@ -792,7 +796,7 @@ class TestInvoiceWalletIntegration:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
         assert response.status_code == 200
@@ -824,7 +828,7 @@ class TestInvoiceWalletIntegration:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         client.post(f"/v1/invoices/{invoice.id}/finalize")
 
@@ -867,7 +871,7 @@ class TestInvoiceWalletIntegration:
                 ),
             ],
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
         assert response.status_code == 200
@@ -910,7 +914,7 @@ class TestInvoiceWalletIntegration:
                 ),
             ],
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         response = client.post(f"/v1/invoices/{invoice.id}/finalize")
         assert response.status_code == 200
@@ -933,7 +937,7 @@ class TestInvoiceWalletIntegration:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         # Check GET endpoint includes prepaid_credit_amount
         response = client.get(f"/v1/invoices/{invoice.id}")
@@ -954,10 +958,70 @@ class TestInvoiceWalletIntegration:
             billing_period_end=datetime.now(UTC) + timedelta(days=30),
             line_items=sample_line_items,
         )
-        invoice = repo.create(invoice_data)
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
 
         response = client.get(f"/v1/invoices/{invoice.id}")
         assert response.status_code == 200
         data = response.json()
         assert "coupons_amount_cents" in data
         assert Decimal(data["coupons_amount_cents"]) == Decimal("0")
+
+
+class TestInvoiceRouterEdgeCases:
+    """Tests for defensive checks in invoice router actions."""
+
+    def test_finalize_returns_none_race_condition(
+        self, client, db_session, customer, subscription, sample_line_items,
+    ):
+        """Test finalize endpoint when repo.finalize returns None (race condition)."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        with patch.object(InvoiceRepository, "finalize", return_value=None):
+            response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+            assert response.status_code == 404
+
+    def test_mark_paid_returns_none_race_condition(
+        self, client, db_session, customer, subscription, sample_line_items,
+    ):
+        """Test mark_paid endpoint when repo.mark_paid returns None (race condition)."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch.object(InvoiceRepository, "mark_paid", return_value=None):
+            response = client.post(f"/v1/invoices/{invoice.id}/pay")
+            assert response.status_code == 404
+
+    def test_void_returns_none_race_condition(
+        self, client, db_session, customer, subscription, sample_line_items,
+    ):
+        """Test void endpoint when repo.void returns None (race condition)."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch.object(InvoiceRepository, "void", return_value=None):
+            response = client.post(f"/v1/invoices/{invoice.id}/void")
+            assert response.status_code == 404

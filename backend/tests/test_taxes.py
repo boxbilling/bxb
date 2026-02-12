@@ -18,6 +18,7 @@ from app.schemas.tax import (
     TaxResponse,
     TaxUpdate,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -42,7 +43,8 @@ def basic_tax(db_session):
             name="VAT 20%",
             rate=Decimal("0.2000"),
             description="Standard VAT rate",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -56,7 +58,8 @@ def org_tax(db_session):
             name="Sales Tax",
             rate=Decimal("0.0800"),
             applied_to_organization=True,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -152,7 +155,8 @@ class TestTaxRepository:
                 code="NEW_TAX",
                 name="New Tax",
                 rate=Decimal("0.1500"),
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert tax.id is not None
         assert tax.code == "NEW_TAX"
@@ -165,6 +169,15 @@ class TestTaxRepository:
         assert tax is not None
         assert tax.code == "VAT_20"
 
+    def test_get_by_id_with_org_filter(self, db_session, basic_tax):
+        """Test getting a tax by ID scoped to an organization."""
+        repo = TaxRepository(db_session)
+        tax = repo.get_by_id(basic_tax.id, organization_id=DEFAULT_ORG_ID)
+        assert tax is not None
+        assert tax.code == "VAT_20"
+        # Wrong org returns None
+        assert repo.get_by_id(basic_tax.id, organization_id=uuid4()) is None
+
     def test_get_by_id_not_found(self, db_session):
         """Test getting a tax by non-existent ID."""
         repo = TaxRepository(db_session)
@@ -173,49 +186,49 @@ class TestTaxRepository:
     def test_get_by_code(self, db_session, basic_tax):
         """Test getting a tax by code."""
         repo = TaxRepository(db_session)
-        tax = repo.get_by_code("VAT_20")
+        tax = repo.get_by_code("VAT_20", DEFAULT_ORG_ID)
         assert tax is not None
         assert tax.name == "VAT 20%"
 
     def test_get_by_code_not_found(self, db_session):
         """Test getting a tax by non-existent code."""
         repo = TaxRepository(db_session)
-        assert repo.get_by_code("NONEXISTENT") is None
+        assert repo.get_by_code("NONEXISTENT", DEFAULT_ORG_ID) is None
 
     def test_get_all(self, db_session, basic_tax, org_tax):
         """Test getting all taxes."""
         repo = TaxRepository(db_session)
-        taxes = repo.get_all()
+        taxes = repo.get_all(DEFAULT_ORG_ID)
         assert len(taxes) == 2
 
     def test_get_all_pagination(self, db_session, basic_tax, org_tax):
         """Test get_all with pagination."""
         repo = TaxRepository(db_session)
-        taxes = repo.get_all(skip=0, limit=1)
+        taxes = repo.get_all(DEFAULT_ORG_ID, skip=0, limit=1)
         assert len(taxes) == 1
 
     def test_get_all_empty(self, db_session):
         """Test get_all with no taxes."""
         repo = TaxRepository(db_session)
-        assert repo.get_all() == []
+        assert repo.get_all(DEFAULT_ORG_ID) == []
 
     def test_get_organization_defaults(self, db_session, basic_tax, org_tax):
         """Test getting organization default taxes."""
         repo = TaxRepository(db_session)
-        defaults = repo.get_organization_defaults()
+        defaults = repo.get_organization_defaults(DEFAULT_ORG_ID)
         assert len(defaults) == 1
         assert defaults[0].code == "SALES_TAX"
 
     def test_get_organization_defaults_empty(self, db_session, basic_tax):
         """Test getting organization defaults when none exist."""
         repo = TaxRepository(db_session)
-        defaults = repo.get_organization_defaults()
+        defaults = repo.get_organization_defaults(DEFAULT_ORG_ID)
         assert defaults == []
 
     def test_update(self, db_session, basic_tax):
         """Test updating a tax."""
         repo = TaxRepository(db_session)
-        updated = repo.update("VAT_20", TaxUpdate(name="VAT Updated"))
+        updated = repo.update("VAT_20", TaxUpdate(name="VAT Updated"), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.name == "VAT Updated"
         assert updated.rate == Decimal("0.2000")  # unchanged
@@ -223,32 +236,32 @@ class TestTaxRepository:
     def test_update_rate(self, db_session, basic_tax):
         """Test updating a tax rate."""
         repo = TaxRepository(db_session)
-        updated = repo.update("VAT_20", TaxUpdate(rate=Decimal("0.2500")))
+        updated = repo.update("VAT_20", TaxUpdate(rate=Decimal("0.2500")), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.rate == Decimal("0.2500")
 
     def test_update_applied_to_organization(self, db_session, basic_tax):
         """Test updating applied_to_organization flag."""
         repo = TaxRepository(db_session)
-        updated = repo.update("VAT_20", TaxUpdate(applied_to_organization=True))
+        updated = repo.update("VAT_20", TaxUpdate(applied_to_organization=True), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.applied_to_organization is True
 
     def test_update_not_found(self, db_session):
         """Test updating a non-existent tax."""
         repo = TaxRepository(db_session)
-        assert repo.update("NONEXISTENT", TaxUpdate(name="X")) is None
+        assert repo.update("NONEXISTENT", TaxUpdate(name="X"), DEFAULT_ORG_ID) is None
 
     def test_delete(self, db_session, basic_tax):
         """Test deleting a tax."""
         repo = TaxRepository(db_session)
-        assert repo.delete("VAT_20") is True
-        assert repo.get_by_code("VAT_20") is None
+        assert repo.delete("VAT_20", DEFAULT_ORG_ID) is True
+        assert repo.get_by_code("VAT_20", DEFAULT_ORG_ID) is None
 
     def test_delete_not_found(self, db_session):
         """Test deleting a non-existent tax."""
         repo = TaxRepository(db_session)
-        assert repo.delete("NONEXISTENT") is False
+        assert repo.delete("NONEXISTENT", DEFAULT_ORG_ID) is False
 
 
 class TestAppliedTaxRepository:

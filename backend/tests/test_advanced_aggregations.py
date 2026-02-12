@@ -18,6 +18,7 @@ from app.services.usage_aggregation import (
     _evaluate_expression,
     _is_numeric,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -40,7 +41,8 @@ def weighted_sum_metric(db_session):
             name="CPU Usage",
             aggregation_type=AggregationType.WEIGHTED_SUM,
             field_name="cpu_percent",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -53,7 +55,8 @@ def latest_metric(db_session):
             name="Temperature",
             aggregation_type=AggregationType.LATEST,
             field_name="temp_value",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -66,7 +69,8 @@ def custom_metric(db_session):
             name="Compute Cost",
             aggregation_type=AggregationType.CUSTOM,
             expression="cpu * hours + memory * 0.5",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -81,7 +85,8 @@ def sum_metric_with_rounding(db_session):
             field_name="amount",
             rounding_function="round",
             rounding_precision=2,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -93,7 +98,8 @@ def count_metric(db_session):
             code="api_calls_adv",
             name="API Calls Adv",
             aggregation_type=AggregationType.COUNT,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -106,7 +112,8 @@ def sum_metric(db_session):
             name="Data Transfer Adv",
             aggregation_type=AggregationType.SUM,
             field_name="bytes",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -128,7 +135,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time,
                 properties={"cpu_percent": 50},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         # Event at hour 12 with value 100 (holds for 12 hours -> 100 * 12/24 = 50)
         event_repo.create(
@@ -138,7 +146,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time + timedelta(hours=12),
                 properties={"cpu_percent": 100},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage_with_count(
@@ -167,7 +176,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time,
                 properties={"cpu_percent": 80},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -208,7 +218,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time,
                 properties={"cpu_percent": 50},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -229,7 +240,7 @@ class TestWeightedSumAggregation:
             aggregation_type=AggregationType.WEIGHTED_SUM,
             field_name="temp",
         )
-        metric = repo.create(data)
+        metric = repo.create(data, DEFAULT_ORG_ID)
         metric.field_name = None
         db_session.commit()
 
@@ -260,7 +271,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time,
                 properties={"cpu_percent": 10},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -269,7 +281,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time + timedelta(hours=2),
                 properties={"cpu_percent": 20},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -278,7 +291,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time + timedelta(hours=5),
                 properties={"cpu_percent": 30},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -306,7 +320,8 @@ class TestWeightedSumAggregation:
                 code="cpu_usage",
                 timestamp=base_time,
                 properties={},  # missing cpu_percent
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -334,7 +349,8 @@ class TestLatestAggregation:
                 code="temperature",
                 timestamp=base_time,
                 properties={"temp_value": 20},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -343,7 +359,8 @@ class TestLatestAggregation:
                 code="temperature",
                 timestamp=base_time + timedelta(hours=1),
                 properties={"temp_value": 25},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -352,7 +369,8 @@ class TestLatestAggregation:
                 code="temperature",
                 timestamp=base_time + timedelta(hours=2),
                 properties={"temp_value": 30},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage_with_count(
@@ -394,7 +412,8 @@ class TestLatestAggregation:
                 code="temperature",
                 timestamp=base_time,
                 properties={},  # missing temp_value
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -415,7 +434,7 @@ class TestLatestAggregation:
             aggregation_type=AggregationType.LATEST,
             field_name="temp",
         )
-        metric = repo.create(data)
+        metric = repo.create(data, DEFAULT_ORG_ID)
         metric.field_name = None
         db_session.commit()
 
@@ -447,7 +466,8 @@ class TestCustomAggregation:
                 code="compute_cost",
                 timestamp=base_time,
                 properties={"cpu": 4, "hours": 10, "memory": 16},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         # 4 * 10 + 16 * 0.5 = 40 + 8 = 48
 
@@ -458,7 +478,8 @@ class TestCustomAggregation:
                 code="compute_cost",
                 timestamp=base_time + timedelta(hours=1),
                 properties={"cpu": 2, "hours": 5, "memory": 8},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         # 2 * 5 + 8 * 0.5 = 10 + 4 = 14
 
@@ -496,7 +517,7 @@ class TestCustomAggregation:
             aggregation_type=AggregationType.CUSTOM,
             expression="x + y",
         )
-        metric = repo.create(data)
+        metric = repo.create(data, DEFAULT_ORG_ID)
         metric.expression = None
         db_session.commit()
 
@@ -520,7 +541,8 @@ class TestCustomAggregation:
                 name="Paren Expr",
                 aggregation_type=AggregationType.CUSTOM,
                 expression="(a + b) * c",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -535,7 +557,8 @@ class TestCustomAggregation:
                 code="paren_expr",
                 timestamp=base_time,
                 properties={"a": 2, "b": 3, "c": 4},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -557,7 +580,8 @@ class TestCustomAggregation:
                 name="Simple Sum",
                 aggregation_type=AggregationType.CUSTOM,
                 expression="x + y",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -572,7 +596,8 @@ class TestCustomAggregation:
                 code="simple_sum",
                 timestamp=base_time,
                 properties={"x": 5, "y": 3, "label": "test"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -593,7 +618,8 @@ class TestCustomAggregation:
                 name="Unknown Var",
                 aggregation_type=AggregationType.CUSTOM,
                 expression="x + missing_var",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -608,7 +634,8 @@ class TestCustomAggregation:
                 code="unknown_var",
                 timestamp=base_time,
                 properties={"x": 5},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         with pytest.raises(ValueError, match="Unknown variable"):
@@ -628,7 +655,8 @@ class TestCustomAggregation:
                 name="Div Zero",
                 aggregation_type=AggregationType.CUSTOM,
                 expression="x / y",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -643,7 +671,8 @@ class TestCustomAggregation:
                 code="div_zero",
                 timestamp=base_time,
                 properties={"x": 10, "y": 0},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         with pytest.raises(ValueError, match="Division by zero"):
@@ -671,7 +700,8 @@ class TestRounding:
                 code="data_rounded",
                 timestamp=base_time,
                 properties={"amount": 10.555},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -695,7 +725,8 @@ class TestRounding:
                 field_name="amount",
                 rounding_function="ceil",
                 rounding_precision=0,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -710,7 +741,8 @@ class TestRounding:
                 code="ceil_metric",
                 timestamp=base_time,
                 properties={"amount": 10.1},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -733,7 +765,8 @@ class TestRounding:
                 field_name="amount",
                 rounding_function="floor",
                 rounding_precision=0,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -748,7 +781,8 @@ class TestRounding:
                 code="floor_metric",
                 timestamp=base_time,
                 properties={"amount": 10.9},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -771,7 +805,8 @@ class TestRounding:
                 field_name="amount",
                 rounding_function="floor",
                 rounding_precision=1,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         event_repo = EventRepository(db_session)
@@ -786,7 +821,8 @@ class TestRounding:
                 code="precision_metric",
                 timestamp=base_time,
                 properties={"amount": 10.99},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -812,7 +848,8 @@ class TestRounding:
                 code="data_transfer_adv",
                 timestamp=base_time,
                 properties={"bytes": 10.555},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -834,7 +871,7 @@ class TestRounding:
             field_name="amount",
             rounding_function="round",
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
         event_repo = EventRepository(db_session)
         service = UsageAggregationService(db_session)
@@ -848,7 +885,8 @@ class TestRounding:
                 code="round_no_prec",
                 timestamp=base_time,
                 properties={"amount": 10.6},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -877,7 +915,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time,
                 properties={"region": "us-east"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -886,7 +925,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time + timedelta(hours=1),
                 properties={"region": "eu-west"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -895,7 +935,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time + timedelta(hours=2),
                 properties={"region": "us-east"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage_with_count(
@@ -923,7 +964,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time,
                 properties={"region": "us-east", "tier": "premium"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -932,7 +974,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time + timedelta(hours=1),
                 properties={"region": "us-east", "tier": "basic"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -941,7 +984,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time + timedelta(hours=2),
                 properties={"region": "eu-west", "tier": "premium"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -968,7 +1012,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time,
                 properties={"region": "us-east"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -995,7 +1040,8 @@ class TestFilterSupport:
                 code="data_transfer_adv",
                 timestamp=base_time,
                 properties={"bytes": 100, "region": "us-east"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -1004,7 +1050,8 @@ class TestFilterSupport:
                 code="data_transfer_adv",
                 timestamp=base_time + timedelta(hours=1),
                 properties={"bytes": 200, "region": "eu-west"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -1013,7 +1060,8 @@ class TestFilterSupport:
                 code="data_transfer_adv",
                 timestamp=base_time + timedelta(hours=2),
                 properties={"bytes": 300, "region": "us-east"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -1041,7 +1089,8 @@ class TestFilterSupport:
                     code="api_calls_adv",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"region": f"region-{i}"},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage(
@@ -1067,7 +1116,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time,
                 properties={"region": "us-east"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -1076,7 +1126,8 @@ class TestFilterSupport:
                 code="api_calls_adv",
                 timestamp=base_time + timedelta(hours=1),
                 properties={},  # no region property
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(

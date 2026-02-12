@@ -24,10 +24,13 @@ class FeeRepository:
         charge_id: UUID | None = None,
         fee_type: FeeType | None = None,
         payment_status: FeePaymentStatus | None = None,
+        organization_id: UUID | None = None,
     ) -> list[Fee]:
         """Get all fees with optional filters."""
         query = self.db.query(Fee)
 
+        if organization_id is not None:
+            query = query.filter(Fee.organization_id == organization_id)
         if invoice_id:
             query = query.filter(Fee.invoice_id == invoice_id)
         if customer_id:
@@ -43,9 +46,12 @@ class FeeRepository:
 
         return query.order_by(Fee.created_at.desc()).offset(skip).limit(limit).all()
 
-    def get_by_id(self, fee_id: UUID) -> Fee | None:
+    def get_by_id(self, fee_id: UUID, organization_id: UUID | None = None) -> Fee | None:
         """Get a fee by ID."""
-        return self.db.query(Fee).filter(Fee.id == fee_id).first()
+        query = self.db.query(Fee).filter(Fee.id == fee_id)
+        if organization_id is not None:
+            query = query.filter(Fee.organization_id == organization_id)
+        return query.first()
 
     def get_by_invoice_id(self, invoice_id: UUID) -> list[Fee]:
         """Get all fees for an invoice."""
@@ -76,7 +82,7 @@ class FeeRepository:
             .all()
         )
 
-    def create(self, data: FeeCreate) -> Fee:
+    def create(self, data: FeeCreate, organization_id: UUID | None = None) -> Fee:
         """Create a new fee."""
         fee = Fee(
             invoice_id=data.invoice_id,
@@ -94,13 +100,16 @@ class FeeRepository:
             description=data.description,
             metric_code=data.metric_code,
             properties=data.properties,
+            organization_id=organization_id,
         )
         self.db.add(fee)
         self.db.commit()
         self.db.refresh(fee)
         return fee
 
-    def create_bulk(self, fees_data: list[FeeCreate]) -> list[Fee]:
+    def create_bulk(
+        self, fees_data: list[FeeCreate], organization_id: UUID | None = None,
+    ) -> list[Fee]:
         """Create multiple fees at once."""
         fees = []
         for data in fees_data:
@@ -120,6 +129,7 @@ class FeeRepository:
                 description=data.description,
                 metric_code=data.metric_code,
                 properties=data.properties,
+                organization_id=organization_id,
             )
             self.db.add(fee)
             fees.append(fee)

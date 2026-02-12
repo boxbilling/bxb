@@ -16,12 +16,13 @@ class CouponRepository:
 
     def get_all(
         self,
+        organization_id: UUID,
         skip: int = 0,
         limit: int = 100,
         status: CouponStatus | None = None,
     ) -> list[Coupon]:
         """Get all coupons with optional filters."""
-        query = self.db.query(Coupon)
+        query = self.db.query(Coupon).filter(Coupon.organization_id == organization_id)
 
         if status:
             query = query.filter(Coupon.status == status.value)
@@ -32,11 +33,15 @@ class CouponRepository:
         """Get a coupon by ID."""
         return self.db.query(Coupon).filter(Coupon.id == coupon_id).first()
 
-    def get_by_code(self, code: str) -> Coupon | None:
+    def get_by_code(self, code: str, organization_id: UUID) -> Coupon | None:
         """Get a coupon by code."""
-        return self.db.query(Coupon).filter(Coupon.code == code).first()
+        return (
+            self.db.query(Coupon)
+            .filter(Coupon.code == code, Coupon.organization_id == organization_id)
+            .first()
+        )
 
-    def create(self, data: CouponCreate) -> Coupon:
+    def create(self, data: CouponCreate, organization_id: UUID) -> Coupon:
         """Create a new coupon."""
         coupon = Coupon(
             code=data.code,
@@ -51,15 +56,16 @@ class CouponRepository:
             reusable=data.reusable,
             expiration=data.expiration.value,
             expiration_at=data.expiration_at,
+            organization_id=organization_id,
         )
         self.db.add(coupon)
         self.db.commit()
         self.db.refresh(coupon)
         return coupon
 
-    def update(self, code: str, data: CouponUpdate) -> Coupon | None:
+    def update(self, code: str, data: CouponUpdate, organization_id: UUID) -> Coupon | None:
         """Update a coupon by code."""
-        coupon = self.get_by_code(code)
+        coupon = self.get_by_code(code, organization_id=organization_id)
         if not coupon:
             return None
 
@@ -77,9 +83,9 @@ class CouponRepository:
         self.db.refresh(coupon)
         return coupon
 
-    def terminate(self, code: str) -> Coupon | None:
+    def terminate(self, code: str, organization_id: UUID) -> Coupon | None:
         """Terminate a coupon by code."""
-        coupon = self.get_by_code(code)
+        coupon = self.get_by_code(code, organization_id=organization_id)
         if not coupon:
             return None
 
@@ -88,9 +94,9 @@ class CouponRepository:
         self.db.refresh(coupon)
         return coupon
 
-    def delete(self, code: str) -> bool:
+    def delete(self, code: str, organization_id: UUID) -> bool:
         """Delete a coupon by code."""
-        coupon = self.get_by_code(code)
+        coupon = self.get_by_code(code, organization_id=organization_id)
         if not coupon:
             return False
 

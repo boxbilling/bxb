@@ -27,6 +27,7 @@ from app.schemas.tax import TaxCreate
 from app.services.coupon_service import CouponApplicationService
 from app.services.invoice_generation import InvoiceGenerationService
 from app.services.tax_service import TaxCalculationService
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -1779,7 +1780,8 @@ def _create_coupon(db_session, code, coupon_type, frequency, **kwargs):
             coupon_type=coupon_type,
             frequency=frequency,
             **kwargs,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -2177,7 +2179,8 @@ class TestTaxIntegration:
                 name="Org Tax 10%",
                 rate=Decimal("0.1000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         service = InvoiceGenerationService(db_session)
@@ -2223,14 +2226,16 @@ class TestTaxIntegration:
                 name="Org Default",
                 rate=Decimal("0.1000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         tax_repo.create(
             TaxCreate(
                 code="CUST_TAX_20",
                 name="Customer Tax 20%",
                 rate=Decimal("0.2000"),
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Apply the customer tax
@@ -2274,14 +2279,16 @@ class TestTaxIntegration:
                 name="Org Default",
                 rate=Decimal("0.1000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         tax_repo.create(
             TaxCreate(
                 code="CHARGE_TAX_5",
                 name="Charge Tax 5%",
                 rate=Decimal("0.0500"),
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Apply tax to the specific charge
@@ -2323,14 +2330,16 @@ class TestTaxIntegration:
                 code="MULTI_TAX_1",
                 name="State Tax 5%",
                 rate=Decimal("0.0500"),
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         tax_repo.create(
             TaxCreate(
                 code="MULTI_TAX_2",
                 name="City Tax 3%",
                 rate=Decimal("0.0300"),
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         tax_service = TaxCalculationService(db_session)
@@ -2381,7 +2390,8 @@ class TestTaxIntegration:
                 name="Org Tax 10%",
                 rate=Decimal("0.1000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Create and apply a $20 coupon
@@ -2489,7 +2499,8 @@ class TestTaxIntegration:
                 name="Org Tax 20%",
                 rate=Decimal("0.2000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         service = InvoiceGenerationService(db_session)
@@ -2537,14 +2548,16 @@ class TestTaxIntegration:
                 name="Org Default 10%",
                 rate=Decimal("0.1000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         tax_repo.create(
             TaxCreate(
                 code="PLAN_TAX_15",
                 name="Plan Tax 15%",
                 rate=Decimal("0.1500"),
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Apply tax at plan level
@@ -2577,7 +2590,8 @@ class TestTaxIntegration:
                 name="Org Tax 10%",
                 rate=Decimal("0.1000"),
                 applied_to_organization=True,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         service = InvoiceGenerationService(db_session)

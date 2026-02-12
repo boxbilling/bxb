@@ -1,8 +1,11 @@
 """Coupon and AppliedCoupon API endpoints."""
 
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.applied_coupon import AppliedCoupon
 from app.models.coupon import Coupon, CouponStatus
@@ -24,12 +27,13 @@ router = APIRouter()
 async def create_coupon(
     data: CouponCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Coupon:
     """Create a new coupon."""
     repo = CouponRepository(db)
-    if repo.get_by_code(data.code):
+    if repo.get_by_code(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Coupon with this code already exists")
-    return repo.create(data)
+    return repo.create(data, organization_id)
 
 
 @router.get("/", response_model=list[CouponResponse])
@@ -38,20 +42,22 @@ async def list_coupons(
     limit: int = Query(default=100, ge=1, le=1000),
     status: CouponStatus | None = None,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Coupon]:
     """List coupons with optional status filter."""
     repo = CouponRepository(db)
-    return repo.get_all(skip=skip, limit=limit, status=status)
+    return repo.get_all(organization_id, skip=skip, limit=limit, status=status)
 
 
 @router.get("/{code}", response_model=CouponResponse)
 async def get_coupon(
     code: str,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Coupon:
     """Get a coupon by code."""
     repo = CouponRepository(db)
-    coupon = repo.get_by_code(code)
+    coupon = repo.get_by_code(code, organization_id)
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
     return coupon
@@ -62,10 +68,11 @@ async def update_coupon(
     code: str,
     data: CouponUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Coupon:
     """Update a coupon by code."""
     repo = CouponRepository(db)
-    coupon = repo.update(code, data)
+    coupon = repo.update(code, data, organization_id)
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
     return coupon
@@ -75,10 +82,11 @@ async def update_coupon(
 async def terminate_coupon(
     code: str,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Terminate a coupon by code."""
     repo = CouponRepository(db)
-    coupon = repo.terminate(code)
+    coupon = repo.terminate(code, organization_id)
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
 
@@ -87,10 +95,11 @@ async def terminate_coupon(
 async def apply_coupon(
     data: ApplyCouponRequest,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> AppliedCoupon:
     """Apply a coupon to a customer."""
     coupon_repo = CouponRepository(db)
-    coupon = coupon_repo.get_by_code(data.coupon_code)
+    coupon = coupon_repo.get_by_code(data.coupon_code, organization_id)
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
 
@@ -98,7 +107,7 @@ async def apply_coupon(
         raise HTTPException(status_code=400, detail="Coupon is not active")
 
     customer_repo = CustomerRepository(db)
-    customer = customer_repo.get_by_id(data.customer_id)
+    customer = customer_repo.get_by_id(data.customer_id, organization_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
@@ -127,5 +136,3 @@ async def apply_coupon(
         frequency=str(coupon.frequency),
         frequency_duration=coupon.frequency_duration,  # type: ignore[arg-type]
     )
-
-

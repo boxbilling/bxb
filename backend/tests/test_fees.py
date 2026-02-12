@@ -20,6 +20,7 @@ from app.schemas.fee import FeeCreate, FeeUpdate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -49,7 +50,8 @@ def customer(db_session):
             external_id=f"fee_test_cust_{uuid4()}",
             name="Fee Test Customer",
             email="fee@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -62,7 +64,8 @@ def plan(db_session):
             code=f"fee_test_plan_{uuid4()}",
             name="Fee Test Plan",
             interval="monthly",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -75,7 +78,8 @@ def subscription(db_session, customer, plan):
             external_id=f"fee_test_sub_{uuid4()}",
             customer_id=customer.id,
             plan_id=plan.id,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -280,7 +284,7 @@ class TestFeeRepository:
         from app.schemas.plan import PlanCreate
 
         plan_repo = PlanRepository(db_session)
-        plan = plan_repo.create(PlanCreate(code=f"fee_charge_plan_{uuid4()}", name="Test", interval="monthly"))
+        plan = plan_repo.create(PlanCreate(code=f"fee_charge_plan_{uuid4()}", name="Test", interval="monthly"), DEFAULT_ORG_ID)
 
         metric = BillableMetric(code=f"fee_test_metric_{uuid4()}", name="Test Metric", aggregation_type="count")
         db_session.add(metric)

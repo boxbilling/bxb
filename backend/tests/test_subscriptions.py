@@ -13,6 +13,7 @@ from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.subscription import SubscriptionCreate, SubscriptionUpdate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -191,7 +192,7 @@ class TestSubscriptionRepository:
             customer_id=customer.id,
             plan_id=plan.id,
         )
-        subscription = repo.create(data)
+        subscription = repo.create(data, DEFAULT_ORG_ID)
 
         found = repo.get_by_id(subscription.id)
         assert found is not None
@@ -211,14 +212,15 @@ class TestSubscriptionRepository:
                 external_id="sub_ext",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
-        found = repo.get_by_external_id("sub_ext")
+        found = repo.get_by_external_id("sub_ext", DEFAULT_ORG_ID)
         assert found is not None
         assert found.external_id == "sub_ext"
 
-        not_found = repo.get_by_external_id("nonexistent")
+        not_found = repo.get_by_external_id("nonexistent", DEFAULT_ORG_ID)
         assert not_found is None
 
     def test_get_by_customer_id(self, db_session):
@@ -229,16 +231,18 @@ class TestSubscriptionRepository:
         repo = SubscriptionRepository(db_session)
 
         repo.create(
-            SubscriptionCreate(external_id="sub1", customer_id=customer.id, plan_id=plan1.id)
+            SubscriptionCreate(external_id="sub1", customer_id=customer.id, plan_id=plan1.id),
+            DEFAULT_ORG_ID,
         )
         repo.create(
-            SubscriptionCreate(external_id="sub2", customer_id=customer.id, plan_id=plan2.id)
+            SubscriptionCreate(external_id="sub2", customer_id=customer.id, plan_id=plan2.id),
+            DEFAULT_ORG_ID,
         )
 
-        subscriptions = repo.get_by_customer_id(customer.id)
+        subscriptions = repo.get_by_customer_id(customer.id, DEFAULT_ORG_ID)
         assert len(subscriptions) == 2
 
-        empty = repo.get_by_customer_id(uuid.uuid4())
+        empty = repo.get_by_customer_id(uuid.uuid4(), DEFAULT_ORG_ID)
         assert len(empty) == 0
 
     def test_create_pending(self, db_session):
@@ -252,7 +256,8 @@ class TestSubscriptionRepository:
                 external_id="sub_pending",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         assert subscription.status == "pending"
@@ -271,7 +276,8 @@ class TestSubscriptionRepository:
                 customer_id=customer.id,
                 plan_id=plan.id,
                 started_at=past_time,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         assert subscription.status == "active"
@@ -291,7 +297,8 @@ class TestSubscriptionRepository:
                 customer_id=customer.id,
                 plan_id=plan.id,
                 started_at=future_time,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         assert subscription.status == "pending"
@@ -309,7 +316,8 @@ class TestSubscriptionRepository:
                 external_id="sub_update",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         ending = datetime.now(UTC) + timedelta(days=30)
@@ -336,7 +344,8 @@ class TestSubscriptionRepository:
                 external_id="sub_partial",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Update only ending_at, not status (tests branch where status not in update_data)
@@ -362,7 +371,8 @@ class TestSubscriptionRepository:
                 external_id="sub_none_status",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Update with explicit None for status (tests the branch where status is in data but is None)
@@ -395,16 +405,17 @@ class TestSubscriptionRepository:
                 external_id="sub_delete",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
-        assert repo.delete(subscription.id) is True
+        assert repo.delete(subscription.id, DEFAULT_ORG_ID) is True
         assert repo.get_by_id(subscription.id) is None
 
     def test_delete_not_found(self, db_session):
         """Test deleting a non-existent subscription."""
         repo = SubscriptionRepository(db_session)
-        assert repo.delete(uuid.uuid4()) is False
+        assert repo.delete(uuid.uuid4(), DEFAULT_ORG_ID) is False
 
     def test_terminate(self, db_session):
         """Test terminating a subscription."""
@@ -417,7 +428,8 @@ class TestSubscriptionRepository:
                 external_id="sub_term",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         terminated = repo.terminate(subscription.id)
@@ -442,7 +454,8 @@ class TestSubscriptionRepository:
                 external_id="sub_cancel",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         canceled = repo.cancel(subscription.id)
@@ -474,7 +487,8 @@ class TestSubscriptionRepository:
                 subscription_at=now,
                 pay_in_advance=True,
                 on_termination_action=TerminationAction.SKIP,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         assert subscription.billing_time == "anniversary"
@@ -495,7 +509,8 @@ class TestSubscriptionRepository:
                 external_id="sub_bt",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert subscription.billing_time == "calendar"
 
@@ -517,7 +532,8 @@ class TestSubscriptionRepository:
                 external_id="sub_bt_none",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         updated = repo.update(
@@ -539,7 +555,8 @@ class TestSubscriptionRepository:
                 external_id="sub_ota",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert subscription.on_termination_action == "generate_invoice"
 
@@ -561,7 +578,8 @@ class TestSubscriptionRepository:
                 external_id="sub_ota_none",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         updated = repo.update(
@@ -583,11 +601,12 @@ class TestSubscriptionRepository:
                 external_id="exists_test",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
-        assert repo.external_id_exists("exists_test") is True
-        assert repo.external_id_exists("not_exists") is False
+        assert repo.external_id_exists("exists_test", DEFAULT_ORG_ID) is True
+        assert repo.external_id_exists("not_exists", DEFAULT_ORG_ID) is False
 
 
 class TestSubscriptionsAPI:

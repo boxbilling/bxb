@@ -37,6 +37,7 @@ from app.schemas.wallet_transaction import (
     WalletTransactionCreate,
     WalletTransactionResponse,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -66,7 +67,8 @@ def customer(db_session):
             external_id=f"wt_test_cust_{uuid4()}",
             name="WalletTxn Test Customer",
             email="wallettxn@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -78,7 +80,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"wt_test_cust2_{uuid4()}",
             name="WalletTxn Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -119,7 +122,8 @@ def plan(db_session):
     """Create a test plan."""
     repo = PlanRepository(db_session)
     return repo.create(
-        PlanCreate(code=f"wt_test_plan_{uuid4()}", name="WT Test Plan", interval="monthly")
+        PlanCreate(code=f"wt_test_plan_{uuid4()}", name="WT Test Plan", interval="monthly"),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -132,7 +136,8 @@ def subscription(db_session, customer, plan):
             external_id=f"wt_test_sub_{uuid4()}",
             customer_id=customer.id,
             plan_id=plan.id,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 

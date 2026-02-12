@@ -20,6 +20,7 @@ from app.worker import (
     process_trial_expirations_task,
     retry_failed_webhooks_task,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -99,7 +100,8 @@ class TestRetryFailedWebhooksTask:
         # Create an active endpoint and a failed webhook
         endpoint_repo = WebhookEndpointRepository(db_session)
         endpoint = endpoint_repo.create(
-            WebhookEndpointCreate(url="https://example.com/hook")
+            WebhookEndpointCreate(url="https://example.com/hook"),
+            DEFAULT_ORG_ID,
         )
 
         webhook_repo = WebhookRepository(db_session)

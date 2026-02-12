@@ -38,6 +38,7 @@ from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -67,7 +68,8 @@ def customer(db_session):
             external_id=f"cn_test_cust_{uuid4()}",
             name="Credit Note Test Customer",
             email="cn@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -79,7 +81,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"cn_test_cust2_{uuid4()}",
             name="Credit Note Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -92,7 +95,8 @@ def plan(db_session):
             code=f"cn_test_plan_{uuid4()}",
             name="Credit Note Test Plan",
             interval="monthly",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -105,7 +109,8 @@ def subscription(db_session, customer, plan):
             external_id=f"cn_test_sub_{uuid4()}",
             customer_id=customer.id,
             plan_id=plan.id,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 

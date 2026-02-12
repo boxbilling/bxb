@@ -13,6 +13,7 @@ from app.repositories.fee_repository import FeeRepository
 from app.schemas.add_on import AddOnCreate
 from app.schemas.customer import CustomerCreate
 from app.services.add_on_service import AddOnService
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -36,7 +37,8 @@ def customer(db_session):
             external_id=f"addon_svc_test_{uuid4()}",
             name="AddOnService Test Customer",
             email="addonservice@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -67,7 +69,8 @@ def basic_add_on(add_on_repo):
             name="Basic Add-On",
             amount_cents=Decimal("5000.0000"),
             amount_currency="USD",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -81,7 +84,8 @@ def add_on_with_display_name(add_on_repo):
             amount_cents=Decimal("2500.0000"),
             amount_currency="USD",
             invoice_display_name="Custom Display Name",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 

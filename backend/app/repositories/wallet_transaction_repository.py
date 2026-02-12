@@ -14,7 +14,10 @@ class WalletTransactionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, data: WalletTransactionCreate) -> WalletTransaction:
+    def create(
+        self, data: WalletTransactionCreate,
+        organization_id: UUID | None = None,
+    ) -> WalletTransaction:
         """Create a new wallet transaction."""
         txn = WalletTransaction(
             wallet_id=data.wallet_id,
@@ -26,6 +29,7 @@ class WalletTransactionRepository:
             amount=data.amount,
             credit_amount=data.credit_amount,
             invoice_id=data.invoice_id,
+            organization_id=organization_id,
         )
         self.db.add(txn)
         self.db.commit()

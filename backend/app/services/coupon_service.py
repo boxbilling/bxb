@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.applied_coupon import AppliedCoupon
 from app.models.coupon import CouponExpiration, CouponFrequency, CouponStatus, CouponType
+from app.models.customer import DEFAULT_ORGANIZATION_ID
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.coupon_repository import CouponRepository
 from app.repositories.customer_repository import CustomerRepository
@@ -37,6 +38,7 @@ class CouponApplicationService:
         customer_id: UUID,
         amount_override: Decimal | None = None,
         percentage_override: Decimal | None = None,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> AppliedCoupon:
         """Validate and apply a coupon to a customer.
 
@@ -53,7 +55,7 @@ class CouponApplicationService:
             ValueError: If validation fails.
         """
         # Fetch and validate coupon
-        coupon = self.coupon_repo.get_by_code(coupon_code)
+        coupon = self.coupon_repo.get_by_code(coupon_code, organization_id)
         if not coupon:
             raise ValueError(f"Coupon '{coupon_code}' not found")
 

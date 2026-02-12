@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.repositories.billable_metric_filter_repository import BillableMetricFilterRepository
 from app.repositories.billable_metric_repository import BillableMetricRepository
@@ -61,10 +62,11 @@ async def list_plans(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[dict[str, Any]]:
     """List all plans with pagination."""
     repo = PlanRepository(db)
-    plans = repo.get_all(skip=skip, limit=limit)
+    plans = repo.get_all(organization_id, skip=skip, limit=limit)
     return [_plan_to_response(repo, plan) for plan in plans]
 
 
@@ -72,10 +74,11 @@ async def list_plans(
 async def get_plan(
     plan_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> dict[str, Any]:
     """Get a plan by ID."""
     repo = PlanRepository(db)
-    plan = repo.get_by_id(plan_id)
+    plan = repo.get_by_id(plan_id, organization_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return _plan_to_response(repo, plan)
@@ -85,10 +88,11 @@ async def get_plan(
 async def create_plan(
     data: PlanCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> dict[str, Any]:
     """Create a new plan."""
     repo = PlanRepository(db)
-    if repo.code_exists(data.code):
+    if repo.code_exists(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Plan with this code already exists")
 
     # Validate all billable_metric_ids exist
@@ -103,7 +107,7 @@ async def create_plan(
     filter_repo = BillableMetricFilterRepository(db)
     _validate_charge_filters(data.charges, filter_repo)
 
-    plan = repo.create(data)
+    plan = repo.create(data, organization_id)
     return _plan_to_response(repo, plan)
 
 
@@ -112,6 +116,7 @@ async def update_plan(
     plan_id: UUID,
     data: PlanUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> dict[str, Any]:
     """Update a plan."""
     repo = PlanRepository(db)
@@ -129,7 +134,7 @@ async def update_plan(
         filter_repo = BillableMetricFilterRepository(db)
         _validate_charge_filters(data.charges, filter_repo)
 
-    plan = repo.update(plan_id, data)
+    plan = repo.update(plan_id, data, organization_id)
     if not plan:
         raise HTTPException(status_code=404, detail="Plan not found")
     return _plan_to_response(repo, plan)
@@ -139,8 +144,9 @@ async def update_plan(
 async def delete_plan(
     plan_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Delete a plan."""
     repo = PlanRepository(db)
-    if not repo.delete(plan_id):
+    if not repo.delete(plan_id, organization_id):
         raise HTTPException(status_code=404, detail="Plan not found")

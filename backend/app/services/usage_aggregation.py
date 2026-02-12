@@ -2,10 +2,12 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, Decimal
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.models.billable_metric import AggregationType, BillableMetric
+from app.models.customer import DEFAULT_ORGANIZATION_ID
 from app.models.event import Event
 from app.repositories.billable_metric_repository import BillableMetricRepository
 
@@ -129,6 +131,7 @@ class UsageAggregationService:
         from_timestamp: datetime,
         to_timestamp: datetime,
         filters: dict[str, str] | None = None,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> Decimal:
         """Aggregate usage for a customer and metric code within a time period.
 
@@ -138,6 +141,7 @@ class UsageAggregationService:
             from_timestamp: Start of period
             to_timestamp: End of period
             filters: Optional dict of property key-value pairs to filter events
+            organization_id: Organization to scope the metric lookup to.
 
         Returns:
             Aggregated usage value based on the metric's aggregation type.
@@ -148,6 +152,7 @@ class UsageAggregationService:
             from_timestamp=from_timestamp,
             to_timestamp=to_timestamp,
             filters=filters,
+            organization_id=organization_id,
         )
         return result.value
 
@@ -158,6 +163,7 @@ class UsageAggregationService:
         from_timestamp: datetime,
         to_timestamp: datetime,
         filters: dict[str, str] | None = None,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> UsageResult:
         """Aggregate usage for a customer and metric code within a time period.
 
@@ -167,11 +173,12 @@ class UsageAggregationService:
             from_timestamp: Start of period
             to_timestamp: End of period
             filters: Optional dict of property key-value pairs to filter events
+            organization_id: Organization to scope the metric lookup to.
 
         Returns:
             UsageResult with aggregated value and events count.
         """
-        metric = self.metric_repo.get_by_code(code)
+        metric = self.metric_repo.get_by_code(code, organization_id)
         if not metric:
             raise ValueError(f"Billable metric with code '{code}' not found")
 
@@ -335,8 +342,15 @@ class UsageAggregationService:
         external_customer_id: str,
         from_timestamp: datetime,
         to_timestamp: datetime,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> dict[str, Decimal]:
         """Get usage summary for all metrics for a customer.
+
+        Args:
+            external_customer_id: Customer to summarize for.
+            from_timestamp: Start of period.
+            to_timestamp: End of period.
+            organization_id: Organization to scope the metric lookup to.
 
         Returns:
             Dictionary mapping metric code to aggregated usage value.
@@ -357,7 +371,8 @@ class UsageAggregationService:
         for (code,) in codes:
             try:
                 summary[code] = self.aggregate_usage(
-                    external_customer_id, code, from_timestamp, to_timestamp
+                    external_customer_id, code, from_timestamp, to_timestamp,
+                    organization_id=organization_id,
                 )
             except ValueError:
                 # Skip metrics that don't exist

@@ -11,19 +11,50 @@ class SubscriptionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> list[Subscription]:
-        return self.db.query(Subscription).offset(skip).limit(limit).all()
+    def get_all(
+        self, organization_id: UUID, skip: int = 0, limit: int = 100
+    ) -> list[Subscription]:
+        return (
+            self.db.query(Subscription)
+            .filter(Subscription.organization_id == organization_id)
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
 
-    def get_by_id(self, subscription_id: UUID) -> Subscription | None:
-        return self.db.query(Subscription).filter(Subscription.id == subscription_id).first()
+    def get_by_id(
+        self, subscription_id: UUID, organization_id: UUID | None = None
+    ) -> Subscription | None:
+        query = self.db.query(Subscription).filter(Subscription.id == subscription_id)
+        if organization_id is not None:
+            query = query.filter(Subscription.organization_id == organization_id)
+        return query.first()
 
-    def get_by_external_id(self, external_id: str) -> Subscription | None:
-        return self.db.query(Subscription).filter(Subscription.external_id == external_id).first()
+    def get_by_external_id(
+        self, external_id: str, organization_id: UUID
+    ) -> Subscription | None:
+        return (
+            self.db.query(Subscription)
+            .filter(
+                Subscription.external_id == external_id,
+                Subscription.organization_id == organization_id,
+            )
+            .first()
+        )
 
-    def get_by_customer_id(self, customer_id: UUID) -> list[Subscription]:
-        return self.db.query(Subscription).filter(Subscription.customer_id == customer_id).all()
+    def get_by_customer_id(
+        self, customer_id: UUID, organization_id: UUID
+    ) -> list[Subscription]:
+        return (
+            self.db.query(Subscription)
+            .filter(
+                Subscription.customer_id == customer_id,
+                Subscription.organization_id == organization_id,
+            )
+            .all()
+        )
 
-    def create(self, data: SubscriptionCreate) -> Subscription:
+    def create(self, data: SubscriptionCreate, organization_id: UUID) -> Subscription:
         subscription = Subscription(
             external_id=data.external_id,
             customer_id=data.customer_id,
@@ -35,6 +66,7 @@ class SubscriptionRepository:
             subscription_at=data.subscription_at,
             pay_in_advance=data.pay_in_advance,
             on_termination_action=data.on_termination_action.value,
+            organization_id=organization_id,
         )
         # If started_at is provided and in the past or now, set status to ACTIVE
         if data.started_at is not None and data.started_at <= datetime.now(UTC):
@@ -44,8 +76,10 @@ class SubscriptionRepository:
         self.db.refresh(subscription)
         return subscription
 
-    def update(self, subscription_id: UUID, data: SubscriptionUpdate) -> Subscription | None:
-        subscription = self.get_by_id(subscription_id)
+    def update(
+        self, subscription_id: UUID, data: SubscriptionUpdate, organization_id: UUID | None = None
+    ) -> Subscription | None:
+        subscription = self.get_by_id(subscription_id, organization_id)
         if not subscription:
             return None
         update_data = data.model_dump(exclude_unset=True)
@@ -73,8 +107,8 @@ class SubscriptionRepository:
         self.db.refresh(subscription)
         return subscription
 
-    def delete(self, subscription_id: UUID) -> bool:
-        subscription = self.get_by_id(subscription_id)
+    def delete(self, subscription_id: UUID, organization_id: UUID) -> bool:
+        subscription = self.get_by_id(subscription_id, organization_id)
         if not subscription:
             return False
         self.db.delete(subscription)
@@ -103,7 +137,10 @@ class SubscriptionRepository:
         self.db.refresh(subscription)
         return subscription
 
-    def external_id_exists(self, external_id: str) -> bool:
+    def external_id_exists(self, external_id: str, organization_id: UUID) -> bool:
         """Check if a subscription with the given external_id already exists."""
-        query = self.db.query(Subscription).filter(Subscription.external_id == external_id)
+        query = self.db.query(Subscription).filter(
+            Subscription.external_id == external_id,
+            Subscription.organization_id == organization_id,
+        )
         return query.first() is not None

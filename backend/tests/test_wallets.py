@@ -14,6 +14,7 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas.customer import CustomerCreate
 from app.schemas.wallet import WalletCreate, WalletUpdate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -43,7 +44,8 @@ def customer(db_session):
             external_id=f"wallet_test_cust_{uuid4()}",
             name="Wallet Test Customer",
             email="wallet@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -55,7 +57,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"wallet_test_cust2_{uuid4()}",
             name="Wallet Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -252,18 +255,18 @@ class TestWalletRepository:
         repo.terminate(w2.id)
 
         # All wallets
-        all_wallets = repo.get_all()
+        all_wallets = repo.get_all(DEFAULT_ORG_ID)
         assert len(all_wallets) == 2
 
         # Filter by customer
-        customer_wallets = repo.get_all(customer_id=customer.id)
+        customer_wallets = repo.get_all(DEFAULT_ORG_ID, customer_id=customer.id)
         assert len(customer_wallets) == 2
 
         # Filter by status
-        active_wallets = repo.get_all(status=WalletStatus.ACTIVE)
+        active_wallets = repo.get_all(DEFAULT_ORG_ID, status=WalletStatus.ACTIVE)
         assert len(active_wallets) == 1
 
-        terminated_wallets = repo.get_all(status=WalletStatus.TERMINATED)
+        terminated_wallets = repo.get_all(DEFAULT_ORG_ID, status=WalletStatus.TERMINATED)
         assert len(terminated_wallets) == 1
 
     def test_get_all_pagination(self, db_session, customer):
@@ -272,7 +275,7 @@ class TestWalletRepository:
         for i in range(5):
             repo.create(WalletCreate(customer_id=customer.id, name=f"W{i}", code=f"w{i}"))
 
-        wallets = repo.get_all(skip=2, limit=2)
+        wallets = repo.get_all(DEFAULT_ORG_ID, skip=2, limit=2)
         assert len(wallets) == 2
 
     def test_update(self, db_session, wallet):
@@ -391,11 +394,11 @@ class TestWalletRepository:
         repo.create(WalletCreate(customer_id=customer.id, name="C1W1", code="c1w1"))
         repo.create(WalletCreate(customer_id=customer2.id, name="C2W1", code="c2w1"))
 
-        c1_wallets = repo.get_all(customer_id=customer.id)
+        c1_wallets = repo.get_all(DEFAULT_ORG_ID, customer_id=customer.id)
         assert len(c1_wallets) == 1
         assert c1_wallets[0].name == "C1W1"
 
-        c2_wallets = repo.get_all(customer_id=customer2.id)
+        c2_wallets = repo.get_all(DEFAULT_ORG_ID, customer_id=customer2.id)
         assert len(c2_wallets) == 1
         assert c2_wallets[0].name == "C2W1"
 

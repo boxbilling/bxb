@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.webhook import Webhook
 from app.models.webhook_endpoint import WebhookEndpoint
@@ -25,10 +26,11 @@ router = APIRouter()
 async def create_webhook_endpoint(
     data: WebhookEndpointCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> WebhookEndpoint:
     """Create a new webhook endpoint."""
     repo = WebhookEndpointRepository(db)
-    return repo.create(data)
+    return repo.create(data, organization_id)
 
 
 @router.get("/", response_model=list[WebhookEndpointResponse])
@@ -36,20 +38,22 @@ async def list_webhook_endpoints(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[WebhookEndpoint]:
     """List all webhook endpoints."""
     repo = WebhookEndpointRepository(db)
-    return repo.get_all(skip=skip, limit=limit)
+    return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
 @router.get("/{endpoint_id}", response_model=WebhookEndpointResponse)
 async def get_webhook_endpoint(
     endpoint_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> WebhookEndpoint:
     """Get a webhook endpoint by ID."""
     repo = WebhookEndpointRepository(db)
-    endpoint = repo.get_by_id(endpoint_id)
+    endpoint = repo.get_by_id(endpoint_id, organization_id)
     if not endpoint:
         raise HTTPException(status_code=404, detail="Webhook endpoint not found")
     return endpoint
@@ -60,10 +64,11 @@ async def update_webhook_endpoint(
     endpoint_id: UUID,
     data: WebhookEndpointUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> WebhookEndpoint:
     """Update a webhook endpoint."""
     repo = WebhookEndpointRepository(db)
-    endpoint = repo.update(endpoint_id, data)
+    endpoint = repo.update(endpoint_id, data, organization_id)
     if not endpoint:
         raise HTTPException(status_code=404, detail="Webhook endpoint not found")
     return endpoint
@@ -73,10 +78,11 @@ async def update_webhook_endpoint(
 async def delete_webhook_endpoint(
     endpoint_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Delete a webhook endpoint."""
     repo = WebhookEndpointRepository(db)
-    if not repo.delete(endpoint_id):
+    if not repo.delete(endpoint_id, organization_id):
         raise HTTPException(status_code=404, detail="Webhook endpoint not found")
 
 

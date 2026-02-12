@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.invoice import Invoice, InvoiceStatus
 from app.repositories.invoice_repository import InvoiceRepository
@@ -22,10 +23,12 @@ async def list_invoices(
     subscription_id: UUID | None = None,
     status: InvoiceStatus | None = None,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Invoice]:
     """List invoices with optional filters."""
     repo = InvoiceRepository(db)
     return repo.get_all(
+        organization_id=organization_id,
         skip=skip,
         limit=limit,
         customer_id=customer_id,
@@ -38,10 +41,11 @@ async def list_invoices(
 async def get_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Invoice:
     """Get an invoice by ID."""
     repo = InvoiceRepository(db)
-    invoice = repo.get_by_id(invoice_id)
+    invoice = repo.get_by_id(invoice_id, organization_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return invoice
@@ -52,10 +56,11 @@ async def update_invoice(
     invoice_id: UUID,
     data: InvoiceUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Invoice:
     """Update an invoice."""
     repo = InvoiceRepository(db)
-    invoice = repo.update(invoice_id, data)
+    invoice = repo.update(invoice_id, data, organization_id)
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return invoice
@@ -65,9 +70,13 @@ async def update_invoice(
 async def finalize_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Invoice:
     """Finalize a draft invoice and apply wallet credits if available."""
     repo = InvoiceRepository(db)
+    invoice = repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
     try:
         invoice = repo.finalize(invoice_id)
         if not invoice:
@@ -113,9 +122,13 @@ async def finalize_invoice(
 async def mark_invoice_paid(
     invoice_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Invoice:
     """Mark an invoice as paid."""
     repo = InvoiceRepository(db)
+    invoice = repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
     try:
         invoice = repo.mark_paid(invoice_id)
         if not invoice:
@@ -138,9 +151,13 @@ async def mark_invoice_paid(
 async def void_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Invoice:
     """Void an invoice."""
     repo = InvoiceRepository(db)
+    invoice = repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
     try:
         invoice = repo.void(invoice_id)
         if not invoice:
@@ -163,11 +180,12 @@ async def void_invoice(
 async def delete_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Delete a draft invoice."""
     repo = InvoiceRepository(db)
     try:
-        if not repo.delete(invoice_id):
+        if not repo.delete(invoice_id, organization_id):
             raise HTTPException(status_code=404, detail="Invoice not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None

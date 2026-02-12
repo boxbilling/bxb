@@ -17,6 +17,7 @@ from app.schemas.webhook import (
     WebhookEventPayload,
     WebhookResponse,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -39,7 +40,8 @@ def active_endpoint(db_session):
         WebhookEndpointCreate(
             url="https://example.com/webhooks",
             signature_algo="hmac",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -50,9 +52,10 @@ def inactive_endpoint(db_session):
     endpoint = repo.create(
         WebhookEndpointCreate(
             url="https://example.com/webhooks-inactive",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
-    return repo.update(endpoint.id, WebhookEndpointUpdate(status="inactive"))
+    return repo.update(endpoint.id, WebhookEndpointUpdate(status="inactive"), DEFAULT_ORG_ID)
 
 
 @pytest.fixture
@@ -169,7 +172,8 @@ class TestWebhookEndpointRepository:
         endpoint = repo.create(
             WebhookEndpointCreate(
                 url="https://example.com/new-hook",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert endpoint.id is not None
         assert endpoint.url == "https://example.com/new-hook"
@@ -182,7 +186,8 @@ class TestWebhookEndpointRepository:
             WebhookEndpointCreate(
                 url="https://example.com/jwt",
                 signature_algo="jwt",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert endpoint.signature_algo == "jwt"
 
@@ -201,19 +206,19 @@ class TestWebhookEndpointRepository:
     def test_get_all(self, db_session, active_endpoint, inactive_endpoint):
         """Test getting all webhook endpoints."""
         repo = WebhookEndpointRepository(db_session)
-        endpoints = repo.get_all()
+        endpoints = repo.get_all(DEFAULT_ORG_ID)
         assert len(endpoints) == 2
 
     def test_get_all_pagination(self, db_session, active_endpoint, inactive_endpoint):
         """Test get_all with pagination."""
         repo = WebhookEndpointRepository(db_session)
-        endpoints = repo.get_all(skip=0, limit=1)
+        endpoints = repo.get_all(DEFAULT_ORG_ID, skip=0, limit=1)
         assert len(endpoints) == 1
 
     def test_get_all_empty(self, db_session):
         """Test get_all with no endpoints."""
         repo = WebhookEndpointRepository(db_session)
-        assert repo.get_all() == []
+        assert repo.get_all(DEFAULT_ORG_ID) == []
 
     def test_get_active(self, db_session, active_endpoint, inactive_endpoint):
         """Test getting only active webhook endpoints."""
@@ -221,6 +226,14 @@ class TestWebhookEndpointRepository:
         active = repo.get_active()
         assert len(active) == 1
         assert active[0].url == "https://example.com/webhooks"
+
+    def test_get_active_with_org_filter(self, db_session, active_endpoint):
+        """Test getting active endpoints scoped to an organization."""
+        repo = WebhookEndpointRepository(db_session)
+        active = repo.get_active(organization_id=DEFAULT_ORG_ID)
+        assert len(active) == 1
+        # Wrong org returns empty
+        assert repo.get_active(organization_id=uuid4()) == []
 
     def test_get_active_empty(self, db_session, inactive_endpoint):
         """Test getting active endpoints when none are active."""
@@ -234,6 +247,7 @@ class TestWebhookEndpointRepository:
         updated = repo.update(
             active_endpoint.id,
             WebhookEndpointUpdate(url="https://new-url.com/hook"),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.url == "https://new-url.com/hook"
@@ -245,6 +259,7 @@ class TestWebhookEndpointRepository:
         updated = repo.update(
             active_endpoint.id,
             WebhookEndpointUpdate(status="inactive"),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.status == "inactive"
@@ -255,6 +270,7 @@ class TestWebhookEndpointRepository:
         updated = repo.update(
             active_endpoint.id,
             WebhookEndpointUpdate(signature_algo="jwt"),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.signature_algo == "jwt"
@@ -262,18 +278,18 @@ class TestWebhookEndpointRepository:
     def test_update_not_found(self, db_session):
         """Test updating a non-existent webhook endpoint."""
         repo = WebhookEndpointRepository(db_session)
-        assert repo.update(uuid4(), WebhookEndpointUpdate(url="https://x.com")) is None
+        assert repo.update(uuid4(), WebhookEndpointUpdate(url="https://x.com"), DEFAULT_ORG_ID) is None
 
     def test_delete(self, db_session, active_endpoint):
         """Test deleting a webhook endpoint."""
         repo = WebhookEndpointRepository(db_session)
-        assert repo.delete(active_endpoint.id) is True
+        assert repo.delete(active_endpoint.id, DEFAULT_ORG_ID) is True
         assert repo.get_by_id(active_endpoint.id) is None
 
     def test_delete_not_found(self, db_session):
         """Test deleting a non-existent webhook endpoint."""
         repo = WebhookEndpointRepository(db_session)
-        assert repo.delete(uuid4()) is False
+        assert repo.delete(uuid4(), DEFAULT_ORG_ID) is False
 
 
 class TestWebhookRepository:

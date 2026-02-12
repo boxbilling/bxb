@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import WalletTransaction
@@ -21,6 +22,7 @@ router = APIRouter()
 async def create_wallet(
     data: WalletCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Wallet:
     """Create a wallet for a customer."""
     service = WalletService(db)
@@ -46,20 +48,25 @@ async def list_wallets(
     customer_id: UUID | None = None,
     status: WalletStatus | None = None,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Wallet]:
     """List wallets with optional filters."""
     repo = WalletRepository(db)
-    return repo.get_all(skip=skip, limit=limit, customer_id=customer_id, status=status)
+    return repo.get_all(
+        organization_id, skip=skip, limit=limit,
+        customer_id=customer_id, status=status,
+    )
 
 
 @router.get("/{wallet_id}", response_model=WalletResponse)
 async def get_wallet(
     wallet_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Wallet:
     """Get a wallet by ID."""
     repo = WalletRepository(db)
-    wallet = repo.get_by_id(wallet_id)
+    wallet = repo.get_by_id(wallet_id, organization_id)
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
     return wallet
@@ -70,6 +77,7 @@ async def update_wallet(
     wallet_id: UUID,
     data: WalletUpdate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Wallet:
     """Update a wallet (name, expiration_at, priority)."""
     repo = WalletRepository(db)
@@ -83,6 +91,7 @@ async def update_wallet(
 async def terminate_wallet(
     wallet_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> None:
     """Terminate a wallet (soft delete: sets status=terminated)."""
     service = WalletService(db)
@@ -100,6 +109,7 @@ async def top_up_wallet(
     wallet_id: UUID,
     data: WalletTopUp,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Wallet:
     """Top up a wallet with credits."""
     service = WalletService(db)
@@ -119,11 +129,12 @@ async def list_wallet_transactions(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[WalletTransaction]:
     """List transactions for a wallet."""
     # Verify wallet exists
     wallet_repo = WalletRepository(db)
-    wallet = wallet_repo.get_by_id(wallet_id)
+    wallet = wallet_repo.get_by_id(wallet_id, organization_id)
     if not wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
 

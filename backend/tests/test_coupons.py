@@ -29,6 +29,7 @@ from app.schemas.coupon import (
     CouponUpdate,
 )
 from app.schemas.customer import CustomerCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -58,7 +59,8 @@ def customer(db_session):
             external_id=f"coupon_test_cust_{uuid4()}",
             name="Coupon Test Customer",
             email="coupon@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -70,7 +72,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"coupon_test_cust2_{uuid4()}",
             name="Coupon Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -88,7 +91,8 @@ def fixed_coupon(db_session):
             amount_currency="USD",
             frequency=CouponFrequency.ONCE,
             reusable=True,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -104,7 +108,8 @@ def percentage_coupon(db_session):
             percentage_rate=Decimal("20.00"),
             frequency=CouponFrequency.FOREVER,
             reusable=True,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -122,7 +127,8 @@ def recurring_coupon(db_session):
             frequency=CouponFrequency.RECURRING,
             frequency_duration=3,
             reusable=False,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -280,7 +286,8 @@ class TestCouponRepository:
                 amount_cents=Decimal("1000.0000"),
                 amount_currency="USD",
                 frequency=CouponFrequency.ONCE,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert coupon.id is not None
         assert coupon.code == "NEW10"
@@ -301,7 +308,8 @@ class TestCouponRepository:
                 coupon_type=CouponType.PERCENTAGE,
                 percentage_rate=Decimal("15.00"),
                 frequency=CouponFrequency.FOREVER,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert coupon.coupon_type == "percentage"
         assert coupon.percentage_rate == Decimal("15.00")
@@ -320,7 +328,8 @@ class TestCouponRepository:
                 frequency=CouponFrequency.RECURRING,
                 frequency_duration=3,
                 reusable=False,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert coupon.frequency == "recurring"
         assert coupon.frequency_duration == 3
@@ -340,7 +349,8 @@ class TestCouponRepository:
                 frequency=CouponFrequency.ONCE,
                 expiration=CouponExpiration.TIME_LIMIT,
                 expiration_at=expiry,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert coupon.expiration == "time_limit"
         assert coupon.expiration_at is not None
@@ -361,7 +371,7 @@ class TestCouponRepository:
     def test_get_by_code(self, db_session, fixed_coupon):
         """Test getting a coupon by code."""
         repo = CouponRepository(db_session)
-        fetched = repo.get_by_code("FIXED10")
+        fetched = repo.get_by_code("FIXED10", DEFAULT_ORG_ID)
         assert fetched is not None
         assert fetched.code == "FIXED10"
         assert fetched.id == fixed_coupon.id
@@ -369,24 +379,24 @@ class TestCouponRepository:
     def test_get_by_code_not_found(self, db_session):
         """Test getting a non-existent coupon by code."""
         repo = CouponRepository(db_session)
-        assert repo.get_by_code("NONEXISTENT") is None
+        assert repo.get_by_code("NONEXISTENT", DEFAULT_ORG_ID) is None
 
     def test_get_all(self, db_session, fixed_coupon, percentage_coupon):
         """Test getting all coupons."""
         repo = CouponRepository(db_session)
-        coupons = repo.get_all()
+        coupons = repo.get_all(DEFAULT_ORG_ID)
         assert len(coupons) == 2
 
     def test_get_all_filter_by_status(self, db_session, fixed_coupon, percentage_coupon):
         """Test getting coupons filtered by status."""
         repo = CouponRepository(db_session)
-        repo.terminate("FIXED10")
+        repo.terminate("FIXED10", DEFAULT_ORG_ID)
 
-        active = repo.get_all(status=CouponStatus.ACTIVE)
+        active = repo.get_all(DEFAULT_ORG_ID, status=CouponStatus.ACTIVE)
         assert len(active) == 1
         assert active[0].code == "PERCENT20"
 
-        terminated = repo.get_all(status=CouponStatus.TERMINATED)
+        terminated = repo.get_all(DEFAULT_ORG_ID, status=CouponStatus.TERMINATED)
         assert len(terminated) == 1
         assert terminated[0].code == "FIXED10"
 
@@ -402,15 +412,16 @@ class TestCouponRepository:
                     amount_cents=Decimal("100"),
                     amount_currency="USD",
                     frequency=CouponFrequency.ONCE,
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
-        result = repo.get_all(skip=2, limit=2)
+        result = repo.get_all(DEFAULT_ORG_ID, skip=2, limit=2)
         assert len(result) == 2
 
     def test_update(self, db_session, fixed_coupon):
         """Test updating a coupon."""
         repo = CouponRepository(db_session)
-        updated = repo.update("FIXED10", CouponUpdate(name="Updated Name"))
+        updated = repo.update("FIXED10", CouponUpdate(name="Updated Name"), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.name == "Updated Name"
         assert updated.code == "FIXED10"  # unchanged
@@ -425,6 +436,7 @@ class TestCouponRepository:
                 expiration=CouponExpiration.TIME_LIMIT,
                 expiration_at=expiry,
             ),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.expiration == "time_limit"
@@ -436,6 +448,7 @@ class TestCouponRepository:
         updated = repo.update(
             "FIXED10",
             CouponUpdate(status=CouponStatus.TERMINATED),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.status == CouponStatus.TERMINATED.value
@@ -443,30 +456,30 @@ class TestCouponRepository:
     def test_update_not_found(self, db_session):
         """Test updating a non-existent coupon."""
         repo = CouponRepository(db_session)
-        assert repo.update("NONEXISTENT", CouponUpdate(name="nope")) is None
+        assert repo.update("NONEXISTENT", CouponUpdate(name="nope"), DEFAULT_ORG_ID) is None
 
     def test_terminate(self, db_session, fixed_coupon):
         """Test terminating a coupon."""
         repo = CouponRepository(db_session)
-        terminated = repo.terminate("FIXED10")
+        terminated = repo.terminate("FIXED10", DEFAULT_ORG_ID)
         assert terminated is not None
         assert terminated.status == CouponStatus.TERMINATED.value
 
     def test_terminate_not_found(self, db_session):
         """Test terminating a non-existent coupon."""
         repo = CouponRepository(db_session)
-        assert repo.terminate("NONEXISTENT") is None
+        assert repo.terminate("NONEXISTENT", DEFAULT_ORG_ID) is None
 
     def test_delete(self, db_session, fixed_coupon):
         """Test deleting a coupon."""
         repo = CouponRepository(db_session)
-        assert repo.delete("FIXED10") is True
-        assert repo.get_by_code("FIXED10") is None
+        assert repo.delete("FIXED10", DEFAULT_ORG_ID) is True
+        assert repo.get_by_code("FIXED10", DEFAULT_ORG_ID) is None
 
     def test_delete_not_found(self, db_session):
         """Test deleting a non-existent coupon."""
         repo = CouponRepository(db_session)
-        assert repo.delete("NONEXISTENT") is False
+        assert repo.delete("NONEXISTENT", DEFAULT_ORG_ID) is False
 
 
 class TestAppliedCouponRepository:
@@ -670,7 +683,8 @@ class TestAppliedCouponRepository:
                     amount_cents=Decimal("100"),
                     amount_currency="USD",
                     frequency=CouponFrequency.ONCE,
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
             repo.create(
                 coupon_id=c.id,
@@ -1010,7 +1024,7 @@ class TestCouponAPI:
     def test_list_coupons_filter_by_status(self, client, db_session, fixed_coupon, percentage_coupon):
         """Test GET /v1/coupons/ filtered by status."""
         repo = CouponRepository(db_session)
-        repo.terminate("FIXED10")
+        repo.terminate("FIXED10", DEFAULT_ORG_ID)
 
         response = client.get("/v1/coupons/?status=active")
         assert response.status_code == 200
@@ -1029,7 +1043,9 @@ class TestCouponAPI:
                 amount_cents=Decimal("100"),
                 amount_currency="USD",
                 frequency=CouponFrequency.ONCE,
-            ))
+            ),
+            DEFAULT_ORG_ID,
+            )
         response = client.get("/v1/coupons/?skip=2&limit=2")
         assert response.status_code == 200
         assert len(response.json()) == 2
@@ -1126,7 +1142,7 @@ class TestCouponAPI:
     def test_apply_coupon_terminated(self, client, db_session, fixed_coupon, customer):
         """Test POST /v1/coupons/apply with terminated coupon."""
         repo = CouponRepository(db_session)
-        repo.terminate("FIXED10")
+        repo.terminate("FIXED10", DEFAULT_ORG_ID)
 
         response = client.post("/v1/coupons/apply", json={
             "coupon_code": "FIXED10",

@@ -12,6 +12,7 @@ from app.repositories.event_repository import EventRepository
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
 from app.services.usage_aggregation import UsageAggregationService, UsageResult
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -35,7 +36,7 @@ def count_metric(db_session):
         name="API Calls",
         aggregation_type=AggregationType.COUNT,
     )
-    return repo.create(data)
+    return repo.create(data, DEFAULT_ORG_ID)
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ def sum_metric(db_session):
         aggregation_type=AggregationType.SUM,
         field_name="bytes",
     )
-    return repo.create(data)
+    return repo.create(data, DEFAULT_ORG_ID)
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def max_metric(db_session):
         aggregation_type=AggregationType.MAX,
         field_name="connections",
     )
-    return repo.create(data)
+    return repo.create(data, DEFAULT_ORG_ID)
 
 
 @pytest.fixture
@@ -74,7 +75,7 @@ def unique_count_metric(db_session):
         aggregation_type=AggregationType.UNIQUE_COUNT,
         field_name="user_id",
     )
-    return repo.create(data)
+    return repo.create(data, DEFAULT_ORG_ID)
 
 
 class TestUsageAggregationService:
@@ -93,7 +94,8 @@ class TestUsageAggregationService:
                     external_customer_id="cust-001",
                     code="api_calls",
                     timestamp=base_time + timedelta(hours=i),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         # Aggregate
@@ -123,7 +125,8 @@ class TestUsageAggregationService:
                     code="data_transfer",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"bytes": bytes_val},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage(
@@ -152,7 +155,8 @@ class TestUsageAggregationService:
                     code="peak_connections",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"connections": conn_val},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage(
@@ -181,7 +185,8 @@ class TestUsageAggregationService:
                     code="unique_users",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"user_id": user_id},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage(
@@ -208,7 +213,8 @@ class TestUsageAggregationService:
                 external_customer_id="cust-001",
                 code="api_calls",
                 timestamp=base_time + timedelta(hours=1),  # inside
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -216,7 +222,8 @@ class TestUsageAggregationService:
                 external_customer_id="cust-001",
                 code="api_calls",
                 timestamp=base_time + timedelta(hours=2),  # inside
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -224,7 +231,8 @@ class TestUsageAggregationService:
                 external_customer_id="cust-001",
                 code="api_calls",
                 timestamp=base_time - timedelta(hours=1),  # before range
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -232,7 +240,8 @@ class TestUsageAggregationService:
                 external_customer_id="cust-001",
                 code="api_calls",
                 timestamp=base_time + timedelta(days=2),  # after range
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -259,7 +268,8 @@ class TestUsageAggregationService:
                     external_customer_id="cust-001",
                     code="api_calls",
                     timestamp=base_time + timedelta(hours=i),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
         for i in range(2):
             event_repo.create(
@@ -268,7 +278,8 @@ class TestUsageAggregationService:
                     external_customer_id="cust-002",
                     code="api_calls",
                     timestamp=base_time + timedelta(hours=i),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage(
@@ -354,7 +365,8 @@ class TestUsageAggregationService:
                 code="data_transfer",
                 timestamp=base_time,
                 properties={"other_field": "value"},  # missing bytes
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -381,7 +393,8 @@ class TestUsageAggregationService:
                     external_customer_id="cust-001",
                     code="api_calls",
                     timestamp=base_time + timedelta(hours=i),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         for i in range(2):
@@ -392,7 +405,8 @@ class TestUsageAggregationService:
                     code="data_transfer",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"bytes": 100 * (i + 1)},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         summary = service.get_customer_usage_summary(
@@ -436,7 +450,8 @@ class TestUsageAggregationService:
                 code="unique_users",
                 timestamp=base_time,
                 properties={"user_id": "user-1"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -445,7 +460,8 @@ class TestUsageAggregationService:
                 code="unique_users",
                 timestamp=base_time + timedelta(hours=1),
                 properties={},  # missing user_id
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         event_repo.create(
             EventCreate(
@@ -454,7 +470,8 @@ class TestUsageAggregationService:
                 code="unique_users",
                 timestamp=base_time + timedelta(hours=2),
                 properties={"user_id": "user-2"},
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         result = service.aggregate_usage(
@@ -476,7 +493,7 @@ class TestUsageAggregationService:
             aggregation_type=AggregationType.SUM,
             field_name="temp",  # Create with field_name first
         )
-        metric = metric_repo.create(data)
+        metric = metric_repo.create(data, DEFAULT_ORG_ID)
 
         # Manually remove field_name
         metric.field_name = None
@@ -502,7 +519,7 @@ class TestUsageAggregationService:
             aggregation_type=AggregationType.MAX,
             field_name="temp",
         )
-        metric = metric_repo.create(data)
+        metric = metric_repo.create(data, DEFAULT_ORG_ID)
 
         # Manually remove field_name
         metric.field_name = None
@@ -528,7 +545,7 @@ class TestUsageAggregationService:
             aggregation_type=AggregationType.UNIQUE_COUNT,
             field_name="temp",
         )
-        metric = metric_repo.create(data)
+        metric = metric_repo.create(data, DEFAULT_ORG_ID)
 
         # Manually remove field_name
         metric.field_name = None
@@ -553,7 +570,7 @@ class TestUsageAggregationService:
             name="Unknown Agg",
             aggregation_type=AggregationType.COUNT,
         )
-        metric = metric_repo.create(data)
+        metric = metric_repo.create(data, DEFAULT_ORG_ID)
 
         # Manually set an invalid aggregation type
         metric.aggregation_type = "invalid_type"
@@ -584,7 +601,8 @@ class TestUsageAggregationService:
                 external_customer_id="cust-001",
                 code="api_calls",
                 timestamp=base_time,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
 
         # Create an event for a metric code that doesn't exist
@@ -629,7 +647,8 @@ class TestAggregateUsageWithCount:
                     external_customer_id="cust-001",
                     code="api_calls",
                     timestamp=base_time + timedelta(hours=i),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage_with_count(
@@ -657,7 +676,8 @@ class TestAggregateUsageWithCount:
                     code="data_transfer",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"bytes": val},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage_with_count(
@@ -684,7 +704,8 @@ class TestAggregateUsageWithCount:
                     code="peak_connections",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"connections": val},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage_with_count(
@@ -727,7 +748,8 @@ class TestAggregateUsageWithCount:
                     code="unique_users",
                     timestamp=base_time + timedelta(hours=i),
                     properties={"user_id": uid},
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
 
         result = service.aggregate_usage_with_count(

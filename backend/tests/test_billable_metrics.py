@@ -10,6 +10,7 @@ from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.schemas.billable_metric import BillableMetricCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -150,13 +151,13 @@ class TestBillableMetricRepository:
             aggregation_type=AggregationType.SUM,
             field_name="gb_used",
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        metric = repo.get_by_code("storage_gb")
+        metric = repo.get_by_code("storage_gb", DEFAULT_ORG_ID)
         assert metric is not None
         assert metric.code == "storage_gb"
 
-        not_found = repo.get_by_code("nonexistent")
+        not_found = repo.get_by_code("nonexistent", DEFAULT_ORG_ID)
         assert not_found is None
 
     def test_code_exists(self, db_session):
@@ -167,10 +168,10 @@ class TestBillableMetricRepository:
             name="Exists Test",
             aggregation_type=AggregationType.COUNT,
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        assert repo.code_exists("exists_test") is True
-        assert repo.code_exists("not_exists") is False
+        assert repo.code_exists("exists_test", DEFAULT_ORG_ID) is True
+        assert repo.code_exists("not_exists", DEFAULT_ORG_ID) is False
 
     def test_create_with_advanced_fields(self, db_session):
         """Test creating metric with advanced fields via repository."""
@@ -184,7 +185,7 @@ class TestBillableMetricRepository:
             rounding_function="round",
             rounding_precision=3,
         )
-        metric = repo.create(data)
+        metric = repo.create(data, DEFAULT_ORG_ID)
 
         assert metric.recurring is True
         assert metric.rounding_function == "round"
@@ -200,7 +201,7 @@ class TestBillableMetricRepository:
             aggregation_type=AggregationType.CUSTOM,
             expression="sum(amount)",
         )
-        metric = repo.create(data)
+        metric = repo.create(data, DEFAULT_ORG_ID)
 
         assert metric.expression == "sum(amount)"
 

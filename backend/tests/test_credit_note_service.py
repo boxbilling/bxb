@@ -21,6 +21,7 @@ from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
 from app.services.credit_note_service import CreditNoteService
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -44,7 +45,8 @@ def customer(db_session):
             external_id=f"cn_svc_test_{uuid4()}",
             name="CreditNote Service Test Customer",
             email="creditnoteservice@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -53,7 +55,8 @@ def plan(db_session):
     """Create a test plan."""
     repo = PlanRepository(db_session)
     return repo.create(
-        PlanCreate(code=f"cn_svc_plan_{uuid4()}", name="CN Service Test Plan", interval="monthly")
+        PlanCreate(code=f"cn_svc_plan_{uuid4()}", name="CN Service Test Plan", interval="monthly"),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -66,7 +69,8 @@ def subscription(db_session, customer, plan):
             external_id=f"cn_svc_sub_{uuid4()}",
             customer_id=customer.id,
             plan_id=plan.id,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 

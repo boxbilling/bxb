@@ -20,6 +20,7 @@ from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.tax import TaxCreate
 from app.services.tax_service import TaxCalculationResult, TaxCalculationService
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -51,7 +52,8 @@ def customer(db_session):
             external_id=f"tax_test_cust_{uuid4()}",
             name="Tax Test Customer",
             email="taxtestcust@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -64,7 +66,8 @@ def vat_tax(db_session):
             name="VAT 20%",
             rate=Decimal("0.2000"),
             description="Standard VAT",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -76,7 +79,8 @@ def sales_tax(db_session):
             code="SALES_TAX",
             name="Sales Tax 8%",
             rate=Decimal("0.0800"),
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -89,7 +93,8 @@ def org_tax(db_session):
             name="Organization Tax",
             rate=Decimal("0.1000"),
             applied_to_organization=True,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -562,7 +567,7 @@ class TestTaxCalculationService:
         # Delete the tax (clear applied taxes first to avoid FK constraint)
         applied_repo.delete_by_id(applied.id)
         tax_repo = TaxRepository(db_session)
-        tax_repo.delete("VAT_20")
+        tax_repo.delete("VAT_20", DEFAULT_ORG_ID)
 
         # Re-create applied tax with a stale tax_id
         stale_applied = applied_repo.create(

@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.applied_tax import AppliedTax
+from app.models.customer import DEFAULT_ORGANIZATION_ID
 from app.models.tax import Tax
 from app.repositories.applied_tax_repository import AppliedTaxRepository
 from app.repositories.fee_repository import FeeRepository
@@ -37,6 +38,7 @@ class TaxCalculationService:
         customer_id: UUID,
         plan_id: UUID | None = None,
         charge_id: UUID | None = None,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> list[Tax]:
         """Determine which taxes apply by checking hierarchy.
 
@@ -61,7 +63,7 @@ class TaxCalculationService:
             return self._resolve_taxes(applied)
 
         # Fall back to organization defaults
-        return self.tax_repo.get_organization_defaults()
+        return self.tax_repo.get_organization_defaults(organization_id)
 
     def calculate_tax(
         self,
@@ -138,9 +140,10 @@ class TaxCalculationService:
         tax_code: str,
         taxable_type: str,
         taxable_id: UUID,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> AppliedTax:
         """Apply a tax to any entity by code."""
-        tax = self.tax_repo.get_by_code(tax_code)
+        tax = self.tax_repo.get_by_code(tax_code, organization_id)
         if not tax:
             raise ValueError(f"Tax '{tax_code}' not found")
 
@@ -156,9 +159,10 @@ class TaxCalculationService:
         tax_code: str,
         taxable_type: str,
         taxable_id: UUID,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> bool:
         """Remove a tax from an entity by code."""
-        tax = self.tax_repo.get_by_code(tax_code)
+        tax = self.tax_repo.get_by_code(tax_code, organization_id)
         if not tax:
             raise ValueError(f"Tax '{tax_code}' not found")
 

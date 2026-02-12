@@ -28,6 +28,7 @@ from app.services.payment_provider import (
     WebhookResult,
     get_payment_provider,
 )
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -57,7 +58,8 @@ def customer(db_session):
             external_id=f"pay_test_cust_{uuid4()}",
             name="Payment Test Customer",
             email="payment@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -70,7 +72,8 @@ def plan(db_session):
             code=f"pay_test_plan_{uuid4()}",
             name="Payment Test Plan",
             interval="monthly",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -83,7 +86,8 @@ def subscription(db_session, customer, plan):
             external_id=f"pay_test_sub_{uuid4()}",
             customer_id=customer.id,
             plan_id=plan.id,
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 

@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.event import Event
 from app.repositories.billable_metric_repository import BillableMetricRepository
@@ -18,10 +19,10 @@ from app.schemas.event import (
 router = APIRouter()
 
 
-def validate_billable_metric_code(code: str, db: Session) -> None:
+def validate_billable_metric_code(code: str, db: Session, organization_id: UUID) -> None:
     """Validate that the billable metric code exists."""
     metric_repo = BillableMetricRepository(db)
-    if not metric_repo.code_exists(code):
+    if not metric_repo.code_exists(code, organization_id):
         raise HTTPException(
             status_code=422,
             detail=f"Billable metric with code '{code}' does not exist",
@@ -37,10 +38,12 @@ async def list_events(
     from_timestamp: datetime | None = None,
     to_timestamp: datetime | None = None,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> list[Event]:
     """List events with optional filters."""
     repo = EventRepository(db)
     return repo.get_all(
+        organization_id,
         skip=skip,
         limit=limit,
         external_customer_id=external_customer_id,
@@ -54,10 +57,11 @@ async def list_events(
 async def get_event(
     event_id: UUID,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Event:
     """Get an event by ID."""
     repo = EventRepository(db)
-    event = repo.get_by_id(event_id)
+    event = repo.get_by_id(event_id, organization_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
@@ -67,16 +71,17 @@ async def get_event(
 async def create_event(
     data: EventCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> Event:
     """Ingest a single event.
 
     If an event with the same transaction_id already exists, returns the existing event.
     This provides idempotent event ingestion.
     """
-    validate_billable_metric_code(data.code, db)
+    validate_billable_metric_code(data.code, db, organization_id)
 
     repo = EventRepository(db)
-    event, is_new = repo.create_or_get_existing(data)
+    event, is_new = repo.create_or_get_existing(data, organization_id)
     return event
 
 
@@ -84,6 +89,7 @@ async def create_event(
 async def create_events_batch(
     data: EventBatchCreate,
     db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
 ) -> EventBatchResponse:
     """Ingest a batch of events (up to 100).
 
@@ -93,10 +99,10 @@ async def create_events_batch(
     # Validate all billable metric codes upfront
     unique_codes = {event.code for event in data.events}
     for code in unique_codes:
-        validate_billable_metric_code(code, db)
+        validate_billable_metric_code(code, db, organization_id)
 
     repo = EventRepository(db)
-    events, ingested, duplicates = repo.create_batch(data.events)
+    events, ingested, duplicates = repo.create_batch(data.events, organization_id)
 
     return EventBatchResponse(
         ingested=ingested,

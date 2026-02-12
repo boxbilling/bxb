@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.applied_add_on import AppliedAddOn
+from app.models.customer import DEFAULT_ORGANIZATION_ID
 from app.models.fee import FeeType
 from app.models.invoice import Invoice
 from app.repositories.add_on_repository import AddOnRepository
@@ -34,6 +35,7 @@ class AddOnService:
         add_on_code: str,
         customer_id: UUID,
         amount_override: Decimal | None = None,
+        organization_id: UUID = DEFAULT_ORGANIZATION_ID,
     ) -> tuple[AppliedAddOn, Invoice]:
         """Apply an add-on to a customer, creating an AppliedAddOn and a one-off Invoice with Fee.
 
@@ -49,7 +51,7 @@ class AddOnService:
             ValueError: If validation fails.
         """
         # Validate add-on exists
-        add_on = self.add_on_repo.get_by_code(add_on_code)
+        add_on = self.add_on_repo.get_by_code(add_on_code, organization_id)
         if not add_on:
             raise ValueError(f"Add-on '{add_on_code}' not found")
 

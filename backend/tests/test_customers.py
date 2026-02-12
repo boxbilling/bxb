@@ -10,6 +10,7 @@ from app.main import app
 from app.models.customer import Customer, UUIDType, generate_uuid, utc_now
 from app.repositories.customer_repository import CustomerRepository
 from app.schemas.customer import CustomerCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -128,14 +129,14 @@ class TestCustomerRepository:
             external_id="ext-123",
             name="Test Customer",
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        customer = repo.get_by_external_id("ext-123")
+        customer = repo.get_by_external_id("ext-123", DEFAULT_ORG_ID)
         assert customer is not None
         assert customer.external_id == "ext-123"
 
         # Test not found
-        not_found = repo.get_by_external_id("nonexistent")
+        not_found = repo.get_by_external_id("nonexistent", DEFAULT_ORG_ID)
         assert not_found is None
 
     def test_external_id_exists(self, db_session):
@@ -145,10 +146,10 @@ class TestCustomerRepository:
             external_id="exists-123",
             name="Test Customer",
         )
-        repo.create(data)
+        repo.create(data, DEFAULT_ORG_ID)
 
-        assert repo.external_id_exists("exists-123") is True
-        assert repo.external_id_exists("not-exists") is False
+        assert repo.external_id_exists("exists-123", DEFAULT_ORG_ID) is True
+        assert repo.external_id_exists("not-exists", DEFAULT_ORG_ID) is False
 
 
 class TestCustomersAPI:

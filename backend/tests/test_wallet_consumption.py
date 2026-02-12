@@ -17,6 +17,7 @@ from app.repositories.wallet_repository import WalletRepository
 from app.repositories.wallet_transaction_repository import WalletTransactionRepository
 from app.schemas.customer import CustomerCreate
 from app.services.wallet_service import ConsumptionResult, WalletService
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -40,7 +41,8 @@ def customer(db_session):
             external_id=f"consume_test_{uuid4()}",
             name="Consumption Test Customer",
             email="consume@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -52,7 +54,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"consume_test2_{uuid4()}",
             name="Consumption Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -476,14 +479,16 @@ class TestConsumptionTransactions:
         from app.schemas.subscription import SubscriptionCreate
 
         plan = PlanRepository(db_session).create(
-            PlanCreate(code=f"wc_plan_{uuid4()}", name="WC Plan", interval="monthly")
+            PlanCreate(code=f"wc_plan_{uuid4()}", name="WC Plan", interval="monthly"),
+            DEFAULT_ORG_ID,
         )
         sub = SubscriptionRepository(db_session).create(
             SubscriptionCreate(
                 external_id=f"wc_sub_{uuid4()}",
                 customer_id=customer.id,
                 plan_id=plan.id,
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         now = datetime.now(UTC)
         invoice = InvoiceRepository(db_session).create(

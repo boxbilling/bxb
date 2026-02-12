@@ -22,6 +22,7 @@ from app.schemas.add_on import (
     ApplyAddOnRequest,
 )
 from app.schemas.customer import CustomerCreate
+from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture
@@ -51,7 +52,8 @@ def customer(db_session):
             external_id=f"addon_test_cust_{uuid4()}",
             name="AddOn Test Customer",
             email="addon@test.com",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -63,7 +65,8 @@ def customer2(db_session):
         CustomerCreate(
             external_id=f"addon_test_cust2_{uuid4()}",
             name="AddOn Test Customer 2",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -78,7 +81,8 @@ def basic_add_on(db_session):
             description="One-time setup fee",
             amount_cents=Decimal("5000.0000"),
             amount_currency="USD",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -94,7 +98,8 @@ def premium_add_on(db_session):
             amount_cents=Decimal("9999.0000"),
             amount_currency="USD",
             invoice_display_name="Premium Support Package",
-        )
+        ),
+        DEFAULT_ORG_ID,
     )
 
 
@@ -195,7 +200,8 @@ class TestAddOnRepository:
                 description="A new fee",
                 amount_cents=Decimal("1500.0000"),
                 amount_currency="USD",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert add_on.id is not None
         assert add_on.code == "NEW_FEE"
@@ -214,7 +220,8 @@ class TestAddOnRepository:
                 name="Display Test",
                 amount_cents=Decimal("2000.0000"),
                 invoice_display_name="Custom Invoice Line",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert add_on.invoice_display_name == "Custom Invoice Line"
 
@@ -227,7 +234,8 @@ class TestAddOnRepository:
                 name="Euro Fee",
                 amount_cents=Decimal("1000.0000"),
                 amount_currency="EUR",
-            )
+            ),
+            DEFAULT_ORG_ID,
         )
         assert add_on.amount_currency == "EUR"
 
@@ -239,6 +247,15 @@ class TestAddOnRepository:
         assert fetched.id == basic_add_on.id
         assert fetched.code == "SETUP_FEE"
 
+    def test_get_by_id_with_org_filter(self, db_session, basic_add_on):
+        """Test getting an add-on by ID scoped to an organization."""
+        repo = AddOnRepository(db_session)
+        fetched = repo.get_by_id(basic_add_on.id, organization_id=DEFAULT_ORG_ID)
+        assert fetched is not None
+        assert fetched.id == basic_add_on.id
+        # Wrong org returns None
+        assert repo.get_by_id(basic_add_on.id, organization_id=uuid4()) is None
+
     def test_get_by_id_not_found(self, db_session):
         """Test getting a non-existent add-on."""
         repo = AddOnRepository(db_session)
@@ -247,7 +264,7 @@ class TestAddOnRepository:
     def test_get_by_code(self, db_session, basic_add_on):
         """Test getting an add-on by code."""
         repo = AddOnRepository(db_session)
-        fetched = repo.get_by_code("SETUP_FEE")
+        fetched = repo.get_by_code("SETUP_FEE", DEFAULT_ORG_ID)
         assert fetched is not None
         assert fetched.code == "SETUP_FEE"
         assert fetched.id == basic_add_on.id
@@ -255,12 +272,12 @@ class TestAddOnRepository:
     def test_get_by_code_not_found(self, db_session):
         """Test getting a non-existent add-on by code."""
         repo = AddOnRepository(db_session)
-        assert repo.get_by_code("NONEXISTENT") is None
+        assert repo.get_by_code("NONEXISTENT", DEFAULT_ORG_ID) is None
 
     def test_get_all(self, db_session, basic_add_on, premium_add_on):
         """Test getting all add-ons."""
         repo = AddOnRepository(db_session)
-        add_ons = repo.get_all()
+        add_ons = repo.get_all(DEFAULT_ORG_ID)
         assert len(add_ons) == 2
 
     def test_get_all_pagination(self, db_session):
@@ -272,20 +289,21 @@ class TestAddOnRepository:
                     code=f"PAGE{i}",
                     name=f"Page {i}",
                     amount_cents=Decimal("100.0000"),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
-        result = repo.get_all(skip=2, limit=2)
+        result = repo.get_all(DEFAULT_ORG_ID, skip=2, limit=2)
         assert len(result) == 2
 
     def test_get_all_empty(self, db_session):
         """Test getting all add-ons when none exist."""
         repo = AddOnRepository(db_session)
-        assert repo.get_all() == []
+        assert repo.get_all(DEFAULT_ORG_ID) == []
 
     def test_update(self, db_session, basic_add_on):
         """Test updating an add-on."""
         repo = AddOnRepository(db_session)
-        updated = repo.update("SETUP_FEE", AddOnUpdate(name="Updated Name"))
+        updated = repo.update("SETUP_FEE", AddOnUpdate(name="Updated Name"), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.name == "Updated Name"
         assert updated.code == "SETUP_FEE"
@@ -296,6 +314,7 @@ class TestAddOnRepository:
         updated = repo.update(
             "SETUP_FEE",
             AddOnUpdate(amount_cents=Decimal("7500.0000"), amount_currency="EUR"),
+            DEFAULT_ORG_ID,
         )
         assert updated is not None
         assert updated.amount_cents == Decimal("7500.0000")
@@ -304,32 +323,32 @@ class TestAddOnRepository:
     def test_update_description(self, db_session, basic_add_on):
         """Test updating add-on description."""
         repo = AddOnRepository(db_session)
-        updated = repo.update("SETUP_FEE", AddOnUpdate(description="New description"))
+        updated = repo.update("SETUP_FEE", AddOnUpdate(description="New description"), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.description == "New description"
 
     def test_update_invoice_display_name(self, db_session, basic_add_on):
         """Test updating add-on invoice display name."""
         repo = AddOnRepository(db_session)
-        updated = repo.update("SETUP_FEE", AddOnUpdate(invoice_display_name="New Display"))
+        updated = repo.update("SETUP_FEE", AddOnUpdate(invoice_display_name="New Display"), DEFAULT_ORG_ID)
         assert updated is not None
         assert updated.invoice_display_name == "New Display"
 
     def test_update_not_found(self, db_session):
         """Test updating a non-existent add-on."""
         repo = AddOnRepository(db_session)
-        assert repo.update("NONEXISTENT", AddOnUpdate(name="nope")) is None
+        assert repo.update("NONEXISTENT", AddOnUpdate(name="nope"), DEFAULT_ORG_ID) is None
 
     def test_delete(self, db_session, basic_add_on):
         """Test deleting an add-on."""
         repo = AddOnRepository(db_session)
-        assert repo.delete("SETUP_FEE") is True
-        assert repo.get_by_code("SETUP_FEE") is None
+        assert repo.delete("SETUP_FEE", DEFAULT_ORG_ID) is True
+        assert repo.get_by_code("SETUP_FEE", DEFAULT_ORG_ID) is None
 
     def test_delete_not_found(self, db_session):
         """Test deleting a non-existent add-on."""
         repo = AddOnRepository(db_session)
-        assert repo.delete("NONEXISTENT") is False
+        assert repo.delete("NONEXISTENT", DEFAULT_ORG_ID) is False
 
 
 class TestAppliedAddOnRepository:
@@ -455,7 +474,8 @@ class TestAppliedAddOnRepository:
                     code=f"PAG{i}",
                     name=f"Pag {i}",
                     amount_cents=Decimal("100.0000"),
-                )
+                ),
+                DEFAULT_ORG_ID,
             )
             repo.create(
                 add_on_id=a.id,
@@ -749,7 +769,9 @@ class TestAddOnAPI:
                 code=f"APAG{i}",
                 name=f"Page {i}",
                 amount_cents=Decimal("100"),
-            ))
+            ),
+            DEFAULT_ORG_ID,
+            )
         response = client.get("/v1/add_ons/?skip=2&limit=2")
         assert response.status_code == 200
         assert len(response.json()) == 2
