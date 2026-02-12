@@ -11,6 +11,7 @@ from app.models.invoice import Invoice
 from app.models.subscription import SubscriptionStatus
 from app.repositories.charge_filter_repository import ChargeFilterRepository
 from app.repositories.charge_repository import ChargeRepository
+from app.repositories.commitment_repository import CommitmentRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.subscription_repository import SubscriptionRepository
@@ -30,6 +31,7 @@ class InvoiceGenerationService:
         self.subscription_repo = SubscriptionRepository(db)
         self.charge_repo = ChargeRepository(db)
         self.charge_filter_repo = ChargeFilterRepository(db)
+        self.commitment_repo = CommitmentRepository(db)
         self.invoice_repo = InvoiceRepository(db)
         self.fee_repo = FeeRepository(db)
         self.usage_service = UsageAggregationService(db)
@@ -102,6 +104,15 @@ class InvoiceGenerationService:
                 if fee_data:
                     fee_creates.append(fee_data)
 
+        # Generate commitment true-up fees
+        commitment_fees = self._generate_commitment_true_up_fees(
+            plan_id=plan_id,
+            customer_id=customer_id,
+            subscription_id=subscription_id,
+            charge_fees=fee_creates,
+        )
+        fee_creates.extend(commitment_fees)
+
         # Build line_items for backward compatibility (before invoice creation)
         line_items = [
             InvoiceLineItem(
@@ -169,6 +180,68 @@ class InvoiceGenerationService:
             self.db.refresh(invoice)
 
         return invoice
+
+    def _generate_commitment_true_up_fees(
+        self,
+        plan_id: UUID,
+        customer_id: UUID,
+        subscription_id: UUID,
+        charge_fees: list[FeeCreate],
+    ) -> list[FeeCreate]:
+        """Generate true-up fees for minimum commitments.
+
+        For each minimum_commitment on the plan, if total charge fees are less
+        than the commitment amount, create a true-up fee for the difference.
+
+        Args:
+            plan_id: The plan to check commitments for
+            customer_id: The customer ID for the fee
+            subscription_id: The subscription ID for the fee
+            charge_fees: The already-calculated charge fees
+
+        Returns:
+            List of commitment true-up FeeCreate objects (may be empty)
+        """
+        commitments = self.commitment_repo.get_by_plan_id(plan_id)
+        if not commitments:
+            return []
+
+        total_charge_amount = sum(fc.amount_cents for fc in charge_fees)
+
+        true_up_fees: list[FeeCreate] = []
+        for commitment in commitments:
+            if commitment.commitment_type != "minimum_commitment":
+                continue
+
+            commitment_amount = Decimal(str(commitment.amount_cents))
+            if total_charge_amount >= commitment_amount:
+                continue
+
+            true_up_amount = commitment_amount - total_charge_amount
+            description = (
+                str(commitment.invoice_display_name)
+                if commitment.invoice_display_name
+                else "Minimum commitment true-up"
+            )
+            true_up_fees.append(
+                FeeCreate(
+                    customer_id=customer_id,
+                    subscription_id=subscription_id,
+                    charge_id=None,
+                    commitment_id=UUID(str(commitment.id)),
+                    fee_type=FeeType.COMMITMENT,
+                    amount_cents=true_up_amount,
+                    total_amount_cents=true_up_amount,
+                    units=Decimal("1"),
+                    events_count=0,
+                    unit_amount_cents=true_up_amount,
+                    description=description,
+                    metric_code=None,
+                    properties={},
+                )
+            )
+
+        return true_up_fees
 
     def _calculate_charge_fee(
         self,

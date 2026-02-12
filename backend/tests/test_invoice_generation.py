@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.models.applied_coupon import AppliedCouponStatus
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
+from app.models.commitment import Commitment
 from app.models.coupon import CouponFrequency, CouponType
 from app.models.customer import Customer
 from app.models.event import Event
@@ -4077,3 +4078,270 @@ class TestFilteredChargeCalculation:
                 billing_period_end=end,
             )
         assert fees == []
+
+
+class TestCommitmentTrueUp:
+    """Test commitment true-up fee generation during invoice generation."""
+
+    def test_true_up_fee_when_usage_below_commitment(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """When total fees are below the commitment amount, a true-up fee is created."""
+        start, end = billing_period
+        # Create a charge that will produce $25 in fees (10 events * $2.50)
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "2.50"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create a commitment for $100 — usage ($25) is below commitment
+        commitment = Commitment(
+            plan_id=active_subscription.plan_id,
+            commitment_type="minimum_commitment",
+            amount_cents=Decimal("100"),
+            invoice_display_name="Minimum Monthly Commitment",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(commitment)
+        db_session.commit()
+        db_session.refresh(commitment)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        # Invoice should have 2 line items: charge fee + true-up fee
+        assert len(invoice.line_items) == 2
+
+        # Total should be the commitment amount ($100)
+        assert invoice.total == Decimal("100")
+
+        # Verify the true-up fee was created
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        commitment_fees = [f for f in fees if f.fee_type == FeeType.COMMITMENT.value]
+        assert len(commitment_fees) == 1
+        assert commitment_fees[0].amount_cents == Decimal("75")  # 100 - 25
+        assert commitment_fees[0].commitment_id == commitment.id
+        assert commitment_fees[0].description == "Minimum Monthly Commitment"
+        assert commitment_fees[0].charge_id is None
+
+    def test_no_true_up_fee_when_usage_above_commitment(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """When total fees exceed the commitment amount, no true-up fee is created."""
+        start, end = billing_period
+        # Create a charge that will produce $250 in fees (10 events * $25)
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "25.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create a commitment for $100 — usage ($250) exceeds commitment
+        commitment = Commitment(
+            plan_id=active_subscription.plan_id,
+            commitment_type="minimum_commitment",
+            amount_cents=Decimal("100"),
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(commitment)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        # Invoice should have only 1 line item (the charge fee, no true-up)
+        assert len(invoice.line_items) == 1
+        assert invoice.total == Decimal("250")
+
+        # Verify no commitment fees were created
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        commitment_fees = [f for f in fees if f.fee_type == FeeType.COMMITMENT.value]
+        assert len(commitment_fees) == 0
+
+    def test_no_true_up_fee_when_usage_exactly_at_commitment(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """When total fees exactly match the commitment amount, no true-up fee is created."""
+        start, end = billing_period
+        # Create a charge that will produce $100 in fees (10 events * $10)
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create a commitment for exactly $100
+        commitment = Commitment(
+            plan_id=active_subscription.plan_id,
+            commitment_type="minimum_commitment",
+            amount_cents=Decimal("100"),
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(commitment)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert len(invoice.line_items) == 1
+        assert invoice.total == Decimal("100")
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        commitment_fees = [f for f in fees if f.fee_type == FeeType.COMMITMENT.value]
+        assert len(commitment_fees) == 0
+
+    def test_true_up_fee_default_description(
+        self, db_session, active_subscription, billing_period, customer
+    ):
+        """When commitment has no invoice_display_name, default description is used."""
+        start, end = billing_period
+
+        # Create commitment with no display name, no charges (so full true-up)
+        commitment = Commitment(
+            plan_id=active_subscription.plan_id,
+            commitment_type="minimum_commitment",
+            amount_cents=Decimal("500"),
+            invoice_display_name=None,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(commitment)
+        db_session.commit()
+        db_session.refresh(commitment)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert invoice.total == Decimal("500")
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        commitment_fees = [f for f in fees if f.fee_type == FeeType.COMMITMENT.value]
+        assert len(commitment_fees) == 1
+        assert commitment_fees[0].description == "Minimum commitment true-up"
+        assert commitment_fees[0].amount_cents == Decimal("500")
+
+    def test_no_commitments_on_plan(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """When plan has no commitments, invoice generation works normally."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=4)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert len(invoice.line_items) == 1
+        assert invoice.total == Decimal("20")
+
+    def test_true_up_with_no_charge_fees(
+        self, db_session, active_subscription, billing_period, customer
+    ):
+        """When there are no charge fees but a commitment exists, full commitment is the true-up."""
+        start, end = billing_period
+
+        commitment = Commitment(
+            plan_id=active_subscription.plan_id,
+            commitment_type="minimum_commitment",
+            amount_cents=Decimal("1000"),
+            invoice_display_name="Enterprise Minimum",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(commitment)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert len(invoice.line_items) == 1
+        assert invoice.total == Decimal("1000")
+
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].fee_type == FeeType.COMMITMENT.value
+        assert fees[0].amount_cents == Decimal("1000")
+        assert fees[0].description == "Enterprise Minimum"
+
+    def test_non_minimum_commitment_type_ignored(
+        self, db_session, active_subscription, billing_period, customer
+    ):
+        """Only minimum_commitment type triggers true-up; other types are ignored."""
+        start, end = billing_period
+
+        commitment = Commitment(
+            plan_id=active_subscription.plan_id,
+            commitment_type="some_other_type",
+            amount_cents=Decimal("1000"),
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(commitment)
+        db_session.commit()
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert invoice.total == Decimal("0")
+        assert len(invoice.line_items) == 0
