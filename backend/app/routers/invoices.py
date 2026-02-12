@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,6 +8,7 @@ from app.core.database import get_db
 from app.models.invoice import Invoice, InvoiceStatus
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
+from app.services.wallet_service import WalletService
 
 router = APIRouter()
 
@@ -63,12 +65,36 @@ async def finalize_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
 ) -> Invoice:
-    """Finalize a draft invoice."""
+    """Finalize a draft invoice and apply wallet credits if available."""
     repo = InvoiceRepository(db)
     try:
         invoice = repo.finalize(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
+
+        # Apply wallet credits after finalization
+        invoice_total = Decimal(str(invoice.total))
+        if invoice_total > 0:
+            wallet_service = WalletService(db)
+            result = wallet_service.consume_credits(
+                customer_id=invoice.customer_id,
+                amount_cents=invoice_total,
+                invoice_id=invoice.id,
+            )
+
+            if result.total_consumed > 0:
+                invoice.prepaid_credit_amount = result.total_consumed  # type: ignore[assignment]
+
+                if result.remaining_amount <= 0:
+                    # Wallet covers full amount — mark as paid
+                    invoice.status = InvoiceStatus.PAID.value  # type: ignore[assignment]
+                    from datetime import datetime
+
+                    invoice.paid_at = datetime.now()  # type: ignore[assignment]
+
+                db.commit()
+                db.refresh(invoice)
+
         return invoice
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None

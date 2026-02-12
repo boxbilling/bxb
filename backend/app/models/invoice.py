@@ -34,6 +34,7 @@ class Invoice(Base):
     subtotal = Column(Numeric(12, 4), nullable=False, default=0)
     tax_amount = Column(Numeric(12, 4), nullable=False, default=0)
     total = Column(Numeric(12, 4), nullable=False, default=0)
+    prepaid_credit_amount = Column(Numeric(12, 4), nullable=False, default=0)
 
     currency = Column(String(3), nullable=False, default="USD")
 
