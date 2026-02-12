@@ -1480,6 +1480,344 @@ class TestGracePeriodInvoiceDates:
         assert invoice.due_date is None
 
 
+class TestBillingTimeLifecycleInteractions:
+    """Test that billing_time (calendar vs anniversary) correctly affects lifecycle operations."""
+
+    def test_upgrade_anniversary_billing_calculates_correct_period(self, db_session):
+        """Test upgrade with anniversary billing uses subscription start date for period calc."""
+        customer = _create_customer(db_session, "cust_bt_up")
+        plan_a = _create_plan(db_session, "plan_bt_up_a", 10000)
+        plan_b = _create_plan(db_session, "plan_bt_up_b", 20000)
+        sub = _create_active_subscription(
+            db_session, customer, plan_a, "sub_bt_up", pay_in_advance=True
+        )
+        sub.billing_time = "anniversary"
+        db_session.commit()
+        db_session.refresh(sub)
+
+        # Create existing invoice for credit note
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.upgrade_plan(sub.id, plan_b.id)
+
+        db_session.refresh(sub)
+        assert str(sub.plan_id) == str(plan_b.id)
+        assert sub.billing_time == "anniversary"
+
+        # Should have credit note
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 1
+
+    def test_terminate_anniversary_billing_prorates_correctly(self, db_session):
+        """Test termination with anniversary billing generates correct prorated invoice."""
+        customer = _create_customer(db_session, "cust_bt_term")
+        plan = _create_plan(db_session, "plan_bt_term", 30000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_bt_term"
+        )
+        sub.billing_time = "anniversary"
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_invoice")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        # Prorated amount should be less than full plan amount
+        assert invoices[0].total < 30000
+
+    def test_downgrade_end_of_period_anniversary_billing(self, db_session):
+        """Test end-of-period downgrade with anniversary billing tracks correctly."""
+        customer = _create_customer(db_session, "cust_bt_dg")
+        plan_a = _create_plan(db_session, "plan_bt_dg_a", 20000)
+        plan_b = _create_plan(db_session, "plan_bt_dg_b", 5000)
+        sub = _create_active_subscription(
+            db_session, customer, plan_a, "sub_bt_dg"
+        )
+        sub.billing_time = "anniversary"
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        service.downgrade_plan(sub.id, plan_b.id, effective_at="end_of_period")
+
+        db_session.refresh(sub)
+        assert str(sub.plan_id) == str(plan_a.id)  # Not changed yet
+        assert sub.downgraded_at is not None
+        assert str(sub.previous_plan_id) == str(plan_b.id)  # Target plan
+        assert sub.billing_time == "anniversary"
+
+
+class TestPayInAdvanceInvoiceGeneration:
+    """Test that pay_in_advance correctly generates invoices at period start."""
+
+    def test_pay_in_advance_activation_invoice_has_full_amount(self, db_session):
+        """Test pay_in_advance activation generates invoice with full plan amount."""
+        customer = _create_customer(db_session, "cust_pia_full")
+        plan = _create_plan(db_session, "plan_pia_full", 25000)
+        sub = _create_pending_subscription(
+            db_session, customer, plan, "sub_pia_full", pay_in_advance=True
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.activate_pending_subscription(sub.id)
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        assert invoices[0].total == Decimal("25000")
+        # Invoice should have proper billing period
+        assert invoices[0].billing_period_start is not None
+        assert invoices[0].billing_period_end is not None
+
+    def test_pay_in_advance_upgrade_generates_both_credit_and_invoice(self, db_session):
+        """Test upgrade with pay_in_advance generates credit note for old + invoice for new."""
+        customer = _create_customer(db_session, "cust_pia_upgrade")
+        plan_a = _create_plan(db_session, "plan_pia_upg_a", 10000)
+        plan_b = _create_plan(db_session, "plan_pia_upg_b", 30000)
+        sub = _create_active_subscription(
+            db_session, customer, plan_a, "sub_pia_upgrade", pay_in_advance=True
+        )
+
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.upgrade_plan(sub.id, plan_b.id)
+
+        # Verify credit note for old plan
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 1
+        assert "plan change" in credit_notes[0].description.lower()
+
+        # Verify prorated invoice for new plan
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 2  # original + prorated
+
+    def test_no_pay_in_advance_upgrade_skips_financials(self, db_session):
+        """Test upgrade without pay_in_advance does not generate credit notes or invoices."""
+        customer = _create_customer(db_session, "cust_nopia_up")
+        plan_a = _create_plan(db_session, "plan_nopia_a", 10000)
+        plan_b = _create_plan(db_session, "plan_nopia_b", 20000)
+        sub = _create_active_subscription(
+            db_session, customer, plan_a, "sub_nopia_up", pay_in_advance=False
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.upgrade_plan(sub.id, plan_b.id)
+
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 0
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+
+class TestTrialActivationAndProcessing:
+    """Test trial period lifecycle: activation with trial, and trial end processing."""
+
+    def test_activate_with_trial_sets_active_but_no_invoice(self, db_session):
+        """Test activating subscription with trial: becomes active but no invoice generated."""
+        customer = _create_customer(db_session, "cust_trial_act")
+        plan = _create_plan(db_session, "plan_trial_act", 20000)
+        sub = _create_pending_subscription(
+            db_session,
+            customer,
+            plan,
+            "sub_trial_act",
+            pay_in_advance=True,
+            trial_period_days=14,
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.activate_pending_subscription(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.ACTIVE.value
+        assert sub.started_at is not None
+        # No invoice during trial even with pay_in_advance
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 0
+
+    def test_trial_end_processing_generates_invoice_pay_in_advance(self, db_session):
+        """Test processing trial end with pay_in_advance generates first invoice."""
+        customer = _create_customer(db_session, "cust_trial_end_pia")
+        plan = _create_plan(db_session, "plan_trial_end_pia", 15000)
+        sub = _create_active_subscription(
+            db_session,
+            customer,
+            plan,
+            "sub_trial_end_pia",
+            pay_in_advance=True,
+            trial_period_days=14,
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.process_trial_end(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.trial_ended_at is not None
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        # Invoice should have proper description
+        assert "post-trial" in invoices[0].line_items[0]["description"].lower()
+
+    def test_trial_end_preserves_original_trial_ended_at(self, db_session):
+        """Test calling process_trial_end twice preserves the original trial_ended_at timestamp."""
+        customer = _create_customer(db_session, "cust_trial_idem")
+        plan = _create_plan(db_session, "plan_trial_idem", 10000)
+        sub = _create_active_subscription(
+            db_session,
+            customer,
+            plan,
+            "sub_trial_idem",
+            trial_period_days=14,
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.process_trial_end(sub.id)
+
+        db_session.refresh(sub)
+        original_ended_at = sub.trial_ended_at
+        assert original_ended_at is not None
+
+        # Second call should not overwrite trial_ended_at
+        service.process_trial_end(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.trial_ended_at.replace(tzinfo=None) == original_ended_at.replace(tzinfo=None)
+
+
+class TestTerminationActionsComprehensive:
+    """Comprehensive tests for all three termination actions with varied scenarios."""
+
+    def test_terminate_generate_invoice_prorated_amount(self, db_session):
+        """Test termination with generate_invoice creates prorated final invoice."""
+        customer = _create_customer(db_session, "cust_term_prorate")
+        plan = _create_plan(db_session, "plan_term_prorate", 30000)  # $300/month
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_prorate"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_invoice")
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+        # Prorated amount should be less than full amount
+        assert 0 < invoices[0].total < 30000
+
+    def test_cancel_generate_credit_note_requires_invoice(self, db_session):
+        """Test cancel with generate_credit_note only creates CN when invoice exists."""
+        customer = _create_customer(db_session, "cust_can_cn_req")
+        plan = _create_plan(db_session, "plan_can_cn_req", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_cn_req"
+        )
+
+        # No existing invoice
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "generate_credit_note")
+
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 0
+
+    def test_terminate_credit_note_with_finalized_invoice(self, db_session):
+        """Test terminate with credit_note works when only finalized invoice exists."""
+        customer = _create_customer(db_session, "cust_term_cn_fin")
+        plan = _create_plan(db_session, "plan_term_cn_fin", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_term_cn_fin"
+        )
+
+        invoice_repo = InvoiceRepository(db_session)
+        from app.schemas.invoice import InvoiceCreate
+
+        invoice = invoice_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=sub.id,
+                billing_period_start=datetime.now(UTC) - timedelta(days=5),
+                billing_period_end=datetime.now(UTC) + timedelta(days=25),
+            )
+        )
+        invoice_repo.finalize(invoice.id)
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "generate_credit_note")
+
+        credit_notes = db_session.query(CreditNote).filter(
+            CreditNote.customer_id == customer.id
+        ).all()
+        assert len(credit_notes) == 1
+        assert credit_notes[0].total_amount_cents > 0
+
+    def test_cancel_default_action_generates_invoice(self, db_session):
+        """Test cancel with default action (generate_invoice) generates an invoice."""
+        customer = _create_customer(db_session, "cust_can_def")
+        plan = _create_plan(db_session, "plan_can_def", 10000)
+        sub = _create_active_subscription(
+            db_session, customer, plan, "sub_can_def"
+        )
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+
+        invoices = db_session.query(Invoice).filter(
+            Invoice.subscription_id == sub.id
+        ).all()
+        assert len(invoices) == 1
+
+
 class TestWebhookEventTypes:
     def test_new_event_types_in_list(self):
         """Test that new subscription lifecycle events are in WEBHOOK_EVENT_TYPES."""

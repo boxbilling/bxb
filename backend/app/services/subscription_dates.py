@@ -100,6 +100,10 @@ class SubscriptionDatesService:
         if anchor is None:
             anchor = subscription.created_at
 
+        # Ensure anchor is timezone-aware (SQLite may strip tz info)
+        if anchor.tzinfo is None:
+            anchor = anchor.replace(tzinfo=UTC)
+
         # Walk forward from anchor to find the period containing reference_date
         period_start = anchor.replace(hour=0, minute=0, second=0, microsecond=0)
         period_end = _add_interval(period_start, interval)
