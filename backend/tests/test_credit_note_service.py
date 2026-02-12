@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.models.credit_note import CreditNoteStatus, CreditStatus
 from app.models.fee import FeeType
 from app.repositories.credit_note_repository import CreditNoteRepository
@@ -21,14 +21,6 @@ from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
 from app.services.credit_note_service import CreditNoteService
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

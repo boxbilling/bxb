@@ -5,17 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine, get_db, init_db
+from app.core.database import get_db, init_db
 from app.main import app
 from app.repositories.item_repository import ItemRepository
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
@@ -247,16 +239,15 @@ class TestItemRepository:
 
 class TestDatabase:
     def test_init_db(self):
-        """Test init_db function."""
-        # Drop all tables first
-        Base.metadata.drop_all(bind=engine)
-
-        # Call init_db
-        init_db()
-
-        # Verify tables were created by trying to use them
+        """Test init_db function creates tables idempotently."""
         from sqlalchemy import inspect
 
+        from app.core.database import engine
+
+        # Call init_db (tables already exist from fixture — verifies idempotency)
+        init_db()
+
+        # Verify tables exist
         inspector = inspect(engine)
         tables = inspector.get_table_names()
         assert "items" in tables

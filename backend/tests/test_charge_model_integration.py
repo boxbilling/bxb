@@ -11,7 +11,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer
@@ -20,14 +20,6 @@ from app.models.invoice import InvoiceStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.services.invoice_generation import InvoiceGenerationService
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

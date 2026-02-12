@@ -7,21 +7,13 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.wallet import Wallet, WalletStatus
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas.customer import CustomerCreate
 from app.schemas.wallet import WalletCreate, WalletUpdate
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

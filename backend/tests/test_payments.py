@@ -8,7 +8,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.payment import PaymentProvider, PaymentStatus, generate_uuid, utc_now
 from app.repositories.customer_repository import CustomerRepository
@@ -28,14 +28,6 @@ from app.services.payment_provider import (
     WebhookResult,
     get_payment_provider,
 )
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

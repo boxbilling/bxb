@@ -125,7 +125,8 @@ This phase implements three tightly related billing features that are completely
     - `void_credit_note(credit_note_id)` — Set credit_status=voided, voided_at=now
     - `apply_credit_to_invoice(credit_note_id, invoice_id, amount)` — Deduct from balance_amount_cents, create Credit record linking credit note to invoice
 
-- [ ] Integrate coupon discounts into invoice generation:
+- [x] Integrate coupon discounts into invoice generation:
+  <!-- Completed: Added coupons_amount_cents column to Invoice model via migration (j0e2f3g4h5i6). Modified InvoiceGenerationService.generate_invoice() to call CouponApplicationService.calculate_coupon_discount() after fee calculation, subtract discount from total, and consume applied coupons (once→terminate, recurring→decrement, forever→no-op). Updated InvoiceResponse schema to include coupons_amount_cents. 10 integration tests added (fixed/percentage/capped/stacked/once/recurring/forever/zero-subtotal/no-coupons/API-response), 1109 total pass with 100% coverage. -->
   - Modify `backend/app/services/invoice_generation.py`:
     - After calculating all fees, call `CouponApplicationService.calculate_coupon_discount(customer_id, subtotal)`
     - Subtract discount from invoice total
@@ -133,7 +134,8 @@ This phase implements three tightly related billing features that are completely
     - Store discount breakdown in invoice metadata or as a Credit record
   - Update `backend/app/schemas/invoice.py` to include `coupons_amount_cents`
 
-- [ ] Write comprehensive tests for all three feature areas:
+- [x] Write comprehensive tests for all three feature areas:
+  <!-- Verified: All comprehensive tests already exist from prior implementation tasks. test_coupons.py (59 tests: model/repo/schema/API, fixed/percentage types, once/recurring/forever frequencies, expiration, reusable/single-use), test_add_ons.py (48 tests: model/repo/schema/API, apply to customer, fee creation), test_credit_notes.py (74 tests: model/repo/schema/API, finalize/void, items linked to fees, credit application, 6 reason codes, balance tracking), test_coupon_service.py (33 tests: discount calculation, consumption), test_add_on_service.py (11 tests: one-off invoice generation), test_credit_note_service.py (27 tests: lifecycle management), test_invoice_generation.py (10 coupon integration tests: fixed/percentage/capped/stacked/once/recurring/forever/zero-subtotal/no-coupons), test_invoices.py (coupons_amount_cents in API response). 1109 total pass with 100% coverage. -->
   - `backend/tests/test_coupons.py` — Coupon CRUD, apply to customer, fixed/percentage types, once/recurring/forever frequencies, expiration, reusable vs single-use, discount calculation
   - `backend/tests/test_add_ons.py` — Add-on CRUD, apply to customer, one-off invoice generation, fee creation
   - `backend/tests/test_credit_notes.py` — Credit note CRUD, finalize, void, items linked to fees, credit application, reason codes, balance tracking

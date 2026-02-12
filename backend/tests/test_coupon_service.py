@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.models.applied_coupon import AppliedCouponStatus
 from app.models.coupon import CouponExpiration, CouponFrequency, CouponType
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
@@ -15,14 +15,6 @@ from app.repositories.customer_repository import CustomerRepository
 from app.schemas.coupon import CouponCreate
 from app.schemas.customer import CustomerCreate
 from app.services.coupon_service import CouponApplicationService, CouponDiscount
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

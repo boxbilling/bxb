@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.coupon import (
@@ -29,14 +29,6 @@ from app.schemas.coupon import (
     CouponUpdate,
 )
 from app.schemas.customer import CustomerCreate
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

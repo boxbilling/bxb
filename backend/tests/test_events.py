@@ -6,21 +6,13 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.event import Event
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.event_repository import EventRepository
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

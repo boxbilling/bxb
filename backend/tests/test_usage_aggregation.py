@@ -5,21 +5,13 @@ from decimal import Decimal
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.models.billable_metric import AggregationType
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.event_repository import EventRepository
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
 from app.services.usage_aggregation import UsageAggregationService, UsageResult
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

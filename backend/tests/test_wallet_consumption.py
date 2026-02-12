@@ -11,20 +11,12 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.repositories.wallet_transaction_repository import WalletTransactionRepository
 from app.schemas.customer import CustomerCreate
 from app.services.wallet_service import ConsumptionResult, WalletService
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.invoice import InvoiceStatus
 from app.repositories.customer_repository import CustomerRepository
@@ -18,14 +18,6 @@ from app.schemas.customer import CustomerCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem, InvoiceUpdate
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

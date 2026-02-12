@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.credit_note import (
     CreditNote,
@@ -38,14 +38,6 @@ from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.charge import Charge, ChargeModel
@@ -14,14 +14,6 @@ from app.repositories.charge_repository import ChargeRepository
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.charge import ChargeCreate, ChargeUpdate
 from app.schemas.plan import PlanCreate
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

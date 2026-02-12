@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.models.applied_coupon import AppliedCouponStatus
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
@@ -23,14 +23,6 @@ from app.repositories.fee_repository import FeeRepository
 from app.schemas.coupon import CouponCreate
 from app.services.coupon_service import CouponApplicationService
 from app.services.invoice_generation import InvoiceGenerationService
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture

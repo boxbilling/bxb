@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.core.database import Base, engine, get_db
+from app.core.database import get_db
 from app.models.fee import FeeType
 from app.repositories.add_on_repository import AddOnRepository
 from app.repositories.customer_repository import CustomerRepository
@@ -13,14 +13,6 @@ from app.repositories.fee_repository import FeeRepository
 from app.schemas.add_on import AddOnCreate
 from app.schemas.customer import CustomerCreate
 from app.services.add_on_service import AddOnService
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create tables before each test."""
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture
