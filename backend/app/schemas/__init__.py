@@ -32,6 +32,13 @@ from app.schemas.tax import (
     TaxUpdate,
 )
 from app.schemas.wallet import WalletCreate, WalletResponse, WalletUpdate
+from app.schemas.webhook import (
+    WebhookEndpointCreate,
+    WebhookEndpointResponse,
+    WebhookEndpointUpdate,
+    WebhookEventPayload,
+    WebhookResponse,
+)
 
 __all__ = [
     "AddOnCreate",
@@ -76,4 +83,9 @@ __all__ = [
     "WalletCreate",
     "WalletResponse",
     "WalletUpdate",
+    "WebhookEndpointCreate",
+    "WebhookEndpointResponse",
+    "WebhookEndpointUpdate",
+    "WebhookEventPayload",
+    "WebhookResponse",
 ]

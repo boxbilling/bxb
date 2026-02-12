@@ -13,6 +13,8 @@ from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.tax_repository import TaxRepository
 from app.repositories.wallet_repository import WalletRepository
+from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
+from app.repositories.webhook_repository import WebhookRepository
 
 __all__ = [
     "AddOnRepository",
@@ -30,4 +32,6 @@ __all__ = [
     "SubscriptionRepository",
     "TaxRepository",
     "WalletRepository",
+    "WebhookEndpointRepository",
+    "WebhookRepository",
 ]

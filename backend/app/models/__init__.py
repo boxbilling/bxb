@@ -31,6 +31,8 @@ from app.models.wallet_transaction import (
     TransactionType,
     WalletTransaction,
 )
+from app.models.webhook import Webhook
+from app.models.webhook_endpoint import WebhookEndpoint
 
 __all__ = [
     "AddOn",
@@ -70,11 +72,13 @@ __all__ = [
     "Subscription",
     "SubscriptionStatus",
     "Tax",
+    "TransactionSource",
+    "TransactionStatus",
+    "TransactionTransactionStatus",
+    "TransactionType",
     "Wallet",
     "WalletStatus",
     "WalletTransaction",
-    "TransactionType",
-    "TransactionStatus",
-    "TransactionTransactionStatus",
-    "TransactionSource",
+    "Webhook",
+    "WebhookEndpoint",
 ]
