@@ -1,0 +1,131 @@
+"""Coupon and AppliedCoupon API endpoints."""
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.models.applied_coupon import AppliedCoupon
+from app.models.coupon import Coupon, CouponStatus
+from app.repositories.applied_coupon_repository import AppliedCouponRepository
+from app.repositories.coupon_repository import CouponRepository
+from app.repositories.customer_repository import CustomerRepository
+from app.schemas.coupon import (
+    AppliedCouponResponse,
+    ApplyCouponRequest,
+    CouponCreate,
+    CouponResponse,
+    CouponUpdate,
+)
+
+router = APIRouter()
+
+
+@router.post("/", response_model=CouponResponse, status_code=201)
+async def create_coupon(
+    data: CouponCreate,
+    db: Session = Depends(get_db),
+) -> Coupon:
+    """Create a new coupon."""
+    repo = CouponRepository(db)
+    if repo.get_by_code(data.code):
+        raise HTTPException(status_code=409, detail="Coupon with this code already exists")
+    return repo.create(data)
+
+
+@router.get("/", response_model=list[CouponResponse])
+async def list_coupons(
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    status: CouponStatus | None = None,
+    db: Session = Depends(get_db),
+) -> list[Coupon]:
+    """List coupons with optional status filter."""
+    repo = CouponRepository(db)
+    return repo.get_all(skip=skip, limit=limit, status=status)
+
+
+@router.get("/{code}", response_model=CouponResponse)
+async def get_coupon(
+    code: str,
+    db: Session = Depends(get_db),
+) -> Coupon:
+    """Get a coupon by code."""
+    repo = CouponRepository(db)
+    coupon = repo.get_by_code(code)
+    if not coupon:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+    return coupon
+
+
+@router.put("/{code}", response_model=CouponResponse)
+async def update_coupon(
+    code: str,
+    data: CouponUpdate,
+    db: Session = Depends(get_db),
+) -> Coupon:
+    """Update a coupon by code."""
+    repo = CouponRepository(db)
+    coupon = repo.update(code, data)
+    if not coupon:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+    return coupon
+
+
+@router.delete("/{code}", status_code=204)
+async def terminate_coupon(
+    code: str,
+    db: Session = Depends(get_db),
+) -> None:
+    """Terminate a coupon by code."""
+    repo = CouponRepository(db)
+    coupon = repo.terminate(code)
+    if not coupon:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+
+
+@router.post("/apply", response_model=AppliedCouponResponse, status_code=201)
+async def apply_coupon(
+    data: ApplyCouponRequest,
+    db: Session = Depends(get_db),
+) -> AppliedCoupon:
+    """Apply a coupon to a customer."""
+    coupon_repo = CouponRepository(db)
+    coupon = coupon_repo.get_by_code(data.coupon_code)
+    if not coupon:
+        raise HTTPException(status_code=404, detail="Coupon not found")
+
+    if coupon.status != CouponStatus.ACTIVE.value:
+        raise HTTPException(status_code=400, detail="Coupon is not active")
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(data.customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    applied_repo = AppliedCouponRepository(db)
+    if not coupon.reusable:
+        existing = applied_repo.get_by_coupon_and_customer(
+            coupon.id, data.customer_id  # type: ignore[arg-type]
+        )
+        if existing:
+            raise HTTPException(
+                status_code=409, detail="Coupon already applied to this customer"
+            )
+
+    return applied_repo.create(
+        coupon_id=coupon.id,  # type: ignore[arg-type]
+        customer_id=data.customer_id,
+        amount_cents=data.amount_cents if data.amount_cents is not None else coupon.amount_cents,  # type: ignore[arg-type]
+        amount_currency=(
+            data.amount_currency if data.amount_currency is not None else coupon.amount_currency  # type: ignore[arg-type]
+        ),
+        percentage_rate=(
+            data.percentage_rate  # type: ignore[arg-type]
+            if data.percentage_rate is not None
+            else coupon.percentage_rate
+        ),
+        frequency=str(coupon.frequency),
+        frequency_duration=coupon.frequency_duration,  # type: ignore[arg-type]
+    )
+
+

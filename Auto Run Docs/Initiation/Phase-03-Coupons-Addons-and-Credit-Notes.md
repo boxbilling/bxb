@@ -52,7 +52,8 @@ This phase implements three tightly related billing features that are completely
   - Repositories: `AddOnRepository` (CRUD + `get_by_code()`), `AppliedAddOnRepository` (CRUD + `get_by_customer_id()`)
   - Alembic migrations for both tables
 
-- [ ] Create the CreditNote and CreditNoteItem models, migrations, repositories, and schemas:
+- [x] Create the CreditNote and CreditNoteItem models, migrations, repositories, and schemas:
+  <!-- Completed: Created CreditNote model, CreditNoteItem model, CreditNoteRepository (CRUD + get_by_number, get_by_invoice_id, get_by_customer_id, finalize, void, consume_credit, get_available_credit_by_customer_id), CreditNoteItemRepository (CRUD + get_by_credit_note_id, create_bulk), schemas (CreditNoteCreate/Update/Response, CreditNoteItemCreate/Response), Alembic migrations (h8c0d1e2f3g4, i9d1e2f3g4h5), updated models/__init__.py, repositories/__init__.py, schemas/__init__.py. 74 tests added, 965 total pass with 100% coverage. -->
   - `backend/app/models/credit_note.py` — CreditNote model:
     - `id` (UUIDType PK), `number` (String(50), unique index)
     - `invoice_id` (FK to invoices, not null), `customer_id` (FK to customers, not null)
@@ -78,7 +79,8 @@ This phase implements three tightly related billing features that are completely
   - Repositories: `CreditNoteRepository` (CRUD + `get_by_invoice_id()`, `get_by_customer_id()`, `finalize()`, `void()`, `consume_credit(amount)`, `get_available_credit_by_customer_id()`), `CreditNoteItemRepository`
   - Alembic migrations for both tables
 
-- [ ] Create API routers for Coupons, Add-ons, and Credit Notes:
+- [x] Create API routers for Coupons, Add-ons, and Credit Notes:
+  <!-- Completed: Created coupons.py router (CRUD + apply + terminate by code), add_ons.py router (CRUD + apply by code), credit_notes.py router (CRUD + finalize + void by UUID), added applied_coupons listing to customers.py router, registered all 3 routers in main.py. 61 API tests added across 3 test files, 1026 total pass with 100% coverage. -->
   - `backend/app/routers/coupons.py`:
     - `POST /v1/coupons` — Create coupon
     - `GET /v1/coupons` — List coupons (filter by status)

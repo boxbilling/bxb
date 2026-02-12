@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.routers import (
+    add_ons,
     billable_metrics,
+    coupons,
+    credit_notes,
     customers,
     dashboard,
     events,
@@ -39,6 +42,9 @@ app.include_router(fees.router, prefix="/v1/fees", tags=["fees"])
 app.include_router(invoices.router, prefix="/v1/invoices", tags=["invoices"])
 app.include_router(payments.router, prefix="/v1/payments", tags=["payments"])
 app.include_router(wallets.router, prefix="/v1/wallets", tags=["wallets"])
+app.include_router(coupons.router, prefix="/v1/coupons", tags=["coupons"])
+app.include_router(add_ons.router, prefix="/v1/add_ons", tags=["add_ons"])
+app.include_router(credit_notes.router, prefix="/v1/credit_notes", tags=["credit_notes"])
 
 
 @app.get("/")

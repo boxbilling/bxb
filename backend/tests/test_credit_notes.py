@@ -5,9 +5,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.database import Base, engine, get_db
+from app.main import app
 from app.models.credit_note import (
     CreditNote,
     CreditNoteReason,
@@ -44,6 +46,12 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -1097,3 +1105,213 @@ class TestCreditNoteWithMultipleReasons:
             )
         )
         assert cn.reason == reason.value
+
+
+class TestCreditNoteAPI:
+    """Tests for CreditNote API endpoints."""
+
+    def test_create_credit_note(self, client, db_session, customer, invoice):
+        """Test POST /v1/credit_notes/ creates a credit note."""
+        response = client.post("/v1/credit_notes/", json={
+            "number": "CN-API-001",
+            "invoice_id": str(invoice.id),
+            "customer_id": str(customer.id),
+            "credit_note_type": "credit",
+            "reason": "duplicated_charge",
+            "description": "API test credit note",
+            "credit_amount_cents": "5000.0000",
+            "total_amount_cents": "5000.0000",
+            "currency": "USD",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["number"] == "CN-API-001"
+        assert data["credit_note_type"] == "credit"
+        assert data["status"] == "draft"
+        assert data["reason"] == "duplicated_charge"
+
+    def test_create_credit_note_with_items(self, client, db_session, customer, invoice, fee):
+        """Test POST /v1/credit_notes/ with items."""
+        response = client.post("/v1/credit_notes/", json={
+            "number": "CN-API-ITEMS",
+            "invoice_id": str(invoice.id),
+            "customer_id": str(customer.id),
+            "credit_note_type": "credit",
+            "reason": "order_change",
+            "credit_amount_cents": "3000.0000",
+            "total_amount_cents": "3000.0000",
+            "currency": "USD",
+            "items": [
+                {
+                    "fee_id": str(fee.id),
+                    "amount_cents": "3000.0000",
+                }
+            ],
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["number"] == "CN-API-ITEMS"
+
+    def test_create_credit_note_duplicate_number(self, client, db_session, customer, invoice):
+        """Test POST /v1/credit_notes/ returns 409 for duplicate number."""
+        client.post("/v1/credit_notes/", json={
+            "number": "CN-DUP",
+            "invoice_id": str(invoice.id),
+            "customer_id": str(customer.id),
+            "credit_note_type": "credit",
+            "reason": "other",
+            "credit_amount_cents": "1000",
+            "total_amount_cents": "1000",
+            "currency": "USD",
+        })
+        response = client.post("/v1/credit_notes/", json={
+            "number": "CN-DUP",
+            "invoice_id": str(invoice.id),
+            "customer_id": str(customer.id),
+            "credit_note_type": "credit",
+            "reason": "other",
+            "credit_amount_cents": "2000",
+            "total_amount_cents": "2000",
+            "currency": "USD",
+        })
+        assert response.status_code == 409
+        assert "already exists" in response.json()["detail"]
+
+    def test_list_credit_notes(self, client, db_session, credit_note, refund_note):
+        """Test GET /v1/credit_notes/ lists credit notes."""
+        response = client.get("/v1/credit_notes/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_credit_notes_empty(self, client):
+        """Test GET /v1/credit_notes/ returns empty list."""
+        response = client.get("/v1/credit_notes/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_credit_notes_filter_by_customer(self, client, db_session, credit_note, customer):
+        """Test GET /v1/credit_notes/ filtered by customer_id."""
+        response = client.get(f"/v1/credit_notes/?customer_id={customer.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+
+    def test_list_credit_notes_filter_by_invoice(self, client, db_session, credit_note, invoice):
+        """Test GET /v1/credit_notes/ filtered by invoice_id."""
+        response = client.get(f"/v1/credit_notes/?invoice_id={invoice.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+
+    def test_list_credit_notes_filter_by_status(self, client, db_session, credit_note):
+        """Test GET /v1/credit_notes/ filtered by status."""
+        response = client.get("/v1/credit_notes/?status=draft")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+
+    def test_list_credit_notes_pagination(self, client, db_session, customer, invoice):
+        """Test GET /v1/credit_notes/ with pagination."""
+        repo = CreditNoteRepository(db_session)
+        for i in range(5):
+            repo.create(CreditNoteCreate(
+                number=f"CN-PAG-{i}",
+                invoice_id=invoice.id,
+                customer_id=customer.id,
+                credit_note_type=CreditNoteType.CREDIT,
+                reason=CreditNoteReason.OTHER,
+                credit_amount_cents=Decimal("1000"),
+                total_amount_cents=Decimal("1000"),
+                currency="USD",
+            ))
+        response = client.get("/v1/credit_notes/?skip=2&limit=2")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+
+    def test_get_credit_note(self, client, db_session, credit_note):
+        """Test GET /v1/credit_notes/{id} returns credit note."""
+        response = client.get(f"/v1/credit_notes/{credit_note.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(credit_note.id)
+        assert data["number"] == "CN-0001"
+
+    def test_get_credit_note_not_found(self, client):
+        """Test GET /v1/credit_notes/{id} returns 404."""
+        response = client.get(f"/v1/credit_notes/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_update_credit_note(self, client, db_session, credit_note):
+        """Test PUT /v1/credit_notes/{id} updates a draft credit note."""
+        response = client.put(f"/v1/credit_notes/{credit_note.id}", json={
+            "description": "Updated description",
+            "credit_amount_cents": "6000.0000",
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["description"] == "Updated description"
+        assert data["credit_amount_cents"] == "6000.0000"
+
+    def test_update_credit_note_not_found(self, client):
+        """Test PUT /v1/credit_notes/{id} returns 404."""
+        response = client.put(f"/v1/credit_notes/{uuid4()}", json={
+            "description": "Nope",
+        })
+        assert response.status_code == 404
+
+    def test_update_credit_note_not_draft(self, client, db_session, credit_note):
+        """Test PUT /v1/credit_notes/{id} returns 400 for finalized note."""
+        repo = CreditNoteRepository(db_session)
+        repo.finalize(credit_note.id)
+
+        response = client.put(f"/v1/credit_notes/{credit_note.id}", json={
+            "description": "Should fail",
+        })
+        assert response.status_code == 400
+        assert "draft" in response.json()["detail"].lower()
+
+    def test_finalize_credit_note(self, client, db_session, credit_note):
+        """Test POST /v1/credit_notes/{id}/finalize finalizes credit note."""
+        response = client.post(f"/v1/credit_notes/{credit_note.id}/finalize")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "finalized"
+        assert data["credit_status"] == "available"
+        assert data["issued_at"] is not None
+
+    def test_finalize_credit_note_not_found(self, client):
+        """Test POST /v1/credit_notes/{id}/finalize returns 404."""
+        response = client.post(f"/v1/credit_notes/{uuid4()}/finalize")
+        assert response.status_code == 404
+
+    def test_finalize_credit_note_already_finalized(self, client, db_session, credit_note):
+        """Test POST /v1/credit_notes/{id}/finalize returns 400 for already finalized."""
+        repo = CreditNoteRepository(db_session)
+        repo.finalize(credit_note.id)
+
+        response = client.post(f"/v1/credit_notes/{credit_note.id}/finalize")
+        assert response.status_code == 400
+        assert "draft" in response.json()["detail"].lower()
+
+    def test_void_credit_note(self, client, db_session, credit_note):
+        """Test POST /v1/credit_notes/{id}/void voids credit note."""
+        repo = CreditNoteRepository(db_session)
+        repo.finalize(credit_note.id)
+
+        response = client.post(f"/v1/credit_notes/{credit_note.id}/void")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["credit_status"] == "voided"
+        assert data["voided_at"] is not None
+
+    def test_void_credit_note_not_found(self, client):
+        """Test POST /v1/credit_notes/{id}/void returns 404."""
+        response = client.post(f"/v1/credit_notes/{uuid4()}/void")
+        assert response.status_code == 404
+
+    def test_void_credit_note_not_finalized(self, client, db_session, credit_note):
+        """Test POST /v1/credit_notes/{id}/void returns 400 for draft note."""
+        response = client.post(f"/v1/credit_notes/{credit_note.id}/void")
+        assert response.status_code == 400
+        assert "finalized" in response.json()["detail"].lower()

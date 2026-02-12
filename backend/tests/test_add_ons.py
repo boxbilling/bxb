@@ -4,9 +4,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.database import Base, engine, get_db
+from app.main import app
 from app.models.add_on import AddOn
 from app.models.applied_add_on import AppliedAddOn
 from app.repositories.add_on_repository import AddOnRepository
@@ -28,6 +30,12 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -681,3 +689,178 @@ class TestAddOnSchema:
         assert response.customer_id == customer.id
         assert response.amount_cents == Decimal("5000.0000")
         assert response.amount_currency == "USD"
+
+
+class TestAddOnAPI:
+    """Tests for AddOn API endpoints."""
+
+    def test_create_add_on(self, client):
+        """Test POST /v1/add_ons/ creates an add-on."""
+        response = client.post("/v1/add_ons/", json={
+            "code": "API_SETUP",
+            "name": "API Setup Fee",
+            "description": "Setup fee from API",
+            "amount_cents": "5000.0000",
+            "amount_currency": "USD",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["code"] == "API_SETUP"
+        assert data["name"] == "API Setup Fee"
+        assert data["amount_cents"] == "5000.0000"
+        assert data["amount_currency"] == "USD"
+
+    def test_create_add_on_duplicate_code(self, client):
+        """Test POST /v1/add_ons/ returns 409 for duplicate code."""
+        client.post("/v1/add_ons/", json={
+            "code": "DUP_ADDON",
+            "name": "First",
+            "amount_cents": "100",
+        })
+        response = client.post("/v1/add_ons/", json={
+            "code": "DUP_ADDON",
+            "name": "Second",
+            "amount_cents": "200",
+        })
+        assert response.status_code == 409
+        assert "already exists" in response.json()["detail"]
+
+    def test_create_add_on_with_display_name(self, client):
+        """Test POST /v1/add_ons/ with invoice display name."""
+        response = client.post("/v1/add_ons/", json={
+            "code": "DISPLAY_ADDON",
+            "name": "Display Add-on",
+            "amount_cents": "1000",
+            "invoice_display_name": "Custom Display Name",
+        })
+        assert response.status_code == 201
+        assert response.json()["invoice_display_name"] == "Custom Display Name"
+
+    def test_list_add_ons(self, client, db_session, basic_add_on, premium_add_on):
+        """Test GET /v1/add_ons/ lists add-ons."""
+        response = client.get("/v1/add_ons/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_add_ons_empty(self, client):
+        """Test GET /v1/add_ons/ returns empty list."""
+        response = client.get("/v1/add_ons/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_add_ons_pagination(self, client, db_session):
+        """Test GET /v1/add_ons/ with pagination."""
+        repo = AddOnRepository(db_session)
+        for i in range(5):
+            repo.create(AddOnCreate(
+                code=f"APAG{i}",
+                name=f"Page {i}",
+                amount_cents=Decimal("100"),
+            ))
+        response = client.get("/v1/add_ons/?skip=2&limit=2")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+
+    def test_get_add_on_by_code(self, client, db_session, basic_add_on):
+        """Test GET /v1/add_ons/{code} returns add-on."""
+        response = client.get("/v1/add_ons/SETUP_FEE")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["code"] == "SETUP_FEE"
+        assert data["name"] == "Setup Fee"
+
+    def test_get_add_on_not_found(self, client):
+        """Test GET /v1/add_ons/{code} returns 404."""
+        response = client.get("/v1/add_ons/NONEXISTENT")
+        assert response.status_code == 404
+
+    def test_update_add_on(self, client, db_session, basic_add_on):
+        """Test PUT /v1/add_ons/{code} updates add-on."""
+        response = client.put("/v1/add_ons/SETUP_FEE", json={
+            "name": "Updated Setup Fee",
+            "amount_cents": "7500.0000",
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Setup Fee"
+        assert data["amount_cents"] == "7500.0000"
+
+    def test_update_add_on_not_found(self, client):
+        """Test PUT /v1/add_ons/{code} returns 404."""
+        response = client.put("/v1/add_ons/NONEXISTENT", json={
+            "name": "Nope",
+        })
+        assert response.status_code == 404
+
+    def test_delete_add_on(self, client, db_session, basic_add_on):
+        """Test DELETE /v1/add_ons/{code} deletes add-on."""
+        response = client.delete("/v1/add_ons/SETUP_FEE")
+        assert response.status_code == 204
+
+        # Verify deleted
+        get_response = client.get("/v1/add_ons/SETUP_FEE")
+        assert get_response.status_code == 404
+
+    def test_delete_add_on_not_found(self, client):
+        """Test DELETE /v1/add_ons/{code} returns 404."""
+        response = client.delete("/v1/add_ons/NONEXISTENT")
+        assert response.status_code == 404
+
+    def test_apply_add_on(self, client, db_session, basic_add_on, customer):
+        """Test POST /v1/add_ons/apply applies add-on to customer."""
+        response = client.post("/v1/add_ons/apply", json={
+            "add_on_code": "SETUP_FEE",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["add_on_id"] == str(basic_add_on.id)
+        assert data["customer_id"] == str(customer.id)
+        assert data["amount_cents"] == "5000.0000"
+        assert data["amount_currency"] == "USD"
+
+    def test_apply_add_on_with_override(self, client, db_session, basic_add_on, customer):
+        """Test POST /v1/add_ons/apply with amount override."""
+        response = client.post("/v1/add_ons/apply", json={
+            "add_on_code": "SETUP_FEE",
+            "customer_id": str(customer.id),
+            "amount_cents": "2500.0000",
+            "amount_currency": "EUR",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["amount_cents"] == "2500.0000"
+        assert data["amount_currency"] == "EUR"
+
+    def test_apply_add_on_not_found(self, client, db_session, customer):
+        """Test POST /v1/add_ons/apply with non-existent add-on."""
+        response = client.post("/v1/add_ons/apply", json={
+            "add_on_code": "NONEXISTENT",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 404
+        assert "Add-on not found" in response.json()["detail"]
+
+    def test_apply_add_on_customer_not_found(self, client, db_session, basic_add_on):
+        """Test POST /v1/add_ons/apply with non-existent customer."""
+        response = client.post("/v1/add_ons/apply", json={
+            "add_on_code": "SETUP_FEE",
+            "customer_id": str(uuid4()),
+        })
+        assert response.status_code == 404
+        assert "Customer not found" in response.json()["detail"]
+
+    def test_apply_add_on_multiple_times(self, client, db_session, basic_add_on, customer):
+        """Test POST /v1/add_ons/apply can apply same add-on multiple times."""
+        response1 = client.post("/v1/add_ons/apply", json={
+            "add_on_code": "SETUP_FEE",
+            "customer_id": str(customer.id),
+        })
+        assert response1.status_code == 201
+
+        response2 = client.post("/v1/add_ons/apply", json={
+            "add_on_code": "SETUP_FEE",
+            "customer_id": str(customer.id),
+        })
+        assert response2.status_code == 201

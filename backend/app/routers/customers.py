@@ -1,11 +1,14 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.applied_coupon import AppliedCoupon
 from app.models.customer import Customer
+from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.schemas.coupon import AppliedCouponResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 
 router = APIRouter()
@@ -70,3 +73,23 @@ async def delete_customer(
     repo = CustomerRepository(db)
     if not repo.delete(customer_id):
         raise HTTPException(status_code=404, detail="Customer not found")
+
+
+@router.get(
+    "/{customer_id}/applied_coupons",
+    response_model=list[AppliedCouponResponse],
+)
+async def list_applied_coupons(
+    customer_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+) -> list[AppliedCoupon]:
+    """List applied coupons for a customer."""
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    repo = AppliedCouponRepository(db)
+    return repo.get_all(skip=skip, limit=limit, customer_id=customer_id)

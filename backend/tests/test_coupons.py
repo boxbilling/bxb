@@ -5,9 +5,11 @@ from decimal import Decimal
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.core.database import Base, engine, get_db
+from app.main import app
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.coupon import (
     Coupon,
@@ -35,6 +37,12 @@ def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -934,3 +942,281 @@ class TestCouponSchema:
         schema = CouponUpdate(description="New description")
         dumped = schema.model_dump(exclude_unset=True)
         assert dumped["description"] == "New description"
+
+
+class TestCouponAPI:
+    """Tests for Coupon API endpoints."""
+
+    def test_create_coupon(self, client):
+        """Test POST /v1/coupons/ creates a coupon."""
+        response = client.post("/v1/coupons/", json={
+            "code": "API_FIXED",
+            "name": "API Fixed Coupon",
+            "description": "Test coupon from API",
+            "coupon_type": "fixed_amount",
+            "amount_cents": "1000.0000",
+            "amount_currency": "USD",
+            "frequency": "once",
+            "reusable": True,
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["code"] == "API_FIXED"
+        assert data["name"] == "API Fixed Coupon"
+        assert data["coupon_type"] == "fixed_amount"
+        assert data["status"] == "active"
+
+    def test_create_coupon_percentage(self, client):
+        """Test POST /v1/coupons/ creates a percentage coupon."""
+        response = client.post("/v1/coupons/", json={
+            "code": "API_PCT",
+            "name": "API Percentage Coupon",
+            "coupon_type": "percentage",
+            "percentage_rate": "15.00",
+            "frequency": "forever",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["coupon_type"] == "percentage"
+        assert data["percentage_rate"] == "15.00"
+        assert data["frequency"] == "forever"
+
+    def test_create_coupon_duplicate_code(self, client):
+        """Test POST /v1/coupons/ returns 409 for duplicate code."""
+        client.post("/v1/coupons/", json={
+            "code": "DUP_CODE",
+            "name": "First",
+            "coupon_type": "fixed_amount",
+            "amount_cents": "100",
+            "amount_currency": "USD",
+            "frequency": "once",
+        })
+        response = client.post("/v1/coupons/", json={
+            "code": "DUP_CODE",
+            "name": "Second",
+            "coupon_type": "fixed_amount",
+            "amount_cents": "200",
+            "amount_currency": "USD",
+            "frequency": "once",
+        })
+        assert response.status_code == 409
+        assert "already exists" in response.json()["detail"]
+
+    def test_list_coupons(self, client, db_session, fixed_coupon, percentage_coupon):
+        """Test GET /v1/coupons/ lists coupons."""
+        response = client.get("/v1/coupons/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_coupons_empty(self, client):
+        """Test GET /v1/coupons/ returns empty list."""
+        response = client.get("/v1/coupons/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_coupons_filter_by_status(self, client, db_session, fixed_coupon, percentage_coupon):
+        """Test GET /v1/coupons/ filtered by status."""
+        repo = CouponRepository(db_session)
+        repo.terminate("FIXED10")
+
+        response = client.get("/v1/coupons/?status=active")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["code"] == "PERCENT20"
+
+    def test_list_coupons_pagination(self, client, db_session):
+        """Test GET /v1/coupons/ with pagination."""
+        repo = CouponRepository(db_session)
+        for i in range(5):
+            repo.create(CouponCreate(
+                code=f"APAG{i}",
+                name=f"Page {i}",
+                coupon_type=CouponType.FIXED_AMOUNT,
+                amount_cents=Decimal("100"),
+                amount_currency="USD",
+                frequency=CouponFrequency.ONCE,
+            ))
+        response = client.get("/v1/coupons/?skip=2&limit=2")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+
+    def test_get_coupon_by_code(self, client, db_session, fixed_coupon):
+        """Test GET /v1/coupons/{code} returns coupon."""
+        response = client.get("/v1/coupons/FIXED10")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["code"] == "FIXED10"
+        assert data["name"] == "$10 Off"
+
+    def test_get_coupon_not_found(self, client):
+        """Test GET /v1/coupons/{code} returns 404."""
+        response = client.get("/v1/coupons/NONEXISTENT")
+        assert response.status_code == 404
+
+    def test_update_coupon(self, client, db_session, fixed_coupon):
+        """Test PUT /v1/coupons/{code} updates coupon."""
+        response = client.put("/v1/coupons/FIXED10", json={
+            "name": "Updated $10 Off",
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated $10 Off"
+        assert data["code"] == "FIXED10"
+
+    def test_update_coupon_not_found(self, client):
+        """Test PUT /v1/coupons/{code} returns 404."""
+        response = client.put("/v1/coupons/NONEXISTENT", json={
+            "name": "Nope",
+        })
+        assert response.status_code == 404
+
+    def test_terminate_coupon(self, client, db_session, fixed_coupon):
+        """Test DELETE /v1/coupons/{code} terminates coupon."""
+        response = client.delete("/v1/coupons/FIXED10")
+        assert response.status_code == 204
+
+        # Verify terminated
+        get_response = client.get("/v1/coupons/FIXED10")
+        assert get_response.status_code == 200
+        assert get_response.json()["status"] == "terminated"
+
+    def test_terminate_coupon_not_found(self, client):
+        """Test DELETE /v1/coupons/{code} returns 404."""
+        response = client.delete("/v1/coupons/NONEXISTENT")
+        assert response.status_code == 404
+
+    def test_apply_coupon(self, client, db_session, fixed_coupon, customer):
+        """Test POST /v1/coupons/apply applies coupon to customer."""
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "FIXED10",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["coupon_id"] == str(fixed_coupon.id)
+        assert data["customer_id"] == str(customer.id)
+        assert data["status"] == "active"
+        assert data["amount_cents"] == "1000.0000"
+
+    def test_apply_coupon_with_override(self, client, db_session, fixed_coupon, customer):
+        """Test POST /v1/coupons/apply with amount override."""
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "FIXED10",
+            "customer_id": str(customer.id),
+            "amount_cents": "500.0000",
+            "amount_currency": "EUR",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["amount_cents"] == "500.0000"
+        assert data["amount_currency"] == "EUR"
+
+    def test_apply_coupon_not_found(self, client, db_session, customer):
+        """Test POST /v1/coupons/apply with non-existent coupon."""
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "NONEXISTENT",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 404
+        assert "Coupon not found" in response.json()["detail"]
+
+    def test_apply_coupon_customer_not_found(self, client, db_session, fixed_coupon):
+        """Test POST /v1/coupons/apply with non-existent customer."""
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "FIXED10",
+            "customer_id": str(uuid4()),
+        })
+        assert response.status_code == 404
+        assert "Customer not found" in response.json()["detail"]
+
+    def test_apply_coupon_terminated(self, client, db_session, fixed_coupon, customer):
+        """Test POST /v1/coupons/apply with terminated coupon."""
+        repo = CouponRepository(db_session)
+        repo.terminate("FIXED10")
+
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "FIXED10",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 400
+        assert "not active" in response.json()["detail"]
+
+    def test_apply_non_reusable_coupon_duplicate(self, client, db_session, recurring_coupon, customer):
+        """Test POST /v1/coupons/apply with non-reusable coupon applied twice."""
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "RECURRING5",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 201
+
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "RECURRING5",
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 409
+        assert "already applied" in response.json()["detail"]
+
+    def test_apply_reusable_coupon_multiple_times(self, client, db_session, fixed_coupon, customer, customer2):
+        """Test POST /v1/coupons/apply reusable coupon to multiple customers."""
+        response1 = client.post("/v1/coupons/apply", json={
+            "coupon_code": "FIXED10",
+            "customer_id": str(customer.id),
+        })
+        assert response1.status_code == 201
+
+        response2 = client.post("/v1/coupons/apply", json={
+            "coupon_code": "FIXED10",
+            "customer_id": str(customer2.id),
+        })
+        assert response2.status_code == 201
+
+    def test_list_applied_coupons(self, client, db_session, fixed_coupon, percentage_coupon, customer):
+        """Test GET /v1/customers/{customer_id}/applied_coupons."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied_repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+        applied_repo.create(
+            coupon_id=percentage_coupon.id,
+            customer_id=customer.id,
+            amount_cents=None,
+            amount_currency=None,
+            percentage_rate=Decimal("20.00"),
+            frequency="forever",
+            frequency_duration=None,
+        )
+
+        response = client.get(f"/v1/customers/{customer.id}/applied_coupons")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_applied_coupons_empty(self, client, db_session, customer):
+        """Test GET /v1/customers/{customer_id}/applied_coupons returns empty list."""
+        response = client.get(f"/v1/customers/{customer.id}/applied_coupons")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_applied_coupons_customer_not_found(self, client):
+        """Test GET /v1/customers/{customer_id}/applied_coupons returns 404."""
+        response = client.get(f"/v1/customers/{uuid4()}/applied_coupons")
+        assert response.status_code == 404
+
+    def test_apply_percentage_coupon_with_override(self, client, db_session, percentage_coupon, customer):
+        """Test POST /v1/coupons/apply with percentage rate override."""
+        response = client.post("/v1/coupons/apply", json={
+            "coupon_code": "PERCENT20",
+            "customer_id": str(customer.id),
+            "percentage_rate": "30.00",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["percentage_rate"] == "30.00"
