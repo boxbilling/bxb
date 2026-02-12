@@ -1,4 +1,5 @@
 from app.models.add_on import AddOn
+from app.models.api_key import ApiKey
 from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.applied_tax import AppliedTax
@@ -40,6 +41,7 @@ from app.models.webhook_endpoint import WebhookEndpoint
 
 __all__ = [
     "AddOn",
+    "ApiKey",
     "AggregationType",
     "AppliedAddOn",
     "AppliedCoupon",
