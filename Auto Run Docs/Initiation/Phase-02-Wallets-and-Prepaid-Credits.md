@@ -39,7 +39,7 @@ This phase implements the wallet and prepaid credits system, one of Lago's most 
   - `backend/app/repositories/wallet_transaction_repository.py` — WalletTransactionRepository: `create()`, `get_by_id()`, `get_by_wallet_id()`, `get_by_customer_id()`, `get_inbound_by_wallet_id()`, `get_outbound_by_wallet_id()`
   - Alembic migration for `wallet_transactions` table
 
-- [ ] Create the WalletService with core business logic:
+- [x] Create the WalletService with core business logic:
   - `backend/app/services/wallet_service.py`:
     - `create_wallet(customer_id, name, code, rate_amount, currency, expiration_at, priority, initial_granted_credits)` — Create wallet, optionally grant initial credits via inbound transaction
     - `terminate_wallet(wallet_id)` — Set status to "terminated", prevent further transactions
