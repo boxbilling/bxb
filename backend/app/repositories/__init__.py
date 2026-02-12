@@ -1,6 +1,7 @@
 from app.repositories.add_on_repository import AddOnRepository
 from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.applied_tax_repository import AppliedTaxRepository
+from app.repositories.applied_usage_threshold_repository import AppliedUsageThresholdRepository
 from app.repositories.billable_metric_filter_repository import BillableMetricFilterRepository
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.charge_filter_repository import ChargeFilterRepository
@@ -17,6 +18,7 @@ from app.repositories.payment_request_repository import PaymentRequestRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.tax_repository import TaxRepository
+from app.repositories.usage_threshold_repository import UsageThresholdRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
 from app.repositories.webhook_repository import WebhookRepository
@@ -25,6 +27,7 @@ __all__ = [
     "AddOnRepository",
     "AppliedAddOnRepository",
     "AppliedTaxRepository",
+    "AppliedUsageThresholdRepository",
     "BillableMetricFilterRepository",
     "BillableMetricRepository",
     "ChargeFilterRepository",
@@ -41,6 +44,7 @@ __all__ = [
     "PlanRepository",
     "SubscriptionRepository",
     "TaxRepository",
+    "UsageThresholdRepository",
     "WalletRepository",
     "WebhookEndpointRepository",
     "WebhookRepository",

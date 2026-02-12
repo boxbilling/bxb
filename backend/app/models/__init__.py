@@ -3,6 +3,7 @@ from app.models.api_key import ApiKey
 from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.applied_tax import AppliedTax
+from app.models.applied_usage_threshold import AppliedUsageThreshold
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.billable_metric_filter import BillableMetricFilter
 from app.models.charge import Charge, ChargeModel
@@ -33,6 +34,7 @@ from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.models.tax import Tax
+from app.models.usage_threshold import UsageThreshold
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import (
     TransactionSource,
@@ -52,6 +54,7 @@ __all__ = [
     "AppliedCoupon",
     "AppliedCouponStatus",
     "AppliedTax",
+    "AppliedUsageThreshold",
     "BillableMetric",
     "BillableMetricFilter",
     "Charge",
@@ -94,6 +97,7 @@ __all__ = [
     "SubscriptionStatus",
     "TerminationAction",
     "Tax",
+    "UsageThreshold",
     "TransactionSource",
     "TransactionStatus",
     "TransactionTransactionStatus",

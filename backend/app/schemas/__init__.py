@@ -54,6 +54,11 @@ from app.schemas.tax import (
     TaxResponse,
     TaxUpdate,
 )
+from app.schemas.usage_threshold import (
+    AppliedUsageThresholdResponse,
+    UsageThresholdCreate,
+    UsageThresholdResponse,
+)
 from app.schemas.wallet import WalletCreate, WalletResponse, WalletUpdate
 from app.schemas.webhook import (
     WebhookEndpointCreate,
@@ -117,6 +122,9 @@ __all__ = [
     "SubscriptionUpdate",
     "AppliedTaxResponse",
     "ApplyTaxRequest",
+    "AppliedUsageThresholdResponse",
+    "UsageThresholdCreate",
+    "UsageThresholdResponse",
     "TaxCreate",
     "TaxResponse",
     "TaxUpdate",
