@@ -19,7 +19,7 @@ class InvoiceLineItem(BaseModel):
 
 class InvoiceCreate(BaseModel):
     customer_id: UUID
-    subscription_id: UUID
+    subscription_id: UUID | None = None
     billing_period_start: datetime
     billing_period_end: datetime
     currency: str = Field(default="USD", min_length=3, max_length=3)
@@ -38,7 +38,7 @@ class InvoiceResponse(BaseModel):
     id: UUID
     invoice_number: str
     customer_id: UUID
-    subscription_id: UUID
+    subscription_id: UUID | None
     status: str
     billing_period_start: datetime
     billing_period_end: datetime

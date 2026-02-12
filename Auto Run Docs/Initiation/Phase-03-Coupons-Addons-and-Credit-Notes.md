@@ -115,7 +115,8 @@ This phase implements three tightly related billing features that are completely
       - Return total discount and list of applied coupon IDs consumed
     - `consume_applied_coupon(applied_coupon_id)` — For "once" frequency: terminate. For "recurring": decrement frequency_duration_remaining, terminate if 0.
 
-- [ ] Create AddOnService and CreditNoteService:
+- [x] Create AddOnService and CreditNoteService:
+  <!-- Completed: Created AddOnService with apply_add_on (validates add-on/customer, creates AppliedAddOn, generates one-off Invoice with Fee of type ADD_ON). Created CreditNoteService with create_credit_note (validates finalized invoice, verifies fee references, auto-generates CN number), finalize_credit_note, void_credit_note, apply_credit_to_invoice (validates balance, handles partial/full consumption). Made Invoice.subscription_id nullable to support one-off invoices. 11 AddOnService tests + 27 CreditNoteService tests added, 1099 total pass with 100% coverage. -->
   - `backend/app/services/add_on_service.py`:
     - `apply_add_on(add_on_code, customer_id, amount_override)` — Create AppliedAddOn, generate one-off Invoice with a single Fee of type "add_on"
   - `backend/app/services/credit_note_service.py`:

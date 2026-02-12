@@ -22,7 +22,7 @@ class Invoice(Base):
     invoice_number = Column(String(50), unique=True, index=True, nullable=False)
     customer_id = Column(UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False)
     subscription_id = Column(
-        UUIDType, ForeignKey("subscriptions.id", ondelete="RESTRICT"), nullable=False
+        UUIDType, ForeignKey("subscriptions.id", ondelete="RESTRICT"), nullable=True
     )
     status = Column(String(20), nullable=False, default=InvoiceStatus.DRAFT.value)
 
