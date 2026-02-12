@@ -1,5 +1,6 @@
 from app.repositories.add_on_repository import AddOnRepository
 from app.repositories.applied_add_on_repository import AppliedAddOnRepository
+from app.repositories.applied_tax_repository import AppliedTaxRepository
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.charge_repository import ChargeRepository
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
@@ -10,11 +11,13 @@ from app.repositories.item_repository import ItemRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.repositories.tax_repository import TaxRepository
 from app.repositories.wallet_repository import WalletRepository
 
 __all__ = [
     "AddOnRepository",
     "AppliedAddOnRepository",
+    "AppliedTaxRepository",
     "BillableMetricRepository",
     "ChargeRepository",
     "CreditNoteItemRepository",
@@ -25,5 +28,6 @@ __all__ = [
     "PaymentRepository",
     "PlanRepository",
     "SubscriptionRepository",
+    "TaxRepository",
     "WalletRepository",
 ]

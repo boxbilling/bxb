@@ -1,6 +1,7 @@
 from app.models.add_on import AddOn
 from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
+from app.models.applied_tax import AppliedTax
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.coupon import Coupon, CouponExpiration, CouponFrequency, CouponStatus, CouponType
@@ -21,6 +22,7 @@ from app.models.item import Item
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.tax import Tax
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import (
     TransactionSource,
@@ -36,6 +38,7 @@ __all__ = [
     "AppliedAddOn",
     "AppliedCoupon",
     "AppliedCouponStatus",
+    "AppliedTax",
     "BillableMetric",
     "Charge",
     "ChargeModel",
@@ -66,6 +69,7 @@ __all__ = [
     "PlanInterval",
     "Subscription",
     "SubscriptionStatus",
+    "Tax",
     "Wallet",
     "WalletStatus",
     "WalletTransaction",

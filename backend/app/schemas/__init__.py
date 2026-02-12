@@ -24,6 +24,13 @@ from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
 from app.schemas.message import Message
 from app.schemas.plan import ChargeInput, ChargeOutput, PlanCreate, PlanResponse, PlanUpdate
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.schemas.tax import (
+    AppliedTaxResponse,
+    ApplyTaxRequest,
+    TaxCreate,
+    TaxResponse,
+    TaxUpdate,
+)
 from app.schemas.wallet import WalletCreate, WalletResponse, WalletUpdate
 
 __all__ = [
@@ -61,6 +68,11 @@ __all__ = [
     "SubscriptionCreate",
     "SubscriptionResponse",
     "SubscriptionUpdate",
+    "AppliedTaxResponse",
+    "ApplyTaxRequest",
+    "TaxCreate",
+    "TaxResponse",
+    "TaxUpdate",
     "WalletCreate",
     "WalletResponse",
     "WalletUpdate",
