@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 
 from app.core.database import Base, engine, get_db
 from app.main import app
-from app.models.wallet import Wallet
 from app.models.wallet_transaction import (
     TransactionSource,
     TransactionStatus,
@@ -28,15 +27,15 @@ from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
 from app.schemas.wallet import WalletCreate
+from app.schemas.wallet_transaction import TransactionSource as SchemaTransactionSource
+from app.schemas.wallet_transaction import TransactionStatus as SchemaTransactionStatus
+from app.schemas.wallet_transaction import (
+    TransactionTransactionStatus as SchemaTransactionTransactionStatus,
+)
+from app.schemas.wallet_transaction import TransactionType as SchemaTransactionType
 from app.schemas.wallet_transaction import (
     WalletTransactionCreate,
     WalletTransactionResponse,
-)
-from app.schemas.wallet_transaction import TransactionSource as SchemaTransactionSource
-from app.schemas.wallet_transaction import TransactionStatus as SchemaTransactionStatus
-from app.schemas.wallet_transaction import TransactionType as SchemaTransactionType
-from app.schemas.wallet_transaction import (
-    TransactionTransactionStatus as SchemaTransactionTransactionStatus,
 )
 
 

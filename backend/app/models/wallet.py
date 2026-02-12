@@ -3,7 +3,16 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint, func
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+    func,
+)
 
 from app.core.database import Base
 from app.models.customer import UUIDType

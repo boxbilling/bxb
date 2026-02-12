@@ -7,7 +7,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.wallet import WalletStatus
+from app.models.wallet import Wallet, WalletStatus
 from app.repositories.wallet_repository import WalletRepository
 from app.repositories.wallet_transaction_repository import WalletTransactionRepository
 from app.schemas.wallet import WalletCreate
@@ -46,7 +46,7 @@ class WalletService:
         expiration_at: datetime | None = None,
         priority: int = 1,
         initial_granted_credits: Decimal | None = None,
-    ):
+    ) -> Wallet | None:
         """Create a wallet, optionally granting initial credits via inbound transaction."""
         # Check for duplicate code within same customer
         if code is not None:
@@ -69,16 +69,16 @@ class WalletService:
 
         if initial_granted_credits and initial_granted_credits > 0:
             self.top_up_wallet(
-                wallet_id=wallet.id,
+                wallet_id=wallet.id,  # type: ignore[arg-type]
                 credits=initial_granted_credits,
                 source="manual",
             )
             # Refresh wallet to get updated balance
-            wallet = self.wallet_repo.get_by_id(wallet.id)
+            wallet = self.wallet_repo.get_by_id(wallet.id)  # type: ignore[arg-type,assignment]
 
         return wallet
 
-    def terminate_wallet(self, wallet_id: UUID):
+    def terminate_wallet(self, wallet_id: UUID) -> Wallet | None:
         """Terminate a wallet, preventing further transactions."""
         wallet = self.wallet_repo.get_by_id(wallet_id)
         if not wallet:
@@ -94,7 +94,7 @@ class WalletService:
         wallet_id: UUID,
         credits: Decimal,
         source: str = "manual",
-    ):
+    ) -> Wallet | None:
         """Top up a wallet with credits. Creates an inbound transaction and updates balance."""
         wallet = self.wallet_repo.get_by_id(wallet_id)
         if not wallet:
@@ -113,7 +113,7 @@ class WalletService:
         self.txn_repo.create(
             WalletTransactionCreate(
                 wallet_id=wallet_id,
-                customer_id=wallet.customer_id,
+                customer_id=wallet.customer_id,  # type: ignore[arg-type]
                 transaction_type=TransactionType.INBOUND,
                 transaction_status=TransactionTransactionStatus.GRANTED,
                 source=TransactionSource(source),
@@ -158,12 +158,12 @@ class WalletService:
             credits_consumed = consumable / rate if rate > 0 else Decimal("0")
 
             # Deduct from wallet
-            self.wallet_repo.deduct_balance(wallet.id, credits_consumed, consumable)
+            self.wallet_repo.deduct_balance(wallet.id, credits_consumed, consumable)  # type: ignore[arg-type]
 
             # Create outbound transaction
             self.txn_repo.create(
                 WalletTransactionCreate(
-                    wallet_id=wallet.id,
+                    wallet_id=wallet.id,  # type: ignore[arg-type]
                     customer_id=customer_id,
                     transaction_type=TransactionType.OUTBOUND,
                     transaction_status=TransactionTransactionStatus.INVOICED,
@@ -191,7 +191,7 @@ class WalletService:
             Decimal("0"),
         )
 
-    def check_expired_wallets(self) -> list:
+    def check_expired_wallets(self) -> list[UUID]:
         """Find and terminate expired wallets. Returns list of terminated wallet IDs."""
         now = datetime.now(UTC)
         terminated_ids = []
@@ -210,7 +210,7 @@ class WalletService:
         )
 
         for wallet in wallets:
-            self.wallet_repo.terminate(wallet.id)
+            self.wallet_repo.terminate(wallet.id)  # type: ignore[arg-type]
             terminated_ids.append(wallet.id)
 
-        return terminated_ids
+        return terminated_ids  # type: ignore[return-value]

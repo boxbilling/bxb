@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.models.charge import Charge, ChargeModel
+from app.models.fee import FeeType
 from app.models.invoice import Invoice
 from app.models.subscription import SubscriptionStatus
 from app.repositories.charge_repository import ChargeRepository
@@ -208,7 +209,7 @@ class InvoiceGenerationService:
             customer_id=customer_id,
             subscription_id=subscription_id,
             charge_id=UUID(str(charge.id)),
-            fee_type="charge",
+            fee_type=FeeType.CHARGE,
             amount_cents=amount,
             total_amount_cents=amount,  # No taxes yet
             units=quantity,

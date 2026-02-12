@@ -847,7 +847,7 @@ class TestInvoiceWalletIntegration:
         self, client, db_session, customer, subscription
     ):
         """Test that finalization uses wallets in priority order."""
-        from app.repositories.wallet_repository import WalletRepository as WR
+        from app.repositories.wallet_repository import WalletRepository
         from app.services.wallet_service import WalletService
 
         wallet_service = WalletService(db_session)
@@ -883,9 +883,9 @@ class TestInvoiceWalletIntegration:
         assert data["status"] == "paid"
 
         # P1 (priority=1) should be drained first, then P2 used for remainder
-        wr = WR(db_session)
-        w2_updated = wr.get_by_id(w2.id)
-        w1_updated = wr.get_by_id(w1.id)
+        wallet_repo = WalletRepository(db_session)
+        w2_updated = wallet_repo.get_by_id(w2.id)
+        w1_updated = wallet_repo.get_by_id(w1.id)
         assert Decimal(str(w2_updated.balance_cents)) == Decimal("0")  # P1 drained
         assert Decimal(str(w1_updated.balance_cents)) == Decimal("40.0000")  # P2 partially used
 
@@ -924,9 +924,9 @@ class TestInvoiceWalletIntegration:
         assert response.status_code == 200
 
         # Wallet balance should be untouched
-        from app.repositories.wallet_repository import WalletRepository as WR
-        wr = WR(db_session)
-        updated = wr.get_by_id(wallet.id)
+        from app.repositories.wallet_repository import WalletRepository
+        wallet_repo = WalletRepository(db_session)
+        updated = wallet_repo.get_by_id(wallet.id)
         assert Decimal(str(updated.balance_cents)) == Decimal("100.0000")
 
     def test_prepaid_credit_amount_in_response(

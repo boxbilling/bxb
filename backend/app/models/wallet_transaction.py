@@ -51,7 +51,9 @@ class WalletTransaction(Base):
         UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     transaction_type = Column(String(20), nullable=False)
-    transaction_status = Column(String(20), nullable=False, default=TransactionTransactionStatus.GRANTED.value)
+    transaction_status = Column(
+        String(20), nullable=False, default=TransactionTransactionStatus.GRANTED.value
+    )
     source = Column(String(20), nullable=False, default=TransactionSource.MANUAL.value)
     status = Column(String(20), nullable=False, default=TransactionStatus.PENDING.value)
     amount = Column(Numeric(12, 4), nullable=False, default=0)

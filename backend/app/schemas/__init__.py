@@ -1,3 +1,10 @@
+from app.schemas.add_on import (
+    AddOnCreate,
+    AddOnResponse,
+    AddOnUpdate,
+    AppliedAddOnResponse,
+    ApplyAddOnRequest,
+)
 from app.schemas.billable_metric import (
     BillableMetricCreate,
     BillableMetricResponse,
@@ -13,6 +20,11 @@ from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, S
 from app.schemas.wallet import WalletCreate, WalletResponse, WalletUpdate
 
 __all__ = [
+    "AddOnCreate",
+    "AddOnResponse",
+    "AddOnUpdate",
+    "AppliedAddOnResponse",
+    "ApplyAddOnRequest",
     "BillableMetricCreate",
     "BillableMetricResponse",
     "BillableMetricUpdate",

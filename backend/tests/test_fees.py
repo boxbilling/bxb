@@ -283,7 +283,7 @@ class TestFeeRepository:
 
         # Create a charge to use as FK
         from app.models.billable_metric import BillableMetric
-        from app.models.charge import Charge, ChargeModel as CM
+        from app.models.charge import Charge, ChargeModel
         from app.repositories.plan_repository import PlanRepository
         from app.schemas.plan import PlanCreate
 
@@ -298,7 +298,7 @@ class TestFeeRepository:
         charge = Charge(
             plan_id=plan.id,
             billable_metric_id=metric.id,
-            charge_model=CM.STANDARD.value,
+            charge_model=ChargeModel.STANDARD.value,
             properties={"amount": "1.00"},
         )
         db_session.add(charge)

@@ -490,6 +490,7 @@ class TestWalletSchema:
     def test_wallet_top_up_schema_validation(self):
         """Test WalletTopUp schema validation."""
         from pydantic import ValidationError
+
         from app.schemas.wallet import WalletTopUp
 
         # Valid

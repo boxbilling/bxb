@@ -25,7 +25,7 @@ async def create_wallet(
     """Create a wallet for a customer."""
     service = WalletService(db)
     try:
-        return service.create_wallet(
+        return service.create_wallet(  # type: ignore[return-value]
             customer_id=data.customer_id,
             name=data.name,
             code=data.code,
@@ -104,7 +104,7 @@ async def top_up_wallet(
     """Top up a wallet with credits."""
     service = WalletService(db)
     try:
-        return service.top_up_wallet(
+        return service.top_up_wallet(  # type: ignore[return-value]
             wallet_id=wallet_id,
             credits=data.credits,
             source=data.source,

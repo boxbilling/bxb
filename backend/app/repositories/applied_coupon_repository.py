@@ -97,7 +97,7 @@ class AppliedCouponRepository:
             return None
 
         if applied_coupon.frequency_duration_remaining is not None:
-            applied_coupon.frequency_duration_remaining -= 1  # type: ignore[operator]
+            applied_coupon.frequency_duration_remaining -= 1  # type: ignore[assignment]
             if applied_coupon.frequency_duration_remaining <= 0:
                 applied_coupon.status = AppliedCouponStatus.TERMINATED.value  # type: ignore[assignment]
                 applied_coupon.terminated_at = datetime.now()  # type: ignore[assignment]

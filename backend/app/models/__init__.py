@@ -1,3 +1,5 @@
+from app.models.add_on import AddOn
+from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.charge import Charge, ChargeModel
@@ -14,13 +16,15 @@ from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import (
     TransactionSource,
     TransactionStatus,
-    TransactionType,
     TransactionTransactionStatus,
+    TransactionType,
     WalletTransaction,
 )
 
 __all__ = [
+    "AddOn",
     "AggregationType",
+    "AppliedAddOn",
     "AppliedCoupon",
     "AppliedCouponStatus",
     "BillableMetric",

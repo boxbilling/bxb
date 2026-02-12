@@ -47,7 +47,7 @@ class WalletRepository:
         )
 
     def get_active_by_customer_id(self, customer_id: UUID) -> list[Wallet]:
-        """Get all active, non-expired wallets for a customer, ordered by priority ASC, created_at ASC."""
+        """Get active, non-expired wallets for a customer, ordered by priority ASC."""
         now = datetime.now(UTC)
         return (
             self.db.query(Wallet)
@@ -100,7 +100,7 @@ class WalletRepository:
         if wallet.status == WalletStatus.TERMINATED.value:
             return wallet
 
-        wallet.status = WalletStatus.TERMINATED.value
+        wallet.status = WalletStatus.TERMINATED.value  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(wallet)
         return wallet
@@ -113,8 +113,8 @@ class WalletRepository:
         if not wallet:
             return None
 
-        wallet.credits_balance = Decimal(str(wallet.credits_balance)) + credits
-        wallet.balance_cents = Decimal(str(wallet.balance_cents)) + amount_cents
+        wallet.credits_balance = Decimal(str(wallet.credits_balance)) + credits  # type: ignore[assignment]
+        wallet.balance_cents = Decimal(str(wallet.balance_cents)) + amount_cents  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(wallet)
         return wallet
@@ -127,10 +127,10 @@ class WalletRepository:
         if not wallet:
             return None
 
-        wallet.credits_balance = Decimal(str(wallet.credits_balance)) - credits
-        wallet.balance_cents = Decimal(str(wallet.balance_cents)) - amount_cents
-        wallet.consumed_credits = Decimal(str(wallet.consumed_credits)) + credits
-        wallet.consumed_amount_cents = Decimal(str(wallet.consumed_amount_cents)) + amount_cents
+        wallet.credits_balance = Decimal(str(wallet.credits_balance)) - credits  # type: ignore[assignment]
+        wallet.balance_cents = Decimal(str(wallet.balance_cents)) - amount_cents  # type: ignore[assignment]
+        wallet.consumed_credits = Decimal(str(wallet.consumed_credits)) + credits  # type: ignore[assignment]
+        wallet.consumed_amount_cents = Decimal(str(wallet.consumed_amount_cents)) + amount_cents  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(wallet)
         return wallet

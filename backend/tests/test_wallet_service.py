@@ -12,7 +12,6 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.repositories.wallet_transaction_repository import WalletTransactionRepository
 from app.schemas.customer import CustomerCreate
-from app.schemas.wallet import WalletCreate
 from app.services.wallet_service import ConsumptionResult, WalletService
 
 

@@ -77,9 +77,9 @@ async def finalize_invoice(
         if invoice_total > 0:
             wallet_service = WalletService(db)
             result = wallet_service.consume_credits(
-                customer_id=invoice.customer_id,
+                customer_id=invoice.customer_id,  # type: ignore[arg-type]
                 amount_cents=invoice_total,
-                invoice_id=invoice.id,
+                invoice_id=invoice.id,  # type: ignore[arg-type]
             )
 
             if result.total_consumed > 0:

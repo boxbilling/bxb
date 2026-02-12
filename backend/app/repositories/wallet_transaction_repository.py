@@ -34,7 +34,11 @@ class WalletTransactionRepository:
 
     def get_by_id(self, transaction_id: UUID) -> WalletTransaction | None:
         """Get a wallet transaction by ID."""
-        return self.db.query(WalletTransaction).filter(WalletTransaction.id == transaction_id).first()
+        return (
+            self.db.query(WalletTransaction)
+            .filter(WalletTransaction.id == transaction_id)
+            .first()
+        )
 
     def get_by_wallet_id(
         self, wallet_id: UUID, skip: int = 0, limit: int = 100

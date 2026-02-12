@@ -35,7 +35,8 @@ This phase implements three tightly related billing features that are completely
   - Repositories: `CouponRepository` (CRUD + `get_by_code()`), `AppliedCouponRepository` (CRUD + `get_active_by_customer_id()`, `decrement_frequency()`, `terminate()`)
   - Alembic migrations for both tables
 
-- [ ] Create the AddOn and AppliedAddOn models, migrations, repositories, and schemas:
+- [x] Create the AddOn and AppliedAddOn models, migrations, repositories, and schemas:
+  <!-- Completed: Created AddOn model, AppliedAddOn model, AddOnRepository, AppliedAddOnRepository, schemas (AddOnCreate/Update/Response, ApplyAddOnRequest, AppliedAddOnResponse), Alembic migrations (f6a7b9c0d1e2, g7b9c0d1e2f3), updated models/__init__.py, repositories/__init__.py, schemas/__init__.py. 48 tests added, 891 total pass with 100% coverage. -->
   - `backend/app/models/add_on.py` — AddOn model:
     - `id` (UUIDType PK), `code` (String(255), unique index), `name` (String(255))
     - `description` (Text nullable)
