@@ -4,7 +4,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.tasks import enqueue_task, enqueue_task_ping, get_redis_pool
+from app.tasks import (
+    enqueue_retry_failed_webhooks,
+    enqueue_task,
+    enqueue_task_ping,
+    get_redis_pool,
+)
 
 
 class TestTasks:
@@ -69,3 +74,17 @@ class TestTasks:
 
             assert result == mock_job
             mock_enqueue.assert_called_once_with("task_ping")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_retry_failed_webhooks(self):
+        """Test enqueue_retry_failed_webhooks helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "retry-job-789"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_retry_failed_webhooks()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("retry_failed_webhooks_task")

@@ -39,3 +39,8 @@ async def enqueue_task(task_name: str, *args: Any, **kwargs: Any) -> Job:
 async def enqueue_task_ping() -> Job:
     """Enqueue a simple ping task for testing"""
     return await enqueue_task("task_ping")
+
+
+async def enqueue_retry_failed_webhooks() -> Job:
+    """Enqueue a task to retry failed webhooks."""
+    return await enqueue_task("retry_failed_webhooks_task")
