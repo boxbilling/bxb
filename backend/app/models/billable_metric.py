@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import Column, DateTime, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, func
 
 from app.core.database import Base
 from app.models.customer import UUIDType
@@ -12,6 +12,9 @@ class AggregationType(str, Enum):
     SUM = "sum"
     MAX = "max"
     UNIQUE_COUNT = "unique_count"
+    WEIGHTED_SUM = "weighted_sum"
+    LATEST = "latest"
+    CUSTOM = "custom"
 
 
 class BillableMetric(Base):
@@ -23,5 +26,9 @@ class BillableMetric(Base):
     description = Column(Text, nullable=True)
     aggregation_type = Column(String(20), nullable=False)
     field_name = Column(String(255), nullable=True)  # For SUM, MAX, UNIQUE_COUNT
+    recurring = Column(Boolean, nullable=False, default=False)
+    rounding_function = Column(String(10), nullable=True)  # "round", "ceil", "floor"
+    rounding_precision = Column(Integer, nullable=True)
+    expression = Column(Text, nullable=True)  # For CUSTOM aggregation type
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

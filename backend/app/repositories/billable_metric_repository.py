@@ -26,6 +26,10 @@ class BillableMetricRepository:
             description=data.description,
             aggregation_type=data.aggregation_type.value,
             field_name=data.field_name,
+            recurring=data.recurring,
+            rounding_function=data.rounding_function,
+            rounding_precision=data.rounding_precision,
+            expression=data.expression,
         )
         self.db.add(metric)
         self.db.commit()

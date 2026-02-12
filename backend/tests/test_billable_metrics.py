@@ -51,6 +51,21 @@ class TestAggregationType:
         assert AggregationType.UNIQUE_COUNT == "unique_count"
         assert AggregationType.UNIQUE_COUNT.value == "unique_count"
 
+    def test_weighted_sum(self):
+        """Test WEIGHTED_SUM aggregation type."""
+        assert AggregationType.WEIGHTED_SUM == "weighted_sum"
+        assert AggregationType.WEIGHTED_SUM.value == "weighted_sum"
+
+    def test_latest(self):
+        """Test LATEST aggregation type."""
+        assert AggregationType.LATEST == "latest"
+        assert AggregationType.LATEST.value == "latest"
+
+    def test_custom(self):
+        """Test CUSTOM aggregation type."""
+        assert AggregationType.CUSTOM == "custom"
+        assert AggregationType.CUSTOM.value == "custom"
+
 
 class TestBillableMetricModel:
     def test_billable_metric_defaults(self, db_session):
@@ -70,8 +85,59 @@ class TestBillableMetricModel:
         assert metric.aggregation_type == "count"
         assert metric.description is None
         assert metric.field_name is None
+        assert metric.recurring is False
+        assert metric.rounding_function is None
+        assert metric.rounding_precision is None
+        assert metric.expression is None
         assert metric.created_at is not None
         assert metric.updated_at is not None
+
+    def test_billable_metric_with_advanced_fields(self, db_session):
+        """Test BillableMetric model with advanced aggregation fields."""
+        metric = BillableMetric(
+            code="weighted_usage",
+            name="Weighted Usage",
+            aggregation_type=AggregationType.WEIGHTED_SUM.value,
+            field_name="cpu_usage",
+            recurring=False,
+            rounding_function="ceil",
+            rounding_precision=2,
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        assert metric.rounding_function == "ceil"
+        assert metric.rounding_precision == 2
+        assert metric.recurring is False
+
+    def test_billable_metric_with_expression(self, db_session):
+        """Test BillableMetric model with custom expression."""
+        metric = BillableMetric(
+            code="custom_metric",
+            name="Custom Metric",
+            aggregation_type=AggregationType.CUSTOM.value,
+            expression="sum(amount * quantity)",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        assert metric.expression == "sum(amount * quantity)"
+
+    def test_billable_metric_recurring(self, db_session):
+        """Test BillableMetric model with recurring flag."""
+        metric = BillableMetric(
+            code="recurring_count",
+            name="Recurring Count",
+            aggregation_type=AggregationType.COUNT.value,
+            recurring=True,
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        assert metric.recurring is True
 
 
 class TestBillableMetricRepository:
@@ -105,6 +171,38 @@ class TestBillableMetricRepository:
 
         assert repo.code_exists("exists_test") is True
         assert repo.code_exists("not_exists") is False
+
+    def test_create_with_advanced_fields(self, db_session):
+        """Test creating metric with advanced fields via repository."""
+        repo = BillableMetricRepository(db_session)
+        data = BillableMetricCreate(
+            code="adv_repo",
+            name="Advanced Repo",
+            aggregation_type=AggregationType.MAX,
+            field_name="value",
+            recurring=True,
+            rounding_function="round",
+            rounding_precision=3,
+        )
+        metric = repo.create(data)
+
+        assert metric.recurring is True
+        assert metric.rounding_function == "round"
+        assert metric.rounding_precision == 3
+        assert metric.expression is None
+
+    def test_create_with_expression(self, db_session):
+        """Test creating metric with expression via repository."""
+        repo = BillableMetricRepository(db_session)
+        data = BillableMetricCreate(
+            code="custom_repo",
+            name="Custom Repo",
+            aggregation_type=AggregationType.CUSTOM,
+            expression="sum(amount)",
+        )
+        metric = repo.create(data)
+
+        assert metric.expression == "sum(amount)"
 
 
 class TestBillableMetricSchemaValidation:
@@ -157,6 +255,214 @@ class TestBillableMetricSchemaValidation:
         )
         assert response.status_code == 201
 
+    def test_field_name_required_for_weighted_sum(self, client: TestClient):
+        """Test field_name is required for WEIGHTED_SUM aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "ws_test",
+                "name": "Weighted Sum Test",
+                "aggregation_type": "weighted_sum",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_field_name_required_for_latest(self, client: TestClient):
+        """Test field_name is required for LATEST aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "latest_test",
+                "name": "Latest Test",
+                "aggregation_type": "latest",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_expression_required_for_custom(self, client: TestClient):
+        """Test expression is required for CUSTOM aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "custom_test",
+                "name": "Custom Test",
+                "aggregation_type": "custom",
+            },
+        )
+        assert response.status_code == 422
+
+    def test_recurring_invalid_for_sum(self, client: TestClient):
+        """Test recurring is not allowed for SUM aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_sum_test",
+                "name": "Recurring Sum Test",
+                "aggregation_type": "sum",
+                "field_name": "amount",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_recurring_valid_for_count(self, client: TestClient):
+        """Test recurring is allowed for COUNT aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_count_test",
+                "name": "Recurring Count Test",
+                "aggregation_type": "count",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["recurring"] is True
+
+    def test_recurring_valid_for_max(self, client: TestClient):
+        """Test recurring is allowed for MAX aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_max_test",
+                "name": "Recurring Max Test",
+                "aggregation_type": "max",
+                "field_name": "val",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["recurring"] is True
+
+    def test_recurring_valid_for_latest(self, client: TestClient):
+        """Test recurring is allowed for LATEST aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_latest_test",
+                "name": "Recurring Latest Test",
+                "aggregation_type": "latest",
+                "field_name": "val",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["recurring"] is True
+
+    def test_recurring_invalid_for_unique_count(self, client: TestClient):
+        """Test recurring is not allowed for UNIQUE_COUNT aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_uc_test",
+                "name": "Recurring UC Test",
+                "aggregation_type": "unique_count",
+                "field_name": "user_id",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_recurring_invalid_for_weighted_sum(self, client: TestClient):
+        """Test recurring is not allowed for WEIGHTED_SUM aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_ws_test",
+                "name": "Recurring WS Test",
+                "aggregation_type": "weighted_sum",
+                "field_name": "cpu",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_recurring_invalid_for_custom(self, client: TestClient):
+        """Test recurring is not allowed for CUSTOM aggregation."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rec_custom_test",
+                "name": "Recurring Custom Test",
+                "aggregation_type": "custom",
+                "expression": "sum(x)",
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_rounding_precision_requires_function(self, client: TestClient):
+        """Test rounding_precision requires rounding_function."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rp_test",
+                "name": "RP Test",
+                "aggregation_type": "count",
+                "rounding_precision": 2,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_rounding_function_valid_values(self):
+        """Test rounding_function only accepts valid values."""
+        # Valid: round
+        data = BillableMetricCreate(
+            code="rf_round",
+            name="RF Round",
+            aggregation_type=AggregationType.COUNT,
+            rounding_function="round",
+        )
+        assert data.rounding_function == "round"
+
+        # Valid: ceil
+        data = BillableMetricCreate(
+            code="rf_ceil",
+            name="RF Ceil",
+            aggregation_type=AggregationType.COUNT,
+            rounding_function="ceil",
+        )
+        assert data.rounding_function == "ceil"
+
+        # Valid: floor
+        data = BillableMetricCreate(
+            code="rf_floor",
+            name="RF Floor",
+            aggregation_type=AggregationType.COUNT,
+            rounding_function="floor",
+        )
+        assert data.rounding_function == "floor"
+
+    def test_rounding_function_invalid_value(self):
+        """Test rounding_function rejects invalid values."""
+        with pytest.raises(ValueError):
+            BillableMetricCreate(
+                code="rf_invalid",
+                name="RF Invalid",
+                aggregation_type=AggregationType.COUNT,
+                rounding_function="truncate",
+            )
+
+    def test_rounding_precision_bounds(self):
+        """Test rounding_precision rejects out-of-bounds values."""
+        with pytest.raises(ValueError):
+            BillableMetricCreate(
+                code="rp_neg",
+                name="RP Neg",
+                aggregation_type=AggregationType.COUNT,
+                rounding_function="round",
+                rounding_precision=-1,
+            )
+
+        with pytest.raises(ValueError):
+            BillableMetricCreate(
+                code="rp_high",
+                name="RP High",
+                aggregation_type=AggregationType.COUNT,
+                rounding_function="round",
+                rounding_precision=16,
+            )
+
 
 class TestBillableMetricsAPI:
     def test_list_billable_metrics_empty(self, client: TestClient):
@@ -183,6 +489,10 @@ class TestBillableMetricsAPI:
         assert data["description"] == "Number of API requests"
         assert data["aggregation_type"] == "count"
         assert data["field_name"] is None
+        assert data["recurring"] is False
+        assert data["rounding_function"] is None
+        assert data["rounding_precision"] is None
+        assert data["expression"] is None
         assert "id" in data
         assert "created_at" in data
         assert "updated_at" in data
@@ -235,6 +545,88 @@ class TestBillableMetricsAPI:
         data = response.json()
         assert data["aggregation_type"] == "unique_count"
         assert data["field_name"] == "visitor_id"
+
+    def test_create_billable_metric_weighted_sum(self, client: TestClient):
+        """Test creating a WEIGHTED_SUM metric."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "cpu_weighted",
+                "name": "CPU Weighted Usage",
+                "aggregation_type": "weighted_sum",
+                "field_name": "cpu_percent",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["aggregation_type"] == "weighted_sum"
+        assert data["field_name"] == "cpu_percent"
+
+    def test_create_billable_metric_latest(self, client: TestClient):
+        """Test creating a LATEST metric."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "current_seats",
+                "name": "Current Seats",
+                "aggregation_type": "latest",
+                "field_name": "seat_count",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["aggregation_type"] == "latest"
+        assert data["field_name"] == "seat_count"
+
+    def test_create_billable_metric_custom(self, client: TestClient):
+        """Test creating a CUSTOM metric."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "custom_agg",
+                "name": "Custom Aggregation",
+                "aggregation_type": "custom",
+                "expression": "sum(amount * quantity)",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["aggregation_type"] == "custom"
+        assert data["expression"] == "sum(amount * quantity)"
+
+    def test_create_billable_metric_with_rounding(self, client: TestClient):
+        """Test creating a metric with rounding configuration."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rounded_metric",
+                "name": "Rounded Metric",
+                "aggregation_type": "sum",
+                "field_name": "amount",
+                "rounding_function": "ceil",
+                "rounding_precision": 2,
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["rounding_function"] == "ceil"
+        assert data["rounding_precision"] == 2
+
+    def test_create_billable_metric_rounding_function_no_precision(self, client: TestClient):
+        """Test creating a metric with rounding_function but no precision."""
+        response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "rf_no_prec",
+                "name": "RF No Precision",
+                "aggregation_type": "count",
+                "rounding_function": "floor",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["rounding_function"] == "floor"
+        assert data["rounding_precision"] is None
 
     def test_create_billable_metric_duplicate_code(self, client: TestClient):
         """Test creating a metric with duplicate code."""
@@ -344,6 +736,32 @@ class TestBillableMetricsAPI:
         assert data["name"] == "Updated Name"
         assert data["description"] == "New description"
         assert data["code"] == "upd_test"  # Unchanged
+
+    def test_update_billable_metric_advanced_fields(self, client: TestClient):
+        """Test updating a metric's advanced fields."""
+        create_response = client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "upd_adv",
+                "name": "Update Advanced",
+                "aggregation_type": "count",
+            },
+        )
+        metric_id = create_response.json()["id"]
+
+        response = client.put(
+            f"/v1/billable_metrics/{metric_id}",
+            json={
+                "rounding_function": "round",
+                "rounding_precision": 5,
+                "recurring": True,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["rounding_function"] == "round"
+        assert data["rounding_precision"] == 5
+        assert data["recurring"] is True
 
     def test_update_billable_metric_partial(self, client: TestClient):
         """Test partial update of a metric."""
