@@ -1,5 +1,7 @@
+from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.charge import Charge, ChargeModel
+from app.models.coupon import Coupon, CouponExpiration, CouponFrequency, CouponStatus, CouponType
 from app.models.customer import Customer
 from app.models.event import Event
 from app.models.fee import Fee, FeePaymentStatus, FeeType
@@ -19,9 +21,16 @@ from app.models.wallet_transaction import (
 
 __all__ = [
     "AggregationType",
+    "AppliedCoupon",
+    "AppliedCouponStatus",
     "BillableMetric",
     "Charge",
     "ChargeModel",
+    "Coupon",
+    "CouponExpiration",
+    "CouponFrequency",
+    "CouponStatus",
+    "CouponType",
     "Customer",
     "Event",
     "Fee",
