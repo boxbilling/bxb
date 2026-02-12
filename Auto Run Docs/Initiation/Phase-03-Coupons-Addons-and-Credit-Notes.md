@@ -105,7 +105,8 @@ This phase implements three tightly related billing features that are completely
     - `POST /v1/credit_notes/{id}/void` — Void credit note (sets credit_status=voided)
   - Register all routers in `backend/app/main.py`
 
-- [ ] Create CouponApplicationService for invoice calculation integration:
+- [x] Create CouponApplicationService for invoice calculation integration:
+  <!-- Completed: Created CouponApplicationService with apply_coupon_to_customer (validates active/expired/reusable, supports amount/percentage overrides), calculate_coupon_discount (fixed amount capped at subtotal, percentage calculation, sequential multi-coupon stacking), consume_applied_coupon (once→terminate, recurring→decrement, forever→no-op), CouponDiscount dataclass. Also created _calculate_single_discount helper. 33 tests added in test_coupon_service.py, 1059 total pass with 100% coverage. -->
   - `backend/app/services/coupon_service.py`:
     - `apply_coupon_to_customer(coupon_code, customer_id, amount_override, percentage_override)` — Validate coupon (active, not expired, reusable check), create AppliedCoupon
     - `calculate_coupon_discount(customer_id, subtotal_cents)` — Get active applied coupons for customer, calculate total discount:
