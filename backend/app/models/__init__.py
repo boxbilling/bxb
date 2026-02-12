@@ -19,12 +19,16 @@ from app.models.credit_note import (
 )
 from app.models.credit_note_item import CreditNoteItem
 from app.models.customer import Customer
+from app.models.dunning_campaign import DunningCampaign
+from app.models.dunning_campaign_threshold import DunningCampaignThreshold
 from app.models.event import Event
 from app.models.fee import Fee, FeePaymentStatus, FeeType
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.item import Item
 from app.models.organization import Organization
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
+from app.models.payment_request import PaymentRequest
+from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.models.tax import Tax
@@ -65,6 +69,8 @@ __all__ = [
     "CreditNoteType",
     "CreditStatus",
     "Customer",
+    "DunningCampaign",
+    "DunningCampaignThreshold",
     "Event",
     "Fee",
     "FeePaymentStatus",
@@ -75,6 +81,8 @@ __all__ = [
     "Organization",
     "Payment",
     "PaymentProvider",
+    "PaymentRequest",
+    "PaymentRequestInvoice",
     "PaymentStatus",
     "RefundStatus",
     "Plan",

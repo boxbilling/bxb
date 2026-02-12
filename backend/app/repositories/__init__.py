@@ -8,9 +8,11 @@ from app.repositories.charge_repository import ChargeRepository
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.payment_repository import PaymentRepository
+from app.repositories.payment_request_repository import PaymentRequestRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.tax_repository import TaxRepository
@@ -29,9 +31,11 @@ __all__ = [
     "CreditNoteItemRepository",
     "CreditNoteRepository",
     "CustomerRepository",
+    "DunningCampaignRepository",
     "FeeRepository",
     "ItemRepository",
     "PaymentRepository",
+    "PaymentRequestRepository",
     "PlanRepository",
     "SubscriptionRepository",
     "TaxRepository",
