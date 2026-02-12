@@ -17,6 +17,7 @@ from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.services.charge_models.factory import get_charge_calculator
 from app.services.coupon_service import CouponApplicationService
+from app.services.tax_service import TaxCalculationService
 from app.services.usage_aggregation import UsageAggregationService
 
 
@@ -31,6 +32,7 @@ class InvoiceGenerationService:
         self.fee_repo = FeeRepository(db)
         self.usage_service = UsageAggregationService(db)
         self.coupon_service = CouponApplicationService(db)
+        self.tax_service = TaxCalculationService(db)
 
     def generate_invoice(
         self,
@@ -106,11 +108,24 @@ class InvoiceGenerationService:
         invoice = self.invoice_repo.create(invoice_data)
 
         # Create Fee records linked to the invoice
+        created_fees = []
         if fee_creates:
             invoice_uuid = UUID(str(invoice.id))
             for fc in fee_creates:
                 fc.invoice_id = invoice_uuid
-            self.fee_repo.create_bulk(fee_creates)
+            created_fees = self.fee_repo.create_bulk(fee_creates)
+
+        # Apply taxes to each fee
+        for fee in created_fees:
+            fee_id = UUID(str(fee.id))
+            charge_id = UUID(str(fee.charge_id)) if fee.charge_id else None
+            taxes = self.tax_service.get_applicable_taxes(
+                customer_id=customer_id,
+                plan_id=plan_id,
+                charge_id=charge_id,
+            )
+            if taxes:
+                self.tax_service.apply_taxes_to_fee(fee_id, taxes)
 
         # Apply coupon discounts
         subtotal = Decimal(str(invoice.subtotal))
@@ -128,6 +143,11 @@ class InvoiceGenerationService:
                 # Consume applied coupons
                 for applied_coupon_id in coupon_discount.applied_coupon_ids:
                     self.coupon_service.consume_applied_coupon(applied_coupon_id)
+
+        # Aggregate fee-level taxes into invoice totals
+        if created_fees:
+            self.tax_service.apply_taxes_to_invoice(invoice_uuid)
+            self.db.refresh(invoice)
 
         return invoice
 
@@ -230,7 +250,7 @@ class InvoiceGenerationService:
             charge_id=UUID(str(charge.id)),
             fee_type=FeeType.CHARGE,
             amount_cents=amount,
-            total_amount_cents=amount,  # No taxes yet
+            total_amount_cents=amount,
             units=quantity,
             events_count=events_count,
             unit_amount_cents=unit_price if quantity else amount,

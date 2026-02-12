@@ -18,11 +18,15 @@ from app.models.fee import FeeType
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
+from app.repositories.applied_tax_repository import AppliedTaxRepository
 from app.repositories.coupon_repository import CouponRepository
 from app.repositories.fee_repository import FeeRepository
+from app.repositories.tax_repository import TaxRepository
 from app.schemas.coupon import CouponCreate
+from app.schemas.tax import TaxCreate
 from app.services.coupon_service import CouponApplicationService
 from app.services.invoice_generation import InvoiceGenerationService
+from app.services.tax_service import TaxCalculationService
 
 
 @pytest.fixture
@@ -1883,3 +1887,446 @@ class TestCouponDiscountIntegration:
         updated_applied = applied_coupon_repo.get_by_id(applied.id)
         assert updated_applied is not None
         assert updated_applied.status == AppliedCouponStatus.ACTIVE.value
+
+
+class TestTaxIntegration:
+    """Test tax calculation integration in invoice generation."""
+
+    def test_organization_default_tax_applied_to_fees(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that organization default taxes are applied to invoice fees."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create an organization-level tax (10%)
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_INV",
+                name="Org Tax 10%",
+                rate=Decimal("0.1000"),
+                applied_to_organization=True,
+            )
+        )
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 10 * $10 = $100, tax: 10% of $100 = $10
+        assert invoice.subtotal == Decimal("100")
+        assert invoice.tax_amount == Decimal("10")
+        assert invoice.total == Decimal("110")
+
+        # Verify fee-level tax amounts
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        assert fees[0].taxes_amount_cents == Decimal("10")
+        assert fees[0].total_amount_cents == Decimal("110")
+
+    def test_customer_level_tax_applied(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that customer-level taxes override organization defaults."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=4)
+
+        # Create org tax and customer-specific tax
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_CUST_OVERRIDE",
+                name="Org Default",
+                rate=Decimal("0.1000"),
+                applied_to_organization=True,
+            )
+        )
+        tax_repo.create(
+            TaxCreate(
+                code="CUST_TAX_20",
+                name="Customer Tax 20%",
+                rate=Decimal("0.2000"),
+            )
+        )
+
+        # Apply the customer tax
+        tax_service = TaxCalculationService(db_session)
+        tax_service.apply_tax_to_entity("CUST_TAX_20", "customer", customer.id)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 4 * $5 = $20, customer tax: 20% of $20 = $4
+        assert invoice.subtotal == Decimal("20")
+        assert invoice.tax_amount == Decimal("4")
+        assert invoice.total == Decimal("24")
+
+    def test_charge_level_tax_applied(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that charge-level taxes override plan/customer/org defaults."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        # Create org tax and charge-specific tax
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_CHARGE_OVERRIDE",
+                name="Org Default",
+                rate=Decimal("0.1000"),
+                applied_to_organization=True,
+            )
+        )
+        tax_repo.create(
+            TaxCreate(
+                code="CHARGE_TAX_5",
+                name="Charge Tax 5%",
+                rate=Decimal("0.0500"),
+            )
+        )
+
+        # Apply tax to the specific charge
+        tax_service = TaxCalculationService(db_session)
+        tax_service.apply_tax_to_entity("CHARGE_TAX_5", "charge", charge.id)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 5 * $10 = $50, charge tax: 5% of $50 = $2.50
+        assert invoice.subtotal == Decimal("50")
+        assert invoice.tax_amount == Decimal("2.5")
+        assert invoice.total == Decimal("52.5")
+
+    def test_multiple_taxes_combined(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that multiple taxes on same entity are summed."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create two customer-level taxes
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="MULTI_TAX_1",
+                name="State Tax 5%",
+                rate=Decimal("0.0500"),
+            )
+        )
+        tax_repo.create(
+            TaxCreate(
+                code="MULTI_TAX_2",
+                name="City Tax 3%",
+                rate=Decimal("0.0300"),
+            )
+        )
+
+        tax_service = TaxCalculationService(db_session)
+        tax_service.apply_tax_to_entity("MULTI_TAX_1", "customer", customer.id)
+        tax_service.apply_tax_to_entity("MULTI_TAX_2", "customer", customer.id)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 10 * $10 = $100, taxes: (5% + 3%) of $100 = $8
+        assert invoice.subtotal == Decimal("100")
+        assert invoice.tax_amount == Decimal("8")
+        assert invoice.total == Decimal("108")
+
+        # Verify AppliedTax records were created for the fee
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 1
+        applied_tax_repo = AppliedTaxRepository(db_session)
+        applied = applied_tax_repo.get_by_taxable("fee", fees[0].id)
+        assert len(applied) == 2
+
+    def test_tax_with_coupon_discount(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test tax calculation combined with coupon discounts."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create a 10% organization tax
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_COUPON",
+                name="Org Tax 10%",
+                rate=Decimal("0.1000"),
+                applied_to_organization=True,
+            )
+        )
+
+        # Create and apply a $20 coupon
+        coupon = _create_coupon(
+            db_session,
+            code="TAXCOUPON20",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.FOREVER,
+            amount_cents=Decimal("20"),
+            amount_currency="USD",
+        )
+        _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 10 * $10 = $100
+        # Tax: 10% of $100 = $10 (tax on pre-coupon subtotal)
+        # Coupon: $20
+        # Total: $100 - $20 + $10 = $90
+        assert invoice.subtotal == Decimal("100")
+        assert invoice.coupons_amount_cents == Decimal("20")
+        assert invoice.tax_amount == Decimal("10")
+        assert invoice.total == Decimal("90")
+
+    def test_no_taxes_when_no_taxes_configured(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that invoice works correctly when no taxes are configured."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # No taxes configured, so tax_amount should remain 0
+        assert invoice.subtotal == Decimal("50")
+        assert invoice.tax_amount == Decimal("0")
+        assert invoice.total == Decimal("50")
+
+    def test_tax_on_multiple_fees(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test tax applied across multiple fees on one invoice."""
+        start, end = billing_period
+
+        metric2 = BillableMetric(
+            code="tax_storage_gb",
+            name="Tax Storage (GB)",
+            aggregation_type="count",
+        )
+        db_session.add(metric2)
+        db_session.commit()
+        db_session.refresh(metric2)
+
+        charge1 = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "2.00"},
+        )
+        charge2 = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric2.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add_all([charge1, charge2])
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+        for i in range(4):
+            event = Event(
+                external_customer_id=customer.external_id,
+                code=metric2.code,
+                transaction_id=f"txn_tax_storage_{uuid4()}",
+                timestamp=start + timedelta(hours=i + 1),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        # Create a 20% organization tax
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_MULTI_FEE",
+                name="Org Tax 20%",
+                rate=Decimal("0.2000"),
+                applied_to_organization=True,
+            )
+        )
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Fee 1: 5 * $2 = $10, tax = $2
+        # Fee 2: 4 * $5 = $20, tax = $4
+        # Subtotal: $30, total tax: $6, total: $36
+        assert invoice.subtotal == Decimal("30")
+        assert invoice.tax_amount == Decimal("6")
+        assert invoice.total == Decimal("36")
+
+        # Verify each fee has tax applied
+        fee_repo = FeeRepository(db_session)
+        fees = fee_repo.get_by_invoice_id(UUID(str(invoice.id)))
+        assert len(fees) == 2
+        fee_taxes = [Decimal(str(f.taxes_amount_cents)) for f in fees]
+        assert sorted(fee_taxes) == [Decimal("2"), Decimal("4")]
+
+    def test_plan_level_tax_applied(
+        self, db_session, active_subscription, metric, customer, billing_period, plan
+    ):
+        """Test that plan-level taxes override customer/org defaults."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create org default and plan-specific tax
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_PLAN_OVERRIDE",
+                name="Org Default 10%",
+                rate=Decimal("0.1000"),
+                applied_to_organization=True,
+            )
+        )
+        tax_repo.create(
+            TaxCreate(
+                code="PLAN_TAX_15",
+                name="Plan Tax 15%",
+                rate=Decimal("0.1500"),
+            )
+        )
+
+        # Apply tax at plan level
+        tax_service = TaxCalculationService(db_session)
+        tax_service.apply_tax_to_entity("PLAN_TAX_15", "plan", plan.id)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 10 * $10 = $100, plan tax 15% should override org 10%: $15
+        assert invoice.subtotal == Decimal("100")
+        assert invoice.tax_amount == Decimal("15")
+        assert invoice.total == Decimal("115")
+
+    def test_no_tax_on_zero_subtotal_invoice(
+        self, db_session, active_subscription, billing_period
+    ):
+        """Test that no taxes are applied when invoice has no fees."""
+        start, end = billing_period
+
+        # Create org tax but no charges (zero subtotal)
+        tax_repo = TaxRepository(db_session)
+        tax_repo.create(
+            TaxCreate(
+                code="ORG_TAX_ZERO",
+                name="Org Tax 10%",
+                rate=Decimal("0.1000"),
+                applied_to_organization=True,
+            )
+        )
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id="inv_gen_cust",
+        )
+        # No fees, so no taxes
+        assert invoice.subtotal == Decimal("0")
+        assert invoice.tax_amount == Decimal("0")
+        assert invoice.total == Decimal("0")
