@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     manual_webhook_secret: str = ""
 
+    # Webhook signing
+    webhook_secret: str = "whsec_default_secret"
+
     # UCP (Universal Commerce Protocol) settings
     ucp_base_url: str = ""  # Business's UCP base URL
     ucp_api_key: str = ""  # API key for UCP provider
