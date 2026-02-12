@@ -16,6 +16,7 @@ from app.routers import (
     payments,
     plans,
     subscriptions,
+    taxes,
     wallets,
 )
 
@@ -45,6 +46,7 @@ app.include_router(wallets.router, prefix="/v1/wallets", tags=["wallets"])
 app.include_router(coupons.router, prefix="/v1/coupons", tags=["coupons"])
 app.include_router(add_ons.router, prefix="/v1/add_ons", tags=["add_ons"])
 app.include_router(credit_notes.router, prefix="/v1/credit_notes", tags=["credit_notes"])
+app.include_router(taxes.router, prefix="/v1/taxes", tags=["taxes"])
 
 
 @app.get("/")
