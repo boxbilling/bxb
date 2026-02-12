@@ -59,3 +59,13 @@ async def enqueue_process_trial_expirations() -> Job:
 async def enqueue_generate_periodic_invoices() -> Job:
     """Enqueue a task to generate periodic invoices for active subscriptions."""
     return await enqueue_task("generate_periodic_invoices_task")
+
+
+async def enqueue_check_dunning() -> Job:
+    """Enqueue a task to check dunning campaigns and create payment requests."""
+    return await enqueue_task("check_dunning_task")
+
+
+async def enqueue_process_payment_requests() -> Job:
+    """Enqueue a task to process pending payment requests."""
+    return await enqueue_task("process_payment_requests_task")

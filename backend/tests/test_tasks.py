@@ -5,7 +5,9 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tasks import (
+    enqueue_check_dunning,
     enqueue_generate_periodic_invoices,
+    enqueue_process_payment_requests,
     enqueue_process_pending_downgrades,
     enqueue_process_trial_expirations,
     enqueue_retry_failed_webhooks,
@@ -133,3 +135,31 @@ class TestTasks:
 
             assert result == mock_job
             mock_enqueue.assert_called_once_with("generate_periodic_invoices_task")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_check_dunning(self):
+        """Test enqueue_check_dunning helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "dunning-job-004"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_check_dunning()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("check_dunning_task")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_process_payment_requests(self):
+        """Test enqueue_process_payment_requests helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "payment-requests-job-005"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_process_payment_requests()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("process_payment_requests_task")
