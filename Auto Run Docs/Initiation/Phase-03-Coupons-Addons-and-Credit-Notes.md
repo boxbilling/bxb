@@ -141,7 +141,8 @@ This phase implements three tightly related billing features that are completely
   - `backend/tests/test_credit_notes.py` — Credit note CRUD, finalize, void, items linked to fees, credit application, reason codes, balance tracking
   - Update `backend/tests/test_invoices.py` to verify coupon discount integration
 
-- [ ] Run the full test suite and fix any failures:
+- [x] Run the full test suite and fix any failures:
+  <!-- Completed: All 1109 tests pass with 100% coverage. Fixed flaky SQLite locking errors by switching test conftest.py to use an in-memory SQLite database with StaticPool instead of the file-based /tmp/database.db. This eliminates file-level locking issues from pooled connections and also improves test speed (~5s vs ~17s). No test logic changes required — only infrastructure improvement. -->
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ -v --tb=short`
   - Fix any test failures or coverage gaps
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=100` to verify 100% coverage
