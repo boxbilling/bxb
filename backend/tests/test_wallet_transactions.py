@@ -672,6 +672,42 @@ class TestWalletTransactionRepository:
             )
             assert txn.source == source.value
 
+    def test_large_amount_precision(self, db_session, wallet, customer):
+        """Test that large amounts maintain decimal precision."""
+        repo = WalletTransactionRepository(db_session)
+        txn = repo.create(
+            WalletTransactionCreate(
+                wallet_id=wallet.id,
+                customer_id=customer.id,
+                transaction_type=SchemaTransactionType.INBOUND,
+                amount=Decimal("99999999.9999"),
+                credit_amount=Decimal("99999999.9999"),
+            )
+        )
+        assert txn.amount == Decimal("99999999.9999")
+        assert txn.credit_amount == Decimal("99999999.9999")
+
+    def test_zero_amounts(self, db_session, wallet, customer):
+        """Test transaction with zero amounts."""
+        repo = WalletTransactionRepository(db_session)
+        txn = repo.create(
+            WalletTransactionCreate(
+                wallet_id=wallet.id,
+                customer_id=customer.id,
+                transaction_type=SchemaTransactionType.INBOUND,
+                amount=Decimal("0"),
+                credit_amount=Decimal("0"),
+            )
+        )
+        assert txn.amount == Decimal("0")
+        assert txn.credit_amount == Decimal("0")
+
+    def test_get_by_customer_id_empty(self, db_session, customer):
+        """Test getting transactions for customer with no transactions."""
+        repo = WalletTransactionRepository(db_session)
+        txns = repo.get_by_customer_id(customer.id)
+        assert len(txns) == 0
+
 
 class TestWalletTransactionSchema:
     """Tests for WalletTransaction Pydantic schemas."""

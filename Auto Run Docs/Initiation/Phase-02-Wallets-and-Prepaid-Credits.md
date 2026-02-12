@@ -64,7 +64,7 @@ This phase implements the wallet and prepaid credits system, one of Lago's most 
     - `GET /v1/wallets/{id}/transactions` — List wallet transactions
   - Register router in `backend/app/main.py`
 
-- [ ] Integrate wallet consumption into the invoice payment flow:
+- [x] Integrate wallet consumption into the invoice payment flow:
   - Modify `backend/app/routers/invoices.py` — When an invoice is finalized or paid:
     - Before processing payment provider, check if customer has active wallets
     - Call `WalletService.consume_credits(customer_id, invoice_total, invoice_id)`
@@ -72,12 +72,14 @@ This phase implements the wallet and prepaid credits system, one of Lago's most 
     - If wallet covers partial amount: reduce payment amount by consumed credits, proceed to payment provider for remainder
     - Add `prepaid_credit_amount` field to Invoice model (Numeric(12,4) default 0) via migration
   - Update `backend/app/schemas/invoice.py` to include `prepaid_credit_amount` in response
+  - ✅ Completed: Added `prepaid_credit_amount` to Invoice model, schema, and migration. Modified `finalize_invoice` endpoint to consume wallet credits via `WalletService.consume_credits()`. Full coverage auto-marks invoice as paid; partial coverage records the prepaid amount. All 714 tests passing.
 
-- [ ] Write comprehensive tests for the wallet system:
+- [x] Write comprehensive tests for the wallet system:
   - `backend/tests/test_wallets.py` — Test wallet CRUD, top-up, termination, expiration, priority ordering
   - `backend/tests/test_wallet_transactions.py` — Test transaction creation, filtering, balance calculations
   - `backend/tests/test_wallet_consumption.py` — Test priority-based consumption algorithm: single wallet, multiple wallets with priorities, partial consumption, expired wallet skipping, terminated wallet skipping, zero-balance wallet skipping
   - Update invoice tests to verify wallet integration
+  - ✅ Completed: Added 30 API endpoint tests to test_wallets.py (TestWalletAPI class + schema tests), 3 repository edge-case tests to test_wallet_transactions.py, created new test_wallet_consumption.py with 22 tests across 6 test classes (single wallet, multi-wallet priority, skipped wallets, rate amounts, transactions, customer isolation), and added 7 wallet integration tests to test_invoices.py (TestInvoiceWalletIntegration class). All 782 tests passing.
 
 - [ ] Run the full test suite and fix any failures:
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ -v --tb=short`

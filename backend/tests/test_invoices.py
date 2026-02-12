@@ -708,3 +708,244 @@ class TestInvoicesAPI:
 
         response = client.delete(f"/v1/invoices/{invoice.id}")
         assert response.status_code == 400
+
+
+class TestInvoiceWalletIntegration:
+    """Tests for wallet credit consumption during invoice finalization."""
+
+    def test_finalize_with_wallet_full_coverage(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that wallet credits fully cover invoice and mark it as paid."""
+        from app.services.wallet_service import WalletService
+
+        # Create a wallet with enough credits to cover invoice total
+        wallet_service = WalletService(db_session)
+        wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="Full Coverage",
+            code="full-cov",
+            initial_granted_credits=Decimal("100"),  # rate=1, balance=100 cents
+        )
+
+        # Create invoice with total = 39.99 (from sample_line_items)
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Invoice should be marked as paid since wallet fully covers it
+        assert data["status"] == "paid"
+        assert Decimal(data["prepaid_credit_amount"]) == Decimal(str(invoice.total))
+        assert data["paid_at"] is not None
+
+    def test_finalize_with_wallet_partial_coverage(
+        self, client, db_session, customer, subscription
+    ):
+        """Test that wallet credits partially cover invoice, recording prepaid amount."""
+        from app.services.wallet_service import WalletService
+
+        wallet_service = WalletService(db_session)
+        wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="Partial Coverage",
+            code="partial-cov",
+            initial_granted_credits=Decimal("10"),  # Only 10 cents
+        )
+
+        # Create invoice with higher total
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=[
+                InvoiceLineItem(
+                    description="Big charge",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("500.00"),
+                    amount=Decimal("500.00"),
+                ),
+            ],
+        )
+        invoice = repo.create(invoice_data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Invoice should be finalized (not paid, since only partially covered)
+        assert data["status"] == "finalized"
+        assert Decimal(data["prepaid_credit_amount"]) == Decimal("10")
+
+    def test_finalize_without_wallet(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that finalization works normally without any wallets."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["status"] == "finalized"
+        assert Decimal(data["prepaid_credit_amount"]) == Decimal("0")
+
+    def test_finalize_creates_wallet_transactions(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that finalizing an invoice creates outbound wallet transactions."""
+        from app.repositories.wallet_transaction_repository import WalletTransactionRepository
+        from app.services.wallet_service import WalletService
+
+        wallet_service = WalletService(db_session)
+        wallet = wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="Txn Check",
+            code="txn-check",
+            initial_granted_credits=Decimal("100"),
+        )
+
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data)
+
+        client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        # Verify outbound transaction was created
+        txn_repo = WalletTransactionRepository(db_session)
+        outbound = txn_repo.get_outbound_by_wallet_id(wallet.id)
+        assert len(outbound) == 1
+        assert outbound[0].transaction_type == "outbound"
+        assert outbound[0].invoice_id == invoice.id
+
+    def test_finalize_with_multiple_wallets_priority(
+        self, client, db_session, customer, subscription
+    ):
+        """Test that finalization uses wallets in priority order."""
+        from app.repositories.wallet_repository import WalletRepository as WR
+        from app.services.wallet_service import WalletService
+
+        wallet_service = WalletService(db_session)
+        w1 = wallet_service.create_wallet(
+            customer_id=customer.id, name="P2", code="p2",
+            priority=2, initial_granted_credits=Decimal("50"),
+        )
+        w2 = wallet_service.create_wallet(
+            customer_id=customer.id, name="P1", code="p1",
+            priority=1, initial_granted_credits=Decimal("50"),
+        )
+
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=[
+                InvoiceLineItem(
+                    description="Priority test",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("60.00"),
+                    amount=Decimal("60.00"),
+                ),
+            ],
+        )
+        invoice = repo.create(invoice_data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "paid"
+
+        # P1 (priority=1) should be drained first, then P2 used for remainder
+        wr = WR(db_session)
+        w2_updated = wr.get_by_id(w2.id)
+        w1_updated = wr.get_by_id(w1.id)
+        assert Decimal(str(w2_updated.balance_cents)) == Decimal("0")  # P1 drained
+        assert Decimal(str(w1_updated.balance_cents)) == Decimal("40.0000")  # P2 partially used
+
+    def test_finalize_zero_total_invoice_no_wallet_consumption(
+        self, client, db_session, customer, subscription
+    ):
+        """Test that zero-total invoice doesn't trigger wallet consumption."""
+        from app.services.wallet_service import WalletService
+
+        wallet_service = WalletService(db_session)
+        wallet = wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="Untouched",
+            code="untouched",
+            initial_granted_credits=Decimal("100"),
+        )
+
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=[
+                InvoiceLineItem(
+                    description="Free",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("0"),
+                    amount=Decimal("0"),
+                ),
+            ],
+        )
+        invoice = repo.create(invoice_data)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+        assert response.status_code == 200
+
+        # Wallet balance should be untouched
+        from app.repositories.wallet_repository import WalletRepository as WR
+        wr = WR(db_session)
+        updated = wr.get_by_id(wallet.id)
+        assert Decimal(str(updated.balance_cents)) == Decimal("100.0000")
+
+    def test_prepaid_credit_amount_in_response(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that prepaid_credit_amount field is present in invoice responses."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data)
+
+        # Check GET endpoint includes prepaid_credit_amount
+        response = client.get(f"/v1/invoices/{invoice.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "prepaid_credit_amount" in data
+        assert Decimal(data["prepaid_credit_amount"]) == Decimal("0")

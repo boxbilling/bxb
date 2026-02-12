@@ -486,3 +486,335 @@ class TestWalletSchema:
         assert response.name == "Test"
         assert response.status == "active"
         assert response.balance_cents == Decimal("0")
+
+    def test_wallet_top_up_schema_validation(self):
+        """Test WalletTopUp schema validation."""
+        from pydantic import ValidationError
+        from app.schemas.wallet import WalletTopUp
+
+        # Valid
+        topup = WalletTopUp(credits=Decimal("10"), source="manual")
+        assert topup.credits == Decimal("10")
+        assert topup.source == "manual"
+
+        # Valid sources
+        WalletTopUp(credits=Decimal("10"), source="interval")
+        WalletTopUp(credits=Decimal("10"), source="threshold")
+
+        # Invalid: zero credits
+        with pytest.raises(ValidationError):
+            WalletTopUp(credits=Decimal("0"))
+
+        # Invalid: negative credits
+        with pytest.raises(ValidationError):
+            WalletTopUp(credits=Decimal("-5"))
+
+        # Invalid: bad source
+        with pytest.raises(ValidationError):
+            WalletTopUp(credits=Decimal("10"), source="invalid_source")
+
+    def test_wallet_create_initial_credits_non_negative(self):
+        """Test that initial_granted_credits must be non-negative."""
+        from pydantic import ValidationError
+
+        # Valid: zero
+        WalletCreate(customer_id=uuid4(), initial_granted_credits=Decimal("0"))
+
+        # Invalid: negative
+        with pytest.raises(ValidationError):
+            WalletCreate(customer_id=uuid4(), initial_granted_credits=Decimal("-1"))
+
+
+class TestWalletAPI:
+    """Tests for Wallet API endpoints."""
+
+    def test_create_wallet(self, client, db_session, customer):
+        """Test POST /v1/wallets/ creates a wallet."""
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "name": "API Wallet",
+            "code": "api-wallet",
+            "rate_amount": "2.5",
+            "currency": "EUR",
+            "priority": 5,
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] == "API Wallet"
+        assert data["code"] == "api-wallet"
+        assert data["rate_amount"] == "2.5000"
+        assert data["currency"] == "EUR"
+        assert data["priority"] == 5
+        assert data["status"] == "active"
+        assert data["balance_cents"] == "0.0000"
+        assert data["credits_balance"] == "0.0000"
+
+    def test_create_wallet_with_initial_credits(self, client, db_session, customer):
+        """Test POST /v1/wallets/ with initial granted credits."""
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "name": "Funded Wallet",
+            "code": "funded-api",
+            "rate_amount": "100",
+            "initial_granted_credits": "50",
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert Decimal(data["credits_balance"]) == Decimal("50.0000")
+        assert Decimal(data["balance_cents"]) == Decimal("5000.0000")
+
+    def test_create_wallet_minimal(self, client, db_session, customer):
+        """Test POST /v1/wallets/ with only required fields."""
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["name"] is None
+        assert data["code"] is None
+        assert data["rate_amount"] == "1.0000"
+        assert data["currency"] == "USD"
+        assert data["priority"] == 1
+
+    def test_create_wallet_invalid_priority(self, client, db_session, customer):
+        """Test POST /v1/wallets/ with invalid priority."""
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "priority": 0,
+        })
+        assert response.status_code == 422
+
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "priority": 51,
+        })
+        assert response.status_code == 422
+
+    def test_list_wallets(self, client, db_session, customer):
+        """Test GET /v1/wallets/ lists wallets."""
+        repo = WalletRepository(db_session)
+        repo.create(WalletCreate(customer_id=customer.id, name="W1", code="w1"))
+        repo.create(WalletCreate(customer_id=customer.id, name="W2", code="w2"))
+
+        response = client.get("/v1/wallets/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_wallets_filter_by_customer(self, client, db_session, customer, customer2):
+        """Test GET /v1/wallets/ filtered by customer_id."""
+        repo = WalletRepository(db_session)
+        repo.create(WalletCreate(customer_id=customer.id, name="C1W", code="c1w"))
+        repo.create(WalletCreate(customer_id=customer2.id, name="C2W", code="c2w"))
+
+        response = client.get(f"/v1/wallets/?customer_id={customer.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "C1W"
+
+    def test_list_wallets_filter_by_status(self, client, db_session, customer):
+        """Test GET /v1/wallets/ filtered by status."""
+        repo = WalletRepository(db_session)
+        repo.create(WalletCreate(customer_id=customer.id, name="Active", code="active-f"))
+        w2 = repo.create(WalletCreate(customer_id=customer.id, name="Term", code="term-f"))
+        repo.terminate(w2.id)
+
+        response = client.get("/v1/wallets/?status=active")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Active"
+
+        response = client.get("/v1/wallets/?status=terminated")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["name"] == "Term"
+
+    def test_list_wallets_empty(self, client):
+        """Test GET /v1/wallets/ returns empty list."""
+        response = client.get("/v1/wallets/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_wallets_pagination(self, client, db_session, customer):
+        """Test GET /v1/wallets/ with pagination."""
+        repo = WalletRepository(db_session)
+        for i in range(5):
+            repo.create(WalletCreate(customer_id=customer.id, name=f"W{i}", code=f"w-pag-{i}"))
+
+        response = client.get("/v1/wallets/?skip=2&limit=2")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+
+    def test_get_wallet(self, client, db_session, wallet):
+        """Test GET /v1/wallets/{id} returns wallet details."""
+        response = client.get(f"/v1/wallets/{wallet.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(wallet.id)
+        assert data["name"] == "Test Wallet"
+        assert data["code"] == "test-wallet"
+        assert data["status"] == "active"
+
+    def test_get_wallet_not_found(self, client):
+        """Test GET /v1/wallets/{id} returns 404 for non-existent wallet."""
+        response = client.get(f"/v1/wallets/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_update_wallet(self, client, db_session, wallet):
+        """Test PUT /v1/wallets/{id} updates wallet."""
+        response = client.put(f"/v1/wallets/{wallet.id}", json={
+            "name": "Updated Name",
+            "priority": 10,
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Name"
+        assert data["priority"] == 10
+
+    def test_update_wallet_partial(self, client, db_session, wallet):
+        """Test PUT /v1/wallets/{id} with partial update."""
+        response = client.put(f"/v1/wallets/{wallet.id}", json={
+            "name": "Only Name",
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Only Name"
+        assert data["priority"] == 1  # unchanged
+
+    def test_update_wallet_not_found(self, client):
+        """Test PUT /v1/wallets/{id} returns 404."""
+        response = client.put(f"/v1/wallets/{uuid4()}", json={
+            "name": "Nope",
+        })
+        assert response.status_code == 404
+
+    def test_terminate_wallet(self, client, db_session, wallet):
+        """Test DELETE /v1/wallets/{id} terminates wallet."""
+        response = client.delete(f"/v1/wallets/{wallet.id}")
+        assert response.status_code == 204
+
+        # Verify terminated
+        get_response = client.get(f"/v1/wallets/{wallet.id}")
+        assert get_response.status_code == 200
+        assert get_response.json()["status"] == "terminated"
+
+    def test_terminate_wallet_not_found(self, client):
+        """Test DELETE /v1/wallets/{id} returns 404."""
+        response = client.delete(f"/v1/wallets/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_terminate_already_terminated(self, client, db_session, wallet):
+        """Test DELETE /v1/wallets/{id} returns 400 when already terminated."""
+        client.delete(f"/v1/wallets/{wallet.id}")
+        response = client.delete(f"/v1/wallets/{wallet.id}")
+        assert response.status_code == 400
+
+    def test_top_up_wallet(self, client, db_session, wallet):
+        """Test POST /v1/wallets/{id}/top_up adds credits."""
+        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
+            "credits": "50",
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert Decimal(data["credits_balance"]) == Decimal("50.0000")
+        assert Decimal(data["balance_cents"]) == Decimal("50.0000")  # rate=1
+
+    def test_top_up_wallet_with_source(self, client, db_session, wallet):
+        """Test POST /v1/wallets/{id}/top_up with specific source."""
+        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
+            "credits": "25",
+            "source": "interval",
+        })
+        assert response.status_code == 200
+        assert Decimal(response.json()["credits_balance"]) == Decimal("25.0000")
+
+    def test_top_up_wallet_not_found(self, client):
+        """Test POST /v1/wallets/{id}/top_up returns 400 for non-existent wallet."""
+        response = client.post(f"/v1/wallets/{uuid4()}/top_up", json={
+            "credits": "50",
+        })
+        assert response.status_code == 400
+
+    def test_top_up_terminated_wallet(self, client, db_session, wallet):
+        """Test POST /v1/wallets/{id}/top_up returns 400 for terminated wallet."""
+        client.delete(f"/v1/wallets/{wallet.id}")
+        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
+            "credits": "50",
+        })
+        assert response.status_code == 400
+
+    def test_top_up_invalid_credits(self, client, db_session, wallet):
+        """Test POST /v1/wallets/{id}/top_up rejects zero/negative credits."""
+        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
+            "credits": "0",
+        })
+        assert response.status_code == 422
+
+        response = client.post(f"/v1/wallets/{wallet.id}/top_up", json={
+            "credits": "-10",
+        })
+        assert response.status_code == 422
+
+    def test_list_wallet_transactions(self, client, db_session, customer, wallet):
+        """Test GET /v1/wallets/{id}/transactions lists transactions."""
+        # Top up to generate a transaction
+        from app.services.wallet_service import WalletService
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("100"))
+
+        response = client.get(f"/v1/wallets/{wallet.id}/transactions")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["transaction_type"] == "inbound"
+        assert Decimal(data[0]["amount"]) == Decimal("100.0000")
+
+    def test_list_wallet_transactions_empty(self, client, db_session, wallet):
+        """Test GET /v1/wallets/{id}/transactions returns empty list."""
+        response = client.get(f"/v1/wallets/{wallet.id}/transactions")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_wallet_transactions_not_found(self, client):
+        """Test GET /v1/wallets/{id}/transactions returns 404 for non-existent wallet."""
+        response = client.get(f"/v1/wallets/{uuid4()}/transactions")
+        assert response.status_code == 404
+
+    def test_list_wallet_transactions_pagination(self, client, db_session, customer, wallet):
+        """Test GET /v1/wallets/{id}/transactions with pagination."""
+        from app.services.wallet_service import WalletService
+        service = WalletService(db_session)
+        for _ in range(5):
+            service.top_up_wallet(wallet.id, Decimal("10"))
+
+        response = client.get(f"/v1/wallets/{wallet.id}/transactions?skip=1&limit=2")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+
+    def test_wallet_expiration_in_response(self, client, db_session, customer):
+        """Test that expiration_at is properly returned in API response."""
+        expiry = (datetime.now(UTC) + timedelta(days=30)).isoformat()
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "name": "Expiring",
+            "code": "expiring-api",
+            "expiration_at": expiry,
+        })
+        assert response.status_code == 201
+        data = response.json()
+        assert data["expiration_at"] is not None
+
+    def test_wallet_priority_ordering_in_list(self, client, db_session, customer):
+        """Test that wallets are returned ordered by created_at DESC in list endpoint."""
+        repo = WalletRepository(db_session)
+        repo.create(WalletCreate(customer_id=customer.id, name="P3", code="p3-api", priority=3))
+        repo.create(WalletCreate(customer_id=customer.id, name="P1", code="p1-api", priority=1))
+        repo.create(WalletCreate(customer_id=customer.id, name="P2", code="p2-api", priority=2))
+
+        response = client.get(f"/v1/wallets/?customer_id={customer.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3
