@@ -46,6 +46,7 @@ class InvoiceResponse(BaseModel):
     tax_amount: Decimal
     total: Decimal
     prepaid_credit_amount: Decimal
+    coupons_amount_cents: Decimal
     currency: str
     line_items: list[dict[str, Any]]
     due_date: datetime | None

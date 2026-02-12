@@ -949,3 +949,23 @@ class TestInvoiceWalletIntegration:
         data = response.json()
         assert "prepaid_credit_amount" in data
         assert Decimal(data["prepaid_credit_amount"]) == Decimal("0")
+
+    def test_coupons_amount_cents_in_response(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that coupons_amount_cents field is present in invoice responses."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data)
+
+        response = client.get(f"/v1/invoices/{invoice.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "coupons_amount_cents" in data
+        assert Decimal(data["coupons_amount_cents"]) == Decimal("0")

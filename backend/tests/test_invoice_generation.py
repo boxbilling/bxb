@@ -8,14 +8,20 @@ from uuid import UUID, uuid4
 import pytest
 
 from app.core.database import Base, engine, get_db
+from app.models.applied_coupon import AppliedCouponStatus
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
+from app.models.coupon import CouponFrequency, CouponType
 from app.models.customer import Customer
 from app.models.event import Event
 from app.models.fee import FeeType
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.repositories.applied_coupon_repository import AppliedCouponRepository
+from app.repositories.coupon_repository import CouponRepository
 from app.repositories.fee_repository import FeeRepository
+from app.schemas.coupon import CouponCreate
+from app.services.coupon_service import CouponApplicationService
 from app.services.invoice_generation import InvoiceGenerationService
 
 
@@ -1504,3 +1510,384 @@ class TestCalculateChargeFee:
         )
         assert fee_data is not None
         assert fee_data.amount_cents == Decimal("10.00")
+
+
+def _create_coupon(db_session, code, coupon_type, frequency, **kwargs):
+    """Helper to create a coupon via repository."""
+    repo = CouponRepository(db_session)
+    return repo.create(
+        CouponCreate(
+            code=code,
+            name=f"Coupon {code}",
+            coupon_type=coupon_type,
+            frequency=frequency,
+            **kwargs,
+        )
+    )
+
+
+def _apply_coupon(db_session, coupon, customer, **overrides):
+    """Helper to apply a coupon to a customer."""
+    service = CouponApplicationService(db_session)
+    return service.apply_coupon_to_customer(
+        coupon_code=str(coupon.code),
+        customer_id=customer.id,
+        **overrides,
+    )
+
+
+class TestCouponDiscountIntegration:
+    """Test coupon discount integration in invoice generation."""
+
+    def test_fixed_amount_coupon_deducted_from_total(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a fixed amount coupon reduces the invoice total."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create and apply a $25 fixed coupon
+        coupon = _create_coupon(
+            db_session,
+            code="FIXED25",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.FOREVER,
+            amount_cents=Decimal("25"),
+            amount_currency="USD",
+        )
+        _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 10 * $10 = $100, coupon: $25, total: $75
+        assert invoice.subtotal == Decimal("100")
+        assert invoice.coupons_amount_cents == Decimal("25")
+        assert invoice.total == Decimal("75")
+
+    def test_percentage_coupon_deducted_from_total(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a percentage coupon reduces the invoice total."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "5.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Create and apply a 20% coupon
+        coupon = _create_coupon(
+            db_session,
+            code="PCT20",
+            coupon_type=CouponType.PERCENTAGE,
+            frequency=CouponFrequency.FOREVER,
+            percentage_rate=Decimal("20"),
+        )
+        _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 10 * $5 = $50, coupon: 20% of $50 = $10, total: $40
+        assert invoice.subtotal == Decimal("50")
+        assert invoice.coupons_amount_cents == Decimal("10")
+        assert invoice.total == Decimal("40")
+
+    def test_fixed_coupon_capped_at_subtotal(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a fixed coupon cannot exceed the subtotal."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "2.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        # Create and apply a $100 coupon against $10 subtotal
+        coupon = _create_coupon(
+            db_session,
+            code="FIXED100",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.FOREVER,
+            amount_cents=Decimal("100"),
+            amount_currency="USD",
+        )
+        _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: 5 * $2 = $10, coupon: $100 capped at $10, total: $0
+        assert invoice.subtotal == Decimal("10")
+        assert invoice.coupons_amount_cents == Decimal("10")
+        assert invoice.total == Decimal("0")
+
+    def test_multiple_coupons_stacked(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that multiple coupons are applied sequentially."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=10)
+
+        # Apply a $15 fixed coupon + 10% percentage coupon
+        coupon1 = _create_coupon(
+            db_session,
+            code="FIXED15",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.FOREVER,
+            amount_cents=Decimal("15"),
+            amount_currency="USD",
+        )
+        _apply_coupon(db_session, coupon1, customer)
+
+        coupon2 = _create_coupon(
+            db_session,
+            code="PCT10",
+            coupon_type=CouponType.PERCENTAGE,
+            frequency=CouponFrequency.FOREVER,
+            percentage_rate=Decimal("10"),
+        )
+        _apply_coupon(db_session, coupon2, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        # Subtotal: $100, first coupon: $15, remaining: $85
+        # Second coupon: 10% of $85 = $8.50, total discount: $23.50
+        assert invoice.subtotal == Decimal("100")
+        assert invoice.coupons_amount_cents == Decimal("23.5")
+        assert invoice.total == Decimal("76.5")
+
+    def test_once_frequency_coupon_consumed_after_invoice(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a 'once' frequency coupon is terminated after use."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        coupon = _create_coupon(
+            db_session,
+            code="ONCE10",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.ONCE,
+            amount_cents=Decimal("10"),
+            amount_currency="USD",
+        )
+        applied = _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        assert invoice.coupons_amount_cents == Decimal("10")
+        assert invoice.total == Decimal("40")
+
+        # Verify the applied coupon was terminated
+        applied_coupon_repo = AppliedCouponRepository(db_session)
+        updated_applied = applied_coupon_repo.get_by_id(applied.id)
+        assert updated_applied is not None
+        assert updated_applied.status == AppliedCouponStatus.TERMINATED.value
+
+    def test_recurring_coupon_decremented_after_invoice(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a 'recurring' frequency coupon is decremented after use."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        coupon = _create_coupon(
+            db_session,
+            code="RECUR3",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.RECURRING,
+            frequency_duration=3,
+            amount_cents=Decimal("5"),
+            amount_currency="USD",
+        )
+        applied = _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        assert invoice.coupons_amount_cents == Decimal("5")
+        assert invoice.total == Decimal("45")
+
+        # Verify remaining decremented from 3 to 2
+        applied_coupon_repo = AppliedCouponRepository(db_session)
+        updated_applied = applied_coupon_repo.get_by_id(applied.id)
+        assert updated_applied is not None
+        assert updated_applied.frequency_duration_remaining == 2
+        assert updated_applied.status == AppliedCouponStatus.ACTIVE.value
+
+    def test_no_coupon_applied_when_zero_subtotal(
+        self, db_session, active_subscription, billing_period, customer
+    ):
+        """Test that coupon is not applied when invoice subtotal is zero."""
+        start, end = billing_period
+
+        # Create and apply a coupon (but no charges = zero subtotal)
+        coupon = _create_coupon(
+            db_session,
+            code="NOOP",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.ONCE,
+            amount_cents=Decimal("50"),
+            amount_currency="USD",
+        )
+        _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        assert invoice.subtotal == Decimal("0")
+        assert invoice.coupons_amount_cents == Decimal("0")
+        assert invoice.total == Decimal("0")
+
+        # Verify the coupon was NOT consumed (still active)
+        applied_coupon_repo = AppliedCouponRepository(db_session)
+        active_coupons = applied_coupon_repo.get_active_by_customer_id(customer.id)
+        assert len(active_coupons) == 1
+
+    def test_no_discount_when_no_coupons(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test invoice generation without any coupons applied."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        assert invoice.subtotal == Decimal("50")
+        assert invoice.coupons_amount_cents == Decimal("0")
+        assert invoice.total == Decimal("50")
+
+    def test_forever_coupon_remains_active_after_invoice(
+        self, db_session, active_subscription, metric, customer, billing_period
+    ):
+        """Test that a 'forever' frequency coupon stays active after use."""
+        start, end = billing_period
+        charge = Charge(
+            plan_id=active_subscription.plan_id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"amount": "10.00"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        _create_events(db_session, customer, metric, billing_period, count=5)
+
+        coupon = _create_coupon(
+            db_session,
+            code="FOREVER10",
+            coupon_type=CouponType.FIXED_AMOUNT,
+            frequency=CouponFrequency.FOREVER,
+            amount_cents=Decimal("10"),
+            amount_currency="USD",
+        )
+        applied = _apply_coupon(db_session, coupon, customer)
+
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+        assert invoice.coupons_amount_cents == Decimal("10")
+        assert invoice.total == Decimal("40")
+
+        # Forever coupon should remain active
+        applied_coupon_repo = AppliedCouponRepository(db_session)
+        updated_applied = applied_coupon_repo.get_by_id(applied.id)
+        assert updated_applied is not None
+        assert updated_applied.status == AppliedCouponStatus.ACTIVE.value

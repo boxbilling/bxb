@@ -16,6 +16,7 @@ from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.services.charge_models.factory import get_charge_calculator
+from app.services.coupon_service import CouponApplicationService
 from app.services.usage_aggregation import UsageAggregationService
 
 
@@ -29,6 +30,7 @@ class InvoiceGenerationService:
         self.invoice_repo = InvoiceRepository(db)
         self.fee_repo = FeeRepository(db)
         self.usage_service = UsageAggregationService(db)
+        self.coupon_service = CouponApplicationService(db)
 
     def generate_invoice(
         self,
@@ -109,6 +111,23 @@ class InvoiceGenerationService:
             for fc in fee_creates:
                 fc.invoice_id = invoice_uuid
             self.fee_repo.create_bulk(fee_creates)
+
+        # Apply coupon discounts
+        subtotal = Decimal(str(invoice.subtotal))
+        if subtotal > 0:
+            coupon_discount = self.coupon_service.calculate_coupon_discount(
+                customer_id=customer_id,
+                subtotal_cents=subtotal,
+            )
+            if coupon_discount.total_discount_cents > 0:
+                invoice.coupons_amount_cents = coupon_discount.total_discount_cents  # type: ignore[assignment]
+                invoice.total = subtotal - coupon_discount.total_discount_cents  # type: ignore[assignment]
+                self.db.commit()
+                self.db.refresh(invoice)
+
+                # Consume applied coupons
+                for applied_coupon_id in coupon_discount.applied_coupon_ids:
+                    self.coupon_service.consume_applied_coupon(applied_coupon_id)
 
         return invoice
 
