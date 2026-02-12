@@ -161,6 +161,20 @@ class TestCreateWallet:
         txns = txn_repo.get_by_wallet_id(wallet.id)
         assert len(txns) == 0
 
+    def test_create_wallet_duplicate_code(self, wallet_service, customer):
+        """Test creating a wallet with duplicate code raises ValueError."""
+        wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="First",
+            code="duplicate",
+        )
+        with pytest.raises(ValueError, match="already exists"):
+            wallet_service.create_wallet(
+                customer_id=customer.id,
+                name="Second",
+                code="duplicate",
+            )
+
     def test_create_wallet_defaults(self, wallet_service, customer):
         """Test creating a wallet with default values."""
         wallet = wallet_service.create_wallet(customer_id=customer.id)

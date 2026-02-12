@@ -590,6 +590,23 @@ class TestWalletAPI:
         })
         assert response.status_code == 422
 
+    def test_create_wallet_duplicate_code(self, client, db_session, customer):
+        """Test POST /v1/wallets/ returns 400 for duplicate code on same customer."""
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "name": "First",
+            "code": "dup-code",
+        })
+        assert response.status_code == 201
+
+        response = client.post("/v1/wallets/", json={
+            "customer_id": str(customer.id),
+            "name": "Second",
+            "code": "dup-code",
+        })
+        assert response.status_code == 400
+        assert "already exists" in response.json()["detail"]
+
     def test_list_wallets(self, client, db_session, customer):
         """Test GET /v1/wallets/ lists wallets."""
         repo = WalletRepository(db_session)

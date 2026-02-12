@@ -48,6 +48,13 @@ class WalletService:
         initial_granted_credits: Decimal | None = None,
     ):
         """Create a wallet, optionally granting initial credits via inbound transaction."""
+        # Check for duplicate code within same customer
+        if code is not None:
+            existing = self.wallet_repo.get_by_customer_id(customer_id)
+            for w in existing:
+                if w.code == code:
+                    raise ValueError(f"Wallet with code '{code}' already exists for this customer")
+
         wallet = self.wallet_repo.create(
             WalletCreate(
                 customer_id=customer_id,

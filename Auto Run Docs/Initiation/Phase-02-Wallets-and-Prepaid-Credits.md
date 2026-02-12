@@ -81,7 +81,8 @@ This phase implements the wallet and prepaid credits system, one of Lago's most 
   - Update invoice tests to verify wallet integration
   - ✅ Completed: Added 30 API endpoint tests to test_wallets.py (TestWalletAPI class + schema tests), 3 repository edge-case tests to test_wallet_transactions.py, created new test_wallet_consumption.py with 22 tests across 6 test classes (single wallet, multi-wallet priority, skipped wallets, rate amounts, transactions, customer isolation), and added 7 wallet integration tests to test_invoices.py (TestInvoiceWalletIntegration class). All 782 tests passing.
 
-- [ ] Run the full test suite and fix any failures:
+- [x] Run the full test suite and fix any failures:
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ -v --tb=short`
   - Fix any test failures or coverage gaps
   - Execute `cd /Users/System/Documents/bxb/backend && python -m pytest tests/ --cov=app --cov-report=term-missing --cov-fail-under=100` to verify 100% coverage
+  - ✅ Completed: All 784 tests passing with 100% code coverage. Added duplicate wallet code validation to `WalletService.create_wallet()` and corresponding tests in `test_wallets.py` (API-level) and `test_wallet_service.py` (service-level) to cover the previously uncovered `ValueError` handler in `wallets.py:38-39`.
