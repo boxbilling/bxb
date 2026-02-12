@@ -30,6 +30,11 @@ class SubscriptionRepository:
             plan_id=data.plan_id,
             status=SubscriptionStatus.PENDING.value,
             started_at=data.started_at,
+            billing_time=data.billing_time.value,
+            trial_period_days=data.trial_period_days,
+            subscription_at=data.subscription_at,
+            pay_in_advance=data.pay_in_advance,
+            on_termination_action=data.on_termination_action.value,
         )
         # If started_at is provided and in the past or now, set status to ACTIVE
         if data.started_at is not None and data.started_at <= datetime.now(UTC):
@@ -50,6 +55,18 @@ class SubscriptionRepository:
                 update_data["status"] = update_data["status"].value
             else:
                 del update_data["status"]  # Don't try to set status to NULL
+        # Convert billing_time enum to string value if present
+        if "billing_time" in update_data:
+            if update_data["billing_time"] is not None:
+                update_data["billing_time"] = update_data["billing_time"].value
+            else:
+                del update_data["billing_time"]
+        # Convert on_termination_action enum to string value if present
+        if "on_termination_action" in update_data:
+            if update_data["on_termination_action"] is not None:
+                update_data["on_termination_action"] = update_data["on_termination_action"].value
+            else:
+                del update_data["on_termination_action"]
         for key, value in update_data.items():
             setattr(subscription, key, value)
         self.db.commit()

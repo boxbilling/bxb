@@ -10,7 +10,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.customer import Customer
 from app.models.plan import Plan, PlanInterval
-from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.subscription import SubscriptionCreate, SubscriptionUpdate
 
@@ -81,6 +81,35 @@ class TestSubscriptionStatus:
         assert SubscriptionStatus.TERMINATED.value == "terminated"
 
 
+class TestBillingTime:
+    def test_calendar(self):
+        """Test CALENDAR billing time."""
+        assert BillingTime.CALENDAR == "calendar"
+        assert BillingTime.CALENDAR.value == "calendar"
+
+    def test_anniversary(self):
+        """Test ANNIVERSARY billing time."""
+        assert BillingTime.ANNIVERSARY == "anniversary"
+        assert BillingTime.ANNIVERSARY.value == "anniversary"
+
+
+class TestTerminationAction:
+    def test_generate_invoice(self):
+        """Test GENERATE_INVOICE termination action."""
+        assert TerminationAction.GENERATE_INVOICE == "generate_invoice"
+        assert TerminationAction.GENERATE_INVOICE.value == "generate_invoice"
+
+    def test_generate_credit_note(self):
+        """Test GENERATE_CREDIT_NOTE termination action."""
+        assert TerminationAction.GENERATE_CREDIT_NOTE == "generate_credit_note"
+        assert TerminationAction.GENERATE_CREDIT_NOTE.value == "generate_credit_note"
+
+    def test_skip(self):
+        """Test SKIP termination action."""
+        assert TerminationAction.SKIP == "skip"
+        assert TerminationAction.SKIP.value == "skip"
+
+
 class TestSubscriptionModel:
     def test_subscription_defaults(self, db_session):
         """Test Subscription model default values."""
@@ -101,11 +130,53 @@ class TestSubscriptionModel:
         assert subscription.customer_id == customer.id
         assert subscription.plan_id == plan.id
         assert subscription.status == "pending"
+        assert subscription.billing_time == "calendar"
+        assert subscription.trial_period_days == 0
+        assert subscription.trial_ended_at is None
+        assert subscription.subscription_at is None
+        assert subscription.pay_in_advance is False
+        assert subscription.previous_plan_id is None
+        assert subscription.downgraded_at is None
+        assert subscription.on_termination_action == "generate_invoice"
         assert subscription.started_at is None
         assert subscription.ending_at is None
         assert subscription.canceled_at is None
         assert subscription.created_at is not None
         assert subscription.updated_at is not None
+
+
+    def test_subscription_lifecycle_fields(self, db_session):
+        """Test Subscription model with advanced lifecycle fields."""
+        customer = create_test_customer(db_session, "cust_lifecycle")
+        plan = create_test_plan(db_session, "plan_lifecycle")
+        plan2 = create_test_plan(db_session, "plan_lifecycle_prev")
+
+        now = datetime.now(UTC)
+        subscription = Subscription(
+            external_id="sub_lifecycle",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            billing_time="anniversary",
+            trial_period_days=14,
+            trial_ended_at=now,
+            subscription_at=now,
+            pay_in_advance=True,
+            previous_plan_id=plan2.id,
+            downgraded_at=now,
+            on_termination_action="generate_credit_note",
+        )
+        db_session.add(subscription)
+        db_session.commit()
+        db_session.refresh(subscription)
+
+        assert subscription.billing_time == "anniversary"
+        assert subscription.trial_period_days == 14
+        assert subscription.trial_ended_at is not None
+        assert subscription.subscription_at is not None
+        assert subscription.pay_in_advance is True
+        assert subscription.previous_plan_id == plan2.id
+        assert subscription.downgraded_at is not None
+        assert subscription.on_termination_action == "generate_credit_note"
 
 
 class TestSubscriptionRepository:
@@ -385,6 +456,122 @@ class TestSubscriptionRepository:
         result = repo.cancel(uuid.uuid4())
         assert result is None
 
+    def test_create_with_lifecycle_fields(self, db_session):
+        """Test creating a subscription with advanced lifecycle fields."""
+        customer = create_test_customer(db_session, "cust_lc_repo")
+        plan = create_test_plan(db_session, "plan_lc_repo")
+        repo = SubscriptionRepository(db_session)
+
+        now = datetime.now(UTC)
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_lc_repo",
+                customer_id=customer.id,
+                plan_id=plan.id,
+                started_at=now - timedelta(hours=1),
+                billing_time=BillingTime.ANNIVERSARY,
+                trial_period_days=7,
+                subscription_at=now,
+                pay_in_advance=True,
+                on_termination_action=TerminationAction.SKIP,
+            )
+        )
+
+        assert subscription.billing_time == "anniversary"
+        assert subscription.trial_period_days == 7
+        assert subscription.subscription_at is not None
+        assert subscription.pay_in_advance is True
+        assert subscription.on_termination_action == "skip"
+        assert subscription.status == "active"
+
+    def test_update_billing_time(self, db_session):
+        """Test updating billing_time via repository."""
+        customer = create_test_customer(db_session, "cust_bt")
+        plan = create_test_plan(db_session, "plan_bt")
+        repo = SubscriptionRepository(db_session)
+
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_bt",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
+        assert subscription.billing_time == "calendar"
+
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(billing_time=BillingTime.ANNIVERSARY),
+        )
+        assert updated is not None
+        assert updated.billing_time == "anniversary"
+
+    def test_update_billing_time_none(self, db_session):
+        """Test updating with explicit None billing_time (should skip)."""
+        customer = create_test_customer(db_session, "cust_bt_none")
+        plan = create_test_plan(db_session, "plan_bt_none")
+        repo = SubscriptionRepository(db_session)
+
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_bt_none",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
+
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(billing_time=None, trial_period_days=10),
+        )
+        assert updated is not None
+        assert updated.billing_time == "calendar"  # Unchanged
+        assert updated.trial_period_days == 10
+
+    def test_update_on_termination_action(self, db_session):
+        """Test updating on_termination_action via repository."""
+        customer = create_test_customer(db_session, "cust_ota")
+        plan = create_test_plan(db_session, "plan_ota")
+        repo = SubscriptionRepository(db_session)
+
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_ota",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
+        assert subscription.on_termination_action == "generate_invoice"
+
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(on_termination_action=TerminationAction.GENERATE_CREDIT_NOTE),
+        )
+        assert updated is not None
+        assert updated.on_termination_action == "generate_credit_note"
+
+    def test_update_on_termination_action_none(self, db_session):
+        """Test updating with explicit None on_termination_action (should skip)."""
+        customer = create_test_customer(db_session, "cust_ota_none")
+        plan = create_test_plan(db_session, "plan_ota_none")
+        repo = SubscriptionRepository(db_session)
+
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_ota_none",
+                customer_id=customer.id,
+                plan_id=plan.id,
+            )
+        )
+
+        updated = repo.update(
+            subscription.id,
+            SubscriptionUpdate(on_termination_action=None, trial_period_days=5),
+        )
+        assert updated is not None
+        assert updated.on_termination_action == "generate_invoice"  # Unchanged
+        assert updated.trial_period_days == 5
+
     def test_external_id_exists(self, db_session):
         """Test checking if external_id exists."""
         customer = create_test_customer(db_session)
@@ -439,8 +626,49 @@ class TestSubscriptionsAPI:
         assert data["customer_id"] == customer["id"]
         assert data["plan_id"] == plan["id"]
         assert data["status"] == "pending"
+        assert data["billing_time"] == "calendar"
+        assert data["trial_period_days"] == 0
+        assert data["trial_ended_at"] is None
+        assert data["subscription_at"] is None
+        assert data["pay_in_advance"] is False
+        assert data["previous_plan_id"] is None
+        assert data["downgraded_at"] is None
+        assert data["on_termination_action"] == "generate_invoice"
         assert "id" in data
         assert "created_at" in data
+
+    def test_create_subscription_with_lifecycle_fields(self, client: TestClient):
+        """Test creating a subscription with advanced lifecycle fields."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_api_lc", "name": "API LC Customer"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "api_lc_plan", "name": "API LC Plan", "interval": "monthly"},
+        ).json()
+
+        sub_at = datetime.now(UTC).isoformat()
+        response = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_api_lc",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "billing_time": "anniversary",
+                "trial_period_days": 14,
+                "subscription_at": sub_at,
+                "pay_in_advance": True,
+                "on_termination_action": "skip",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["billing_time"] == "anniversary"
+        assert data["trial_period_days"] == 14
+        assert data["subscription_at"] is not None
+        assert data["pay_in_advance"] is True
+        assert data["on_termination_action"] == "skip"
 
     def test_create_subscription_with_start_date(self, client: TestClient):
         """Test creating a subscription with a past start date (ACTIVE)."""

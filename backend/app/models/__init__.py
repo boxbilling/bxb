@@ -21,7 +21,7 @@ from app.models.invoice import Invoice, InvoiceStatus
 from app.models.item import Item
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.plan import Plan, PlanInterval
-from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.models.tax import Tax
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import (
@@ -69,8 +69,10 @@ __all__ = [
     "RefundStatus",
     "Plan",
     "PlanInterval",
+    "BillingTime",
     "Subscription",
     "SubscriptionStatus",
+    "TerminationAction",
     "Tax",
     "TransactionSource",
     "TransactionStatus",
