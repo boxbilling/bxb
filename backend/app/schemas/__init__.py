@@ -11,6 +11,13 @@ from app.schemas.billable_metric import (
     BillableMetricUpdate,
 )
 from app.schemas.charge import ChargeCreate, ChargeResponse, ChargeUpdate
+from app.schemas.credit_note import (
+    CreditNoteCreate,
+    CreditNoteItemCreate,
+    CreditNoteItemResponse,
+    CreditNoteResponse,
+    CreditNoteUpdate,
+)
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
 from app.schemas.fee import FeeCreate, FeeResponse, FeeUpdate
 from app.schemas.item import ItemCreate, ItemResponse, ItemUpdate
@@ -33,6 +40,11 @@ __all__ = [
     "ChargeOutput",
     "ChargeResponse",
     "ChargeUpdate",
+    "CreditNoteCreate",
+    "CreditNoteItemCreate",
+    "CreditNoteItemResponse",
+    "CreditNoteResponse",
+    "CreditNoteUpdate",
     "CustomerCreate",
     "CustomerResponse",
     "CustomerUpdate",
