@@ -109,7 +109,7 @@ def upgrade() -> None:
             "ready_for_payment_processing",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("1"),
+            server_default=sa.text("true"),
         ),
         sa.Column(
             "created_at",

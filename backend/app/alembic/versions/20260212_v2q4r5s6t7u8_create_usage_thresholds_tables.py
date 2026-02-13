@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column(
             "currency", sa.String(length=3), nullable=False, server_default="USD"
         ),
-        sa.Column("recurring", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("recurring", sa.Boolean(), nullable=False, server_default=sa.text("false")),
         sa.Column("threshold_display_name", sa.String(length=255), nullable=True),
         sa.Column(
             "created_at",
