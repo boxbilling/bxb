@@ -21,7 +21,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
   - Add "Wallets" to AdminLayout sidebar navigation
   - **Note:** Implemented full WalletsPage with: stat cards (total/active/credits/consumed), search + status filter, list table with all columns, create/edit wallet dialog, top-up dialog with source selection, wallet detail dialog with transaction history table, terminate confirmation. Added route in App.tsx, sidebar nav item with Coins icon, page export in index.ts. Used recharts-free approach for transaction list display (transaction table instead of chart). All TypeScript types verified, frontend builds clean.
 
-- [ ] Build the Coupons and Add-ons management UI:
+- [x] Build the Coupons and Add-ons management UI:
   - `frontend/src/pages/admin/CouponsPage.tsx`:
     - Coupon list table: code, name, type (fixed/percentage), frequency, status, usage count
     - Create coupon form: code, name, type selector, amount/percentage, frequency, duration, expiration, reusable toggle
@@ -32,6 +32,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - Create add-on form: code, name, description, amount, currency
     - Apply add-on dialog: select customer, amount override
   - Add both to sidebar navigation
+  - **Note:** Implemented full CouponsPage with: stat cards (total/active/fixed/percentage), search + status filter, list table with all columns (code, name, type, discount, frequency, status, expiration), create/edit coupon dialog with all fields (code, name, description, type selector, amount/percentage, frequency, duration, reusable toggle, expiration), apply coupon dialog (customer selector + amount override), view applied coupons dialog (shows all customers with this coupon applied). Implemented full AddOnsPage with: stat cards (total/currencies/avg amount), search filter, list table (code, name, description, amount, currency, created), create/edit dialog, apply to customer dialog with amount override, delete confirmation. Added both pages to sidebar navigation (Percent icon for Coupons, Gift icon for Add-ons), App.tsx routing, and barrel export. TypeScript and build pass clean.
 
 - [ ] Build the Credit Notes management UI:
   - `frontend/src/pages/admin/CreditNotesPage.tsx`:
