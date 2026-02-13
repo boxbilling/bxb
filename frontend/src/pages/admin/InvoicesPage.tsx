@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Download, Eye, FileText } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Download, Eye, FileText, FileMinus } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -117,10 +118,12 @@ function InvoiceDetailDialog({
   invoice,
   open,
   onOpenChange,
+  onCreateCreditNote,
 }: {
   invoice: Invoice | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCreateCreditNote?: (invoice: Invoice) => void
 }) {
   if (!invoice) return null
 
@@ -200,6 +203,16 @@ function InvoiceDetailDialog({
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>
+            {invoice.status === 'finalized' && onCreateCreditNote && (
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onCreateCreditNote(invoice)}
+              >
+                <FileMinus className="mr-2 h-4 w-4" />
+                Create Credit Note
+              </Button>
+            )}
             {invoice.status === 'draft' && (
               <Button className="flex-1">Finalize Invoice</Button>
             )}
@@ -211,6 +224,7 @@ function InvoiceDetailDialog({
 }
 
 export default function InvoicesPage() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
@@ -405,6 +419,12 @@ export default function InvoicesPage() {
         invoice={selectedInvoice}
         open={!!selectedInvoice}
         onOpenChange={(open) => !open && setSelectedInvoice(null)}
+        onCreateCreditNote={(invoice) => {
+          setSelectedInvoice(null)
+          navigate('/admin/credit-notes', {
+            state: { invoiceId: invoice.id, customerId: invoice.customer_id },
+          })
+        }}
       />
     </div>
   )

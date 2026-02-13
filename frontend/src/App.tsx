@@ -11,6 +11,7 @@ import {
   WalletsPage,
   CouponsPage,
   AddOnsPage,
+  CreditNotesPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 
@@ -29,6 +30,7 @@ function App() {
         <Route path="wallets" element={<WalletsPage />} />
         <Route path="coupons" element={<CouponsPage />} />
         <Route path="add-ons" element={<AddOnsPage />} />
+        <Route path="credit-notes" element={<CreditNotesPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

@@ -6,6 +6,7 @@ import {
   CreditCard,
   Receipt,
   FileText,
+  FileMinus,
   Wallet,
   Coins,
   Percent,
@@ -39,6 +40,7 @@ const navigation = [
   { name: 'Wallets', href: '/admin/wallets', icon: Coins },
   { name: 'Coupons', href: '/admin/coupons', icon: Percent },
   { name: 'Add-ons', href: '/admin/add-ons', icon: Gift },
+  { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
 ]
 
 function NavItem({
