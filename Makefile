@@ -51,8 +51,8 @@ format:
 
 # OpenAPI - Generate schema and sync frontend client (run before each commit)
 openapi:
-	cd backend && uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))" > ./openapi.json
-	cd frontend && npm run generate-client
+	cd backend && uv run python scripts/generate_openapi.py > ./openapi.json
+	cd frontend && npx openapi-typescript ../backend/openapi.json -o ./src/lib/schema.d.ts
 
 # Database
 migrate:

@@ -89,6 +89,10 @@ function SubscriptionFormDialog({
     external_id: '',
     customer_id: '',
     plan_id: '',
+    billing_time: 'calendar',
+    trial_period_days: 0,
+    pay_in_advance: false,
+    on_termination_action: 'generate_invoice',
   })
 
   const handleSubmit = (e: React.FormEvent) => {

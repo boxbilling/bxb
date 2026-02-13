@@ -62,6 +62,8 @@ function CustomerFormDialog({
     email: customer?.email ?? undefined,
     currency: customer?.currency ?? 'USD',
     timezone: customer?.timezone ?? 'UTC',
+    invoice_grace_period: customer?.invoice_grace_period ?? 0,
+    net_payment_term: customer?.net_payment_term ?? 30,
   })
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -127,6 +127,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{customer_id}/applied_coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Applied Coupons
+         * @description List applied coupons for a customer.
+         */
+        get: operations["list_applied_coupons_v1_customers__customer_id__applied_coupons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billable_metrics/": {
         parameters: {
             query?: never;
@@ -174,6 +194,50 @@ export interface paths {
          * @description Delete a billable metric.
          */
         delete: operations["delete_billable_metric_v1_billable_metrics__metric_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billable_metrics/{code}/filters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Billable Metric Filters
+         * @description List filters for a billable metric.
+         */
+        get: operations["list_billable_metric_filters_v1_billable_metrics__code__filters_get"];
+        put?: never;
+        /**
+         * Create Billable Metric Filter
+         * @description Add a filter to a billable metric.
+         */
+        post: operations["create_billable_metric_filter_v1_billable_metrics__code__filters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billable_metrics/{code}/filters/{filter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Billable Metric Filter
+         * @description Remove a filter from a billable metric.
+         */
+        delete: operations["delete_billable_metric_filter_v1_billable_metrics__code__filters__filter_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -275,7 +339,7 @@ export interface paths {
         post?: never;
         /**
          * Terminate Subscription
-         * @description Terminate a subscription (sets status to TERMINATED and ending_at to now).
+         * @description Terminate a subscription with configurable financial action.
          */
         delete: operations["terminate_subscription_v1_subscriptions__subscription_id__delete"];
         options?: never;
@@ -294,7 +358,7 @@ export interface paths {
         put?: never;
         /**
          * Cancel Subscription
-         * @description Cancel a subscription (sets status to CANCELED and canceled_at to now).
+         * @description Cancel a subscription with configurable financial action.
          */
         post: operations["cancel_subscription_v1_subscriptions__subscription_id__cancel_post"];
         delete?: never;
@@ -373,6 +437,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/fees/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Fees
+         * @description List fees with optional filters.
+         */
+        get: operations["list_fees_v1_fees__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/fees/{fee_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Fee
+         * @description Get a fee by ID.
+         */
+        get: operations["get_fee_v1_fees__fee_id__get"];
+        /**
+         * Update Fee
+         * @description Update a fee.
+         */
+        put: operations["update_fee_v1_fees__fee_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/": {
         parameters: {
             query?: never;
@@ -432,7 +540,7 @@ export interface paths {
         put?: never;
         /**
          * Finalize Invoice
-         * @description Finalize a draft invoice.
+         * @description Finalize a draft invoice and apply wallet credits if available.
          */
         post: operations["finalize_invoice_v1_invoices__invoice_id__finalize_post"];
         delete?: never;
@@ -611,6 +719,986 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/wallets/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Wallets
+         * @description List wallets with optional filters.
+         */
+        get: operations["list_wallets_v1_wallets__get"];
+        put?: never;
+        /**
+         * Create Wallet
+         * @description Create a wallet for a customer.
+         */
+        post: operations["create_wallet_v1_wallets__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/wallets/{wallet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Wallet
+         * @description Get a wallet by ID.
+         */
+        get: operations["get_wallet_v1_wallets__wallet_id__get"];
+        /**
+         * Update Wallet
+         * @description Update a wallet (name, expiration_at, priority).
+         */
+        put: operations["update_wallet_v1_wallets__wallet_id__put"];
+        post?: never;
+        /**
+         * Terminate Wallet
+         * @description Terminate a wallet (soft delete: sets status=terminated).
+         */
+        delete: operations["terminate_wallet_v1_wallets__wallet_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/wallets/{wallet_id}/top_up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Top Up Wallet
+         * @description Top up a wallet with credits.
+         */
+        post: operations["top_up_wallet_v1_wallets__wallet_id__top_up_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/wallets/{wallet_id}/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Wallet Transactions
+         * @description List transactions for a wallet.
+         */
+        get: operations["list_wallet_transactions_v1_wallets__wallet_id__transactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Coupons
+         * @description List coupons with optional status filter.
+         */
+        get: operations["list_coupons_v1_coupons__get"];
+        put?: never;
+        /**
+         * Create Coupon
+         * @description Create a new coupon.
+         */
+        post: operations["create_coupon_v1_coupons__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Coupon
+         * @description Get a coupon by code.
+         */
+        get: operations["get_coupon_v1_coupons__code__get"];
+        /**
+         * Update Coupon
+         * @description Update a coupon by code.
+         */
+        put: operations["update_coupon_v1_coupons__code__put"];
+        post?: never;
+        /**
+         * Terminate Coupon
+         * @description Terminate a coupon by code.
+         */
+        delete: operations["terminate_coupon_v1_coupons__code__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Coupon
+         * @description Apply a coupon to a customer.
+         */
+        post: operations["apply_coupon_v1_coupons_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add_ons/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Add Ons
+         * @description List add-ons with pagination.
+         */
+        get: operations["list_add_ons_v1_add_ons__get"];
+        put?: never;
+        /**
+         * Create Add On
+         * @description Create a new add-on.
+         */
+        post: operations["create_add_on_v1_add_ons__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add_ons/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Add On
+         * @description Get an add-on by code.
+         */
+        get: operations["get_add_on_v1_add_ons__code__get"];
+        /**
+         * Update Add On
+         * @description Update an add-on by code.
+         */
+        put: operations["update_add_on_v1_add_ons__code__put"];
+        post?: never;
+        /**
+         * Delete Add On
+         * @description Delete an add-on by code.
+         */
+        delete: operations["delete_add_on_v1_add_ons__code__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add_ons/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Add On
+         * @description Apply an add-on to a customer.
+         */
+        post: operations["apply_add_on_v1_add_ons_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit_notes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Credit Notes
+         * @description List credit notes with optional filters.
+         */
+        get: operations["list_credit_notes_v1_credit_notes__get"];
+        put?: never;
+        /**
+         * Create Credit Note
+         * @description Create a new credit note with optional items.
+         */
+        post: operations["create_credit_note_v1_credit_notes__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit_notes/{credit_note_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Credit Note
+         * @description Get a credit note by ID.
+         */
+        get: operations["get_credit_note_v1_credit_notes__credit_note_id__get"];
+        /**
+         * Update Credit Note
+         * @description Update a credit note (only allowed in draft status).
+         */
+        put: operations["update_credit_note_v1_credit_notes__credit_note_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit_notes/{credit_note_id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finalize Credit Note
+         * @description Finalize a credit note.
+         */
+        post: operations["finalize_credit_note_v1_credit_notes__credit_note_id__finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit_notes/{credit_note_id}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Void Credit Note
+         * @description Void a credit note.
+         */
+        post: operations["void_credit_note_v1_credit_notes__credit_note_id__void_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Taxes
+         * @description List all taxes.
+         */
+        get: operations["list_taxes_v1_taxes__get"];
+        put?: never;
+        /**
+         * Create Tax
+         * @description Create a new tax.
+         */
+        post: operations["create_tax_v1_taxes__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tax
+         * @description Get a tax by code.
+         */
+        get: operations["get_tax_v1_taxes__code__get"];
+        /**
+         * Update Tax
+         * @description Update a tax by code.
+         */
+        put: operations["update_tax_v1_taxes__code__put"];
+        post?: never;
+        /**
+         * Delete Tax
+         * @description Delete a tax by code.
+         */
+        delete: operations["delete_tax_v1_taxes__code__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Tax
+         * @description Apply a tax to an entity.
+         */
+        post: operations["apply_tax_v1_taxes_apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/applied/{applied_tax_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove Applied Tax
+         * @description Remove an applied tax by ID.
+         */
+        delete: operations["remove_applied_tax_v1_taxes_applied__applied_tax_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Webhook Endpoints
+         * @description List all webhook endpoints.
+         */
+        get: operations["list_webhook_endpoints_v1_webhook_endpoints__get"];
+        put?: never;
+        /**
+         * Create Webhook Endpoint
+         * @description Create a new webhook endpoint.
+         */
+        post: operations["create_webhook_endpoint_v1_webhook_endpoints__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/{endpoint_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Webhook Endpoint
+         * @description Get a webhook endpoint by ID.
+         */
+        get: operations["get_webhook_endpoint_v1_webhook_endpoints__endpoint_id__get"];
+        /**
+         * Update Webhook Endpoint
+         * @description Update a webhook endpoint.
+         */
+        put: operations["update_webhook_endpoint_v1_webhook_endpoints__endpoint_id__put"];
+        post?: never;
+        /**
+         * Delete Webhook Endpoint
+         * @description Delete a webhook endpoint.
+         */
+        delete: operations["delete_webhook_endpoint_v1_webhook_endpoints__endpoint_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/hooks/list": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Webhooks
+         * @description List recent webhooks with optional filters.
+         */
+        get: operations["list_webhooks_v1_webhook_endpoints_hooks_list_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/hooks/{webhook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Webhook
+         * @description Get webhook details.
+         */
+        get: operations["get_webhook_v1_webhook_endpoints_hooks__webhook_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/hooks/{webhook_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry Webhook
+         * @description Manually retry a failed webhook.
+         */
+        post: operations["retry_webhook_v1_webhook_endpoints_hooks__webhook_id__retry_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/organizations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Organization
+         * @description Create a new organization with an initial API key.
+         */
+        post: operations["create_organization_v1_organizations__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/organizations/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Org
+         * @description Get the current organization (identified by API key).
+         */
+        get: operations["get_current_org_v1_organizations_current_get"];
+        /**
+         * Update Current Org
+         * @description Update the current organization.
+         */
+        put: operations["update_current_org_v1_organizations_current_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/organizations/current/api_keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Api Keys
+         * @description List API keys for the current organization (prefix and name only).
+         */
+        get: operations["list_api_keys_v1_organizations_current_api_keys_get"];
+        put?: never;
+        /**
+         * Create Api Key
+         * @description Generate a new API key for the current organization.
+         */
+        post: operations["create_api_key_v1_organizations_current_api_keys_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/organizations/current/api_keys/{api_key_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Revoke Api Key
+         * @description Revoke an API key.
+         */
+        delete: operations["revoke_api_key_v1_organizations_current_api_keys__api_key_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dunning_campaigns/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Dunning Campaigns
+         * @description List dunning campaigns with optional status filter.
+         */
+        get: operations["list_dunning_campaigns_v1_dunning_campaigns__get"];
+        put?: never;
+        /**
+         * Create Dunning Campaign
+         * @description Create a new dunning campaign.
+         */
+        post: operations["create_dunning_campaign_v1_dunning_campaigns__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dunning_campaigns/{campaign_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Dunning Campaign
+         * @description Get a dunning campaign by ID.
+         */
+        get: operations["get_dunning_campaign_v1_dunning_campaigns__campaign_id__get"];
+        /**
+         * Update Dunning Campaign
+         * @description Update a dunning campaign.
+         */
+        put: operations["update_dunning_campaign_v1_dunning_campaigns__campaign_id__put"];
+        post?: never;
+        /**
+         * Delete Dunning Campaign
+         * @description Delete a dunning campaign.
+         */
+        delete: operations["delete_dunning_campaign_v1_dunning_campaigns__campaign_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_requests/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Payment Requests
+         * @description List payment requests with optional filters.
+         */
+        get: operations["list_payment_requests_v1_payment_requests__get"];
+        put?: never;
+        /**
+         * Create Payment Request
+         * @description Create a manual payment request.
+         */
+        post: operations["create_payment_request_v1_payment_requests__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_requests/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Payment Request
+         * @description Get a payment request by ID.
+         */
+        get: operations["get_payment_request_v1_payment_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plans/{plan_code}/commitments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Commitments For Plan
+         * @description List all commitments for a plan.
+         */
+        get: operations["list_commitments_for_plan_v1_plans__plan_code__commitments_get"];
+        put?: never;
+        /**
+         * Create Commitment
+         * @description Add a commitment to a plan.
+         */
+        post: operations["create_commitment_v1_plans__plan_code__commitments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/commitments/{commitment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Commitment
+         * @description Update a commitment.
+         */
+        put: operations["update_commitment_v1_commitments__commitment_id__put"];
+        post?: never;
+        /**
+         * Delete Commitment
+         * @description Remove a commitment.
+         */
+        delete: operations["delete_commitment_v1_commitments__commitment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plans/{plan_code}/usage_thresholds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Plan Usage Threshold
+         * @description Add a usage threshold to a plan.
+         */
+        post: operations["create_plan_usage_threshold_v1_plans__plan_code__usage_thresholds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{subscription_id}/usage_thresholds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Subscription Usage Thresholds
+         * @description List all usage thresholds for a subscription.
+         */
+        get: operations["list_subscription_usage_thresholds_v1_subscriptions__subscription_id__usage_thresholds_get"];
+        put?: never;
+        /**
+         * Create Subscription Usage Threshold
+         * @description Add a usage threshold to a subscription.
+         */
+        post: operations["create_subscription_usage_threshold_v1_subscriptions__subscription_id__usage_thresholds_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/{subscription_id}/current_usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Current Usage
+         * @description Get current period usage amount for a subscription.
+         */
+        get: operations["get_current_usage_v1_subscriptions__subscription_id__current_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage_thresholds/{threshold_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Usage Threshold
+         * @description Remove a usage threshold.
+         */
+        delete: operations["delete_usage_threshold_v1_usage_thresholds__threshold_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/data_exports/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Data Exports
+         * @description List data exports for the organization.
+         */
+        get: operations["list_data_exports_v1_data_exports__get"];
+        put?: never;
+        /**
+         * Create Data Export
+         * @description Create a new data export and enqueue background processing.
+         */
+        post: operations["create_data_export_v1_data_exports__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/data_exports/{export_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Data Export
+         * @description Get a data export by ID.
+         */
+        get: operations["get_data_export_v1_data_exports__export_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/data_exports/{export_id}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download Data Export
+         * @description Download the CSV file for a completed data export.
+         */
+        get: operations["download_data_export_v1_data_exports__export_id__download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Integrations
+         * @description List integrations for the organization.
+         */
+        get: operations["list_integrations_v1_integrations__get"];
+        put?: never;
+        /**
+         * Create Integration
+         * @description Create a new integration.
+         */
+        post: operations["create_integration_v1_integrations__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Integration
+         * @description Get an integration by ID.
+         */
+        get: operations["get_integration_v1_integrations__integration_id__get"];
+        /**
+         * Update Integration
+         * @description Update an integration's settings.
+         */
+        put: operations["update_integration_v1_integrations__integration_id__put"];
+        post?: never;
+        /**
+         * Delete Integration
+         * @description Remove an integration.
+         */
+        delete: operations["delete_integration_v1_integrations__integration_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Integration Connection
+         * @description Test an integration's connection credentials.
+         */
+        post: operations["test_integration_connection_v1_integrations__integration_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -649,11 +1737,282 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddOnCreate */
+        AddOnCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Amount Cents */
+            amount_cents: number | string;
+            /**
+             * Amount Currency
+             * @default USD
+             */
+            amount_currency: string;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
+        };
+        /** AddOnResponse */
+        AddOnResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AddOnUpdate */
+        AddOnUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Amount Cents */
+            amount_cents?: number | string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
+        };
         /**
          * AggregationType
          * @enum {string}
          */
-        AggregationType: "count" | "sum" | "max" | "unique_count";
+        AggregationType: "count" | "sum" | "max" | "unique_count" | "weighted_sum" | "latest" | "custom";
+        /** ApiKeyCreate */
+        ApiKeyCreate: {
+            /** Name */
+            name?: string | null;
+            /** Expires At */
+            expires_at?: string | null;
+        };
+        /**
+         * ApiKeyCreateResponse
+         * @description Returned only on creation — includes the raw API key.
+         */
+        ApiKeyCreateResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Name */
+            name: string | null;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Raw Key */
+            raw_key: string;
+        };
+        /** ApiKeyListResponse */
+        ApiKeyListResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key Prefix */
+            key_prefix: string;
+            /** Name */
+            name: string | null;
+            /** Last Used At */
+            last_used_at: string | null;
+            /** Expires At */
+            expires_at: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** AppliedAddOnResponse */
+        AppliedAddOnResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Add On Id
+             * Format: uuid
+             */
+            add_on_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** AppliedCouponResponse */
+        AppliedCouponResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Coupon Id
+             * Format: uuid
+             */
+            coupon_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Amount Cents */
+            amount_cents?: string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Percentage Rate */
+            percentage_rate?: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Frequency Duration */
+            frequency_duration?: number | null;
+            /** Frequency Duration Remaining */
+            frequency_duration_remaining?: number | null;
+            /** Status */
+            status: string;
+            /** Terminated At */
+            terminated_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** AppliedTaxResponse */
+        AppliedTaxResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Tax Id
+             * Format: uuid
+             */
+            tax_id: string;
+            /** Taxable Type */
+            taxable_type: string;
+            /**
+             * Taxable Id
+             * Format: uuid
+             */
+            taxable_id: string;
+            /** Tax Rate */
+            tax_rate?: string | null;
+            /** Tax Amount Cents */
+            tax_amount_cents: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ApplyAddOnRequest */
+        ApplyAddOnRequest: {
+            /** Add On Code */
+            add_on_code: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Amount Cents */
+            amount_cents?: number | string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+        };
+        /** ApplyCouponRequest */
+        ApplyCouponRequest: {
+            /** Coupon Code */
+            coupon_code: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Amount Cents */
+            amount_cents?: number | string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Percentage Rate */
+            percentage_rate?: number | string | null;
+        };
+        /** ApplyTaxRequest */
+        ApplyTaxRequest: {
+            /** Tax Code */
+            tax_code: string;
+            /** Taxable Type */
+            taxable_type: string;
+            /**
+             * Taxable Id
+             * Format: uuid
+             */
+            taxable_id: string;
+        };
         /** BillableMetricCreate */
         BillableMetricCreate: {
             /** Code */
@@ -665,6 +2024,51 @@ export interface components {
             aggregation_type: components["schemas"]["AggregationType"];
             /** Field Name */
             field_name?: string | null;
+            /**
+             * Recurring
+             * @default false
+             */
+            recurring: boolean;
+            /** Rounding Function */
+            rounding_function?: ("round" | "ceil" | "floor") | null;
+            /** Rounding Precision */
+            rounding_precision?: number | null;
+            /** Expression */
+            expression?: string | null;
+        };
+        /** BillableMetricFilterCreate */
+        BillableMetricFilterCreate: {
+            /** Key */
+            key: string;
+            /** Values */
+            values?: unknown[];
+        };
+        /** BillableMetricFilterResponse */
+        BillableMetricFilterResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Billable Metric Id
+             * Format: uuid
+             */
+            billable_metric_id: string;
+            /** Key */
+            key: string;
+            /** Values */
+            values: unknown[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** BillableMetricResponse */
         BillableMetricResponse: {
@@ -682,6 +2086,14 @@ export interface components {
             aggregation_type: components["schemas"]["AggregationType"];
             /** Field Name */
             field_name: string | null;
+            /** Recurring */
+            recurring: boolean;
+            /** Rounding Function */
+            rounding_function: string | null;
+            /** Rounding Precision */
+            rounding_precision: number | null;
+            /** Expression */
+            expression: string | null;
             /**
              * Created At
              * Format: date-time
@@ -701,6 +2113,36 @@ export interface components {
             description?: string | null;
             /** Field Name */
             field_name?: string | null;
+            /** Recurring */
+            recurring?: boolean | null;
+            /** Rounding Function */
+            rounding_function?: ("round" | "ceil" | "floor") | null;
+            /** Rounding Precision */
+            rounding_precision?: number | null;
+            /** Expression */
+            expression?: string | null;
+        };
+        /**
+         * BillingTime
+         * @enum {string}
+         */
+        BillingTime: "calendar" | "anniversary";
+        /**
+         * ChargeFilterInput
+         * @description Filter configuration for a charge within a plan.
+         */
+        ChargeFilterInput: {
+            /**
+             * Billable Metric Filter Id
+             * Format: uuid
+             */
+            billable_metric_filter_id: string;
+            /** Values */
+            values?: string[];
+            /** Properties */
+            properties?: Record<string, never>;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
         };
         /**
          * ChargeInput
@@ -715,12 +2157,14 @@ export interface components {
             charge_model: components["schemas"]["ChargeModel"];
             /** Properties */
             properties?: Record<string, never>;
+            /** Filters */
+            filters?: components["schemas"]["ChargeFilterInput"][];
         };
         /**
          * ChargeModel
          * @enum {string}
          */
-        ChargeModel: "standard" | "graduated" | "volume" | "package" | "percentage" | "graduated_percentage";
+        ChargeModel: "standard" | "graduated" | "volume" | "package" | "percentage" | "graduated_percentage" | "custom" | "dynamic";
         /**
          * ChargeOutput
          * @description Charge output in plan responses.
@@ -798,6 +2242,327 @@ export interface components {
             /** Expires At */
             expires_at?: string | null;
         };
+        /** CommitmentCreateAPI */
+        CommitmentCreateAPI: {
+            /**
+             * Commitment Type
+             * @default minimum_commitment
+             */
+            commitment_type: string;
+            /** Amount Cents */
+            amount_cents: number | string;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
+        };
+        /** CommitmentResponse */
+        CommitmentResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Commitment Type */
+            commitment_type: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CommitmentUpdate */
+        CommitmentUpdate: {
+            /** Commitment Type */
+            commitment_type?: string | null;
+            /** Amount Cents */
+            amount_cents?: number | string | null;
+            /** Invoice Display Name */
+            invoice_display_name?: string | null;
+        };
+        /** CouponCreate */
+        CouponCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            coupon_type: components["schemas"]["CouponType"];
+            /** Amount Cents */
+            amount_cents?: number | string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Percentage Rate */
+            percentage_rate?: number | string | null;
+            frequency: components["schemas"]["CouponFrequency"];
+            /** Frequency Duration */
+            frequency_duration?: number | null;
+            /**
+             * Reusable
+             * @default true
+             */
+            reusable: boolean;
+            /** @default no_expiration */
+            expiration: components["schemas"]["CouponExpiration"];
+            /** Expiration At */
+            expiration_at?: string | null;
+        };
+        /**
+         * CouponExpiration
+         * @enum {string}
+         */
+        CouponExpiration: "no_expiration" | "time_limit";
+        /**
+         * CouponFrequency
+         * @enum {string}
+         */
+        CouponFrequency: "once" | "recurring" | "forever";
+        /** CouponResponse */
+        CouponResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Coupon Type */
+            coupon_type: string;
+            /** Amount Cents */
+            amount_cents?: string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Percentage Rate */
+            percentage_rate?: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Frequency Duration */
+            frequency_duration?: number | null;
+            /** Reusable */
+            reusable: boolean;
+            /** Expiration */
+            expiration: string;
+            /** Expiration At */
+            expiration_at?: string | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * CouponStatus
+         * @enum {string}
+         */
+        CouponStatus: "active" | "terminated";
+        /**
+         * CouponType
+         * @enum {string}
+         */
+        CouponType: "fixed_amount" | "percentage";
+        /** CouponUpdate */
+        CouponUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            expiration?: components["schemas"]["CouponExpiration"] | null;
+            /** Expiration At */
+            expiration_at?: string | null;
+            status?: components["schemas"]["CouponStatus"] | null;
+        };
+        /** CreditNoteCreate */
+        CreditNoteCreate: {
+            /** Number */
+            number: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            credit_note_type: components["schemas"]["CreditNoteType"];
+            reason: components["schemas"]["CreditNoteReason"];
+            /** Description */
+            description?: string | null;
+            /**
+             * Credit Amount Cents
+             * @default 0
+             */
+            credit_amount_cents: number | string;
+            /**
+             * Refund Amount Cents
+             * @default 0
+             */
+            refund_amount_cents: number | string;
+            /**
+             * Total Amount Cents
+             * @default 0
+             */
+            total_amount_cents: number | string;
+            /**
+             * Taxes Amount Cents
+             * @default 0
+             */
+            taxes_amount_cents: number | string;
+            /** Currency */
+            currency: string;
+            /** Items */
+            items?: components["schemas"]["CreditNoteItemCreate"][];
+        };
+        /** CreditNoteItemCreate */
+        CreditNoteItemCreate: {
+            /**
+             * Fee Id
+             * Format: uuid
+             */
+            fee_id: string;
+            /** Amount Cents */
+            amount_cents: number | string;
+        };
+        /**
+         * CreditNoteReason
+         * @enum {string}
+         */
+        CreditNoteReason: "duplicated_charge" | "product_unsatisfactory" | "order_change" | "order_cancellation" | "fraudulent_charge" | "other";
+        /** CreditNoteResponse */
+        CreditNoteResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Number */
+            number: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Credit Note Type */
+            credit_note_type: string;
+            /** Status */
+            status: string;
+            /** Credit Status */
+            credit_status?: string | null;
+            /** Refund Status */
+            refund_status?: string | null;
+            /** Reason */
+            reason: string;
+            /** Description */
+            description?: string | null;
+            /** Credit Amount Cents */
+            credit_amount_cents: string;
+            /** Refund Amount Cents */
+            refund_amount_cents: string;
+            /** Balance Amount Cents */
+            balance_amount_cents: string;
+            /** Total Amount Cents */
+            total_amount_cents: string;
+            /** Taxes Amount Cents */
+            taxes_amount_cents: string;
+            /** Currency */
+            currency: string;
+            /** Issued At */
+            issued_at?: string | null;
+            /** Voided At */
+            voided_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * CreditNoteStatus
+         * @enum {string}
+         */
+        CreditNoteStatus: "draft" | "finalized";
+        /**
+         * CreditNoteType
+         * @enum {string}
+         */
+        CreditNoteType: "credit" | "refund" | "offset";
+        /** CreditNoteUpdate */
+        CreditNoteUpdate: {
+            /** Description */
+            description?: string | null;
+            /** Credit Amount Cents */
+            credit_amount_cents?: number | string | null;
+            /** Refund Amount Cents */
+            refund_amount_cents?: number | string | null;
+            /** Total Amount Cents */
+            total_amount_cents?: number | string | null;
+            /** Taxes Amount Cents */
+            taxes_amount_cents?: number | string | null;
+            reason?: components["schemas"]["CreditNoteReason"] | null;
+            status?: components["schemas"]["CreditNoteStatus"] | null;
+            credit_status?: components["schemas"]["CreditStatus"] | null;
+            refund_status?: components["schemas"]["RefundStatus"] | null;
+        };
+        /**
+         * CreditStatus
+         * @enum {string}
+         */
+        CreditStatus: "available" | "consumed" | "voided";
+        /** CurrentUsageResponse */
+        CurrentUsageResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Current Usage Amount Cents */
+            current_usage_amount_cents: string;
+            /**
+             * Billing Period Start
+             * Format: date-time
+             */
+            billing_period_start: string;
+            /**
+             * Billing Period End
+             * Format: date-time
+             */
+            billing_period_end: string;
+        };
         /** CustomerCreate */
         CustomerCreate: {
             /** External Id */
@@ -818,6 +2583,16 @@ export interface components {
             timezone: string;
             /** Billing Metadata */
             billing_metadata?: Record<string, never>;
+            /**
+             * Invoice Grace Period
+             * @default 0
+             */
+            invoice_grace_period: number;
+            /**
+             * Net Payment Term
+             * @default 30
+             */
+            net_payment_term: number;
         };
         /** CustomerResponse */
         CustomerResponse: {
@@ -838,6 +2613,10 @@ export interface components {
             timezone: string;
             /** Billing Metadata */
             billing_metadata: Record<string, never>;
+            /** Invoice Grace Period */
+            invoice_grace_period: number;
+            /** Net Payment Term */
+            net_payment_term: number;
             /**
              * Created At
              * Format: date-time
@@ -861,6 +2640,191 @@ export interface components {
             timezone?: string | null;
             /** Billing Metadata */
             billing_metadata?: Record<string, never> | null;
+            /** Invoice Grace Period */
+            invoice_grace_period?: number | null;
+            /** Net Payment Term */
+            net_payment_term?: number | null;
+        };
+        /**
+         * DataExportCreate
+         * @description Schema for creating a data export.
+         */
+        DataExportCreate: {
+            export_type: components["schemas"]["ExportType"];
+            /** Filters */
+            filters?: Record<string, never> | null;
+        };
+        /**
+         * DataExportResponse
+         * @description Schema for data export response.
+         */
+        DataExportResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Export Type */
+            export_type: string;
+            /** Status */
+            status: string;
+            /** Filters */
+            filters?: Record<string, never> | null;
+            /** File Path */
+            file_path?: string | null;
+            /** Record Count */
+            record_count?: number | null;
+            /** Error Message */
+            error_message?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * DunningCampaignCreate
+         * @description Schema for creating a dunning campaign.
+         */
+        DunningCampaignCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Max Attempts
+             * @default 3
+             */
+            max_attempts: number;
+            /**
+             * Days Between Attempts
+             * @default 3
+             */
+            days_between_attempts: number;
+            /** Bcc Emails */
+            bcc_emails?: string[];
+            /**
+             * Status
+             * @default active
+             */
+            status: string;
+            /** Thresholds */
+            thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][];
+        };
+        /**
+         * DunningCampaignResponse
+         * @description Schema for dunning campaign response.
+         */
+        DunningCampaignResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Max Attempts */
+            max_attempts: number;
+            /** Days Between Attempts */
+            days_between_attempts: number;
+            /** Bcc Emails */
+            bcc_emails: string[];
+            /** Status */
+            status: string;
+            /** Thresholds */
+            thresholds?: components["schemas"]["DunningCampaignThresholdResponse"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * DunningCampaignThresholdCreate
+         * @description Schema for creating a dunning campaign threshold.
+         */
+        DunningCampaignThresholdCreate: {
+            /** Currency */
+            currency: string;
+            /** Amount Cents */
+            amount_cents: number | string;
+        };
+        /**
+         * DunningCampaignThresholdResponse
+         * @description Schema for dunning campaign threshold response.
+         */
+        DunningCampaignThresholdResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Dunning Campaign Id
+             * Format: uuid
+             */
+            dunning_campaign_id: string;
+            /** Currency */
+            currency: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * DunningCampaignUpdate
+         * @description Schema for updating a dunning campaign.
+         */
+        DunningCampaignUpdate: {
+            /** Code */
+            code?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Max Attempts */
+            max_attempts?: number | null;
+            /** Days Between Attempts */
+            days_between_attempts?: number | null;
+            /** Bcc Emails */
+            bcc_emails?: string[] | null;
+            /** Status */
+            status?: string | null;
+            /** Thresholds */
+            thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][] | null;
         };
         /** EventBatchCreate */
         EventBatchCreate: {
@@ -918,10 +2882,155 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * ExportType
+         * @description Types of data that can be exported.
+         * @enum {string}
+         */
+        ExportType: "invoices" | "customers" | "subscriptions" | "events" | "fees" | "credit_notes";
+        /**
+         * FeePaymentStatus
+         * @description Fee payment status enum.
+         * @enum {string}
+         */
+        FeePaymentStatus: "pending" | "succeeded" | "failed" | "refunded";
+        /**
+         * FeeResponse
+         * @description Schema for fee response.
+         */
+        FeeResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invoice Id */
+            invoice_id?: string | null;
+            /** Charge Id */
+            charge_id?: string | null;
+            /** Subscription Id */
+            subscription_id?: string | null;
+            /** Commitment Id */
+            commitment_id?: string | null;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Fee Type */
+            fee_type: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Taxes Amount Cents */
+            taxes_amount_cents: string;
+            /** Total Amount Cents */
+            total_amount_cents: string;
+            /** Units */
+            units: string;
+            /** Events Count */
+            events_count: number;
+            /** Unit Amount Cents */
+            unit_amount_cents: string;
+            /** Payment Status */
+            payment_status: string;
+            /** Description */
+            description?: string | null;
+            /** Metric Code */
+            metric_code?: string | null;
+            /** Properties */
+            properties: Record<string, never>;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * FeeType
+         * @description Fee type enum.
+         * @enum {string}
+         */
+        FeeType: "charge" | "subscription" | "add_on" | "credit" | "commitment";
+        /**
+         * FeeUpdate
+         * @description Schema for updating a fee.
+         */
+        FeeUpdate: {
+            payment_status?: components["schemas"]["FeePaymentStatus"] | null;
+            /** Description */
+            description?: string | null;
+            /** Taxes Amount Cents */
+            taxes_amount_cents?: number | string | null;
+            /** Total Amount Cents */
+            total_amount_cents?: number | string | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** IntegrationCreate */
+        IntegrationCreate: {
+            /** Integration Type */
+            integration_type: string;
+            /** Provider Type */
+            provider_type: string;
+            /**
+             * Status
+             * @default active
+             */
+            status: string;
+            /** Settings */
+            settings?: Record<string, never>;
+        };
+        /** IntegrationResponse */
+        IntegrationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Integration Type */
+            integration_type: string;
+            /** Provider Type */
+            provider_type: string;
+            /** Status */
+            status: string;
+            /** Settings */
+            settings: Record<string, never>;
+            /** Last Sync At */
+            last_sync_at?: string | null;
+            /** Error Details */
+            error_details?: Record<string, never> | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** IntegrationUpdate */
+        IntegrationUpdate: {
+            /** Status */
+            status?: string | null;
+            /** Settings */
+            settings?: Record<string, never> | null;
+            /** Error Details */
+            error_details?: Record<string, never> | null;
         };
         /** InvoiceResponse */
         InvoiceResponse: {
@@ -937,13 +3046,12 @@ export interface components {
              * Format: uuid
              */
             customer_id: string;
-            /**
-             * Subscription Id
-             * Format: uuid
-             */
-            subscription_id: string;
+            /** Subscription Id */
+            subscription_id: string | null;
             /** Status */
             status: string;
+            /** Invoice Type */
+            invoice_type: string;
             /**
              * Billing Period Start
              * Format: date-time
@@ -960,6 +3068,12 @@ export interface components {
             tax_amount: string;
             /** Total */
             total: string;
+            /** Prepaid Credit Amount */
+            prepaid_credit_amount: string;
+            /** Coupons Amount Cents */
+            coupons_amount_cents: string;
+            /** Progressive Billing Credit Amount Cents */
+            progressive_billing_credit_amount_cents: string;
             /** Currency */
             currency: string;
             /** Line Items */
@@ -1049,12 +3163,282 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** OrganizationCreate */
+        OrganizationCreate: {
+            /** Name */
+            name: string;
+            /**
+             * Default Currency
+             * @default USD
+             */
+            default_currency: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /** Hmac Key */
+            hmac_key?: string | null;
+            /** Document Number Prefix */
+            document_number_prefix?: string | null;
+            /**
+             * Invoice Grace Period
+             * @default 0
+             */
+            invoice_grace_period: number;
+            /**
+             * Net Payment Term
+             * @default 30
+             */
+            net_payment_term: number;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Address Line1 */
+            address_line1?: string | null;
+            /** Address Line2 */
+            address_line2?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Zipcode */
+            zipcode?: string | null;
+            /** Country */
+            country?: string | null;
+        };
+        /**
+         * OrganizationCreateResponse
+         * @description Organization creation response that includes the initial API key.
+         */
+        OrganizationCreateResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Default Currency */
+            default_currency: string;
+            /** Timezone */
+            timezone: string;
+            /** Hmac Key */
+            hmac_key: string | null;
+            /** Document Number Prefix */
+            document_number_prefix: string | null;
+            /** Invoice Grace Period */
+            invoice_grace_period: number;
+            /** Net Payment Term */
+            net_payment_term: number;
+            /** Logo Url */
+            logo_url: string | null;
+            /** Email */
+            email: string | null;
+            /** Legal Name */
+            legal_name: string | null;
+            /** Address Line1 */
+            address_line1: string | null;
+            /** Address Line2 */
+            address_line2: string | null;
+            /** City */
+            city: string | null;
+            /** State */
+            state: string | null;
+            /** Zipcode */
+            zipcode: string | null;
+            /** Country */
+            country: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            api_key: components["schemas"]["ApiKeyCreateResponse"];
+        };
+        /** OrganizationResponse */
+        OrganizationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Default Currency */
+            default_currency: string;
+            /** Timezone */
+            timezone: string;
+            /** Hmac Key */
+            hmac_key: string | null;
+            /** Document Number Prefix */
+            document_number_prefix: string | null;
+            /** Invoice Grace Period */
+            invoice_grace_period: number;
+            /** Net Payment Term */
+            net_payment_term: number;
+            /** Logo Url */
+            logo_url: string | null;
+            /** Email */
+            email: string | null;
+            /** Legal Name */
+            legal_name: string | null;
+            /** Address Line1 */
+            address_line1: string | null;
+            /** Address Line2 */
+            address_line2: string | null;
+            /** City */
+            city: string | null;
+            /** State */
+            state: string | null;
+            /** Zipcode */
+            zipcode: string | null;
+            /** Country */
+            country: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** OrganizationUpdate */
+        OrganizationUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Default Currency */
+            default_currency?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Hmac Key */
+            hmac_key?: string | null;
+            /** Document Number Prefix */
+            document_number_prefix?: string | null;
+            /** Invoice Grace Period */
+            invoice_grace_period?: number | null;
+            /** Net Payment Term */
+            net_payment_term?: number | null;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Address Line1 */
+            address_line1?: string | null;
+            /** Address Line2 */
+            address_line2?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Zipcode */
+            zipcode?: string | null;
+            /** Country */
+            country?: string | null;
+        };
         /**
          * PaymentProvider
          * @description Supported payment providers.
          * @enum {string}
          */
-        PaymentProvider: "stripe" | "manual" | "ucp";
+        PaymentProvider: "stripe" | "manual" | "ucp" | "gocardless" | "adyen";
+        /**
+         * PaymentRequestCreate
+         * @description Schema for creating a manual payment request.
+         */
+        PaymentRequestCreate: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Invoice Ids */
+            invoice_ids: string[];
+        };
+        /**
+         * PaymentRequestInvoiceResponse
+         * @description Schema for payment request invoice join response.
+         */
+        PaymentRequestInvoiceResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Payment Request Id
+             * Format: uuid
+             */
+            payment_request_id: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PaymentRequestResponse
+         * @description Schema for payment request response.
+         */
+        PaymentRequestResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Dunning Campaign Id */
+            dunning_campaign_id?: string | null;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /** Payment Status */
+            payment_status: string;
+            /** Payment Attempts */
+            payment_attempts: number;
+            /** Ready For Payment Processing */
+            ready_for_payment_processing: boolean;
+            /** Invoices */
+            invoices?: components["schemas"]["PaymentRequestInvoiceResponse"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * PaymentResponse
          * @description Schema for payment response.
@@ -1192,6 +3576,11 @@ export interface components {
             /** Charges */
             charges?: components["schemas"]["ChargeInput"][] | null;
         };
+        /**
+         * RefundStatus
+         * @enum {string}
+         */
+        RefundStatus: "pending" | "succeeded" | "failed";
         /** SubscriptionCreate */
         SubscriptionCreate: {
             /** External Id */
@@ -1208,6 +3597,22 @@ export interface components {
             plan_id: string;
             /** Started At */
             started_at?: string | null;
+            /** @default calendar */
+            billing_time: components["schemas"]["BillingTime"];
+            /**
+             * Trial Period Days
+             * @default 0
+             */
+            trial_period_days: number;
+            /** Subscription At */
+            subscription_at?: string | null;
+            /**
+             * Pay In Advance
+             * @default false
+             */
+            pay_in_advance: boolean;
+            /** @default generate_invoice */
+            on_termination_action: components["schemas"]["TerminationAction"];
         };
         /** SubscriptionResponse */
         SubscriptionResponse: {
@@ -1229,6 +3634,22 @@ export interface components {
              */
             plan_id: string;
             status: components["schemas"]["SubscriptionStatus"];
+            /** Billing Time */
+            billing_time: string;
+            /** Trial Period Days */
+            trial_period_days: number;
+            /** Trial Ended At */
+            trial_ended_at: string | null;
+            /** Subscription At */
+            subscription_at: string | null;
+            /** Pay In Advance */
+            pay_in_advance: boolean;
+            /** Previous Plan Id */
+            previous_plan_id: string | null;
+            /** Downgraded At */
+            downgraded_at: string | null;
+            /** On Termination Action */
+            on_termination_action: string;
             /** Started At */
             started_at: string | null;
             /** Ending At */
@@ -1258,6 +3679,127 @@ export interface components {
             ending_at?: string | null;
             /** Canceled At */
             canceled_at?: string | null;
+            billing_time?: components["schemas"]["BillingTime"] | null;
+            /** Trial Period Days */
+            trial_period_days?: number | null;
+            /** Trial Ended At */
+            trial_ended_at?: string | null;
+            /** Subscription At */
+            subscription_at?: string | null;
+            /** Pay In Advance */
+            pay_in_advance?: boolean | null;
+            /** Previous Plan Id */
+            previous_plan_id?: string | null;
+            /** Downgraded At */
+            downgraded_at?: string | null;
+            on_termination_action?: components["schemas"]["TerminationAction"] | null;
+        };
+        /** TaxCreate */
+        TaxCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Rate */
+            rate: number | string;
+            /** Description */
+            description?: string | null;
+            /**
+             * Applied To Organization
+             * @default false
+             */
+            applied_to_organization: boolean;
+        };
+        /** TaxResponse */
+        TaxResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Rate */
+            rate: string;
+            /** Description */
+            description?: string | null;
+            /** Applied To Organization */
+            applied_to_organization: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** TaxUpdate */
+        TaxUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Rate */
+            rate?: number | string | null;
+            /** Description */
+            description?: string | null;
+            /** Applied To Organization */
+            applied_to_organization?: boolean | null;
+        };
+        /**
+         * TerminationAction
+         * @enum {string}
+         */
+        TerminationAction: "generate_invoice" | "generate_credit_note" | "skip";
+        /** UsageThresholdCreateAPI */
+        UsageThresholdCreateAPI: {
+            /** Amount Cents */
+            amount_cents: number | string;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Recurring
+             * @default false
+             */
+            recurring: boolean;
+            /** Threshold Display Name */
+            threshold_display_name?: string | null;
+        };
+        /** UsageThresholdResponse */
+        UsageThresholdResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Plan Id */
+            plan_id?: string | null;
+            /** Subscription Id */
+            subscription_id?: string | null;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Currency */
+            currency: string;
+            /** Recurring */
+            recurring: boolean;
+            /** Threshold Display Name */
+            threshold_display_name?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1267,6 +3809,234 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** WalletCreate */
+        WalletCreate: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Name */
+            name?: string | null;
+            /** Code */
+            code?: string | null;
+            /**
+             * Rate Amount
+             * @default 1
+             */
+            rate_amount: number | string;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /** Expiration At */
+            expiration_at?: string | null;
+            /**
+             * Priority
+             * @default 1
+             */
+            priority: number;
+            /** Initial Granted Credits */
+            initial_granted_credits?: number | string | null;
+        };
+        /** WalletResponse */
+        WalletResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Name */
+            name?: string | null;
+            /** Code */
+            code?: string | null;
+            /** Status */
+            status: string;
+            /** Balance Cents */
+            balance_cents: string;
+            /** Credits Balance */
+            credits_balance: string;
+            /** Consumed Amount Cents */
+            consumed_amount_cents: string;
+            /** Consumed Credits */
+            consumed_credits: string;
+            /** Rate Amount */
+            rate_amount: string;
+            /** Currency */
+            currency: string;
+            /** Expiration At */
+            expiration_at?: string | null;
+            /** Priority */
+            priority: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * WalletStatus
+         * @enum {string}
+         */
+        WalletStatus: "active" | "terminated";
+        /** WalletTopUp */
+        WalletTopUp: {
+            /** Credits */
+            credits: number | string;
+            /**
+             * Source
+             * @default manual
+             */
+            source: string;
+        };
+        /** WalletTransactionResponse */
+        WalletTransactionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Wallet Id
+             * Format: uuid
+             */
+            wallet_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Transaction Type */
+            transaction_type: string;
+            /** Transaction Status */
+            transaction_status: string;
+            /** Source */
+            source: string;
+            /** Status */
+            status: string;
+            /** Amount */
+            amount: string;
+            /** Credit Amount */
+            credit_amount: string;
+            /** Invoice Id */
+            invoice_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WalletUpdate */
+        WalletUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Expiration At */
+            expiration_at?: string | null;
+            /** Priority */
+            priority?: number | null;
+        };
+        /** WebhookEndpointCreate */
+        WebhookEndpointCreate: {
+            /** Url */
+            url: string;
+            /**
+             * Signature Algo
+             * @default hmac
+             */
+            signature_algo: string;
+        };
+        /** WebhookEndpointResponse */
+        WebhookEndpointResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Url */
+            url: string;
+            /** Signature Algo */
+            signature_algo: string;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** WebhookEndpointUpdate */
+        WebhookEndpointUpdate: {
+            /** Url */
+            url?: string | null;
+            /** Signature Algo */
+            signature_algo?: string | null;
+            /** Status */
+            status?: string | null;
+        };
+        /** WebhookResponse */
+        WebhookResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Webhook Endpoint Id
+             * Format: uuid
+             */
+            webhook_endpoint_id: string;
+            /** Webhook Type */
+            webhook_type: string;
+            /** Object Type */
+            object_type?: string | null;
+            /** Object Id */
+            object_id?: string | null;
+            /** Payload */
+            payload: Record<string, never>;
+            /** Status */
+            status: string;
+            /** Retries */
+            retries: number;
+            /** Max Retries */
+            max_retries: number;
+            /** Last Retried At */
+            last_retried_at?: string | null;
+            /** Http Status */
+            http_status?: number | null;
+            /** Response */
+            response?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
     };
     responses: never;
@@ -1639,6 +4409,40 @@ export interface operations {
             };
         };
     };
+    list_applied_coupons_v1_customers__customer_id__applied_coupons_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedCouponResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_billable_metrics_v1_billable_metrics__get: {
         parameters: {
             query?: {
@@ -1776,6 +4580,102 @@ export interface operations {
             header?: never;
             path: {
                 metric_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_billable_metric_filters_v1_billable_metrics__code__filters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillableMetricFilterResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_billable_metric_filter_v1_billable_metrics__code__filters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillableMetricFilterCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillableMetricFilterResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_billable_metric_filter_v1_billable_metrics__code__filters__filter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                filter_id: string;
             };
             cookie?: never;
         };
@@ -2093,7 +4993,10 @@ export interface operations {
     };
     terminate_subscription_v1_subscriptions__subscription_id__delete: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Termination action */
+                on_termination_action?: components["schemas"]["TerminationAction"];
+            };
             header?: never;
             path: {
                 subscription_id: string;
@@ -2122,7 +5025,10 @@ export interface operations {
     };
     cancel_subscription_v1_subscriptions__subscription_id__cancel_post: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Cancellation action */
+                on_termination_action?: components["schemas"]["TerminationAction"];
+            };
             header?: never;
             path: {
                 subscription_id: string;
@@ -2271,6 +5177,109 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventBatchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_fees_v1_fees__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                invoice_id?: string | null;
+                customer_id?: string | null;
+                subscription_id?: string | null;
+                fee_type?: components["schemas"]["FeeType"] | null;
+                payment_status?: components["schemas"]["FeePaymentStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeeResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_fee_v1_fees__fee_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fee_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeeResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_fee_v1_fees__fee_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fee_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeeUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeeResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2642,6 +5651,7 @@ export interface operations {
             header?: {
                 "Stripe-Signature"?: string | null;
                 "X-UCP-Signature"?: string | null;
+                "Webhook-Signature"?: string | null;
             };
             path: {
                 provider: components["schemas"]["PaymentProvider"];
@@ -2719,6 +5729,2346 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_wallets_v1_wallets__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                customer_id?: string | null;
+                status?: components["schemas"]["WalletStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_wallet_v1_wallets__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_wallet_v1_wallets__wallet_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_wallet_v1_wallets__wallet_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    terminate_wallet_v1_wallets__wallet_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    top_up_wallet_v1_wallets__wallet_id__top_up_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletTopUp"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_wallet_transactions_v1_wallets__wallet_id__transactions_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTransactionResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_coupons_v1_coupons__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                status?: components["schemas"]["CouponStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_coupon_v1_coupons__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CouponCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_coupon_v1_coupons__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_coupon_v1_coupons__code__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CouponUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    terminate_coupon_v1_coupons__code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_coupon_v1_coupons_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyCouponRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedCouponResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_add_ons_v1_add_ons__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_add_on_v1_add_ons__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOnCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_add_on_v1_add_ons__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_add_on_v1_add_ons__code__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddOnUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_add_on_v1_add_ons__code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_add_on_v1_add_ons_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyAddOnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedAddOnResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_credit_notes_v1_credit_notes__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                customer_id?: string | null;
+                invoice_id?: string | null;
+                status?: components["schemas"]["CreditNoteStatus"] | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_credit_note_v1_credit_notes__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditNoteCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_credit_note_v1_credit_notes__credit_note_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_credit_note_v1_credit_notes__credit_note_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreditNoteUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finalize_credit_note_v1_credit_notes__credit_note_id__finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    void_credit_note_v1_credit_notes__credit_note_id__void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditNoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_taxes_v1_taxes__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_tax_v1_taxes__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_tax_v1_taxes__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_tax_v1_taxes__code__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaxUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_tax_v1_taxes__code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_tax_v1_taxes_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyTaxRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedTaxResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_applied_tax_v1_taxes_applied__applied_tax_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applied_tax_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhook_endpoints_v1_webhook_endpoints__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_webhook_endpoint_v1_webhook_endpoints__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEndpointCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_webhook_endpoint_v1_webhook_endpoints__endpoint_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_webhook_endpoint_v1_webhook_endpoints__endpoint_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookEndpointUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookEndpointResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_webhook_endpoint_v1_webhook_endpoints__endpoint_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                endpoint_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_webhooks_v1_webhook_endpoints_hooks_list_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                webhook_type?: string | null;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_webhook_v1_webhook_endpoints_hooks__webhook_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_webhook_v1_webhook_endpoints_hooks__webhook_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_organization_v1_organizations__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_org_v1_organizations_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+        };
+    };
+    update_current_org_v1_organizations_current_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_api_keys_v1_organizations_current_api_keys_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyListResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_api_key_v1_organizations_current_api_keys_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApiKeyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_key_v1_organizations_current_api_keys__api_key_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                api_key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dunning_campaigns_v1_dunning_campaigns__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningCampaignResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_dunning_campaign_v1_dunning_campaigns__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DunningCampaignCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningCampaignResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dunning_campaign_v1_dunning_campaigns__campaign_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningCampaignResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_dunning_campaign_v1_dunning_campaigns__campaign_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DunningCampaignUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningCampaignResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_dunning_campaign_v1_dunning_campaigns__campaign_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_payment_requests_v1_payment_requests__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                customer_id?: string | null;
+                payment_status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentRequestResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_payment_request_v1_payment_requests__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payment_request_v1_payment_requests__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_commitments_for_plan_v1_plans__plan_code__commitments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_commitment_v1_plans__plan_code__commitments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentCreateAPI"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_commitment_v1_commitments__commitment_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commitment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_commitment_v1_commitments__commitment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                commitment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_plan_usage_threshold_v1_plans__plan_code__usage_thresholds_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageThresholdCreateAPI"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageThresholdResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_subscription_usage_thresholds_v1_subscriptions__subscription_id__usage_thresholds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageThresholdResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_subscription_usage_threshold_v1_subscriptions__subscription_id__usage_thresholds_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageThresholdCreateAPI"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageThresholdResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_current_usage_v1_subscriptions__subscription_id__current_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CurrentUsageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_usage_threshold_v1_usage_thresholds__threshold_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                threshold_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_data_exports_v1_data_exports__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_data_export_v1_data_exports__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataExportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_data_export_v1_data_exports__export_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_data_export_v1_data_exports__export_id__download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                export_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integrations_v1_integrations__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_integration_v1_integrations__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_integration_v1_integrations__integration_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_integration_v1_integrations__integration_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IntegrationUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_integration_v1_integrations__integration_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_integration_connection_v1_integrations__integration_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
                 };
             };
             /** @description Validation Error */

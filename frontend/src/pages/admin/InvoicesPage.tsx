@@ -30,92 +30,82 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import type { Invoice, InvoiceStatus, Customer } from '@/types/billing'
+import type { Invoice } from '@/types/billing'
 
-// Mock customers matching the new schema (for invoice display only - invoices not in backend yet)
-const mockCustomers: Customer[] = [
-  { 
-    id: '1', 
-    external_id: 'cust_001', 
-    name: 'Acme Corporation', 
-    email: 'billing@acme.com', 
-    currency: 'USD', 
-    timezone: 'America/Los_Angeles', 
-    billing_metadata: {}, 
-    created_at: '2024-01-01T00:00:00Z', 
-    updated_at: '2024-01-01T00:00:00Z' 
-  },
-  { 
-    id: '2', 
-    external_id: 'cust_002', 
-    name: 'TechStart Inc', 
-    email: 'accounts@techstart.io', 
-    currency: 'USD', 
-    timezone: 'America/New_York', 
-    billing_metadata: {}, 
-    created_at: '2024-01-01T00:00:00Z', 
-    updated_at: '2024-01-01T00:00:00Z' 
-  },
-]
-
-// Mock invoices - Invoice API not implemented in backend yet
+// Mock invoices matching the actual InvoiceResponse schema
 const mockInvoices: Invoice[] = [
   {
     id: '1',
-    number: 'INV-2024-0042',
+    invoice_number: 'INV-2024-0042',
     customer_id: '1',
-    customer: mockCustomers[0],
     subscription_id: '1',
     status: 'finalized',
-    issuing_date: '2024-02-01T00:00:00Z',
-    payment_due_date: '2024-02-15T00:00:00Z',
-    amount_cents: 9900,
-    amount_currency: 'USD',
-    taxes_amount_cents: 792,
-    total_amount_cents: 10692,
+    invoice_type: 'subscription',
+    billing_period_start: '2024-02-01T00:00:00Z',
+    billing_period_end: '2024-02-28T23:59:59Z',
+    subtotal: '99.00',
+    tax_amount: '7.92',
+    total: '106.92',
+    prepaid_credit_amount: '0.00',
+    coupons_amount_cents: '0.00',
+    progressive_billing_credit_amount_cents: '0.00',
+    currency: 'USD',
     line_items: [
-      { id: 'li1', description: 'Professional Plan - February 2024', amount_cents: 9900, quantity: 1, unit_amount_cents: 9900 },
+      { description: 'Professional Plan - February 2024', amount_cents: 9900, quantity: 1, unit_amount_cents: 9900 } as unknown as Record<string, never>,
     ],
+    due_date: '2024-02-15T00:00:00Z',
+    issued_at: '2024-02-01T00:00:00Z',
+    paid_at: null,
     created_at: '2024-02-01T00:00:00Z',
     updated_at: '2024-02-01T00:00:00Z',
   },
   {
     id: '2',
-    number: 'INV-2024-0041',
+    invoice_number: 'INV-2024-0041',
     customer_id: '2',
-    customer: mockCustomers[1],
     subscription_id: '2',
     status: 'paid',
-    issuing_date: '2024-01-15T00:00:00Z',
-    payment_due_date: '2024-01-29T00:00:00Z',
-    amount_cents: 2900,
-    amount_currency: 'USD',
-    taxes_amount_cents: 232,
-    total_amount_cents: 3132,
+    invoice_type: 'subscription',
+    billing_period_start: '2024-01-15T00:00:00Z',
+    billing_period_end: '2024-02-14T23:59:59Z',
+    subtotal: '29.00',
+    tax_amount: '2.32',
+    total: '31.32',
+    prepaid_credit_amount: '0.00',
+    coupons_amount_cents: '0.00',
+    progressive_billing_credit_amount_cents: '0.00',
+    currency: 'USD',
     line_items: [
-      { id: 'li2', description: 'Starter Plan - January 2024', amount_cents: 2900, quantity: 1, unit_amount_cents: 2900 },
+      { description: 'Starter Plan - January 2024', amount_cents: 2900, quantity: 1, unit_amount_cents: 2900 } as unknown as Record<string, never>,
     ],
+    due_date: '2024-01-29T00:00:00Z',
+    issued_at: '2024-01-15T00:00:00Z',
+    paid_at: '2024-01-29T10:00:00Z',
     created_at: '2024-01-15T00:00:00Z',
     updated_at: '2024-01-29T10:00:00Z',
   },
 ]
 
-function formatCurrency(cents: number, currency: string = 'USD') {
+function formatCurrency(amount: string | number, currency: string = 'USD') {
+  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-  }).format(cents / 100)
+  }).format(value)
 }
 
-function StatusBadge({ status }: { status: InvoiceStatus }) {
-  const variants: Record<InvoiceStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; className?: string }> = {
+type StatusKey = 'draft' | 'finalized' | 'paid' | 'voided'
+
+function StatusBadge({ status }: { status: string }) {
+  const variants: Record<StatusKey, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; className?: string }> = {
     draft: { variant: 'secondary', label: 'Draft' },
     finalized: { variant: 'outline', label: 'Finalized', className: 'border-orange-500 text-orange-600' },
     paid: { variant: 'default', label: 'Paid', className: 'bg-green-600' },
     voided: { variant: 'destructive', label: 'Voided' },
   }
 
-  const config = variants[status]
+  const config = variants[status as StatusKey]
+  if (!config) return <Badge variant="outline">{status}</Badge>
   return (
     <Badge variant={config.variant} className={config.className}>
       {config.label}
@@ -139,7 +129,7 @@ function InvoiceDetailDialog({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Invoice {invoice.number}</span>
+            <span>Invoice {invoice.invoice_number}</span>
             <StatusBadge status={invoice.status} />
           </DialogTitle>
         </DialogHeader>
@@ -148,18 +138,17 @@ function InvoiceDetailDialog({
           {/* Header Info */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Customer</p>
-              <p className="font-medium">{invoice.customer?.name}</p>
-              <p className="text-muted-foreground">{invoice.customer?.email}</p>
+              <p className="text-muted-foreground">Customer ID</p>
+              <p className="font-medium">{invoice.customer_id}</p>
             </div>
             <div className="text-right">
               <p className="text-muted-foreground">Issue Date</p>
               <p className="font-medium">
-                {format(new Date(invoice.issuing_date), 'MMM d, yyyy')}
+                {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '—'}
               </p>
               <p className="text-muted-foreground mt-2">Due Date</p>
               <p className="font-medium">
-                {format(new Date(invoice.payment_due_date), 'MMM d, yyyy')}
+                {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '—'}
               </p>
             </div>
           </div>
@@ -170,21 +159,16 @@ function InvoiceDetailDialog({
           <div>
             <h4 className="font-medium mb-3">Line Items</h4>
             <div className="space-y-2">
-              {invoice.line_items.map((item) => (
+              {invoice.line_items.map((item: Record<string, unknown>, idx: number) => (
                 <div
-                  key={item.id}
+                  key={idx}
                   className="flex items-center justify-between py-2 border-b last:border-0"
                 >
                   <div>
-                    <p>{item.description}</p>
-                    {item.quantity > 1 && (
-                      <p className="text-sm text-muted-foreground">
-                        {item.quantity} × {formatCurrency(item.unit_amount_cents, invoice.amount_currency)}
-                      </p>
-                    )}
+                    <p>{String(item.description ?? '')}</p>
                   </div>
                   <p className="font-medium">
-                    {formatCurrency(item.amount_cents, invoice.amount_currency)}
+                    {item.amount_cents != null ? formatCurrency(Number(item.amount_cents), invoice.currency) : '—'}
                   </p>
                 </div>
               ))}
@@ -197,16 +181,16 @@ function InvoiceDetailDialog({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span>Subtotal</span>
-              <span>{formatCurrency(invoice.amount_cents, invoice.amount_currency)}</span>
+              <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span>Tax</span>
-              <span>{formatCurrency(invoice.taxes_amount_cents, invoice.amount_currency)}</span>
+              <span>{formatCurrency(invoice.tax_amount, invoice.currency)}</span>
             </div>
             <Separator />
             <div className="flex justify-between font-medium text-lg">
               <span>Total</span>
-              <span>{formatCurrency(invoice.total_amount_cents, invoice.amount_currency)}</span>
+              <span>{formatCurrency(invoice.total, invoice.currency)}</span>
             </div>
           </div>
 
@@ -231,7 +215,7 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
 
-  // Fetch invoices - using mock data until backend implements invoices
+  // Fetch invoices - using mock data until backend implements full invoice list
   const { data, isLoading } = useQuery({
     queryKey: ['invoices', { search, statusFilter }],
     queryFn: async () => {
@@ -243,8 +227,7 @@ export default function InvoicesPage() {
       if (search) {
         filtered = filtered.filter(
           (i) =>
-            i.customer?.name.toLowerCase().includes(search.toLowerCase()) ||
-            i.number.toLowerCase().includes(search.toLowerCase())
+            i.invoice_number.toLowerCase().includes(search.toLowerCase())
         )
       }
       return filtered
@@ -254,12 +237,13 @@ export default function InvoicesPage() {
   // Calculate totals
   const totals = (data ?? []).reduce(
     (acc, inv) => {
+      const total = parseFloat(inv.total)
       if (inv.status === 'paid') {
-        acc.paid += inv.total_amount_cents
+        acc.paid += total
       } else if (inv.status === 'finalized') {
-        acc.outstanding += inv.total_amount_cents
+        acc.outstanding += total
       } else if (inv.status === 'draft') {
-        acc.draft += inv.total_amount_cents
+        acc.draft += total
       }
       return acc
     },
@@ -346,7 +330,7 @@ export default function InvoicesPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Invoice</TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Issue Date</TableHead>
               <TableHead>Due Date</TableHead>
@@ -359,7 +343,7 @@ export default function InvoicesPage() {
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
@@ -378,22 +362,22 @@ export default function InvoicesPage() {
               data.map((invoice) => (
                 <TableRow key={invoice.id}>
                   <TableCell>
-                    <code className="text-sm font-medium">{invoice.number}</code>
+                    <code className="text-sm font-medium">{invoice.invoice_number}</code>
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{invoice.customer?.name}</div>
+                    <span className="text-sm capitalize">{invoice.invoice_type}</span>
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={invoice.status} />
                   </TableCell>
                   <TableCell>
-                    {format(new Date(invoice.issuing_date), 'MMM d, yyyy')}
+                    {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '—'}
                   </TableCell>
                   <TableCell>
-                    {format(new Date(invoice.payment_due_date), 'MMM d, yyyy')}
+                    {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '—'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCurrency(invoice.total_amount_cents, invoice.amount_currency)}
+                    {formatCurrency(invoice.total, invoice.currency)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">

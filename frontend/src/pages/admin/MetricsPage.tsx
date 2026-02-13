@@ -88,6 +88,7 @@ function MetricFormDialog({
     description: metric?.description ?? undefined,
     aggregation_type: metric?.aggregation_type ?? 'count',
     field_name: metric?.field_name ?? undefined,
+    recurring: metric?.recurring ?? false,
   })
 
   const needsFieldName = formData.aggregation_type !== 'count'
