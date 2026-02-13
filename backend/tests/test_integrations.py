@@ -1,10 +1,12 @@
-"""Tests for Integration framework: models, repositories, schemas, and mappings."""
+"""Tests for Integration framework: models, repositories, schemas, mappings, and API."""
 
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 
 from app.core.database import get_db
+from app.main import app
 from app.models.integration import (
     Integration,
     IntegrationProviderType,
@@ -30,6 +32,12 @@ from app.schemas.integration_mapping import (
     IntegrationMappingUpdate,
 )
 from tests.conftest import DEFAULT_ORG_ID
+
+
+@pytest.fixture
+def client():
+    """Create test client."""
+    return TestClient(app)
 
 
 @pytest.fixture
@@ -911,3 +919,242 @@ class TestIntegrationCustomerSchemas:
         assert response.integration_id == integration.id
         assert response.customer_id == customer.id
         assert response.external_customer_id == "resp_ext"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Integration API Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestIntegrationAPI:
+    """Tests for integration API endpoints."""
+
+    def test_create_integration(self, client):
+        """Test POST /v1/integrations."""
+        response = client.post(
+            "/v1/integrations/",
+            json={
+                "integration_type": "accounting",
+                "provider_type": "netsuite",
+                "settings": {"account_id": "123"},
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["integration_type"] == "accounting"
+        assert data["provider_type"] == "netsuite"
+        assert data["status"] == "active"
+        assert data["settings"] == {"account_id": "123"}
+        assert data["id"] is not None
+        assert data["organization_id"] is not None
+
+    def test_create_integration_minimal(self, client):
+        """Test POST /v1/integrations with minimal fields."""
+        response = client.post(
+            "/v1/integrations/",
+            json={
+                "integration_type": "crm",
+                "provider_type": "hubspot",
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["integration_type"] == "crm"
+        assert data["provider_type"] == "hubspot"
+        assert data["settings"] == {}
+
+    def test_create_integration_duplicate_provider(self, client):
+        """Test POST /v1/integrations with duplicate provider returns 409."""
+        payload = {
+            "integration_type": "accounting",
+            "provider_type": "xero",
+        }
+        response1 = client.post("/v1/integrations/", json=payload)
+        assert response1.status_code == 201
+
+        response2 = client.post("/v1/integrations/", json=payload)
+        assert response2.status_code == 409
+        assert "already exists" in response2.json()["detail"]
+
+    def test_create_integration_invalid_data(self, client):
+        """Test POST /v1/integrations with missing required fields."""
+        response = client.post(
+            "/v1/integrations/",
+            json={"integration_type": "accounting"},
+        )
+        assert response.status_code == 422
+
+    def test_list_integrations(self, client, db_session):
+        """Test GET /v1/integrations."""
+        repo = IntegrationRepository(db_session)
+        repo.create(
+            IntegrationCreate(integration_type="accounting", provider_type="netsuite"),
+            DEFAULT_ORG_ID,
+        )
+        repo.create(
+            IntegrationCreate(integration_type="crm", provider_type="hubspot"),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.get("/v1/integrations/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_integrations_empty(self, client):
+        """Test GET /v1/integrations when empty."""
+        response = client.get("/v1/integrations/")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_integrations_pagination(self, client, db_session):
+        """Test GET /v1/integrations with pagination."""
+        repo = IntegrationRepository(db_session)
+        providers = ["netsuite", "xero", "hubspot", "salesforce", "anrok"]
+        for p in providers:
+            repo.create(
+                IntegrationCreate(integration_type="accounting", provider_type=p),
+                DEFAULT_ORG_ID,
+            )
+
+        response = client.get("/v1/integrations/?skip=2&limit=2")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_get_integration(self, client, db_session):
+        """Test GET /v1/integrations/{id}."""
+        repo = IntegrationRepository(db_session)
+        integration = repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+                settings={"key": "val"},
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["provider_type"] == "netsuite"
+        assert data["settings"] == {"key": "val"}
+
+    def test_get_integration_not_found(self, client):
+        """Test GET /v1/integrations/{id} for non-existent integration."""
+        response = client.get(f"/v1/integrations/{uuid4()}")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    def test_update_integration(self, client, db_session):
+        """Test PUT /v1/integrations/{id}."""
+        repo = IntegrationRepository(db_session)
+        integration = repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+                settings={"old_key": "old_val"},
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.put(
+            f"/v1/integrations/{integration.id}",
+            json={
+                "status": "inactive",
+                "settings": {"new_key": "new_val"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "inactive"
+        assert data["settings"] == {"new_key": "new_val"}
+
+    def test_update_integration_partial(self, client, db_session):
+        """Test PUT /v1/integrations/{id} with partial update."""
+        repo = IntegrationRepository(db_session)
+        integration = repo.create(
+            IntegrationCreate(
+                integration_type="crm",
+                provider_type="hubspot",
+                settings={"api_key": "abc"},
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.put(
+            f"/v1/integrations/{integration.id}",
+            json={"status": "error"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "error"
+        assert data["settings"] == {"api_key": "abc"}
+
+    def test_update_integration_not_found(self, client):
+        """Test PUT /v1/integrations/{id} for non-existent integration."""
+        response = client.put(
+            f"/v1/integrations/{uuid4()}",
+            json={"status": "inactive"},
+        )
+        assert response.status_code == 404
+
+    def test_delete_integration(self, client, db_session):
+        """Test DELETE /v1/integrations/{id}."""
+        repo = IntegrationRepository(db_session)
+        integration = repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.delete(f"/v1/integrations/{integration.id}")
+        assert response.status_code == 204
+
+        # Verify it's gone
+        assert repo.get_by_id(integration.id) is None
+
+    def test_delete_integration_not_found(self, client):
+        """Test DELETE /v1/integrations/{id} for non-existent integration."""
+        response = client.delete(f"/v1/integrations/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_test_connection(self, client, db_session):
+        """Test POST /v1/integrations/{id}/test with a supported adapter."""
+        repo = IntegrationRepository(db_session)
+        integration = repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+                settings={"account_id": "test123"},
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.post(f"/v1/integrations/{integration.id}/test")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] is True
+        assert data["error"] is None
+
+    def test_test_connection_not_found(self, client):
+        """Test POST /v1/integrations/{id}/test for non-existent integration."""
+        response = client.post(f"/v1/integrations/{uuid4()}/test")
+        assert response.status_code == 404
+
+    def test_test_connection_unsupported_adapter(self, client, db_session):
+        """Test POST /v1/integrations/{id}/test with unsupported provider returns 422."""
+        repo = IntegrationRepository(db_session)
+        integration = repo.create(
+            IntegrationCreate(
+                integration_type="payment_provider",
+                provider_type="stripe",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.post(f"/v1/integrations/{integration.id}/test")
+        assert response.status_code == 422
+        assert "No adapter registered" in response.json()["detail"]

@@ -14,6 +14,7 @@ from app.routers import (
     dunning_campaigns,
     events,
     fees,
+    integrations,
     invoices,
     items,
     organizations,
@@ -88,6 +89,11 @@ app.include_router(
     data_exports.router,
     prefix="/v1/data_exports",
     tags=["data_exports"],
+)
+app.include_router(
+    integrations.router,
+    prefix="/v1/integrations",
+    tags=["integrations"],
 )
 
 
