@@ -45,12 +45,20 @@ class TestHealthEndpoints:
 
 
 class TestDashboardEndpoints:
-    def test_get_statistics(self, client: TestClient):
-        response = client.get("/dashboard/")
+    def test_get_stats(self, client: TestClient):
+        response = client.get("/dashboard/stats")
         assert response.status_code == 200
         data = response.json()
-        assert "message" in data
-        assert data["message"] == "Hello World"
+        assert data["total_customers"] == 0
+        assert data["active_subscriptions"] == 0
+        assert data["monthly_recurring_revenue"] == 0.0
+        assert data["total_invoiced"] == 0.0
+        assert data["currency"] == "USD"
+
+    def test_get_activity_empty(self, client: TestClient):
+        response = client.get("/dashboard/activity")
+        assert response.status_code == 200
+        assert response.json() == []
 
 
 class TestItemsAPI:

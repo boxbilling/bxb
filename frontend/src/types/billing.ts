@@ -145,7 +145,7 @@ export type EventBatchResponse = components['schemas']['EventBatchResponse']
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
-// --- Dashboard types (mock for now) ---
+// --- Dashboard types ---
 export interface DashboardStats {
   total_customers: number
   active_subscriptions: number

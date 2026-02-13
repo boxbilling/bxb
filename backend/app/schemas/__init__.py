@@ -30,6 +30,7 @@ from app.schemas.credit_note import (
     CreditNoteUpdate,
 )
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.dashboard import DashboardStatsResponse, RecentActivityResponse
 from app.schemas.daily_usage import DailyUsageCreate, DailyUsageResponse
 from app.schemas.dunning_campaign import (
     DunningCampaignCreate,
@@ -112,6 +113,7 @@ __all__ = [
     "CustomerCreate",
     "CustomerResponse",
     "CustomerUpdate",
+    "DashboardStatsResponse",
     "DailyUsageCreate",
     "DailyUsageResponse",
     "DunningCampaignCreate",
@@ -140,6 +142,7 @@ __all__ = [
     "PaymentRequestCreate",
     "PaymentRequestInvoiceResponse",
     "PaymentRequestResponse",
+    "RecentActivityResponse",
     "PlanCreate",
     "PlanResponse",
     "PlanUpdate",

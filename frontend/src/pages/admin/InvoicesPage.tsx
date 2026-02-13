@@ -31,61 +31,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import type { Invoice } from '@/types/billing'
-
-// Mock invoices matching the actual InvoiceResponse schema
-const mockInvoices: Invoice[] = [
-  {
-    id: '1',
-    invoice_number: 'INV-2024-0042',
-    customer_id: '1',
-    subscription_id: '1',
-    status: 'finalized',
-    invoice_type: 'subscription',
-    billing_period_start: '2024-02-01T00:00:00Z',
-    billing_period_end: '2024-02-28T23:59:59Z',
-    subtotal: '99.00',
-    tax_amount: '7.92',
-    total: '106.92',
-    prepaid_credit_amount: '0.00',
-    coupons_amount_cents: '0.00',
-    progressive_billing_credit_amount_cents: '0.00',
-    currency: 'USD',
-    line_items: [
-      { description: 'Professional Plan - February 2024', amount_cents: 9900, quantity: 1, unit_amount_cents: 9900 } as unknown as Record<string, never>,
-    ],
-    due_date: '2024-02-15T00:00:00Z',
-    issued_at: '2024-02-01T00:00:00Z',
-    paid_at: null,
-    created_at: '2024-02-01T00:00:00Z',
-    updated_at: '2024-02-01T00:00:00Z',
-  },
-  {
-    id: '2',
-    invoice_number: 'INV-2024-0041',
-    customer_id: '2',
-    subscription_id: '2',
-    status: 'paid',
-    invoice_type: 'subscription',
-    billing_period_start: '2024-01-15T00:00:00Z',
-    billing_period_end: '2024-02-14T23:59:59Z',
-    subtotal: '29.00',
-    tax_amount: '2.32',
-    total: '31.32',
-    prepaid_credit_amount: '0.00',
-    coupons_amount_cents: '0.00',
-    progressive_billing_credit_amount_cents: '0.00',
-    currency: 'USD',
-    line_items: [
-      { description: 'Starter Plan - January 2024', amount_cents: 2900, quantity: 1, unit_amount_cents: 2900 } as unknown as Record<string, never>,
-    ],
-    due_date: '2024-01-29T00:00:00Z',
-    issued_at: '2024-01-15T00:00:00Z',
-    paid_at: '2024-01-29T10:00:00Z',
-    created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-29T10:00:00Z',
-  },
-]
+import { invoicesApi } from '@/lib/api'
+import type { Invoice, InvoiceStatus } from '@/types/billing'
 
 function formatCurrency(amount: string | number, currency: string = 'USD') {
   const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
@@ -229,24 +176,18 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
 
-  // Fetch invoices - using mock data until backend implements full invoice list
-  const { data, isLoading } = useQuery({
-    queryKey: ['invoices', { search, statusFilter }],
-    queryFn: async () => {
-      await new Promise((r) => setTimeout(r, 300))
-      let filtered = mockInvoices
-      if (statusFilter !== 'all') {
-        filtered = filtered.filter((i) => i.status === statusFilter)
-      }
-      if (search) {
-        filtered = filtered.filter(
-          (i) =>
-            i.invoice_number.toLowerCase().includes(search.toLowerCase())
-        )
-      }
-      return filtered
-    },
+  const { data: invoices, isLoading } = useQuery({
+    queryKey: ['invoices', { statusFilter }],
+    queryFn: () =>
+      invoicesApi.list({
+        status: statusFilter !== 'all' ? (statusFilter as InvoiceStatus) : undefined,
+      }),
   })
+
+  // Client-side search filtering on invoice number
+  const data = invoices?.filter(
+    (i) => !search || i.invoice_number.toLowerCase().includes(search.toLowerCase())
+  )
 
   // Calculate totals
   const totals = (data ?? []).reduce(

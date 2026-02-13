@@ -10,49 +10,8 @@ import {
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { dashboardApi } from '@/lib/api'
 import type { DashboardStats, RecentActivity } from '@/types/billing'
-
-// Mock data for development
-const mockStats: DashboardStats = {
-  total_customers: 1247,
-  active_subscriptions: 892,
-  monthly_recurring_revenue: 47500,
-  total_invoiced: 156000,
-  currency: 'USD',
-}
-
-const mockActivity: RecentActivity[] = [
-  {
-    id: '1',
-    type: 'customer_created',
-    description: 'New customer "Acme Corp" created',
-    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-  },
-  {
-    id: '2',
-    type: 'subscription_created',
-    description: 'Subscription started for "TechStart Inc"',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-  },
-  {
-    id: '3',
-    type: 'invoice_finalized',
-    description: 'Invoice #INV-2024-0042 finalized for $1,250',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-  },
-  {
-    id: '4',
-    type: 'payment_received',
-    description: 'Payment received for Invoice #INV-2024-0041',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: '5',
-    type: 'subscription_created',
-    description: 'Subscription upgraded for "CloudNine Ltd"',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-  },
-]
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -145,25 +104,14 @@ function ActivityIcon({ type }: { type: RecentActivity['type'] }) {
 }
 
 export default function DashboardPage() {
-  // For now, use mock data. Replace with actual API calls when backend is ready
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      // return dashboardApi.getStats()
-      await new Promise((r) => setTimeout(r, 500))
-      return mockStats
-    },
+    queryFn: () => dashboardApi.getStats(),
   })
 
   const { data: activity, isLoading: activityLoading } = useQuery({
     queryKey: ['dashboard-activity'],
-    queryFn: async () => {
-      // TODO: Replace with actual API call
-      // return dashboardApi.getRecentActivity()
-      await new Promise((r) => setTimeout(r, 500))
-      return mockActivity
-    },
+    queryFn: () => dashboardApi.getRecentActivity(),
   })
 
   return (
@@ -182,7 +130,6 @@ export default function DashboardPage() {
           value={stats?.total_customers.toLocaleString() ?? '-'}
           description="from last month"
           icon={Users}
-          trend={{ value: 12.5, positive: true }}
           loading={statsLoading}
         />
         <StatCard
@@ -190,7 +137,6 @@ export default function DashboardPage() {
           value={stats?.active_subscriptions.toLocaleString() ?? '-'}
           description="from last month"
           icon={CreditCard}
-          trend={{ value: 8.2, positive: true }}
           loading={statsLoading}
         />
         <StatCard
@@ -202,7 +148,6 @@ export default function DashboardPage() {
           }
           description="MRR"
           icon={DollarSign}
-          trend={{ value: 15.3, positive: true }}
           loading={statsLoading}
         />
         <StatCard
@@ -212,9 +157,8 @@ export default function DashboardPage() {
               ? formatCurrency(stats.total_invoiced * 100, stats.currency)
               : '-'
           }
-          description="this year"
+          description="all time"
           icon={FileText}
-          trend={{ value: 23.1, positive: true }}
           loading={statsLoading}
         />
       </div>
@@ -231,7 +175,6 @@ export default function DashboardPage() {
             <div className="text-center">
               <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p>Chart coming soon</p>
-              <p className="text-sm">Connect to backend for real data</p>
             </div>
           </CardContent>
         </Card>
@@ -255,12 +198,12 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : activity && activity.length > 0 ? (
               <div className="space-y-4">
-                {activity?.map((item) => (
+                {activity.map((item) => (
                   <div key={item.id} className="flex items-center gap-4">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-                      <ActivityIcon type={item.type} />
+                      <ActivityIcon type={item.type as RecentActivity['type']} />
                     </div>
                     <div className="flex-1 space-y-1">
                       <p className="text-sm leading-none">{item.description}</p>
@@ -271,6 +214,10 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No recent activity
+              </p>
             )}
           </CardContent>
         </Card>

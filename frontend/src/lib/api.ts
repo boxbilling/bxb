@@ -587,20 +587,25 @@ export const paymentRequestsApi = {
     }),
 }
 
-// Dashboard API (mock for now - backend dashboard endpoint only returns a hello message)
+// Dashboard API
 export const dashboardApi = {
-  getStats: async () => {
-    return {
-      total_customers: 0,
-      active_subscriptions: 0,
-      monthly_recurring_revenue: 0,
-      total_invoiced: 0,
-      currency: 'USD',
-    }
-  },
-  getRecentActivity: async () => {
-    return []
-  },
+  getStats: () =>
+    request<{
+      total_customers: number
+      active_subscriptions: number
+      monthly_recurring_revenue: number
+      total_invoiced: number
+      currency: string
+    }>('/dashboard/stats'),
+  getRecentActivity: () =>
+    request<
+      {
+        id: string
+        type: string
+        description: string
+        timestamp: string
+      }[]
+    >('/dashboard/activity'),
 }
 
 export { ApiError }
