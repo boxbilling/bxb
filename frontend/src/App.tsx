@@ -8,6 +8,7 @@ import {
   SubscriptionsPage,
   InvoicesPage,
   PaymentsPage,
+  WalletsPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 
@@ -23,6 +24,7 @@ function App() {
         <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="payments" element={<PaymentsPage />} />
+        <Route path="wallets" element={<WalletsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

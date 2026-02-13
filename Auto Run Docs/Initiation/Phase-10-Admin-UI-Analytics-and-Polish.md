@@ -11,7 +11,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
   - Verify `frontend/src/lib/api.ts` client works with new endpoints
   - **Note:** Fixed FastAPI 0.121.x OpenAPI generation bug via `backend/scripts/generate_openapi.py` helper; updated Makefile `openapi` target accordingly. Added 15 new API client modules (wallets, coupons, add-ons, credit notes, taxes, webhooks, organizations, dunning campaigns, commitments, usage thresholds, integrations, data exports, events, fees, payment requests). Updated existing pages (Invoices, Customers, Metrics, Subscriptions) for compatibility with new generated schema types.
 
-- [ ] Build the Wallets management UI:
+- [x] Build the Wallets management UI:
   - `frontend/src/pages/admin/WalletsPage.tsx`:
     - Wallet list table with columns: customer name, wallet name/code, balance (credits + currency), status, priority, expiration
     - Create wallet dialog: select customer, set name/code, rate_amount, currency, initial credits, priority, expiration
@@ -19,6 +19,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - Top-up dialog: amount of credits to grant
     - Terminate wallet action with confirmation
   - Add "Wallets" to AdminLayout sidebar navigation
+  - **Note:** Implemented full WalletsPage with: stat cards (total/active/credits/consumed), search + status filter, list table with all columns, create/edit wallet dialog, top-up dialog with source selection, wallet detail dialog with transaction history table, terminate confirmation. Added route in App.tsx, sidebar nav item with Coins icon, page export in index.ts. Used recharts-free approach for transaction list display (transaction table instead of chart). All TypeScript types verified, frontend builds clean.
 
 - [ ] Build the Coupons and Add-ons management UI:
   - `frontend/src/pages/admin/CouponsPage.tsx`:

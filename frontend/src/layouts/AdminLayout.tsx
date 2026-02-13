@@ -7,6 +7,7 @@ import {
   Receipt,
   FileText,
   Wallet,
+  Coins,
   Settings,
   Moon,
   Sun,
@@ -33,6 +34,7 @@ const navigation = [
   { name: 'Subscriptions', href: '/admin/subscriptions', icon: Receipt },
   { name: 'Invoices', href: '/admin/invoices', icon: FileText },
   { name: 'Payments', href: '/admin/payments', icon: Wallet },
+  { name: 'Wallets', href: '/admin/wallets', icon: Coins },
 ]
 
 function NavItem({
