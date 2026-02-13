@@ -79,3 +79,8 @@ async def enqueue_check_usage_thresholds(subscription_id: str) -> Job:
 async def enqueue_process_data_export(export_id: str) -> Job:
     """Enqueue a task to process a data export."""
     return await enqueue_task("process_data_export_task", export_id)
+
+
+async def enqueue_aggregate_daily_usage() -> Job:
+    """Enqueue a task to aggregate daily usage for all active subscriptions."""
+    return await enqueue_task("aggregate_daily_usage_task")

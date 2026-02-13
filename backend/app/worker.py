@@ -11,6 +11,7 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.services.daily_usage_service import DailyUsageService
 from app.services.data_export_service import DataExportService
 from app.services.subscription_dates import SubscriptionDatesService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
@@ -267,6 +268,25 @@ async def process_data_export_task(ctx: dict[str, Any], export_id: str) -> str:
         db.close()
 
 
+async def aggregate_daily_usage_task(ctx: dict[str, Any]) -> int:
+    """Background task: pre-aggregate daily usage for all active subscriptions.
+
+    Aggregates usage data for yesterday into daily_usages records for faster
+    period queries.
+
+    Runs daily at midnight.
+    """
+    db = SessionLocal()
+    try:
+        service = DailyUsageService(db)
+        count = service.aggregate_daily_usage()
+        if count > 0:
+            logger.info("Aggregated %d daily usage records", count)
+        return count
+    finally:
+        db.close()
+
+
 class WorkerSettings:
     functions = [
         update_item_prices,
@@ -276,6 +296,7 @@ class WorkerSettings:
         generate_periodic_invoices_task,
         check_usage_thresholds_task,
         process_data_export_task,
+        aggregate_daily_usage_task,
     ]
     cron_jobs = [
         cron(update_item_prices, hour=0, minute=0),  # midnight daily
@@ -286,5 +307,6 @@ class WorkerSettings:
         cron(process_pending_downgrades_task, hour=0, minute=0),  # daily at midnight
         cron(process_trial_expirations_task, minute={0}),  # hourly
         cron(generate_periodic_invoices_task, minute={0}),  # hourly
+        cron(aggregate_daily_usage_task, hour=0, minute=30),  # daily at 00:30
     ]
     redis_settings = redis_settings

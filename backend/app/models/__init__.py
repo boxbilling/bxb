@@ -21,6 +21,7 @@ from app.models.credit_note import (
 )
 from app.models.credit_note_item import CreditNoteItem
 from app.models.customer import Customer
+from app.models.daily_usage import DailyUsage
 from app.models.data_export import DataExport, ExportStatus, ExportType
 from app.models.dunning_campaign import DunningCampaign
 from app.models.dunning_campaign_threshold import DunningCampaignThreshold
@@ -84,6 +85,7 @@ __all__ = [
     "CreditNoteType",
     "CreditStatus",
     "Customer",
+    "DailyUsage",
     "DataExport",
     "ExportStatus",
     "ExportType",

@@ -10,6 +10,7 @@ from app.repositories.commitment_repository import CommitmentRepository
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.daily_usage_repository import DailyUsageRepository
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.integration_customer_repository import IntegrationCustomerRepository
@@ -40,6 +41,7 @@ __all__ = [
     "CreditNoteItemRepository",
     "CreditNoteRepository",
     "CustomerRepository",
+    "DailyUsageRepository",
     "DunningCampaignRepository",
     "FeeRepository",
     "IntegrationCustomerRepository",

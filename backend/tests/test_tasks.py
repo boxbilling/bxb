@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.tasks import (
+    enqueue_aggregate_daily_usage,
     enqueue_check_dunning,
     enqueue_check_usage_thresholds,
     enqueue_generate_periodic_invoices,
@@ -193,3 +194,17 @@ class TestTasks:
 
             assert result == mock_job
             mock_enqueue.assert_called_once_with("process_data_export_task", "export-uuid-123")
+
+    @pytest.mark.asyncio
+    async def test_enqueue_aggregate_daily_usage(self):
+        """Test enqueue_aggregate_daily_usage helper function."""
+        mock_job = MagicMock()
+        mock_job.job_id = "daily-usage-job-001"
+
+        with patch("app.tasks.enqueue_task", new_callable=AsyncMock) as mock_enqueue:
+            mock_enqueue.return_value = mock_job
+
+            result = await enqueue_aggregate_daily_usage()
+
+            assert result == mock_job
+            mock_enqueue.assert_called_once_with("aggregate_daily_usage_task")
