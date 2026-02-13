@@ -19,7 +19,7 @@ depends_on = None
 def upgrade() -> None:
     op.add_column(
         "billable_metrics",
-        sa.Column("recurring", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column("recurring", sa.Boolean(), nullable=False, server_default="false"),
     )
     op.add_column(
         "billable_metrics",

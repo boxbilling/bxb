@@ -35,7 +35,7 @@ def upgrade() -> None:
     )
     op.add_column(
         "subscriptions",
-        sa.Column("pay_in_advance", sa.Boolean(), nullable=False, server_default=sa.text("false")),
+        sa.Column("pay_in_advance", sa.Boolean(), nullable=False, server_default="false"),
     )
     op.add_column(
         "subscriptions",
