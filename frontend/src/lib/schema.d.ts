@@ -4,15 +4,38 @@
  */
 
 export interface paths {
-    "/dashboard/": {
+    "/dashboard/stats": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Get Statistics */
-        get: operations["get_statistics_dashboard__get"];
+        /**
+         * Get Stats
+         * @description Get dashboard statistics.
+         */
+        get: operations["get_stats_dashboard_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Recent Activity
+         * @description Get recent billing activity.
+         */
+        get: operations["get_recent_activity_dashboard_activity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2140,7 +2163,9 @@ export interface components {
             /** Values */
             values?: string[];
             /** Properties */
-            properties?: Record<string, never>;
+            properties?: {
+                [key: string]: unknown;
+            };
             /** Invoice Display Name */
             invoice_display_name?: string | null;
         };
@@ -2156,7 +2181,9 @@ export interface components {
             billable_metric_id: string;
             charge_model: components["schemas"]["ChargeModel"];
             /** Properties */
-            properties?: Record<string, never>;
+            properties?: {
+                [key: string]: unknown;
+            };
             /** Filters */
             filters?: components["schemas"]["ChargeFilterInput"][];
         };
@@ -2187,7 +2214,9 @@ export interface components {
             billable_metric_id: string;
             charge_model: components["schemas"]["ChargeModel"];
             /** Properties */
-            properties: Record<string, never>;
+            properties: {
+                [key: string]: unknown;
+            };
             /**
              * Created At
              * Format: date-time
@@ -2582,7 +2611,9 @@ export interface components {
              */
             timezone: string;
             /** Billing Metadata */
-            billing_metadata?: Record<string, never>;
+            billing_metadata?: {
+                [key: string]: unknown;
+            };
             /**
              * Invoice Grace Period
              * @default 0
@@ -2612,7 +2643,9 @@ export interface components {
             /** Timezone */
             timezone: string;
             /** Billing Metadata */
-            billing_metadata: Record<string, never>;
+            billing_metadata: {
+                [key: string]: unknown;
+            };
             /** Invoice Grace Period */
             invoice_grace_period: number;
             /** Net Payment Term */
@@ -2639,11 +2672,26 @@ export interface components {
             /** Timezone */
             timezone?: string | null;
             /** Billing Metadata */
-            billing_metadata?: Record<string, never> | null;
+            billing_metadata?: {
+                [key: string]: unknown;
+            } | null;
             /** Invoice Grace Period */
             invoice_grace_period?: number | null;
             /** Net Payment Term */
             net_payment_term?: number | null;
+        };
+        /** DashboardStatsResponse */
+        DashboardStatsResponse: {
+            /** Total Customers */
+            total_customers: number;
+            /** Active Subscriptions */
+            active_subscriptions: number;
+            /** Monthly Recurring Revenue */
+            monthly_recurring_revenue: number;
+            /** Total Invoiced */
+            total_invoiced: number;
+            /** Currency */
+            currency: string;
         };
         /**
          * DataExportCreate
@@ -2652,7 +2700,9 @@ export interface components {
         DataExportCreate: {
             export_type: components["schemas"]["ExportType"];
             /** Filters */
-            filters?: Record<string, never> | null;
+            filters?: {
+                [key: string]: unknown;
+            } | null;
         };
         /**
          * DataExportResponse
@@ -2674,7 +2724,9 @@ export interface components {
             /** Status */
             status: string;
             /** Filters */
-            filters?: Record<string, never> | null;
+            filters?: {
+                [key: string]: unknown;
+            } | null;
             /** File Path */
             file_path?: string | null;
             /** Record Count */
@@ -2854,7 +2906,9 @@ export interface components {
              */
             timestamp: string;
             /** Properties */
-            properties?: Record<string, never>;
+            properties?: {
+                [key: string]: unknown;
+            };
         };
         /** EventResponse */
         EventResponse: {
@@ -2875,7 +2929,9 @@ export interface components {
              */
             timestamp: string;
             /** Properties */
-            properties: Record<string, never>;
+            properties: {
+                [key: string]: unknown;
+            };
             /**
              * Created At
              * Format: date-time
@@ -2938,7 +2994,9 @@ export interface components {
             /** Metric Code */
             metric_code?: string | null;
             /** Properties */
-            properties: Record<string, never>;
+            properties: {
+                [key: string]: unknown;
+            };
             /**
              * Created At
              * Format: date-time
@@ -2986,7 +3044,9 @@ export interface components {
              */
             status: string;
             /** Settings */
-            settings?: Record<string, never>;
+            settings?: {
+                [key: string]: unknown;
+            };
         };
         /** IntegrationResponse */
         IntegrationResponse: {
@@ -3007,11 +3067,15 @@ export interface components {
             /** Status */
             status: string;
             /** Settings */
-            settings: Record<string, never>;
+            settings: {
+                [key: string]: unknown;
+            };
             /** Last Sync At */
             last_sync_at?: string | null;
             /** Error Details */
-            error_details?: Record<string, never> | null;
+            error_details?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Created At
              * Format: date-time
@@ -3028,9 +3092,13 @@ export interface components {
             /** Status */
             status?: string | null;
             /** Settings */
-            settings?: Record<string, never> | null;
+            settings?: {
+                [key: string]: unknown;
+            } | null;
             /** Error Details */
-            error_details?: Record<string, never> | null;
+            error_details?: {
+                [key: string]: unknown;
+            } | null;
         };
         /** InvoiceResponse */
         InvoiceResponse: {
@@ -3077,7 +3145,9 @@ export interface components {
             /** Currency */
             currency: string;
             /** Line Items */
-            line_items: Record<string, never>[];
+            line_items: {
+                [key: string]: unknown;
+            }[];
             /** Due Date */
             due_date: string | null;
             /** Issued At */
@@ -3157,11 +3227,6 @@ export interface components {
             price?: number | null;
             /** Quantity */
             quantity?: number | null;
-        };
-        /** Message */
-        Message: {
-            /** Message */
-            message: string;
         };
         /** OrganizationCreate */
         OrganizationCreate: {
@@ -3476,7 +3541,9 @@ export interface components {
             /** Failure Reason */
             failure_reason?: string | null;
             /** Payment Metadata */
-            payment_metadata?: Record<string, never> | null;
+            payment_metadata?: {
+                [key: string]: unknown;
+            } | null;
             /**
              * Created At
              * Format: date-time
@@ -3575,6 +3642,17 @@ export interface components {
             trial_period_days?: number | null;
             /** Charges */
             charges?: components["schemas"]["ChargeInput"][] | null;
+        };
+        /** RecentActivityResponse */
+        RecentActivityResponse: {
+            /** Id */
+            id: string;
+            /** Type */
+            type: string;
+            /** Description */
+            description: string;
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * RefundStatus
@@ -3809,6 +3887,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
         /** WalletCreate */
         WalletCreate: {
@@ -4014,7 +4096,9 @@ export interface components {
             /** Object Id */
             object_id?: string | null;
             /** Payload */
-            payload: Record<string, never>;
+            payload: {
+                [key: string]: unknown;
+            };
             /** Status */
             status: string;
             /** Retries */
@@ -4047,7 +4131,7 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    get_statistics_dashboard__get: {
+    get_stats_dashboard_stats_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -4062,7 +4146,27 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Message"];
+                    "application/json": components["schemas"]["DashboardStatsResponse"];
+                };
+            };
+        };
+    };
+    get_recent_activity_dashboard_activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentActivityResponse"][];
                 };
             };
         };
@@ -5666,7 +5770,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -8068,7 +8174,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
