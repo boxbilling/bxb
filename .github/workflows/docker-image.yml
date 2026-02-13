@@ -31,7 +31,7 @@ jobs:
 
     - name: Build Docker images
       env:
-        IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}_backend:${{ (github.ref_name == 'main') && 'latest' || 'stage' }}
+        IMAGE_NAME_BACKEND: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ (github.ref_name == 'main') && 'latest' || 'stage' }}
       run: |
         docker build -f backend/Dockerfile --tag $IMAGE_NAME_BACKEND backend
         docker push $IMAGE_NAME_BACKEND
