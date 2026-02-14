@@ -8,6 +8,7 @@ import {
   SubscriptionsPage,
   EventsPage,
   InvoicesPage,
+  FeesPage,
   PaymentsPage,
   WalletsPage,
   CouponsPage,
@@ -30,6 +31,7 @@ function App() {
         <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="fees" element={<FeesPage />} />
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="wallets" element={<WalletsPage />} />
         <Route path="coupons" element={<CouponsPage />} />
