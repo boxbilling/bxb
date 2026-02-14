@@ -70,6 +70,7 @@ type WebhookEndpointUpdate = components['schemas']['WebhookEndpointUpdate']
 type WebhookResponse = components['schemas']['WebhookResponse']
 
 type OrganizationResponse = components['schemas']['OrganizationResponse']
+type OrganizationCreate = components['schemas']['OrganizationCreate']
 type OrganizationUpdate = components['schemas']['OrganizationUpdate']
 type ApiKeyCreate = components['schemas']['ApiKeyCreate']
 type ApiKeyCreateResponse = components['schemas']['ApiKeyCreateResponse']
@@ -471,6 +472,11 @@ export const webhookEndpointsApi = {
 
 // Organizations API
 export const organizationsApi = {
+  create: (data: OrganizationCreate) =>
+    request<OrganizationResponse & { api_key: ApiKeyCreateResponse }>('/v1/organizations/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   getCurrent: () => request<OrganizationResponse>('/v1/organizations/current'),
   updateCurrent: (data: OrganizationUpdate) =>
     request<OrganizationResponse>('/v1/organizations/current', {

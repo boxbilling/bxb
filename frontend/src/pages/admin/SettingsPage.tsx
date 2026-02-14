@@ -15,6 +15,7 @@ import {
   organizationsApi,
   ApiError,
 } from '@/lib/api'
+import { useOrganization } from '@/hooks/use-organization'
 import type {
   OrganizationUpdate,
   ApiKeyCreate,
@@ -74,10 +75,7 @@ import {
 function OrganizationTab() {
   const queryClient = useQueryClient()
 
-  const { data: org, isLoading } = useQuery({
-    queryKey: ['organization'],
-    queryFn: () => organizationsApi.getCurrent(),
-  })
+  const { data: org, isLoading } = useOrganization()
 
   const [formData, setFormData] = useState<OrganizationUpdate>({})
   const [initialized, setInitialized] = useState(false)
