@@ -1,7 +1,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt } from 'lucide-react'
+import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator } from 'lucide-react'
 
 import {
   Breadcrumb,
@@ -23,8 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi } from '@/lib/api'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote } from '@/types/billing'
+import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, taxesApi } from '@/lib/api'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, AppliedTax } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -374,6 +374,61 @@ function CustomerCreditNotesTab({ customerId }: { customerId: string }) {
   )
 }
 
+function formatTaxRate(rate: string | number): string {
+  const num = typeof rate === 'string' ? parseFloat(rate) : rate
+  return `${(num * 100).toFixed(2)}%`
+}
+
+function CustomerTaxesTab({ customerId }: { customerId: string }) {
+  const { data: appliedTaxes, isLoading } = useQuery({
+    queryKey: ['customer-taxes', customerId],
+    queryFn: () => taxesApi.listApplied({ taxable_type: 'customer', taxable_id: customerId }),
+  })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    )
+  }
+
+  if (!appliedTaxes?.length) {
+    return <p className="text-sm text-muted-foreground py-4">No taxes applied</p>
+  }
+
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Tax ID</TableHead>
+            <TableHead>Rate</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Created At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {appliedTaxes.map((at) => (
+            <TableRow key={at.id}>
+              <TableCell>
+                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                  {at.tax_id.substring(0, 8)}...
+                </code>
+              </TableCell>
+              <TableCell>{at.tax_rate ? formatTaxRate(at.tax_rate) : '\u2014'}</TableCell>
+              <TableCell className="font-mono">{formatCurrency(Number(at.tax_amount_cents))}</TableCell>
+              <TableCell>{format(new Date(at.created_at), 'MMM d, yyyy')}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
+
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
 
@@ -506,6 +561,10 @@ export default function CustomerDetailPage() {
                 <Receipt className="mr-2 h-4 w-4" />
                 Credit Notes
               </TabsTrigger>
+              <TabsTrigger value="taxes">
+                <Calculator className="mr-2 h-4 w-4" />
+                Taxes
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="subscriptions">
               <CustomerSubscriptionsTab customerId={customer.id} />
@@ -524,6 +583,9 @@ export default function CustomerDetailPage() {
             </TabsContent>
             <TabsContent value="credit-notes">
               <CustomerCreditNotesTab customerId={customer.id} />
+            </TabsContent>
+            <TabsContent value="taxes">
+              <CustomerTaxesTab customerId={customer.id} />
             </TabsContent>
           </Tabs>
         </>

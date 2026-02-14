@@ -31,7 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { invoicesApi } from '@/lib/api'
+import { invoicesApi, taxesApi } from '@/lib/api'
 import type { Invoice, InvoiceStatus } from '@/types/billing'
 
 function formatCurrency(amount: string | number, currency: string = 'USD') {
@@ -58,6 +58,31 @@ function StatusBadge({ status }: { status: string }) {
     <Badge variant={config.variant} className={config.className}>
       {config.label}
     </Badge>
+  )
+}
+
+function formatTaxRate(rate: string | number): string {
+  const num = typeof rate === 'string' ? parseFloat(rate) : rate
+  return `${(num * 100).toFixed(2)}%`
+}
+
+function AppliedTaxesBreakdown({ invoiceId }: { invoiceId: string }) {
+  const { data: appliedTaxes = [] } = useQuery({
+    queryKey: ['invoice-taxes', invoiceId],
+    queryFn: () => taxesApi.listApplied({ taxable_type: 'invoice', taxable_id: invoiceId }),
+  })
+
+  if (appliedTaxes.length === 0) return null
+
+  return (
+    <>
+      {appliedTaxes.map((at) => (
+        <div key={at.id} className="flex justify-between text-xs text-muted-foreground pl-4">
+          <span>Tax {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}</span>
+          <span>{formatCurrency(Number(at.tax_amount_cents))}</span>
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -137,6 +162,7 @@ function InvoiceDetailDialog({
               <span>Tax</span>
               <span>{formatCurrency(invoice.tax_amount, invoice.currency)}</span>
             </div>
+            <AppliedTaxesBreakdown invoiceId={invoice.id} />
             <Separator />
             <div className="flex justify-between font-medium text-lg">
               <span>Total</span>

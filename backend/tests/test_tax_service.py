@@ -768,3 +768,68 @@ class TestTaxRouter:
             )
             assert resp.status_code == 201
             assert resp.json()["taxable_type"] == entity_type
+
+    def test_list_applied_taxes(self, client):
+        """GET /v1/taxes/applied returns applied taxes for an entity."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "LIST_AT", "name": "List AT", "rate": "0.1000"},
+        )
+        entity_id = str(uuid4())
+        client.post(
+            "/v1/taxes/apply",
+            json={
+                "tax_code": "LIST_AT",
+                "taxable_type": "customer",
+                "taxable_id": entity_id,
+            },
+        )
+        resp = client.get(
+            f"/v1/taxes/applied?taxable_type=customer&taxable_id={entity_id}"
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["taxable_type"] == "customer"
+        assert data[0]["taxable_id"] == entity_id
+
+    def test_list_applied_taxes_empty(self, client):
+        """GET /v1/taxes/applied returns empty list when no taxes applied."""
+        resp = client.get(
+            f"/v1/taxes/applied?taxable_type=customer&taxable_id={uuid4()}"
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_list_applied_taxes_multiple(self, client):
+        """GET /v1/taxes/applied returns multiple applied taxes."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "LAM1", "name": "LAM Tax 1", "rate": "0.1000"},
+        )
+        client.post(
+            "/v1/taxes/",
+            json={"code": "LAM2", "name": "LAM Tax 2", "rate": "0.2000"},
+        )
+        entity_id = str(uuid4())
+        client.post(
+            "/v1/taxes/apply",
+            json={
+                "tax_code": "LAM1",
+                "taxable_type": "invoice",
+                "taxable_id": entity_id,
+            },
+        )
+        client.post(
+            "/v1/taxes/apply",
+            json={
+                "tax_code": "LAM2",
+                "taxable_type": "invoice",
+                "taxable_id": entity_id,
+            },
+        )
+        resp = client.get(
+            f"/v1/taxes/applied?taxable_type=invoice&taxable_id={entity_id}"
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) == 2

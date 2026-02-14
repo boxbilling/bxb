@@ -436,6 +436,8 @@ export const taxesApi = {
     }),
   removeApplied: (appliedTaxId: string) =>
     request<void>(`/v1/taxes/applied/${appliedTaxId}`, { method: 'DELETE' }),
+  listApplied: (params: { taxable_type: string; taxable_id: string }) =>
+    request<AppliedTaxResponse[]>(`/v1/taxes/applied${buildQuery(params)}`),
 }
 
 // Webhook Endpoints API

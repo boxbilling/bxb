@@ -46,8 +46,8 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { feesApi, ApiError } from '@/lib/api'
-import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
+import { feesApi, taxesApi, ApiError } from '@/lib/api'
+import type { Fee, FeeUpdate, FeeType, FeePaymentStatus, AppliedTax } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
@@ -69,6 +69,42 @@ const paymentStatusBadge: Record<string, { variant: 'default' | 'secondary' | 'o
   pending: { variant: 'secondary', className: 'text-yellow-700' },
   failed: { variant: 'destructive' },
   refunded: { variant: 'outline', className: 'text-blue-600 border-blue-600' },
+}
+
+function formatTaxRate(rate: string | number): string {
+  const num = typeof rate === 'string' ? parseFloat(rate) : rate
+  return `${(num * 100).toFixed(2)}%`
+}
+
+function AppliedTaxesSection({ feeId }: { feeId: string }) {
+  const { data: appliedTaxes = [], isLoading } = useQuery({
+    queryKey: ['fee-taxes', feeId],
+    queryFn: () => taxesApi.listApplied({ taxable_type: 'fee', taxable_id: feeId }),
+  })
+
+  if (isLoading) {
+    return <Skeleton className="h-8 w-full" />
+  }
+
+  if (appliedTaxes.length === 0) {
+    return null
+  }
+
+  return (
+    <>
+      <div className="flex justify-between items-center pt-2">
+        <span className="text-muted-foreground font-medium">Applied Taxes</span>
+      </div>
+      {appliedTaxes.map((at) => (
+        <div key={at.id} className="flex justify-between pl-4">
+          <span className="text-muted-foreground">
+            Tax {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}
+          </span>
+          <span className="font-medium">{formatCurrency(parseInt(at.tax_amount_cents))}</span>
+        </div>
+      ))}
+    </>
+  )
 }
 
 const feeTypes: FeeType[] = ['charge', 'subscription', 'add_on', 'credit', 'commitment']
@@ -471,6 +507,7 @@ export default function FeesPage() {
                 <span className="text-muted-foreground">Tax</span>
                 <span className="font-medium">{formatCurrency(parseInt(viewingFee.taxes_amount_cents))}</span>
               </div>
+              <AppliedTaxesSection feeId={viewingFee.id} />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total</span>
                 <span className="font-medium">{formatCurrency(parseInt(viewingFee.total_amount_cents))}</span>

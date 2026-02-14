@@ -1090,7 +1090,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/v1/taxes/{code}": {
+    "/v1/taxes/applied": {
         parameters: {
             query?: never;
             header?: never;
@@ -1098,21 +1098,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Tax
-         * @description Get a tax by code.
+         * List Applied Taxes
+         * @description List applied taxes for a given entity.
          */
-        get: operations["get_tax_v1_taxes__code__get"];
-        /**
-         * Update Tax
-         * @description Update a tax by code.
-         */
-        put: operations["update_tax_v1_taxes__code__put"];
+        get: operations["list_applied_taxes_v1_taxes_applied_get"];
+        put?: never;
         post?: never;
-        /**
-         * Delete Tax
-         * @description Delete a tax by code.
-         */
-        delete: operations["delete_tax_v1_taxes__code__delete"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1153,6 +1145,34 @@ export interface paths {
          * @description Remove an applied tax by ID.
          */
         delete: operations["remove_applied_tax_v1_taxes_applied__applied_tax_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Tax
+         * @description Get a tax by code.
+         */
+        get: operations["get_tax_v1_taxes__code__get"];
+        /**
+         * Update Tax
+         * @description Update a tax by code.
+         */
+        put: operations["update_tax_v1_taxes__code__put"];
+        post?: never;
+        /**
+         * Delete Tax
+         * @description Delete a tax by code.
+         */
+        delete: operations["delete_tax_v1_taxes__code__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -6727,6 +6747,100 @@ export interface operations {
             };
         };
     };
+    list_applied_taxes_v1_taxes_applied_get: {
+        parameters: {
+            query: {
+                taxable_type: string;
+                taxable_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedTaxResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_tax_v1_taxes_apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplyTaxRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedTaxResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_applied_tax_v1_taxes_applied__applied_tax_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applied_tax_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_tax_v1_taxes__code__get: {
         parameters: {
             query?: never;
@@ -6799,68 +6913,6 @@ export interface operations {
             header?: never;
             path: {
                 code: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    apply_tax_v1_taxes_apply_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplyTaxRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["AppliedTaxResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    remove_applied_tax_v1_taxes_applied__applied_tax_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                applied_tax_id: string;
             };
             cookie?: never;
         };
