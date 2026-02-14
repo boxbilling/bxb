@@ -14,6 +14,7 @@ import {
   AddOnsPage,
   CreditNotesPage,
   TaxesPage,
+  DunningCampaignsPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 
@@ -35,6 +36,7 @@ function App() {
         <Route path="add-ons" element={<AddOnsPage />} />
         <Route path="credit-notes" element={<CreditNotesPage />} />
         <Route path="taxes" element={<TaxesPage />} />
+        <Route path="dunning-campaigns" element={<DunningCampaignsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 

@@ -13,6 +13,7 @@ import {
   Coins,
   Percent,
   Gift,
+  Megaphone,
   Settings,
   Moon,
   Sun,
@@ -45,6 +46,7 @@ const navigation = [
   { name: 'Add-ons', href: '/admin/add-ons', icon: Gift },
   { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
   { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
+  { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
 ]
 
 function NavItem({
