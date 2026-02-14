@@ -36,32 +36,57 @@ import {
 } from '@/components/ui/tooltip'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Customers', href: '/admin/customers', icon: Users },
-  { name: 'Billable Metrics', href: '/admin/metrics', icon: Gauge },
-  { name: 'Plans', href: '/admin/plans', icon: CreditCard },
-  { name: 'Subscriptions', href: '/admin/subscriptions', icon: Receipt },
-  { name: 'Events', href: '/admin/events', icon: Activity },
-  { name: 'Invoices', href: '/admin/invoices', icon: FileText },
-  { name: 'Fees', href: '/admin/fees', icon: DollarSign },
-  { name: 'Payments', href: '/admin/payments', icon: Wallet },
-  { name: 'Wallets', href: '/admin/wallets', icon: Coins },
-  { name: 'Coupons', href: '/admin/coupons', icon: Percent },
-  { name: 'Add-ons', href: '/admin/add-ons', icon: Gift },
-  { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
-  { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
-  { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
-  { name: 'Integrations', href: '/admin/integrations', icon: Plug },
-  { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
-  { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
+const navigationGroups = [
+  {
+    label: null,
+    items: [
+      { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      { name: 'Customers', href: '/admin/customers', icon: Users },
+    ],
+  },
+  {
+    label: 'Products',
+    items: [
+      { name: 'Billable Metrics', href: '/admin/metrics', icon: Gauge },
+      { name: 'Plans', href: '/admin/plans', icon: CreditCard },
+    ],
+  },
+  {
+    label: 'Billing',
+    items: [
+      { name: 'Subscriptions', href: '/admin/subscriptions', icon: Receipt },
+      { name: 'Events', href: '/admin/events', icon: Activity },
+      { name: 'Invoices', href: '/admin/invoices', icon: FileText },
+      { name: 'Fees', href: '/admin/fees', icon: DollarSign },
+      { name: 'Payments', href: '/admin/payments', icon: Wallet },
+      { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
+    ],
+  },
+  {
+    label: 'Financial',
+    items: [
+      { name: 'Wallets', href: '/admin/wallets', icon: Coins },
+      { name: 'Coupons', href: '/admin/coupons', icon: Percent },
+      { name: 'Add-ons', href: '/admin/add-ons', icon: Gift },
+      { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
+    ],
+  },
+  {
+    label: 'Operations',
+    items: [
+      { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
+      { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
+      { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
+      { name: 'Integrations', href: '/admin/integrations', icon: Plug },
+    ],
+  },
 ]
 
 function NavItem({
   item,
   collapsed,
 }: {
-  item: (typeof navigation)[0]
+  item: { name: string; href: string; icon: React.ElementType }
   collapsed: boolean
 }) {
   const location = useLocation()
@@ -132,10 +157,22 @@ function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 overflow-y-auto space-y-1 p-2">
         <TooltipProvider delayDuration={0}>
-          {navigation.map((item) => (
-            <NavItem key={item.href} item={item} collapsed={collapsed} />
+          {navigationGroups.map((group, groupIndex) => (
+            <div key={groupIndex}>
+              {group.label && !collapsed && (
+                <p className="px-3 pt-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {group.label}
+                </p>
+              )}
+              {group.label && collapsed && groupIndex > 0 && (
+                <Separator className="my-2" />
+              )}
+              {group.items.map((item) => (
+                <NavItem key={item.href} item={item} collapsed={collapsed} />
+              ))}
+            </div>
           ))}
         </TooltipProvider>
       </nav>
