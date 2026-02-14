@@ -29,6 +29,15 @@ class CheckoutSession:
 
 
 @dataclass
+class SetupSession:
+    """Setup session result from provider for saving payment details."""
+
+    provider_setup_id: str
+    setup_url: str
+    expires_at: datetime | None = None
+
+
+@dataclass
 class WebhookResult:
     """Result of processing a webhook."""
 
@@ -63,6 +72,23 @@ class PaymentProviderBase(ABC):
     ) -> CheckoutSession:
         """Create a checkout session for the payment."""
         pass  # pragma: no cover
+
+    def create_checkout_setup_session(
+        self,
+        customer_id: UUID,
+        customer_email: str | None,
+        success_url: str,
+        cancel_url: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> SetupSession:
+        """Create a setup session for saving payment details.
+
+        Override in providers that support setup sessions. By default raises
+        NotImplementedError.
+        """
+        raise NotImplementedError(
+            f"{self.provider_name.value} does not support setup sessions"
+        )
 
     @abstractmethod
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
@@ -147,6 +173,39 @@ class StripeProvider(PaymentProviderBase):
         return CheckoutSession(
             provider_checkout_id=session.id,
             checkout_url=session.url,
+            expires_at=datetime.fromtimestamp(session.expires_at, tz=UTC)
+            if session.expires_at
+            else None,
+        )
+
+    def create_checkout_setup_session(
+        self,
+        customer_id: UUID,
+        customer_email: str | None,
+        success_url: str,
+        cancel_url: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> SetupSession:
+        """Create a Stripe Checkout Session in setup mode."""
+        session_params: dict[str, Any] = {
+            "payment_method_types": ["card"],
+            "mode": "setup",
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "metadata": {
+                "customer_id": str(customer_id),
+                **(metadata or {}),
+            },
+        }
+
+        if customer_email:
+            session_params["customer_email"] = customer_email
+
+        session = self.stripe.checkout.Session.create(**session_params)
+
+        return SetupSession(
+            provider_setup_id=session.id,
+            setup_url=session.url,
             expires_at=datetime.fromtimestamp(session.expires_at, tz=UTC)
             if session.expires_at
             else None,

@@ -19,6 +19,7 @@ from app.routers import (
     invoices,
     items,
     organizations,
+    payment_methods,
     payment_requests,
     payments,
     plans,
@@ -38,6 +39,7 @@ OPENAPI_TAGS = [
     {"name": "Fees", "description": "Query and manage invoice fees."},
     {"name": "Invoices", "description": "Manage invoices and their lifecycle."},
     {"name": "Payments", "description": "Process payments, checkout sessions, and refunds."},
+    {"name": "Payment Methods", "description": "Manage saved customer payment methods."},
     {"name": "Wallets", "description": "Manage prepaid credit wallets for customers."},
     {"name": "Coupons", "description": "Create and apply discount coupons."},
     {"name": "Add-ons", "description": "Create and apply one-time add-on charges."},
@@ -106,6 +108,11 @@ app.include_router(events.router, prefix="/v1/events", tags=["Events"])
 app.include_router(fees.router, prefix="/v1/fees", tags=["Fees"])
 app.include_router(invoices.router, prefix="/v1/invoices", tags=["Invoices"])
 app.include_router(payments.router, prefix="/v1/payments", tags=["Payments"])
+app.include_router(
+    payment_methods.router,
+    prefix="/v1/payment_methods",
+    tags=["Payment Methods"],
+)
 app.include_router(wallets.router, prefix="/v1/wallets", tags=["Wallets"])
 app.include_router(coupons.router, prefix="/v1/coupons", tags=["Coupons"])
 app.include_router(add_ons.router, prefix="/v1/add_ons", tags=["Add-ons"])

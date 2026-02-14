@@ -6,6 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.payment import PaymentProvider
+
 
 class PaymentMethodCreate(BaseModel):
     customer_id: UUID
@@ -37,3 +39,20 @@ class PaymentMethodResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class SetupSessionCreate(BaseModel):
+    customer_id: UUID
+    success_url: str = Field(..., description="URL to redirect after successful setup")
+    cancel_url: str = Field(..., description="URL to redirect if setup is canceled")
+    provider: PaymentProvider = Field(
+        default=PaymentProvider.STRIPE,
+        description="Payment provider to use",
+    )
+
+
+class SetupSessionResponse(BaseModel):
+    setup_id: str
+    setup_url: str
+    provider: str
+    expires_at: datetime | None = None
