@@ -136,6 +136,7 @@ class TestDashboardStats:
         assert data["active_subscriptions"] == 0
         assert data["monthly_recurring_revenue"] == 0.0
         assert data["total_invoiced"] == 0.0
+        assert data["total_wallet_credits"] == 0.0
         assert data["currency"] == "USD"
 
     def test_stats_with_data(self, client: TestClient, seeded_data):
@@ -147,7 +148,47 @@ class TestDashboardStats:
         # Both invoices are recent (within 30 days) and finalized/paid
         assert data["monthly_recurring_revenue"] == 162.0  # 108 + 54
         assert data["total_invoiced"] == 162.0
+        assert data["total_wallet_credits"] == 0.0
         assert data["currency"] == "USD"
+
+    def test_stats_wallet_credits(self, client: TestClient, db_session, seeded_data):
+        """Wallet credits across active wallets appear in stats."""
+        from app.models.wallet import Wallet
+
+        w1 = Wallet(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=seeded_data["customers"][0].id,
+            name="Main Wallet",
+            code="main_w",
+            status="active",
+            credits_balance=Decimal("50.00"),
+            currency="USD",
+        )
+        w2 = Wallet(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=seeded_data["customers"][1].id,
+            name="Second Wallet",
+            code="second_w",
+            status="active",
+            credits_balance=Decimal("30.00"),
+            currency="USD",
+        )
+        w3 = Wallet(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=seeded_data["customers"][0].id,
+            name="Terminated",
+            code="term_w",
+            status="terminated",
+            credits_balance=Decimal("100.00"),
+            currency="USD",
+        )
+        db_session.add_all([w1, w2, w3])
+        db_session.commit()
+
+        response = client.get("/dashboard/stats")
+        data = response.json()
+        # Only active wallets: 50 + 30 = 80
+        assert data["total_wallet_credits"] == 80.0
 
     def test_stats_mrr_excludes_old_invoices(self, client: TestClient, db_session, seeded_data):
         """MRR should only include invoices from the last 30 days."""
@@ -202,6 +243,226 @@ class TestDashboardStats:
         data = response.json()
         # MRR should still be 162 (draft excluded)
         assert data["monthly_recurring_revenue"] == 162.0
+
+
+class TestDashboardRevenue:
+    def test_revenue_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/revenue")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["mrr"] == 0.0
+        assert data["total_revenue_this_month"] == 0.0
+        assert data["outstanding_invoices"] == 0.0
+        assert data["overdue_amount"] == 0.0
+        assert data["currency"] == "USD"
+        assert isinstance(data["monthly_trend"], list)
+
+    def test_revenue_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue")
+        assert response.status_code == 200
+        data = response.json()
+        # MRR = 108 + 54 = 162 (both invoices recent and finalized/paid)
+        assert data["mrr"] == 162.0
+        assert data["total_revenue_this_month"] == 162.0
+        # inv2 is finalized (not paid) = 54 outstanding
+        assert data["outstanding_invoices"] == 54.0
+        assert data["currency"] == "USD"
+
+    def test_revenue_overdue(self, client: TestClient, db_session, seeded_data):
+        """Overdue amount only includes finalized invoices past due_date."""
+        seeded_data["invoices"][1].due_date = datetime.now(UTC) - timedelta(days=1)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue")
+        data = response.json()
+        assert data["overdue_amount"] == 54.0
+
+    def test_revenue_no_overdue_when_no_due_date(self, client: TestClient, seeded_data):
+        """Invoices without due_date are not counted as overdue."""
+        response = client.get("/dashboard/revenue")
+        data = response.json()
+        assert data["overdue_amount"] == 0.0
+
+    def test_revenue_monthly_trend_has_entries(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue")
+        data = response.json()
+        assert len(data["monthly_trend"]) > 0
+        for entry in data["monthly_trend"]:
+            assert "month" in entry
+            assert "revenue" in entry
+
+
+class TestDashboardCustomers:
+    def test_customers_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/customers")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 0
+        assert data["new_this_month"] == 0
+        assert data["churned_this_month"] == 0
+
+    def test_customers_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/customers")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 2
+        assert data["new_this_month"] == 2
+        assert data["churned_this_month"] == 0
+
+    def test_customers_churn(self, client: TestClient, db_session, seeded_data):
+        """A customer with a canceled subscription counts as churned."""
+        sub = seeded_data["subscriptions"][0]
+        sub.status = "canceled"
+        sub.canceled_at = datetime.now(UTC)
+        db_session.commit()
+
+        response = client.get("/dashboard/customers")
+        data = response.json()
+        assert data["churned_this_month"] == 1
+
+
+class TestDashboardSubscriptions:
+    def test_subscriptions_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/subscriptions")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["active"] == 0
+        assert data["new_this_month"] == 0
+        assert data["canceled_this_month"] == 0
+        assert data["by_plan"] == []
+
+    def test_subscriptions_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/subscriptions")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["active"] == 1
+        assert data["new_this_month"] == 2
+        assert data["canceled_this_month"] == 0
+
+    def test_subscriptions_by_plan(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/subscriptions")
+        data = response.json()
+        assert len(data["by_plan"]) == 1
+        assert data["by_plan"][0]["plan_name"] == "Dashboard Plan"
+        assert data["by_plan"][0]["count"] == 1
+
+    def test_subscriptions_canceled(self, client: TestClient, db_session, seeded_data):
+        sub = seeded_data["subscriptions"][0]
+        sub.status = "canceled"
+        sub.canceled_at = datetime.now(UTC)
+        db_session.commit()
+
+        response = client.get("/dashboard/subscriptions")
+        data = response.json()
+        assert data["canceled_this_month"] == 1
+        assert data["by_plan"] == []
+
+
+class TestDashboardUsage:
+    def test_usage_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/usage")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["top_metrics"] == []
+
+    def test_usage_with_events(self, client: TestClient, db_session):
+        """Events matching billable metrics appear in top usage."""
+        from app.models.billable_metric import BillableMetric
+        from app.models.event import Event
+
+        metric = BillableMetric(
+            organization_id=DEFAULT_ORG_ID,
+            code="api_calls",
+            name="API Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.flush()
+
+        now = datetime.now(UTC)
+        for i in range(3):
+            db_session.add(
+                Event(
+                    organization_id=DEFAULT_ORG_ID,
+                    transaction_id=f"usage_evt_{i}",
+                    external_customer_id="cust_1",
+                    code="api_calls",
+                    timestamp=now - timedelta(hours=i),
+                    properties={},
+                )
+            )
+        db_session.commit()
+
+        response = client.get("/dashboard/usage")
+        data = response.json()
+        assert len(data["top_metrics"]) == 1
+        assert data["top_metrics"][0]["metric_name"] == "API Calls"
+        assert data["top_metrics"][0]["metric_code"] == "api_calls"
+        assert data["top_metrics"][0]["event_count"] == 3
+
+    def test_usage_excludes_old_events(self, client: TestClient, db_session):
+        """Events older than 30 days should not be counted."""
+        from app.models.billable_metric import BillableMetric
+        from app.models.event import Event
+
+        metric = BillableMetric(
+            organization_id=DEFAULT_ORG_ID,
+            code="old_metric",
+            name="Old Metric",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.flush()
+
+        db_session.add(
+            Event(
+                organization_id=DEFAULT_ORG_ID,
+                transaction_id="old_evt_1",
+                external_customer_id="cust_1",
+                code="old_metric",
+                timestamp=datetime.now(UTC) - timedelta(days=60),
+                properties={},
+            )
+        )
+        db_session.commit()
+
+        response = client.get("/dashboard/usage")
+        data = response.json()
+        assert data["top_metrics"] == []
+
+    def test_usage_top_5_limit(self, client: TestClient, db_session):
+        """Only top 5 metrics by volume are returned."""
+        from app.models.billable_metric import BillableMetric
+        from app.models.event import Event
+
+        now = datetime.now(UTC)
+        for i in range(7):
+            metric = BillableMetric(
+                organization_id=DEFAULT_ORG_ID,
+                code=f"metric_{i}",
+                name=f"Metric {i}",
+                aggregation_type="count",
+            )
+            db_session.add(metric)
+            db_session.flush()
+            for j in range(i + 1):
+                db_session.add(
+                    Event(
+                        organization_id=DEFAULT_ORG_ID,
+                        transaction_id=f"limit_evt_{i}_{j}",
+                        external_customer_id="cust_1",
+                        code=f"metric_{i}",
+                        timestamp=now - timedelta(hours=j),
+                        properties={},
+                    )
+                )
+        db_session.commit()
+
+        response = client.get("/dashboard/usage")
+        data = response.json()
+        assert len(data["top_metrics"]) == 5
+        counts = [m["event_count"] for m in data["top_metrics"]]
+        assert counts == sorted(counts, reverse=True)
 
 
 class TestDashboardActivity:

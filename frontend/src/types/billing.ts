@@ -151,6 +151,7 @@ export interface DashboardStats {
   active_subscriptions: number
   monthly_recurring_revenue: number
   total_invoiced: number
+  total_wallet_credits: number
   currency: string
 }
 
@@ -159,4 +160,46 @@ export interface RecentActivity {
   type: 'customer_created' | 'subscription_created' | 'invoice_finalized' | 'payment_received'
   description: string
   timestamp: string
+}
+
+export interface RevenueDataPoint {
+  month: string
+  revenue: number
+}
+
+export interface RevenueMetrics {
+  mrr: number
+  total_revenue_this_month: number
+  outstanding_invoices: number
+  overdue_amount: number
+  currency: string
+  monthly_trend: RevenueDataPoint[]
+}
+
+export interface CustomerMetrics {
+  total: number
+  new_this_month: number
+  churned_this_month: number
+}
+
+export interface SubscriptionPlanBreakdown {
+  plan_name: string
+  count: number
+}
+
+export interface SubscriptionMetrics {
+  active: number
+  new_this_month: number
+  canceled_this_month: number
+  by_plan: SubscriptionPlanBreakdown[]
+}
+
+export interface UsageMetricVolume {
+  metric_name: string
+  metric_code: string
+  event_count: number
+}
+
+export interface UsageMetrics {
+  top_metrics: UsageMetricVolume[]
 }

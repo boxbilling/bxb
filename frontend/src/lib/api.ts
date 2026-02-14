@@ -597,6 +597,7 @@ export const dashboardApi = {
       active_subscriptions: number
       monthly_recurring_revenue: number
       total_invoiced: number
+      total_wallet_credits: number
       currency: string
     }>('/dashboard/stats'),
   getRecentActivity: () =>
@@ -608,6 +609,32 @@ export const dashboardApi = {
         timestamp: string
       }[]
     >('/dashboard/activity'),
+  getRevenue: () =>
+    request<{
+      mrr: number
+      total_revenue_this_month: number
+      outstanding_invoices: number
+      overdue_amount: number
+      currency: string
+      monthly_trend: { month: string; revenue: number }[]
+    }>('/dashboard/revenue'),
+  getCustomerMetrics: () =>
+    request<{
+      total: number
+      new_this_month: number
+      churned_this_month: number
+    }>('/dashboard/customers'),
+  getSubscriptionMetrics: () =>
+    request<{
+      active: number
+      new_this_month: number
+      canceled_this_month: number
+      by_plan: { plan_name: string; count: number }[]
+    }>('/dashboard/subscriptions'),
+  getUsageMetrics: () =>
+    request<{
+      top_metrics: { metric_name: string; metric_code: string; event_count: number }[]
+    }>('/dashboard/usage'),
 }
 
 export { ApiError }

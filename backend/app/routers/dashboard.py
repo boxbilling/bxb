@@ -6,7 +6,17 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.repositories.dashboard_repository import DashboardRepository
-from app.schemas.dashboard import DashboardStatsResponse, RecentActivityResponse
+from app.schemas.dashboard import (
+    CustomerMetricsResponse,
+    DashboardStatsResponse,
+    RecentActivityResponse,
+    RevenueDataPoint,
+    RevenueResponse,
+    SubscriptionMetricsResponse,
+    SubscriptionPlanBreakdown,
+    UsageMetricsResponse,
+    UsageMetricVolume,
+)
 
 router = APIRouter()
 
@@ -23,6 +33,7 @@ async def get_stats(
         active_subscriptions=repo.count_active_subscriptions(organization_id),
         monthly_recurring_revenue=repo.sum_monthly_revenue(organization_id),
         total_invoiced=repo.sum_total_invoiced(organization_id),
+        total_wallet_credits=repo.total_wallet_credits(organization_id),
         currency="USD",
     )
 
@@ -78,3 +89,77 @@ async def get_recent_activity(
 
     activities.sort(key=lambda a: a.timestamp, reverse=True)
     return activities[:10]
+
+
+@router.get("/revenue", response_model=RevenueResponse)
+async def get_revenue(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> RevenueResponse:
+    """Get revenue analytics: MRR, total this month, outstanding, overdue, and trend."""
+    repo = DashboardRepository(db)
+    trend = repo.monthly_revenue_trend(organization_id)
+    return RevenueResponse(
+        mrr=repo.sum_monthly_revenue(organization_id),
+        total_revenue_this_month=repo.sum_monthly_revenue(organization_id),
+        outstanding_invoices=repo.outstanding_invoices_total(organization_id),
+        overdue_amount=repo.overdue_invoices_total(organization_id),
+        currency="USD",
+        monthly_trend=[
+            RevenueDataPoint(month=m.month, revenue=m.revenue)
+            for m in trend
+        ],
+    )
+
+
+@router.get("/customers", response_model=CustomerMetricsResponse)
+async def get_customer_metrics(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> CustomerMetricsResponse:
+    """Get customer metrics: total, new this month, churned this month."""
+    repo = DashboardRepository(db)
+    return CustomerMetricsResponse(
+        total=repo.count_customers(organization_id),
+        new_this_month=repo.new_customers_this_month(organization_id),
+        churned_this_month=repo.churned_customers_this_month(organization_id),
+    )
+
+
+@router.get("/subscriptions", response_model=SubscriptionMetricsResponse)
+async def get_subscription_metrics(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> SubscriptionMetricsResponse:
+    """Get subscription metrics: active, new, canceled, by-plan breakdown."""
+    repo = DashboardRepository(db)
+    by_plan = repo.subscriptions_by_plan(organization_id)
+    return SubscriptionMetricsResponse(
+        active=repo.count_active_subscriptions(organization_id),
+        new_this_month=repo.new_subscriptions_this_month(organization_id),
+        canceled_this_month=repo.canceled_subscriptions_this_month(organization_id),
+        by_plan=[
+            SubscriptionPlanBreakdown(plan_name=p.plan_name, count=p.count)
+            for p in by_plan
+        ],
+    )
+
+
+@router.get("/usage", response_model=UsageMetricsResponse)
+async def get_usage_metrics(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> UsageMetricsResponse:
+    """Get top billable metrics by usage volume in the last 30 days."""
+    repo = DashboardRepository(db)
+    top = repo.top_metrics_by_usage(organization_id)
+    return UsageMetricsResponse(
+        top_metrics=[
+            UsageMetricVolume(
+                metric_name=m.metric_name,
+                metric_code=m.metric_code,
+                event_count=m.event_count,
+            )
+            for m in top
+        ],
+    )

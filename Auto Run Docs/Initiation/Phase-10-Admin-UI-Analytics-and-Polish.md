@@ -74,7 +74,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
       - List active integrations, add new, configure settings, test connection
   - **Note:** Updated SettingsPage from 3 tabs to 5 tabs: Organization (existing), API Keys (existing), Webhooks (existing), Dunning Campaigns (new — list table with code/name/max attempts/days between/thresholds/status, create/edit dialog with all fields including threshold management with dynamic add/remove rows, BCC emails, delete with confirmation), and Integrations (new — list table with type/provider/status/last sync/error indicator, create dialog with type selector/provider input/status/JSON settings editor, edit/configure dialog with status/settings/error details display, test connection button with spinner, delete with confirmation). All existing tabs preserved unchanged. TypeScript and frontend build pass clean, all 2592 backend tests pass with 100% coverage.
 
-- [ ] Enhance the Dashboard with analytics:
+- [x] Enhance the Dashboard with analytics:
   - Update `frontend/src/pages/admin/DashboardPage.tsx`:
     - Revenue metrics cards: MRR (monthly recurring revenue), total revenue this month, outstanding invoices, overdue amount
     - Revenue chart (recharts Line): monthly revenue trend (last 12 months)
@@ -88,6 +88,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - `GET /v1/dashboard/customers` — Customer counts and trends
     - `GET /v1/dashboard/subscriptions` — Subscription counts by status and plan
     - `GET /v1/dashboard/usage` — Top metrics by usage volume
+  - **Note:** Implemented full analytics dashboard with 4 new backend endpoints (`/dashboard/revenue`, `/dashboard/customers`, `/dashboard/subscriptions`, `/dashboard/usage`). Added `DashboardRepository` methods for: outstanding/overdue invoice totals, monthly revenue trend (12 months), new/churned customers, new/canceled subscriptions, subscriptions by plan, top 5 metrics by usage volume, total wallet credits. Updated `DashboardStatsResponse` to include `total_wallet_credits`. Frontend DashboardPage rebuilt with: 4 revenue stat cards (MRR, outstanding, overdue, wallet credits), 3 customer metric cards (total, new, churned), 3 subscription metric cards (active, new, canceled), recharts Line chart for 12-month revenue trend, recharts Bar chart for subscriptions by plan, recharts Bar chart for top usage metrics, activity feed (preserved). Added 17 new backend tests covering all endpoints with edge cases. All 2609 backend tests pass with 100% coverage, frontend builds clean, TypeScript passes.
 
 - [ ] Update existing admin pages to reflect new features:
   - `CustomersPage.tsx`:

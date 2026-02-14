@@ -5,17 +5,37 @@ import {
   DollarSign,
   FileText,
   TrendingUp,
+  AlertTriangle,
+  Wallet,
+  UserPlus,
+  UserMinus,
+  BarChart3,
 } from 'lucide-react'
+import {
+  Line,
+  LineChart,
+  Bar,
+  BarChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart'
 import { dashboardApi } from '@/lib/api'
 import type { RecentActivity } from '@/types/billing'
 
-function formatCurrency(cents: number, currency: string = 'USD') {
+function formatCurrencyDollars(amount: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-  }).format(cents / 100)
+  }).format(amount)
 }
 
 function formatRelativeTime(timestamp: string) {
@@ -87,10 +107,51 @@ const activityIcons: Record<string, React.ElementType> = {
   payment_received: DollarSign,
 }
 
+const revenueChartConfig = {
+  revenue: {
+    label: 'Revenue',
+    color: 'hsl(var(--primary))',
+  },
+} satisfies ChartConfig
+
+const planChartConfig = {
+  count: {
+    label: 'Subscriptions',
+    color: 'hsl(var(--primary))',
+  },
+} satisfies ChartConfig
+
+const usageChartConfig = {
+  event_count: {
+    label: 'Events',
+    color: 'hsl(var(--primary))',
+  },
+} satisfies ChartConfig
+
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => dashboardApi.getStats(),
+  })
+
+  const { data: revenue, isLoading: revenueLoading } = useQuery({
+    queryKey: ['dashboard-revenue'],
+    queryFn: () => dashboardApi.getRevenue(),
+  })
+
+  const { data: customerMetrics, isLoading: customersLoading } = useQuery({
+    queryKey: ['dashboard-customers'],
+    queryFn: () => dashboardApi.getCustomerMetrics(),
+  })
+
+  const { data: subscriptionMetrics, isLoading: subscriptionsLoading } = useQuery({
+    queryKey: ['dashboard-subscriptions'],
+    queryFn: () => dashboardApi.getSubscriptionMetrics(),
+  })
+
+  const { data: usageMetrics, isLoading: usageLoading } = useQuery({
+    queryKey: ['dashboard-usage'],
+    queryFn: () => dashboardApi.getUsageMetrics(),
   })
 
   const { data: activity, isLoading: activityLoading } = useQuery({
@@ -107,60 +168,163 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Revenue Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Customers"
-          value={stats?.total_customers.toLocaleString() ?? '-'}
-          description="total"
-          icon={Users}
-          loading={statsLoading}
-        />
-        <StatCard
-          title="Active Subscriptions"
-          value={stats?.active_subscriptions.toLocaleString() ?? '-'}
-          description="currently active"
-          icon={CreditCard}
-          loading={statsLoading}
-        />
-        <StatCard
-          title="Monthly Revenue"
+          title="MRR"
           value={
-            stats
-              ? formatCurrency(stats.monthly_recurring_revenue * 100, stats.currency)
+            revenue
+              ? formatCurrencyDollars(revenue.mrr, revenue.currency)
               : '-'
           }
-          description="last 30 days"
-          icon={DollarSign}
+          description="monthly recurring revenue"
+          icon={TrendingUp}
           mono
-          loading={statsLoading}
+          loading={revenueLoading}
         />
         <StatCard
-          title="Total Invoiced"
+          title="Outstanding Invoices"
           value={
-            stats
-              ? formatCurrency(stats.total_invoiced * 100, stats.currency)
+            revenue
+              ? formatCurrencyDollars(revenue.outstanding_invoices, revenue.currency)
               : '-'
           }
-          description="all time"
+          description="awaiting payment"
           icon={FileText}
+          mono
+          loading={revenueLoading}
+        />
+        <StatCard
+          title="Overdue Amount"
+          value={
+            revenue
+              ? formatCurrencyDollars(revenue.overdue_amount, revenue.currency)
+              : '-'
+          }
+          description="past due date"
+          icon={AlertTriangle}
+          mono
+          loading={revenueLoading}
+        />
+        <StatCard
+          title="Wallet Credits"
+          value={
+            stats
+              ? stats.total_wallet_credits.toLocaleString(undefined, { maximumFractionDigits: 2 })
+              : '-'
+          }
+          description="total prepaid credits"
+          icon={Wallet}
           mono
           loading={statsLoading}
         />
       </div>
 
-      {/* Activity & Chart */}
+      {/* Customer & Subscription Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title="Customers"
+          value={customerMetrics?.total.toLocaleString() ?? '-'}
+          description="total"
+          icon={Users}
+          loading={customersLoading}
+        />
+        <StatCard
+          title="New Customers"
+          value={customerMetrics?.new_this_month.toLocaleString() ?? '-'}
+          description="this month"
+          icon={UserPlus}
+          loading={customersLoading}
+        />
+        <StatCard
+          title="Churned"
+          value={customerMetrics?.churned_this_month.toLocaleString() ?? '-'}
+          description="this month"
+          icon={UserMinus}
+          loading={customersLoading}
+        />
+      </div>
+
+      {/* Subscription Metrics Row */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          title="Active Subscriptions"
+          value={subscriptionMetrics?.active.toLocaleString() ?? '-'}
+          description="currently active"
+          icon={CreditCard}
+          loading={subscriptionsLoading}
+        />
+        <StatCard
+          title="New Subscriptions"
+          value={subscriptionMetrics?.new_this_month.toLocaleString() ?? '-'}
+          description="this month"
+          icon={CreditCard}
+          loading={subscriptionsLoading}
+        />
+        <StatCard
+          title="Canceled"
+          value={subscriptionMetrics?.canceled_this_month.toLocaleString() ?? '-'}
+          description="this month"
+          icon={CreditCard}
+          loading={subscriptionsLoading}
+        />
+      </div>
+
+      {/* Charts Row */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Revenue Chart Placeholder */}
+        {/* Revenue Trend Chart */}
         <Card className="col-span-4">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Revenue Overview</CardTitle>
+            <CardTitle className="text-sm font-medium">Revenue Trend (Last 12 Months)</CardTitle>
           </CardHeader>
-          <CardContent className="h-[280px] flex items-center justify-center text-muted-foreground">
-            <div className="text-center">
-              <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Chart coming soon</p>
-            </div>
+          <CardContent>
+            {revenueLoading ? (
+              <div className="h-[280px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : revenue && revenue.monthly_trend.length > 0 ? (
+              <ChartContainer config={revenueChartConfig} className="h-[280px] w-full">
+                <LineChart data={revenue.monthly_trend} accessibilityLayer>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(v) => v.slice(5)}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    tickFormatter={(v) => `$${v}`}
+                  />
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        formatter={(value) =>
+                          formatCurrencyDollars(Number(value), revenue.currency)
+                        }
+                      />
+                    }
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="var(--color-revenue)"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No revenue data yet</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -184,7 +348,7 @@ export default function DashboardPage() {
               </div>
             ) : activity && activity.length > 0 ? (
               <div className="space-y-1">
-                {activity.map((item) => {
+                {activity.map((item: RecentActivity) => {
                   const Icon = activityIcons[item.type] ?? TrendingUp
                   const color = activityColors[item.type] ?? 'text-muted-foreground'
                   return (
@@ -206,6 +370,99 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-8">
                 No recent activity
               </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Charts Row */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Subscriptions by Plan */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Subscriptions by Plan</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {subscriptionsLoading ? (
+              <div className="h-[250px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : subscriptionMetrics && subscriptionMetrics.by_plan.length > 0 ? (
+              <ChartContainer config={planChartConfig} className="h-[250px] w-full">
+                <BarChart data={subscriptionMetrics.by_plan} accessibilityLayer>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="plan_name"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    allowDecimals={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="count"
+                    fill="var(--color-count)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No active subscriptions</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Top Billable Metrics by Usage */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Top Metrics by Usage (Last 30 Days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {usageLoading ? (
+              <div className="h-[250px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : usageMetrics && usageMetrics.top_metrics.length > 0 ? (
+              <ChartContainer config={usageChartConfig} className="h-[250px] w-full">
+                <BarChart data={usageMetrics.top_metrics} accessibilityLayer>
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="metric_name"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    allowDecimals={false}
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar
+                    dataKey="event_count"
+                    fill="var(--color-event_count)"
+                    radius={[4, 4, 0, 0]}
+                  />
+                </BarChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No usage data yet</p>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

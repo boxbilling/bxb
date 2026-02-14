@@ -44,6 +44,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/revenue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Revenue
+         * @description Get revenue analytics: MRR, total this month, outstanding, overdue, and trend.
+         */
+        get: operations["get_revenue_dashboard_revenue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Customer Metrics
+         * @description Get customer metrics: total, new this month, churned this month.
+         */
+        get: operations["get_customer_metrics_dashboard_customers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Subscription Metrics
+         * @description Get subscription metrics: active, new, canceled, by-plan breakdown.
+         */
+        get: operations["get_subscription_metrics_dashboard_subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Usage Metrics
+         * @description Get top billable metrics by usage volume in the last 30 days.
+         */
+        get: operations["get_usage_metrics_dashboard_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/items/update-prices": {
         parameters: {
             query?: never;
@@ -2645,6 +2725,15 @@ export interface components {
              */
             net_payment_term: number;
         };
+        /** CustomerMetricsResponse */
+        CustomerMetricsResponse: {
+            /** Total */
+            total: number;
+            /** New This Month */
+            new_this_month: number;
+            /** Churned This Month */
+            churned_this_month: number;
+        };
         /** CustomerResponse */
         CustomerResponse: {
             /**
@@ -2710,6 +2799,8 @@ export interface components {
             monthly_recurring_revenue: number;
             /** Total Invoiced */
             total_invoiced: number;
+            /** Total Wallet Credits */
+            total_wallet_credits: number;
             /** Currency */
             currency: string;
         };
@@ -3679,6 +3770,28 @@ export interface components {
          * @enum {string}
          */
         RefundStatus: "pending" | "succeeded" | "failed";
+        /** RevenueDataPoint */
+        RevenueDataPoint: {
+            /** Month */
+            month: string;
+            /** Revenue */
+            revenue: number;
+        };
+        /** RevenueResponse */
+        RevenueResponse: {
+            /** Mrr */
+            mrr: number;
+            /** Total Revenue This Month */
+            total_revenue_this_month: number;
+            /** Outstanding Invoices */
+            outstanding_invoices: number;
+            /** Overdue Amount */
+            overdue_amount: number;
+            /** Currency */
+            currency: string;
+            /** Monthly Trend */
+            monthly_trend: components["schemas"]["RevenueDataPoint"][];
+        };
         /** SubscriptionCreate */
         SubscriptionCreate: {
             /** External Id */
@@ -3711,6 +3824,24 @@ export interface components {
             pay_in_advance: boolean;
             /** @default generate_invoice */
             on_termination_action: components["schemas"]["TerminationAction"];
+        };
+        /** SubscriptionMetricsResponse */
+        SubscriptionMetricsResponse: {
+            /** Active */
+            active: number;
+            /** New This Month */
+            new_this_month: number;
+            /** Canceled This Month */
+            canceled_this_month: number;
+            /** By Plan */
+            by_plan: components["schemas"]["SubscriptionPlanBreakdown"][];
+        };
+        /** SubscriptionPlanBreakdown */
+        SubscriptionPlanBreakdown: {
+            /** Plan Name */
+            plan_name: string;
+            /** Count */
+            count: number;
         };
         /** SubscriptionResponse */
         SubscriptionResponse: {
@@ -3852,6 +3983,20 @@ export interface components {
          * @enum {string}
          */
         TerminationAction: "generate_invoice" | "generate_credit_note" | "skip";
+        /** UsageMetricVolume */
+        UsageMetricVolume: {
+            /** Metric Name */
+            metric_name: string;
+            /** Metric Code */
+            metric_code: string;
+            /** Event Count */
+            event_count: number;
+        };
+        /** UsageMetricsResponse */
+        UsageMetricsResponse: {
+            /** Top Metrics */
+            top_metrics: components["schemas"]["UsageMetricVolume"][];
+        };
         /** UsageThresholdCreateAPI */
         UsageThresholdCreateAPI: {
             /** Amount Cents */
@@ -4187,6 +4332,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RecentActivityResponse"][];
+                };
+            };
+        };
+    };
+    get_revenue_dashboard_revenue_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueResponse"];
+                };
+            };
+        };
+    };
+    get_customer_metrics_dashboard_customers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerMetricsResponse"];
+                };
+            };
+        };
+    };
+    get_subscription_metrics_dashboard_subscriptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionMetricsResponse"];
+                };
+            };
+        };
+    };
+    get_usage_metrics_dashboard_usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageMetricsResponse"];
                 };
             };
         };
