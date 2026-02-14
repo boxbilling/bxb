@@ -10,7 +10,12 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.billable_metric import BillableMetric
+from app.models.charge import Charge
+from app.models.event import Event
 from app.models.invoice import InvoiceStatus
+from app.models.plan import Plan, PlanInterval
+from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.plan_repository import PlanRepository
@@ -1138,3 +1143,272 @@ class TestInvoiceRepositoryCount:
         result = repo.count()
         assert isinstance(result, int)
         assert result >= 0
+
+
+class TestInvoicePreviewAPI:
+    """Tests for POST /v1/invoices/preview endpoint."""
+
+    @pytest.fixture
+    def preview_metric(self, db_session):
+        """Create a billable metric for preview tests."""
+        m = BillableMetric(
+            code="preview_api_calls",
+            name="API Calls",
+            aggregation_type="count",
+        )
+        db_session.add(m)
+        db_session.commit()
+        db_session.refresh(m)
+        return m
+
+    @pytest.fixture
+    def preview_plan(self, db_session):
+        """Create a plan for preview tests."""
+        p = Plan(
+            code="preview_plan",
+            name="Preview Plan",
+            interval=PlanInterval.MONTHLY.value,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def preview_charge(self, db_session, preview_plan, preview_metric):
+        """Create a charge linking plan to metric."""
+        c = Charge(
+            plan_id=preview_plan.id,
+            billable_metric_id=preview_metric.id,
+            charge_model="standard",
+            properties={"unit_price": "100"},
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def preview_subscription(self, db_session, customer, preview_plan):
+        """Create an active subscription for preview tests."""
+        sub = Subscription(
+            external_id="preview_test_sub",
+            customer_id=customer.id,
+            plan_id=preview_plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+        return sub
+
+    def test_preview_invoice_success(
+        self,
+        client,
+        db_session,
+        customer,
+        preview_metric,
+        preview_charge,
+        preview_subscription,
+    ):
+        """Test successful invoice preview."""
+        # Create some events for the customer
+        now = datetime.now(UTC)
+        start = datetime(now.year, now.month, 1, tzinfo=UTC)
+        for i in range(5):
+            event = Event(
+                transaction_id=f"prev-tx-{i}",
+                external_customer_id=customer.external_id,
+                code="preview_api_calls",
+                timestamp=start + timedelta(hours=i),
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.post(
+            "/v1/invoices/preview",
+            json={"subscription_id": str(preview_subscription.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert "subtotal" in data
+        assert "tax_amount" in data
+        assert "coupons_amount" in data
+        assert "prepaid_credit_amount" in data
+        assert "total" in data
+        assert "currency" in data
+        assert "fees" in data
+        assert len(data["fees"]) >= 1
+        # 5 events * 100 cents unit_price = 500
+        assert Decimal(data["subtotal"]) == Decimal("500")
+
+    def test_preview_invoice_with_billing_period(
+        self,
+        client,
+        db_session,
+        customer,
+        preview_metric,
+        preview_charge,
+        preview_subscription,
+    ):
+        """Test invoice preview with explicit billing period."""
+        start = datetime(2024, 6, 1, tzinfo=UTC)
+        end = datetime(2024, 7, 1, tzinfo=UTC)
+
+        # Create events in the billing period
+        for i in range(3):
+            event = Event(
+                transaction_id=f"prev-period-tx-{i}",
+                external_customer_id=customer.external_id,
+                code="preview_api_calls",
+                timestamp=start + timedelta(days=i),
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.post(
+            "/v1/invoices/preview",
+            json={
+                "subscription_id": str(preview_subscription.id),
+                "billing_period_start": start.isoformat(),
+                "billing_period_end": end.isoformat(),
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert Decimal(data["subtotal"]) == Decimal("300")
+        assert len(data["fees"]) == 1
+
+    def test_preview_invoice_subscription_not_found(self, client):
+        """Test preview with non-existent subscription."""
+        response = client.post(
+            "/v1/invoices/preview",
+            json={"subscription_id": str(uuid4())},
+        )
+        assert response.status_code == 404
+        assert "Subscription not found" in response.json()["detail"]
+
+    def test_preview_invoice_inactive_subscription(
+        self,
+        client,
+        db_session,
+        customer,
+        preview_plan,
+        preview_metric,
+        preview_charge,
+    ):
+        """Test preview with a non-active subscription returns 400."""
+        sub = Subscription(
+            external_id="preview_canceled_sub",
+            customer_id=customer.id,
+            plan_id=preview_plan.id,
+            status=SubscriptionStatus.CANCELED.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.post(
+            "/v1/invoices/preview",
+            json={"subscription_id": str(sub.id)},
+        )
+        assert response.status_code == 400
+
+    def test_preview_invoice_customer_not_found(
+        self,
+        client,
+        db_session,
+        preview_plan,
+        preview_metric,
+        preview_charge,
+    ):
+        """Test preview when subscription has orphaned customer_id."""
+        sub = Subscription(
+            external_id="preview_orphan_sub",
+            customer_id=uuid4(),
+            plan_id=preview_plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.post(
+            "/v1/invoices/preview",
+            json={"subscription_id": str(sub.id)},
+        )
+        assert response.status_code == 404
+        assert "Customer not found" in response.json()["detail"]
+
+    def test_preview_invoice_zero_usage(
+        self,
+        client,
+        db_session,
+        customer,
+        preview_metric,
+        preview_charge,
+        preview_subscription,
+    ):
+        """Test preview with zero usage returns zero amounts."""
+        # Use a billing period with no events
+        start = datetime(2020, 1, 1, tzinfo=UTC)
+        end = datetime(2020, 2, 1, tzinfo=UTC)
+
+        response = client.post(
+            "/v1/invoices/preview",
+            json={
+                "subscription_id": str(preview_subscription.id),
+                "billing_period_start": start.isoformat(),
+                "billing_period_end": end.isoformat(),
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert Decimal(data["subtotal"]) == Decimal("0")
+        assert Decimal(data["total"]) == Decimal("0")
+        # No fees generated since usage is zero
+        assert len(data["fees"]) == 0
+
+    def test_preview_does_not_persist_records(
+        self,
+        client,
+        db_session,
+        customer,
+        preview_metric,
+        preview_charge,
+        preview_subscription,
+    ):
+        """Test that preview does not create any Invoice or Fee records."""
+        from app.models.fee import Fee
+        from app.models.invoice import Invoice
+
+        invoice_count_before = db_session.query(Invoice).count()
+        fee_count_before = db_session.query(Fee).count()
+
+        # Create events
+        now = datetime.now(UTC)
+        start = datetime(now.year, now.month, 1, tzinfo=UTC)
+        for i in range(3):
+            event = Event(
+                transaction_id=f"prev-nopersist-{i}",
+                external_customer_id=customer.external_id,
+                code="preview_api_calls",
+                timestamp=start + timedelta(hours=i),
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.post(
+            "/v1/invoices/preview",
+            json={"subscription_id": str(preview_subscription.id)},
+        )
+        assert response.status_code == 200
+
+        invoice_count_after = db_session.query(Invoice).count()
+        fee_count_after = db_session.query(Fee).count()
+
+        assert invoice_count_after == invoice_count_before
+        assert fee_count_after == fee_count_before

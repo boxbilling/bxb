@@ -14,7 +14,9 @@ from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.repositories.organization_repository import OrganizationRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
+from app.schemas.invoice_preview import InvoicePreviewRequest, InvoicePreviewResponse
 from app.schemas.invoice_settlement import InvoiceSettlementResponse
+from app.services.invoice_preview_service import InvoicePreviewService
 from app.services.pdf_service import PdfService
 from app.services.wallet_service import WalletService
 from app.services.webhook_service import WebhookService
@@ -49,6 +51,45 @@ async def list_invoices(
         subscription_id=subscription_id,
         status=status,
     )
+
+
+@router.post(
+    "/preview",
+    response_model=InvoicePreviewResponse,
+    summary="Preview invoice",
+    responses={
+        400: {"description": "Subscription not found or not active"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
+async def preview_invoice(
+    data: InvoicePreviewRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> InvoicePreviewResponse:
+    """Preview an invoice for a subscription without persisting anything."""
+    from app.repositories.subscription_repository import SubscriptionRepository
+
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(data.subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(subscription.customer_id)  # type: ignore[arg-type]
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    service = InvoicePreviewService(db)
+    try:
+        return service.preview_invoice(
+            subscription_id=data.subscription_id,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=data.billing_period_start,
+            billing_period_end=data.billing_period_end,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
 
 
 @router.get(

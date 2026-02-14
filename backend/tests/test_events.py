@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -9,13 +10,20 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.billable_metric import BillableMetric
+from app.models.charge import Charge
 from app.models.customer import Customer
 from app.models.event import Event
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.event_repository import EventRepository
-from app.routers.events import _enqueue_threshold_checks, _get_active_subscription_ids
+from app.routers.events import (
+    _add_hypothetical_event,
+    _calculate_estimated_amount,
+    _enqueue_threshold_checks,
+    _get_active_subscription_ids,
+)
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.event import EventCreate
 from tests.conftest import DEFAULT_ORG_ID
@@ -1205,3 +1213,600 @@ class TestEventRateLimit:
         finally:
             event_rate_limiter.max_requests = original
             event_rate_limiter.reset()
+
+
+class TestEstimateFeesAPI:
+    """Tests for POST /v1/events/estimate_fees endpoint."""
+
+    @pytest.fixture
+    def estimate_metric(self, db_session):
+        """Create a COUNT billable metric for estimate_fees tests."""
+        m = BillableMetric(
+            code="est_api_calls",
+            name="Estimated API Calls",
+            aggregation_type="count",
+        )
+        db_session.add(m)
+        db_session.commit()
+        db_session.refresh(m)
+        return m
+
+    @pytest.fixture
+    def estimate_sum_metric(self, db_session):
+        """Create a SUM billable metric for estimate_fees tests."""
+        m = BillableMetric(
+            code="est_data_transfer",
+            name="Data Transfer",
+            aggregation_type="sum",
+            field_name="bytes",
+        )
+        db_session.add(m)
+        db_session.commit()
+        db_session.refresh(m)
+        return m
+
+    @pytest.fixture
+    def estimate_plan(self, db_session):
+        """Create a plan for estimate_fees tests."""
+        p = Plan(
+            code="est_plan",
+            name="Estimate Plan",
+            interval=PlanInterval.MONTHLY.value,
+            amount_cents=10000,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def estimate_charge(self, db_session, estimate_plan, estimate_metric):
+        """Create a standard charge for estimate_fees tests."""
+        c = Charge(
+            plan_id=estimate_plan.id,
+            billable_metric_id=estimate_metric.id,
+            charge_model="standard",
+            properties={"unit_price": "50"},
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def estimate_customer(self, db_session):
+        """Create a customer for estimate_fees tests."""
+        c = Customer(
+            external_id="est_cust",
+            name="Estimate Customer",
+            email="est@example.com",
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def estimate_subscription(self, db_session, estimate_customer, estimate_plan):
+        """Create an active subscription for estimate_fees tests."""
+        sub = Subscription(
+            external_id="est_sub",
+            customer_id=estimate_customer.id,
+            plan_id=estimate_plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+        return sub
+
+    def test_estimate_fees_count_metric(
+        self,
+        client,
+        db_session,
+        estimate_metric,
+        estimate_charge,
+        estimate_customer,
+        estimate_subscription,
+    ):
+        """Test fee estimation with a COUNT metric adds 1 to current usage."""
+        # Create some existing events for the current billing period
+        now = datetime.now(UTC)
+        start = datetime(now.year, now.month, 1, tzinfo=UTC)
+        for i in range(3):
+            event = Event(
+                transaction_id=f"est-tx-{i}",
+                external_customer_id="est_cust",
+                code="est_api_calls",
+                timestamp=start + timedelta(hours=i),
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(estimate_subscription.id),
+                "code": "est_api_calls",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # 3 existing events + 1 hypothetical = 4 units
+        assert Decimal(data["units"]) == Decimal("4")
+        # 4 units * 50 cents = 200
+        assert Decimal(data["amount_cents"]) == Decimal("200")
+        assert data["metric_code"] == "est_api_calls"
+        assert data["charge_model"] == "standard"
+
+    def test_estimate_fees_sum_metric(
+        self,
+        client,
+        db_session,
+        estimate_sum_metric,
+        estimate_plan,
+        estimate_customer,
+        estimate_subscription,
+    ):
+        """Test fee estimation with a SUM metric adds event value."""
+        # Create a charge for the sum metric
+        c = Charge(
+            plan_id=estimate_plan.id,
+            billable_metric_id=estimate_sum_metric.id,
+            charge_model="standard",
+            properties={"unit_price": "10"},
+        )
+        db_session.add(c)
+        db_session.commit()
+
+        # Create existing events
+        now = datetime.now(UTC)
+        start = datetime(now.year, now.month, 1, tzinfo=UTC)
+        for i in range(2):
+            event = Event(
+                transaction_id=f"est-sum-tx-{i}",
+                external_customer_id="est_cust",
+                code="est_data_transfer",
+                timestamp=start + timedelta(hours=i),
+                properties={"bytes": 100},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(estimate_subscription.id),
+                "code": "est_data_transfer",
+                "properties": {"bytes": 250},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # 200 existing + 250 hypothetical = 450 units
+        assert Decimal(data["units"]) == Decimal("450")
+        # 450 * 10 = 4500
+        assert Decimal(data["amount_cents"]) == Decimal("4500")
+
+    def test_estimate_fees_subscription_not_found(self, client):
+        """Test estimate_fees with non-existent subscription."""
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(uuid.uuid4()),
+                "code": "api_calls",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 404
+        assert "Subscription not found" in response.json()["detail"]
+
+    def test_estimate_fees_inactive_subscription(
+        self,
+        client,
+        db_session,
+        estimate_metric,
+        estimate_charge,
+        estimate_customer,
+        estimate_plan,
+    ):
+        """Test estimate_fees with a non-active subscription returns 400."""
+        sub = Subscription(
+            external_id="est_canceled_sub",
+            customer_id=estimate_customer.id,
+            plan_id=estimate_plan.id,
+            status=SubscriptionStatus.CANCELED.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(sub.id),
+                "code": "est_api_calls",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 400
+        assert "not active" in response.json()["detail"]
+
+    def test_estimate_fees_invalid_metric_code(
+        self,
+        client,
+        estimate_customer,
+        estimate_subscription,
+    ):
+        """Test estimate_fees with non-existent metric code."""
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(estimate_subscription.id),
+                "code": "nonexistent_metric",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 422
+        assert "nonexistent_metric" in response.json()["detail"]
+
+    def test_estimate_fees_no_charge_for_metric(
+        self,
+        client,
+        db_session,
+        estimate_customer,
+        estimate_subscription,
+    ):
+        """Test estimate_fees when no charge exists for the metric on the plan."""
+        # Create a metric that has no associated charge on the plan
+        m = BillableMetric(
+            code="est_orphan_metric",
+            name="Orphan Metric",
+            aggregation_type="count",
+        )
+        db_session.add(m)
+        db_session.commit()
+
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(estimate_subscription.id),
+                "code": "est_orphan_metric",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 404
+        assert "No charge found" in response.json()["detail"]
+
+    def test_estimate_fees_zero_existing_usage(
+        self,
+        client,
+        db_session,
+        estimate_metric,
+        estimate_charge,
+        estimate_customer,
+        estimate_subscription,
+    ):
+        """Test estimate_fees with no existing events returns estimate for 1 event."""
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(estimate_subscription.id),
+                "code": "est_api_calls",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # 0 existing + 1 hypothetical = 1 unit
+        assert Decimal(data["units"]) == Decimal("1")
+        # 1 * 50 = 50
+        assert Decimal(data["amount_cents"]) == Decimal("50")
+
+
+class TestAddHypotheticalEvent:
+    """Tests for _add_hypothetical_event helper function."""
+
+    def test_count_aggregation(self):
+        """Test COUNT adds 1 to usage."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("5"),
+            current_count=5,
+            aggregation_type="count",
+            field_name=None,
+            event_properties={},
+        )
+        assert result == Decimal("6")
+
+    def test_sum_aggregation(self):
+        """Test SUM adds event value."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("100"),
+            current_count=3,
+            aggregation_type="sum",
+            field_name="bytes",
+            event_properties={"bytes": 50},
+        )
+        assert result == Decimal("150")
+
+    def test_max_aggregation_new_max(self):
+        """Test MAX returns new max when event exceeds current."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("10"),
+            current_count=3,
+            aggregation_type="max",
+            field_name="value",
+            event_properties={"value": 20},
+        )
+        assert result == Decimal("20")
+
+    def test_max_aggregation_same_max(self):
+        """Test MAX returns current when event is lower."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("100"),
+            current_count=3,
+            aggregation_type="max",
+            field_name="value",
+            event_properties={"value": 50},
+        )
+        assert result == Decimal("100")
+
+    def test_latest_aggregation(self):
+        """Test LATEST returns event value."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("10"),
+            current_count=3,
+            aggregation_type="latest",
+            field_name="value",
+            event_properties={"value": 42},
+        )
+        assert result == Decimal("42")
+
+    def test_unique_count_aggregation(self):
+        """Test UNIQUE_COUNT conservatively adds 1."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("5"),
+            current_count=10,
+            aggregation_type="unique_count",
+            field_name="user_id",
+            event_properties={"user_id": "new_user"},
+        )
+        assert result == Decimal("6")
+
+    def test_weighted_sum_aggregation(self):
+        """Test WEIGHTED_SUM adds event value."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("100"),
+            current_count=3,
+            aggregation_type="weighted_sum",
+            field_name="watts",
+            event_properties={"watts": 50},
+        )
+        assert result == Decimal("150")
+
+    def test_custom_aggregation(self):
+        """Test CUSTOM conservatively adds 1."""
+        result = _add_hypothetical_event(
+            current_usage=Decimal("10"),
+            current_count=3,
+            aggregation_type="custom",
+            field_name=None,
+            event_properties={"a": 1, "b": 2},
+        )
+        assert result == Decimal("11")
+
+
+class TestCalculateEstimatedAmount:
+    """Tests for _calculate_estimated_amount helper function."""
+
+    def test_standard_charge(self):
+        """Test standard charge calculation."""
+        from app.models.charge import ChargeModel
+        from app.services.charge_models.factory import get_charge_calculator
+
+        calculator = get_charge_calculator(ChargeModel.STANDARD)
+        amount = _calculate_estimated_amount(
+            calculator=calculator,
+            charge_model=ChargeModel.STANDARD,
+            usage=Decimal("10"),
+            properties={"unit_price": "100"},
+        )
+        assert amount == Decimal("1000")
+
+    def test_standard_charge_with_min_price(self):
+        """Test standard charge respects min_price."""
+        from app.models.charge import ChargeModel
+        from app.services.charge_models.factory import get_charge_calculator
+
+        calculator = get_charge_calculator(ChargeModel.STANDARD)
+        amount = _calculate_estimated_amount(
+            calculator=calculator,
+            charge_model=ChargeModel.STANDARD,
+            usage=Decimal("1"),
+            properties={"unit_price": "10", "min_price": "500"},
+        )
+        assert amount == Decimal("500")
+
+    def test_standard_charge_with_max_price(self):
+        """Test standard charge respects max_price."""
+        from app.models.charge import ChargeModel
+        from app.services.charge_models.factory import get_charge_calculator
+
+        calculator = get_charge_calculator(ChargeModel.STANDARD)
+        amount = _calculate_estimated_amount(
+            calculator=calculator,
+            charge_model=ChargeModel.STANDARD,
+            usage=Decimal("100"),
+            properties={"unit_price": "100", "max_price": "5000"},
+        )
+        assert amount == Decimal("5000")
+
+    def test_percentage_charge(self):
+        """Test percentage charge calculation."""
+        from app.models.charge import ChargeModel
+        from app.services.charge_models.factory import get_charge_calculator
+
+        calculator = get_charge_calculator(ChargeModel.PERCENTAGE)
+        amount = _calculate_estimated_amount(
+            calculator=calculator,
+            charge_model=ChargeModel.PERCENTAGE,
+            usage=Decimal("10"),
+            properties={"rate": "10", "base_amount": "1000", "event_count": 1},
+        )
+        assert amount > Decimal("0")
+
+    def test_graduated_percentage_charge(self):
+        """Test graduated percentage charge calculation."""
+        from app.models.charge import ChargeModel
+        from app.services.charge_models.factory import get_charge_calculator
+
+        calculator = get_charge_calculator(ChargeModel.GRADUATED_PERCENTAGE)
+        amount = _calculate_estimated_amount(
+            calculator=calculator,
+            charge_model=ChargeModel.GRADUATED_PERCENTAGE,
+            usage=Decimal("10"),
+            properties={
+                "base_amount": "1000",
+                "graduated_percentage_ranges": [
+                    {"from_value": 0, "to_value": None, "rate": "5", "flat_amount": "0"},
+                ],
+            },
+        )
+        assert amount > Decimal("0")
+
+    def test_dynamic_charge(self):
+        """Test dynamic charge calculation."""
+        from app.models.charge import ChargeModel
+        from app.services.charge_models.factory import get_charge_calculator
+
+        calculator = get_charge_calculator(ChargeModel.DYNAMIC)
+        amount = _calculate_estimated_amount(
+            calculator=calculator,
+            charge_model=ChargeModel.DYNAMIC,
+            usage=Decimal("10"),
+            properties={},
+        )
+        assert amount == Decimal("0")
+
+
+class TestEstimateFeesEdgeCases:
+    """Tests for edge cases in the estimate_fees endpoint."""
+
+    @pytest.fixture
+    def edge_customer(self, db_session):
+        """Create a customer for edge case tests."""
+        c = Customer(
+            external_id="edge_cust",
+            name="Edge Customer",
+            email="edge@example.com",
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def edge_plan(self, db_session):
+        """Create a plan for edge case tests."""
+        p = Plan(
+            code="edge_plan",
+            name="Edge Plan",
+            interval=PlanInterval.MONTHLY.value,
+            amount_cents=10000,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def edge_metric(self, db_session):
+        """Create a metric for edge case tests."""
+        m = BillableMetric(
+            code="edge_metric",
+            name="Edge Metric",
+            aggregation_type="count",
+        )
+        db_session.add(m)
+        db_session.commit()
+        db_session.refresh(m)
+        return m
+
+    @pytest.fixture
+    def edge_subscription(self, db_session, edge_customer, edge_plan):
+        """Create an active subscription for edge case tests."""
+        sub = Subscription(
+            external_id="edge_sub",
+            customer_id=edge_customer.id,
+            plan_id=edge_plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+        return sub
+
+    def test_estimate_fees_customer_not_found(
+        self, client, db_session, edge_metric, edge_plan
+    ):
+        """Test estimate_fees when subscription exists but customer was deleted."""
+        # Create a subscription with a non-existent customer_id
+        sub = Subscription(
+            external_id="orphan_sub",
+            customer_id=uuid.uuid4(),
+            plan_id=edge_plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.post(
+            "/v1/events/estimate_fees",
+            json={
+                "subscription_id": str(sub.id),
+                "code": "edge_metric",
+                "properties": {},
+            },
+        )
+        assert response.status_code == 404
+        assert "Customer not found" in response.json()["detail"]
+
+    def test_estimate_fees_unsupported_charge_model(
+        self,
+        client,
+        db_session,
+        edge_customer,
+        edge_metric,
+        edge_plan,
+        edge_subscription,
+    ):
+        """Test estimate_fees with an unsupported charge model."""
+        c = Charge(
+            plan_id=edge_plan.id,
+            billable_metric_id=edge_metric.id,
+            charge_model="standard",
+            properties={"unit_price": "100"},
+        )
+        db_session.add(c)
+        db_session.commit()
+
+        with patch(
+            "app.routers.events.get_charge_calculator",
+            return_value=None,
+        ):
+            response = client.post(
+                "/v1/events/estimate_fees",
+                json={
+                    "subscription_id": str(edge_subscription.id),
+                    "code": "edge_metric",
+                    "properties": {},
+                },
+            )
+        assert response.status_code == 400
+        assert "Unsupported charge model" in response.json()["detail"]
