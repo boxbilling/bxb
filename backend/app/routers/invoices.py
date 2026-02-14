@@ -8,15 +8,19 @@ from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_settlement import InvoiceSettlement
+from app.models.payment import PaymentProvider
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.repositories.organization_repository import OrganizationRepository
+from app.repositories.payment_method_repository import PaymentMethodRepository
+from app.repositories.payment_repository import PaymentRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
 from app.schemas.invoice_preview import InvoicePreviewRequest, InvoicePreviewResponse
 from app.schemas.invoice_settlement import InvoiceSettlementResponse
 from app.services.invoice_preview_service import InvoicePreviewService
+from app.services.payment_provider import get_payment_provider
 from app.services.pdf_service import PdfService
 from app.services.wallet_service import WalletService
 from app.services.webhook_service import WebhookService
@@ -185,6 +189,56 @@ async def finalize_invoice(
 
                 db.commit()
                 db.refresh(invoice)
+
+        # Auto-charge using default payment method if invoice still not paid
+        if invoice.status == InvoiceStatus.FINALIZED.value:
+            remaining = Decimal(str(invoice.total)) - Decimal(
+                str(invoice.prepaid_credit_amount)
+            )
+            if remaining > 0:
+                pm_repo = PaymentMethodRepository(db)
+                default_pm = pm_repo.get_default(
+                    customer_id=invoice.customer_id,  # type: ignore[arg-type]
+                    organization_id=organization_id,
+                )
+                if default_pm:
+                    payment_repo = PaymentRepository(db)
+                    provider_enum = PaymentProvider(default_pm.provider)
+                    payment = payment_repo.create(
+                        invoice_id=invoice.id,  # type: ignore[arg-type]
+                        customer_id=invoice.customer_id,  # type: ignore[arg-type]
+                        amount=float(remaining),
+                        currency=str(invoice.currency),
+                        provider=provider_enum,
+                        organization_id=organization_id,
+                    )
+                    payment_repo.mark_processing(payment.id)  # type: ignore[arg-type]
+
+                    provider = get_payment_provider(provider_enum)
+                    charge_result = provider.charge_payment_method(
+                        payment_method_id=str(
+                            default_pm.provider_payment_method_id
+                        ),
+                        amount=remaining,
+                        currency=str(invoice.currency),
+                        metadata={"invoice_id": str(invoice.id)},
+                    )
+
+                    payment_repo.set_provider_ids(
+                        payment.id,  # type: ignore[arg-type]
+                        provider_payment_id=charge_result.provider_payment_id,
+                    )
+
+                    if charge_result.status == "succeeded":
+                        payment_repo.mark_succeeded(payment.id)  # type: ignore[arg-type]
+                        paid = repo.mark_paid(invoice.id)  # type: ignore[arg-type]
+                        if paid:
+                            invoice = paid
+                    else:
+                        payment_repo.mark_failed(
+                            payment.id,  # type: ignore[arg-type]
+                            reason=charge_result.failure_reason,
+                        )
 
         webhook_service = WebhookService(db)
         webhook_service.send_webhook(

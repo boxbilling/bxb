@@ -38,6 +38,15 @@ class SetupSession:
 
 
 @dataclass
+class ChargeResult:
+    """Result of charging a payment method."""
+
+    provider_payment_id: str
+    status: str  # "succeeded" or "failed"
+    failure_reason: str | None = None
+
+
+@dataclass
 class WebhookResult:
     """Result of processing a webhook."""
 
@@ -88,6 +97,22 @@ class PaymentProviderBase(ABC):
         """
         raise NotImplementedError(
             f"{self.provider_name.value} does not support setup sessions"
+        )
+
+    def charge_payment_method(
+        self,
+        payment_method_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> ChargeResult:
+        """Charge a saved payment method.
+
+        Override in providers that support direct charges. By default raises
+        NotImplementedError.
+        """
+        raise NotImplementedError(
+            f"{self.provider_name.value} does not support charging payment methods"
         )
 
     @abstractmethod
@@ -210,6 +235,48 @@ class StripeProvider(PaymentProviderBase):
             if session.expires_at
             else None,
         )
+
+    def charge_payment_method(
+        self,
+        payment_method_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> ChargeResult:
+        """Charge a saved payment method using Stripe PaymentIntent."""
+        amount_cents = int(amount * 100)
+
+        try:
+            intent = self.stripe.PaymentIntent.create(
+                amount=amount_cents,
+                currency=currency.lower(),
+                payment_method=payment_method_id,
+                confirm=True,
+                automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
+                metadata=metadata or {},
+            )
+            return ChargeResult(
+                provider_payment_id=intent.id,
+                status="succeeded" if intent.status == "succeeded" else "failed",
+                failure_reason=None
+                if intent.status == "succeeded"
+                else f"Payment intent status: {intent.status}",
+            )
+        except self.stripe.error.CardError as e:
+            body = e.json_body or {}  # type: ignore[union-attr,unused-ignore]
+            pi_id = body.get("error", {}).get(
+                "payment_intent", {}
+            ).get("id", "")
+            reason = (
+                str(e.user_message)
+                if hasattr(e, "user_message")
+                else str(e)
+            )
+            return ChargeResult(
+                provider_payment_id=pi_id,
+                status="failed",
+                failure_reason=reason,
+            )
 
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify Stripe webhook signature."""

@@ -22,6 +22,7 @@ from app.schemas.payment import PaymentUpdate
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
 from app.services.payment_provider import (
+    ChargeResult,
     ManualProvider,
     StripeProvider,
     UCPProvider,
@@ -1902,6 +1903,134 @@ class TestUCPPaymentsAPI:
         assert response.status_code == 200
         assert len(response.json()) >= 1
         assert all(p["provider"] == "ucp" for p in response.json())
+
+
+class TestChargePaymentMethod:
+    """Tests for charge_payment_method on providers."""
+
+    def test_base_provider_raises_not_implemented(self):
+        """Test that the base class charge_payment_method raises NotImplementedError."""
+        provider = ManualProvider()
+        with pytest.raises(
+            NotImplementedError, match="manual does not support charging payment methods"
+        ):
+            provider.charge_payment_method(
+                payment_method_id="pm_test",
+                amount=Decimal("50.00"),
+                currency="USD",
+            )
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_charge_payment_method_success(self, mock_settings):
+        """Test Stripe charge_payment_method with successful charge."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        mock_intent = MagicMock()
+        mock_intent.id = "pi_success_123"
+        mock_intent.status = "succeeded"
+        mock_stripe.PaymentIntent.create.return_value = mock_intent
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.charge_payment_method(
+            payment_method_id="pm_test_123",
+            amount=Decimal("99.99"),
+            currency="USD",
+            metadata={"invoice_id": "inv_123"},
+        )
+
+        assert isinstance(result, ChargeResult)
+        assert result.provider_payment_id == "pi_success_123"
+        assert result.status == "succeeded"
+        assert result.failure_reason is None
+
+        mock_stripe.PaymentIntent.create.assert_called_once_with(
+            amount=9999,
+            currency="usd",
+            payment_method="pm_test_123",
+            confirm=True,
+            automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
+            metadata={"invoice_id": "inv_123"},
+        )
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_charge_payment_method_non_succeeded(self, mock_settings):
+        """Test Stripe charge_payment_method when intent status is not succeeded."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        mock_intent = MagicMock()
+        mock_intent.id = "pi_pending_123"
+        mock_intent.status = "requires_action"
+        mock_stripe.PaymentIntent.create.return_value = mock_intent
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.charge_payment_method(
+            payment_method_id="pm_test_123",
+            amount=Decimal("50.00"),
+            currency="EUR",
+        )
+
+        assert result.provider_payment_id == "pi_pending_123"
+        assert result.status == "failed"
+        assert result.failure_reason == "Payment intent status: requires_action"
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_charge_payment_method_card_error(self, mock_settings):
+        """Test Stripe charge_payment_method with card error."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        card_error = Exception("Your card was declined.")
+        card_error.json_body = {"error": {"payment_intent": {"id": "pi_failed_123"}}}  # type: ignore[attr-defined]
+        card_error.user_message = "Your card was declined."  # type: ignore[attr-defined]
+        mock_stripe.error.CardError = type(card_error)
+        mock_stripe.PaymentIntent.create.side_effect = card_error
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.charge_payment_method(
+            payment_method_id="pm_test_123",
+            amount=Decimal("75.00"),
+            currency="USD",
+        )
+
+        assert result.provider_payment_id == "pi_failed_123"
+        assert result.status == "failed"
+        assert result.failure_reason == "Your card was declined."
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_charge_payment_method_without_metadata(self, mock_settings):
+        """Test Stripe charge_payment_method without metadata uses empty dict."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        mock_intent = MagicMock()
+        mock_intent.id = "pi_no_meta"
+        mock_intent.status = "succeeded"
+        mock_stripe.PaymentIntent.create.return_value = mock_intent
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.charge_payment_method(
+            payment_method_id="pm_test_123",
+            amount=Decimal("10.00"),
+            currency="USD",
+        )
+
+        assert result.status == "succeeded"
+        call_kwargs = mock_stripe.PaymentIntent.create.call_args[1]
+        assert call_kwargs["metadata"] == {}
 
 
 class TestPaymentRepositoryCount:

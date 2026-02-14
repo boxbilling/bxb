@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -14,16 +14,20 @@ from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge
 from app.models.event import Event
 from app.models.invoice import InvoiceStatus
+from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository
+from app.repositories.payment_method_repository import PaymentMethodRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.customer import CustomerCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem, InvoiceUpdate
+from app.schemas.payment_method import PaymentMethodCreate
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
+from app.services.payment_provider import ChargeResult
 from tests.conftest import DEFAULT_ORG_ID
 
 
@@ -1412,3 +1416,291 @@ class TestInvoicePreviewAPI:
 
         assert invoice_count_after == invoice_count_before
         assert fee_count_after == fee_count_before
+
+
+class TestInvoicePaymentMethodIntegration:
+    """Tests for auto-charge with default payment method during invoice finalization."""
+
+    @pytest.fixture
+    def payment_method(self, db_session, customer):
+        """Create a default payment method for the customer."""
+        pm_repo = PaymentMethodRepository(db_session)
+        return pm_repo.create(
+            PaymentMethodCreate(
+                customer_id=customer.id,
+                provider="stripe",
+                provider_payment_method_id="pm_test_123",
+                type="card",
+                is_default=True,
+                details={"last4": "4242", "brand": "visa"},
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+    def test_finalize_auto_charges_default_payment_method(
+        self, client, db_session, customer, subscription, sample_line_items, payment_method
+    ):
+        """Test that finalize auto-charges when customer has a default payment method."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        mock_result = ChargeResult(
+            provider_payment_id="pi_test_success",
+            status="succeeded",
+        )
+
+        with patch(
+            "app.routers.invoices.get_payment_provider"
+        ) as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.charge_payment_method.return_value = mock_result
+            mock_get_provider.return_value = mock_provider
+
+            response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "paid"
+        assert data["paid_at"] is not None
+
+        # Verify a payment record was created
+        payments = db_session.query(Payment).filter(Payment.invoice_id == invoice.id).all()
+        assert len(payments) == 1
+        assert payments[0].status == PaymentStatus.SUCCEEDED.value
+        assert payments[0].provider_payment_id == "pi_test_success"
+
+    def test_finalize_no_auto_charge_without_default_method(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that finalize does NOT auto-charge when no default payment method exists."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "finalized"
+
+        # No payment records should be created
+        payments = db_session.query(Payment).filter(Payment.invoice_id == invoice.id).all()
+        assert len(payments) == 0
+
+    def test_finalize_failed_charge_leaves_invoice_finalized(
+        self, client, db_session, customer, subscription, sample_line_items, payment_method
+    ):
+        """Test that a failed charge leaves the invoice as finalized with a failed payment."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        mock_result = ChargeResult(
+            provider_payment_id="pi_test_failed",
+            status="failed",
+            failure_reason="Your card was declined.",
+        )
+
+        with patch(
+            "app.routers.invoices.get_payment_provider"
+        ) as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.charge_payment_method.return_value = mock_result
+            mock_get_provider.return_value = mock_provider
+
+            response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "finalized"
+        assert data["paid_at"] is None
+
+        # Verify a failed payment record was created
+        payments = db_session.query(Payment).filter(Payment.invoice_id == invoice.id).all()
+        assert len(payments) == 1
+        assert payments[0].status == PaymentStatus.FAILED.value
+        assert payments[0].failure_reason == "Your card was declined."
+        assert payments[0].provider_payment_id == "pi_test_failed"
+
+    def test_finalize_no_auto_charge_when_wallet_covers_full_amount(
+        self, client, db_session, customer, subscription, sample_line_items, payment_method
+    ):
+        """Test that no auto-charge happens when wallet credits fully cover the invoice."""
+        from app.services.wallet_service import WalletService
+
+        wallet_service = WalletService(db_session)
+        wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="Full Cover",
+            code="full-cover-pm",
+            initial_granted_credits=Decimal("100"),
+        )
+
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "paid"
+
+        # No payment records should be created since wallet covers everything
+        payments = db_session.query(Payment).filter(Payment.invoice_id == invoice.id).all()
+        assert len(payments) == 0
+
+    def test_finalize_auto_charges_remaining_after_partial_wallet(
+        self, client, db_session, customer, subscription, payment_method
+    ):
+        """Test auto-charge for the remaining amount after partial wallet coverage."""
+        from app.services.wallet_service import WalletService
+
+        wallet_service = WalletService(db_session)
+        wallet_service.create_wallet(
+            customer_id=customer.id,
+            name="Partial",
+            code="partial-pm",
+            initial_granted_credits=Decimal("10"),
+        )
+
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=[
+                InvoiceLineItem(
+                    description="Test charge",
+                    quantity=Decimal("1"),
+                    unit_price=Decimal("50.00"),
+                    amount=Decimal("50.00"),
+                ),
+            ],
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        mock_result = ChargeResult(
+            provider_payment_id="pi_test_partial",
+            status="succeeded",
+        )
+
+        with patch(
+            "app.routers.invoices.get_payment_provider"
+        ) as mock_get_provider:
+            mock_provider = MagicMock()
+            mock_provider.charge_payment_method.return_value = mock_result
+            mock_get_provider.return_value = mock_provider
+
+            response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "paid"
+        assert Decimal(data["prepaid_credit_amount"]) == Decimal("10")
+
+        # Verify a payment record for the remaining 40.00 was created
+        payments = db_session.query(Payment).filter(Payment.invoice_id == invoice.id).all()
+        assert len(payments) == 1
+        assert payments[0].status == PaymentStatus.SUCCEEDED.value
+        assert Decimal(str(payments[0].amount)) == Decimal("40")
+
+    def test_finalize_no_auto_charge_non_default_payment_method(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that non-default payment methods don't trigger auto-charge."""
+        pm_repo = PaymentMethodRepository(db_session)
+        pm_repo.create(
+            PaymentMethodCreate(
+                customer_id=customer.id,
+                provider="stripe",
+                provider_payment_method_id="pm_test_nondefault",
+                type="card",
+                is_default=False,
+                details={"last4": "1234"},
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "finalized"
+
+        payments = db_session.query(Payment).filter(Payment.invoice_id == invoice.id).all()
+        assert len(payments) == 0
+
+    def test_finalize_auto_charge_mark_paid_returns_none(
+        self, client, db_session, customer, subscription, sample_line_items, payment_method
+    ):
+        """Test auto-charge when mark_paid returns None (race condition)."""
+        repo = InvoiceRepository(db_session)
+        invoice_data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(invoice_data, DEFAULT_ORG_ID)
+
+        mock_result = ChargeResult(
+            provider_payment_id="pi_test_race",
+            status="succeeded",
+        )
+
+        with (
+            patch(
+                "app.routers.invoices.get_payment_provider"
+            ) as mock_get_provider,
+            patch.object(
+                InvoiceRepository, "mark_paid", return_value=None
+            ),
+        ):
+            mock_provider = MagicMock()
+            mock_provider.charge_payment_method.return_value = mock_result
+            mock_get_provider.return_value = mock_provider
+
+            response = client.post(f"/v1/invoices/{invoice.id}/finalize")
+
+        assert response.status_code == 200
+        data = response.json()
+        # Invoice stays finalized since mark_paid returned None
+        assert data["status"] == "finalized"
