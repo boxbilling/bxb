@@ -3,9 +3,11 @@ import AdminLayout from './layouts/AdminLayout'
 import {
   DashboardPage,
   CustomersPage,
+  CustomerDetailPage,
   MetricsPage,
   PlansPage,
   SubscriptionsPage,
+  SubscriptionDetailPage,
   EventsPage,
   InvoicesPage,
   FeesPage,
@@ -29,9 +31,11 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="customers" element={<CustomersPage />} />
+        <Route path="customers/:id" element={<CustomerDetailPage />} />
         <Route path="metrics" element={<MetricsPage />} />
         <Route path="plans" element={<PlansPage />} />
         <Route path="subscriptions" element={<SubscriptionsPage />} />
+        <Route path="subscriptions/:id" element={<SubscriptionDetailPage />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="fees" element={<FeesPage />} />

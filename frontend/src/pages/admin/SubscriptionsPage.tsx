@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MoreHorizontal, XCircle, ExternalLink, Trash2, Target, TrendingUp, Calendar } from 'lucide-react'
+import { Plus, Search, MoreHorizontal, XCircle, ExternalLink } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -45,21 +46,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '@/components/ui/sheet'
-import { Separator } from '@/components/ui/separator'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
-import type { Subscription, SubscriptionCreate, SubscriptionStatus, Customer, Plan, CurrentUsage, UsageThreshold, UsageThresholdCreateAPI } from '@/types/billing'
+import { subscriptionsApi, customersApi, plansApi, ApiError } from '@/lib/api'
+import type { Subscription, SubscriptionCreate, SubscriptionStatus, Customer, Plan } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -194,262 +185,12 @@ function SubscriptionFormDialog({
   )
 }
 
-function SubscriptionDetailSheet({
-  open,
-  onOpenChange,
-  subscription,
-  customerName,
-  planName,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  subscription: Subscription | null
-  customerName: string
-  planName: string
-}) {
-  const queryClient = useQueryClient()
-  const [showAddForm, setShowAddForm] = useState(false)
-  const [thresholdForm, setThresholdForm] = useState<UsageThresholdCreateAPI>({
-    amount_cents: '',
-    currency: 'USD',
-    recurring: false,
-    threshold_display_name: null,
-  })
-
-  const { data: usage, isLoading: usageLoading, isError: usageError } = useQuery({
-    queryKey: ['current-usage', subscription?.id],
-    queryFn: () => usageThresholdsApi.getCurrentUsage(subscription!.id),
-    enabled: !!subscription?.id,
-  })
-
-  const { data: thresholds, isLoading: thresholdsLoading } = useQuery({
-    queryKey: ['usage-thresholds', subscription?.id],
-    queryFn: () => usageThresholdsApi.listForSubscription(subscription!.id),
-    enabled: !!subscription?.id,
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (thresholdId: string) => usageThresholdsApi.delete(thresholdId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usage-thresholds', subscription?.id] })
-      toast.success('Threshold deleted')
-    },
-    onError: (error) => {
-      const message = error instanceof ApiError ? error.message : 'Failed to delete threshold'
-      toast.error(message)
-    },
-  })
-
-  const createMutation = useMutation({
-    mutationFn: (data: UsageThresholdCreateAPI) =>
-      usageThresholdsApi.createForSubscription(subscription!.id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['usage-thresholds', subscription?.id] })
-      toast.success('Threshold created')
-      setShowAddForm(false)
-      setThresholdForm({ amount_cents: '', currency: 'USD', recurring: false, threshold_display_name: null })
-    },
-    onError: (error) => {
-      const message = error instanceof ApiError ? error.message : 'Failed to create threshold'
-      toast.error(message)
-    },
-  })
-
-  const handleCreateThreshold = (e: React.FormEvent) => {
-    e.preventDefault()
-    createMutation.mutate({
-      ...thresholdForm,
-      amount_cents: Number(thresholdForm.amount_cents),
-      threshold_display_name: thresholdForm.threshold_display_name || null,
-    })
-  }
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>Subscription Details</SheetTitle>
-          <SheetDescription>
-            {customerName} — {planName}
-          </SheetDescription>
-        </SheetHeader>
-
-        <div className="space-y-6 px-4 pb-4">
-          {/* Current Usage Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Current Usage
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {usageLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-8 w-32" />
-                  <Skeleton className="h-4 w-48" />
-                </div>
-              ) : usageError || !usage ? (
-                <p className="text-sm text-muted-foreground">No usage data available</p>
-              ) : (
-                <div className="space-y-2">
-                  <p className="text-3xl font-bold">
-                    {formatCurrency(parseInt(usage.current_usage_amount_cents))}
-                  </p>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Billing Period: {format(new Date(usage.billing_period_start), 'MMM d, yyyy')} — {format(new Date(usage.billing_period_end), 'MMM d, yyyy')}
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Separator />
-
-          {/* Usage Thresholds Section */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Usage Thresholds
-              </h3>
-              {!showAddForm && (
-                <Button size="sm" variant="outline" onClick={() => setShowAddForm(true)}>
-                  <Plus className="mr-1 h-3 w-3" />
-                  Add Threshold
-                </Button>
-              )}
-            </div>
-
-            {thresholdsLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-              </div>
-            ) : !thresholds || thresholds.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No usage thresholds configured</p>
-            ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Recurring</TableHead>
-                      <TableHead>Name</TableHead>
-                      <TableHead className="w-[40px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {thresholds.map((t) => (
-                      <TableRow key={t.id}>
-                        <TableCell>
-                          {formatCurrency(parseInt(t.amount_cents), t.currency)}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={t.recurring ? 'default' : 'secondary'}>
-                            {t.recurring ? 'Yes' : 'No'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{t.threshold_display_name ?? '—'}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteMutation.mutate(t.id)}
-                            disabled={deleteMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            {/* Add Threshold Form */}
-            {showAddForm && (
-              <form onSubmit={handleCreateThreshold} className="space-y-3 rounded-md border p-4">
-                <div className="space-y-2">
-                  <Label htmlFor="threshold_amount">Amount (cents) *</Label>
-                  <Input
-                    id="threshold_amount"
-                    type="number"
-                    value={thresholdForm.amount_cents}
-                    onChange={(e) => setThresholdForm({ ...thresholdForm, amount_cents: e.target.value })}
-                    placeholder="10000"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Currency</Label>
-                  <Select
-                    value={thresholdForm.currency}
-                    onValueChange={(value) => setThresholdForm({ ...thresholdForm, currency: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="threshold_recurring"
-                    checked={thresholdForm.recurring}
-                    onCheckedChange={(checked) =>
-                      setThresholdForm({ ...thresholdForm, recurring: checked === true })
-                    }
-                  />
-                  <Label htmlFor="threshold_recurring">Recurring</Label>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="threshold_name">Display Name</Label>
-                  <Input
-                    id="threshold_name"
-                    value={thresholdForm.threshold_display_name ?? ''}
-                    onChange={(e) => setThresholdForm({ ...thresholdForm, threshold_display_name: e.target.value })}
-                    placeholder="Optional display name"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" size="sm" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? 'Creating...' : 'Create'}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddForm(false)
-                      setThresholdForm({ amount_cents: '', currency: 'USD', recurring: false, threshold_display_name: null })
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  )
-}
-
 export default function SubscriptionsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [terminateSub, setTerminateSub] = useState<Subscription | null>(null)
-  const [detailSub, setDetailSub] = useState<Subscription | null>(null)
 
   // Fetch subscriptions from API
   const { data: subscriptions, isLoading, error } = useQuery({
@@ -477,13 +218,13 @@ export default function SubscriptionsPage() {
   const filteredSubscriptions = subscriptions?.filter((s) => {
     const customer = customerMap.get(s.customer_id)
     const plan = planMap.get(s.plan_id)
-    
+
     const matchesStatus = statusFilter === 'all' || s.status === statusFilter
-    const matchesSearch = !search || 
+    const matchesSearch = !search ||
       customer?.name.toLowerCase().includes(search.toLowerCase()) ||
       plan?.name.toLowerCase().includes(search.toLowerCase()) ||
       s.external_id.toLowerCase().includes(search.toLowerCase())
-    
+
     return matchesStatus && matchesSearch
   }) ?? []
 
@@ -598,14 +339,14 @@ export default function SubscriptionsPage() {
               filteredSubscriptions.map((sub) => {
                 const customer = customerMap.get(sub.customer_id)
                 const plan = planMap.get(sub.plan_id)
-                
+
                 return (
                   <TableRow key={sub.id}>
                     <TableCell>
                       <div>
                         <div className="font-medium">{customer?.name ?? 'Unknown'}</div>
                         <div className="text-xs text-muted-foreground">
-                          {customer?.email ?? '—'}
+                          {customer?.email ?? '\u2014'}
                         </div>
                       </div>
                     </TableCell>
@@ -613,7 +354,7 @@ export default function SubscriptionsPage() {
                       <div>
                         <div>{plan?.name ?? 'Unknown'}</div>
                         <div className="text-xs text-muted-foreground">
-                          {plan ? `${formatCurrency(plan.amount_cents, plan.currency)}/${plan.interval}` : '—'}
+                          {plan ? `${formatCurrency(plan.amount_cents, plan.currency)}/${plan.interval}` : '\u2014'}
                         </div>
                       </div>
                     </TableCell>
@@ -621,9 +362,9 @@ export default function SubscriptionsPage() {
                       <StatusBadge status={sub.status} />
                     </TableCell>
                     <TableCell>
-                      {sub.started_at 
+                      {sub.started_at
                         ? format(new Date(sub.started_at), 'MMM d, yyyy')
-                        : '—'}
+                        : '\u2014'}
                     </TableCell>
                     <TableCell>
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
@@ -638,9 +379,11 @@ export default function SubscriptionsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setDetailSub(sub)}>
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            View Details
+                          <DropdownMenuItem asChild>
+                            <Link to={`/admin/subscriptions/${sub.id}`}>
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              View Details
+                            </Link>
                           </DropdownMenuItem>
                           {sub.status === 'active' && (
                             <DropdownMenuItem
@@ -695,15 +438,6 @@ export default function SubscriptionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Subscription Detail Sheet */}
-      <SubscriptionDetailSheet
-        open={!!detailSub}
-        onOpenChange={(open) => !open && setDetailSub(null)}
-        subscription={detailSub}
-        customerName={detailSub ? (customerMap.get(detailSub.customer_id)?.name ?? 'Unknown') : ''}
-        planName={detailSub ? (planMap.get(detailSub.plan_id)?.name ?? 'Unknown') : ''}
-      />
     </div>
   )
 }
