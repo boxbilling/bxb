@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -34,6 +34,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import OrgSwitcher from '@/components/OrgSwitcher'
 
@@ -173,10 +179,7 @@ function Sidebar({
 
       <div className="px-2 pb-2 border-t pt-2">
         <TooltipProvider delayDuration={0}>
-          <NavItem
-            item={{ name: 'Settings', href: '/admin/settings', icon: Settings }}
-            collapsed={collapsed}
-          />
+          <SettingsMenu collapsed={collapsed} />
         </TooltipProvider>
       </div>
     </div>
@@ -198,7 +201,7 @@ function MobileSidebar() {
   )
 }
 
-function ThemeToggle() {
+function useTheme() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   useEffect(() => {
@@ -206,20 +209,62 @@ function ThemeToggle() {
     setTheme(isDark ? 'dark' : 'light')
   }, [])
 
-  const toggleTheme = () => {
+  const toggle = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light'
     setTheme(newTheme)
     document.documentElement.classList.toggle('dark')
   }
 
+  return { theme, toggle }
+}
+
+function SettingsMenu({ collapsed }: { collapsed: boolean }) {
+  const { theme, toggle } = useTheme()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isActive = location.pathname.startsWith('/admin/settings')
+
+  const trigger = (
+    <DropdownMenuTrigger asChild>
+      <button
+        className={cn(
+          'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
+          isActive
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+            : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
+        )}
+      >
+        <Settings className="h-4 w-4 shrink-0" />
+        {!collapsed && <span>Settings</span>}
+      </button>
+    </DropdownMenuTrigger>
+  )
+
   return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8">
-      {theme === 'light' ? (
-        <Moon className="h-4 w-4" />
+    <DropdownMenu>
+      {collapsed ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent side="right">Settings</TooltipContent>
+        </Tooltip>
       ) : (
-        <Sun className="h-4 w-4" />
+        trigger
       )}
-    </Button>
+      <DropdownMenuContent side="right" align="end" className="w-48">
+        <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
+          <Settings className="mr-2 h-4 w-4" />
+          Organization
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={(e) => { e.preventDefault(); toggle() }}>
+          {theme === 'light' ? (
+            <Moon className="mr-2 h-4 w-4" />
+          ) : (
+            <Sun className="mr-2 h-4 w-4" />
+          )}
+          {theme === 'light' ? 'Dark mode' : 'Light mode'}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -233,11 +278,8 @@ export default function AdminLayout() {
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center justify-between border-b px-4 md:px-6">
+        <header className="flex h-14 items-center border-b px-4 md:px-6">
           <MobileSidebar />
-          <div className="flex items-center gap-2 ml-auto">
-            <ThemeToggle />
-          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
