@@ -19,6 +19,7 @@ from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.services.charge_models.factory import get_charge_calculator
 from app.services.coupon_service import CouponApplicationService
+from app.services.events_query import fetch_event_properties
 from app.services.tax_service import TaxCalculationService
 from app.services.usage_aggregation import UsageAggregationService
 
@@ -306,21 +307,10 @@ class InvoiceGenerationService:
 
             # For dynamic charges, fetch raw event properties
             if charge_model == ChargeModel.DYNAMIC:
-                from app.models.event import Event
-
-                raw_events = (
-                    self.db.query(Event)
-                    .filter(
-                        Event.external_customer_id == external_customer_id,
-                        Event.code == metric_code,
-                        Event.timestamp >= billing_period_start,
-                        Event.timestamp < billing_period_end,
-                    )
-                    .all()
+                event_properties_list = fetch_event_properties(
+                    self.db, external_customer_id, metric_code,
+                    billing_period_start, billing_period_end,
                 )
-                event_properties_list = [
-                    dict(e.properties) if e.properties else {} for e in raw_events
-                ]
 
             description = str(metric.name)
         else:
@@ -475,24 +465,11 @@ class InvoiceGenerationService:
             # For dynamic charges, fetch filtered raw event properties
             event_properties_list: list[dict[str, Any]] = []
             if charge_model == ChargeModel.DYNAMIC:
-                from app.models.event import Event
-
-                raw_events = (
-                    self.db.query(Event)
-                    .filter(
-                        Event.external_customer_id == external_customer_id,
-                        Event.code == metric_code,
-                        Event.timestamp >= billing_period_start,
-                        Event.timestamp < billing_period_end,
-                    )
-                    .all()
+                event_properties_list = fetch_event_properties(
+                    self.db, external_customer_id, metric_code,
+                    billing_period_start, billing_period_end,
+                    filters=filters,
                 )
-                # Apply same property filters to raw events
-                event_properties_list = [
-                    dict(e.properties) if e.properties else {}
-                    for e in raw_events
-                    if all(dict(e.properties or {}).get(k) == v for k, v in filters.items())
-                ]
 
             # Get calculator and compute amount
             calculator = get_charge_calculator(charge_model)
@@ -614,21 +591,10 @@ class InvoiceGenerationService:
 
             # For dynamic charges, fetch raw event properties
             if charge_model == ChargeModel.DYNAMIC:
-                from app.models.event import Event
-
-                raw_events = (
-                    self.db.query(Event)
-                    .filter(
-                        Event.external_customer_id == external_customer_id,
-                        Event.code == metric_code,
-                        Event.timestamp >= billing_period_start,
-                        Event.timestamp < billing_period_end,
-                    )
-                    .all()
+                event_properties_list = fetch_event_properties(
+                    self.db, external_customer_id, metric_code,
+                    billing_period_start, billing_period_end,
                 )
-                event_properties_list = [
-                    dict(e.properties) if e.properties else {} for e in raw_events
-                ]
 
             description = str(metric.name)
         else:

@@ -272,19 +272,12 @@ class UsageThresholdService:
 
         # For dynamic charges, fetch raw event properties
         if charge_model == ChargeModel.DYNAMIC:
-            from app.models.event import Event
+            from app.services.events_query import fetch_event_properties
 
-            raw_events = (
-                self.db.query(Event)
-                .filter(
-                    Event.external_customer_id == external_customer_id,
-                    Event.code == metric_code,
-                    Event.timestamp >= billing_period_start,
-                    Event.timestamp < billing_period_end,
-                )
-                .all()
+            event_properties_list = fetch_event_properties(
+                self.db, external_customer_id, metric_code,
+                billing_period_start, billing_period_end,
             )
-            event_properties_list = [dict(e.properties) if e.properties else {} for e in raw_events]
 
         calculator = get_charge_calculator(charge_model)
         assert calculator is not None  # All ChargeModel values have calculators

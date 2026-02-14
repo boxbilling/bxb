@@ -184,6 +184,36 @@ class UsageAggregationService:
 
         aggregation_type = AggregationType(metric.aggregation_type)
 
+        # Delegate to ClickHouse when enabled
+        from app.core.config import settings as _settings
+
+        if _settings.clickhouse_enabled:
+            from app.services.clickhouse_aggregation import clickhouse_aggregate
+
+            ch_result = clickhouse_aggregate(
+                organization_id=organization_id,
+                code=code,
+                external_customer_id=external_customer_id,
+                from_timestamp=from_timestamp,
+                to_timestamp=to_timestamp,
+                aggregation_type=aggregation_type,
+                field_name=str(metric.field_name) if metric.field_name else None,
+                expression=str(metric.expression) if metric.expression else None,
+                filters=filters,
+            )
+            ch_rounding_fn: str | None = (
+                str(metric.rounding_function) if metric.rounding_function else None
+            )
+            ch_rounding_prec: int | None = (
+                int(metric.rounding_precision)
+                if metric.rounding_precision is not None
+                else None
+            )
+            return UsageResult(
+                value=_apply_rounding(ch_result.value, ch_rounding_fn, ch_rounding_prec),
+                events_count=ch_result.events_count,
+            )
+
         query = self.db.query(Event).filter(
             Event.external_customer_id == external_customer_id,
             Event.code == code,

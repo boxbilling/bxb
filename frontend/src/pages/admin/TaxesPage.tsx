@@ -1,0 +1,745 @@
+import { useState } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  Plus,
+  Search,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Link,
+  Calculator,
+  CheckCircle,
+  Globe,
+} from 'lucide-react'
+import { format } from 'date-fns'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
+import type {
+  Tax,
+  TaxCreate,
+  TaxUpdate,
+  ApplyTaxRequest,
+} from '@/types/billing'
+
+function formatTaxRate(rate: string | number): string {
+  const num = typeof rate === 'string' ? parseFloat(rate) : rate
+  return `${(num * 100).toFixed(2)}%`
+}
+
+// --- Create/Edit Tax Dialog ---
+function TaxFormDialog({
+  open,
+  onOpenChange,
+  tax,
+  onSubmit,
+  isLoading,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  tax?: Tax | null
+  onSubmit: (data: TaxCreate | TaxUpdate) => void
+  isLoading: boolean
+}) {
+  const [formData, setFormData] = useState<{
+    code: string
+    name: string
+    rate: string
+    description: string
+    applied_to_organization: boolean
+  }>({
+    code: tax?.code ?? '',
+    name: tax?.name ?? '',
+    rate: tax?.rate ? (parseFloat(tax.rate) * 100).toFixed(2) : '',
+    description: tax?.description ?? '',
+    applied_to_organization: tax?.applied_to_organization ?? false,
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const rateDecimal = parseFloat(formData.rate) / 100
+    if (tax) {
+      const update: TaxUpdate = {}
+      if (formData.name) update.name = formData.name
+      if (formData.rate) update.rate = rateDecimal
+      if (formData.description !== (tax.description ?? ''))
+        update.description = formData.description || null
+      update.applied_to_organization = formData.applied_to_organization
+      onSubmit(update)
+    } else {
+      const create: TaxCreate = {
+        code: formData.code,
+        name: formData.name,
+        rate: rateDecimal,
+        applied_to_organization: formData.applied_to_organization,
+      }
+      if (formData.description) create.description = formData.description
+      onSubmit(create)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[450px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>
+              {tax ? 'Edit Tax' : 'Create Tax'}
+            </DialogTitle>
+            <DialogDescription>
+              {tax
+                ? 'Update tax rate settings'
+                : 'Define a new tax rate'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="code">Code *</Label>
+                <Input
+                  id="code"
+                  value={formData.code}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code: e.target.value })
+                  }
+                  placeholder="e.g. vat_standard"
+                  disabled={!!tax}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="e.g. Standard VAT"
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="rate">Rate (%) *</Label>
+              <Input
+                id="rate"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={formData.rate}
+                onChange={(e) =>
+                  setFormData({ ...formData, rate: e.target.value })
+                }
+                placeholder="e.g. 8.25"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Optional description"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="applied_to_organization"
+                checked={formData.applied_to_organization}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    applied_to_organization: e.target.checked,
+                  })
+                }
+                className="h-4 w-4 rounded border-input"
+              />
+              <Label htmlFor="applied_to_organization">
+                Apply as organization-wide default
+              </Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={
+                isLoading || (!tax && (!formData.code || !formData.name || !formData.rate))
+              }
+            >
+              {isLoading ? 'Saving...' : tax ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// --- Apply Tax to Entity Dialog ---
+function ApplyTaxDialog({
+  open,
+  onOpenChange,
+  tax,
+  customers,
+  invoices,
+  onSubmit,
+  isLoading,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  tax: Tax | null
+  customers: Array<{ id: string; name: string }>
+  invoices: Array<{ id: string; invoice_number: string }>
+  onSubmit: (data: ApplyTaxRequest) => void
+  isLoading: boolean
+}) {
+  const [entityType, setEntityType] = useState<string>('customer')
+  const [entityId, setEntityId] = useState('')
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!tax) return
+    onSubmit({
+      tax_code: tax.code,
+      taxable_type: entityType,
+      taxable_id: entityId,
+    })
+  }
+
+  const entities =
+    entityType === 'customer'
+      ? customers.map((c) => ({ id: c.id, label: c.name }))
+      : invoices.map((i) => ({ id: i.id, label: i.invoice_number }))
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[400px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Apply Tax to Entity</DialogTitle>
+            <DialogDescription>
+              Apply &quot;{tax?.name}&quot; ({tax ? formatTaxRate(tax.rate) : ''}) to an entity
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {tax && (
+              <div className="rounded-md bg-muted p-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tax</span>
+                  <span className="font-medium">{tax.code}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-muted-foreground">Rate</span>
+                  <span className="font-medium">{formatTaxRate(tax.rate)}</span>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="entity_type">Entity Type *</Label>
+              <Select
+                value={entityType}
+                onValueChange={(value) => {
+                  setEntityType(value)
+                  setEntityId('')
+                }}
+              >
+                <SelectTrigger id="entity_type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="invoice">Invoice</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="entity_id">
+                {entityType === 'customer' ? 'Customer' : 'Invoice'} *
+              </Label>
+              <Select value={entityId} onValueChange={setEntityId}>
+                <SelectTrigger id="entity_id">
+                  <SelectValue
+                    placeholder={`Select a ${entityType}`}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {entities.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading || !entityId}>
+              {isLoading ? 'Applying...' : 'Apply'}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export default function TaxesPage() {
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [orgFilter, setOrgFilter] = useState<string>('all')
+  const [formOpen, setFormOpen] = useState(false)
+  const [editingTax, setEditingTax] = useState<Tax | null>(null)
+  const [applyTax, setApplyTax] = useState<Tax | null>(null)
+  const [deleteTax, setDeleteTax] = useState<Tax | null>(null)
+
+  // Fetch taxes
+  const {
+    data: taxes = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['taxes'],
+    queryFn: () => taxesApi.list(),
+  })
+
+  // Fetch customers for apply dialog
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customersApi.list(),
+  })
+
+  // Fetch invoices for apply dialog
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => invoicesApi.list(),
+  })
+
+  // Filter taxes
+  const filteredTaxes = taxes.filter((t) => {
+    const matchesSearch =
+      !search ||
+      t.code.toLowerCase().includes(search.toLowerCase()) ||
+      t.name.toLowerCase().includes(search.toLowerCase())
+    const matchesOrg =
+      orgFilter === 'all' ||
+      (orgFilter === 'org' && t.applied_to_organization) ||
+      (orgFilter === 'specific' && !t.applied_to_organization)
+    return matchesSearch && matchesOrg
+  })
+
+  // Stats
+  const stats = {
+    total: taxes.length,
+    orgWide: taxes.filter((t) => t.applied_to_organization).length,
+    avgRate:
+      taxes.length > 0
+        ? taxes.reduce(
+            (sum, t) => sum + parseFloat(t.rate),
+            0
+          ) / taxes.length
+        : 0,
+    recent: taxes.filter((t) => {
+      const created = new Date(t.created_at)
+      const weekAgo = new Date()
+      weekAgo.setDate(weekAgo.getDate() - 7)
+      return created >= weekAgo
+    }).length,
+  }
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: (data: TaxCreate) => taxesApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taxes'] })
+      setFormOpen(false)
+      toast.success('Tax created successfully')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to create tax'
+      toast.error(message)
+    },
+  })
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ code, data }: { code: string; data: TaxUpdate }) =>
+      taxesApi.update(code, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taxes'] })
+      setEditingTax(null)
+      setFormOpen(false)
+      toast.success('Tax updated successfully')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to update tax'
+      toast.error(message)
+    },
+  })
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (code: string) => taxesApi.delete(code),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['taxes'] })
+      setDeleteTax(null)
+      toast.success('Tax deleted successfully')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to delete tax'
+      toast.error(message)
+    },
+  })
+
+  // Apply mutation
+  const applyMutation = useMutation({
+    mutationFn: (data: ApplyTaxRequest) => taxesApi.apply(data),
+    onSuccess: () => {
+      setApplyTax(null)
+      toast.success('Tax applied successfully')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to apply tax'
+      toast.error(message)
+    },
+  })
+
+  const handleSubmit = (data: TaxCreate | TaxUpdate) => {
+    if (editingTax) {
+      updateMutation.mutate({ code: editingTax.code, data: data as TaxUpdate })
+    } else {
+      createMutation.mutate(data as TaxCreate)
+    }
+  }
+
+  const handleEdit = (tax: Tax) => {
+    setEditingTax(tax)
+    setFormOpen(true)
+  }
+
+  const handleCloseForm = (open: boolean) => {
+    if (!open) {
+      setEditingTax(null)
+    }
+    setFormOpen(open)
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-destructive">
+          Failed to load taxes. Please try again.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Taxes</h2>
+          <p className="text-muted-foreground">
+            Manage tax rates and apply them to entities
+          </p>
+        </div>
+        <Button onClick={() => setFormOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Tax
+        </Button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Taxes
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Organization-wide
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.orgWide}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Average Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatTaxRate(stats.avgRate)}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Added This Week
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {stats.recent}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search by code or name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={orgFilter} onValueChange={setOrgFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Scope" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Taxes</SelectItem>
+            <SelectItem value="org">Organization-wide</SelectItem>
+            <SelectItem value="specific">Entity-specific</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Code</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Rate</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Org Default</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead className="w-[50px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                </TableRow>
+              ))
+            ) : filteredTaxes.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={7}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  <Calculator className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  No taxes found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredTaxes.map((tax) => (
+                <TableRow key={tax.id}>
+                  <TableCell>
+                    <code className="text-sm bg-muted px-1.5 py-0.5 rounded font-medium">
+                      {tax.code}
+                    </code>
+                  </TableCell>
+                  <TableCell className="font-medium">{tax.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Calculator className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium">
+                        {formatTaxRate(tax.rate)}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                    {tax.description || '—'}
+                  </TableCell>
+                  <TableCell>
+                    {tax.applied_to_organization ? (
+                      <Badge variant="default" className="bg-blue-600">
+                        <Globe className="mr-1 h-3 w-3" />
+                        Yes
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">No</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    {format(new Date(tax.created_at), 'MMM d, yyyy')}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(tax)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setApplyTax(tax)}>
+                          <Link className="mr-2 h-4 w-4" />
+                          Apply to Entity
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeleteTax(tax)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Create/Edit Dialog */}
+      <TaxFormDialog
+        open={formOpen}
+        onOpenChange={handleCloseForm}
+        tax={editingTax}
+        onSubmit={handleSubmit}
+        isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      {/* Apply Tax Dialog */}
+      <ApplyTaxDialog
+        open={!!applyTax}
+        onOpenChange={(open) => !open && setApplyTax(null)}
+        tax={applyTax}
+        customers={customers.map((c) => ({ id: c.id, name: c.name }))}
+        invoices={invoices.map((i) => ({ id: i.id, invoice_number: i.invoice_number }))}
+        onSubmit={(data) => applyMutation.mutate(data)}
+        isLoading={applyMutation.isPending}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!deleteTax}
+        onOpenChange={(open) => !open && setDeleteTax(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Tax</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteTax?.name}&quot; (
+              {deleteTax?.code})? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                deleteTax && deleteMutation.mutate(deleteTax.code)
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

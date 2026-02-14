@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from uuid import UUID
 
@@ -5,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.models.event import Event
 from app.schemas.event import EventCreate
+
+logger = logging.getLogger(__name__)
 
 
 class EventRepository:
@@ -68,6 +71,9 @@ class EventRepository:
         self.db.add(event)
         self.db.commit()
         self.db.refresh(event)
+
+        self._clickhouse_insert(data, organization_id)
+
         return event
 
     def create_or_get_existing(
@@ -122,6 +128,13 @@ class EventRepository:
             for event in new_events:
                 self.db.refresh(event)
 
+        # Dual-write new events to ClickHouse
+        new_event_data = [d for d in events_data if d.transaction_id not in {
+            e.transaction_id for e in events if e not in new_events
+        }][:ingested]
+        if new_event_data:
+            self._clickhouse_insert_batch(new_event_data, organization_id)
+
         return events, ingested, duplicates
 
     def delete(self, event_id: UUID, organization_id: UUID) -> bool:
@@ -131,3 +144,49 @@ class EventRepository:
         self.db.delete(event)
         self.db.commit()
         return True
+
+    def _clickhouse_insert(self, data: EventCreate, organization_id: UUID) -> None:
+        """Dual-write a single event to ClickHouse (fire-and-forget)."""
+        from app.core.config import settings
+
+        if not settings.clickhouse_enabled:
+            return
+
+        from app.services.clickhouse_event_store import insert_event
+
+        field_name = self._resolve_field_name(data.code, organization_id)
+        insert_event(data, organization_id, field_name=field_name)
+
+    def _clickhouse_insert_batch(
+        self, events_data: list[EventCreate], organization_id: UUID
+    ) -> None:
+        """Dual-write a batch of events to ClickHouse (fire-and-forget)."""
+        from app.core.config import settings
+
+        if not settings.clickhouse_enabled:
+            return
+
+        from app.services.clickhouse_event_store import insert_events_batch
+
+        field_names = self._resolve_field_names(events_data, organization_id)
+        insert_events_batch(events_data, organization_id, field_names=field_names)
+
+    def _resolve_field_name(self, code: str, organization_id: UUID) -> str | None:
+        """Look up the billable metric field_name for a given code."""
+        from app.repositories.billable_metric_repository import BillableMetricRepository
+
+        metric_repo = BillableMetricRepository(self.db)
+        metric = metric_repo.get_by_code(code, organization_id)
+        if metric and metric.field_name:
+            return str(metric.field_name)
+        return None
+
+    def _resolve_field_names(
+        self, events_data: list[EventCreate], organization_id: UUID
+    ) -> dict[str, str | None]:
+        """Look up field_names for all unique codes in a batch."""
+        unique_codes = {e.code for e in events_data}
+        result: dict[str, str | None] = {}
+        for code in unique_codes:
+            result[code] = self._resolve_field_name(code, organization_id)
+        return result

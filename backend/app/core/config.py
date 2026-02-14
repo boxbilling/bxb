@@ -37,5 +37,12 @@ class Settings(BaseSettings):
     adyen_environment: str = "test"  # "test" or "live"
     adyen_live_url_prefix: str = ""
 
+    # ClickHouse settings
+    CLICKHOUSE_URL: str = ""  # e.g. clickhouse://user:pass@host:port/database
+
+    @property
+    def clickhouse_enabled(self) -> bool:
+        return bool(self.CLICKHOUSE_URL)
+
 
 settings = Settings()

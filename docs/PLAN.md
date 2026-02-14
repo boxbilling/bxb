@@ -1,496 +1,193 @@
-# bxb Development Plan
+# Plan: ClickHouse Integration for Events Engine
 
-> **bxb** - An open-source billing and metering platform inspired by Lago
+## Overview
 
-## 1. Project Goals and Scope
+Adapt Lago's ClickHouse-based events engine pattern for bxb. The core idea: **dual-write** events to both SQL (for API listing/get-by-ID) and ClickHouse (for high-performance aggregation), with ClickHouse as an **optional** backend toggled via `CLICKHOUSE_URL` env var. When unset, the current SQLite/PostgreSQL behavior is preserved — tests continue using SQLite with no ClickHouse dependency.
 
-### Vision
-Build a modern, open-source billing platform that handles usage-based, subscription-based, and hybrid pricing models. bxb aims to be the developer-friendly alternative to Chargebee, Recurly, and Stripe Billing.
-
-### Core Goals
-1. **Developer Experience**: OpenAPI-first design with auto-generated clients
-2. **Flexibility**: Support any pricing model (usage-based, subscription, hybrid)
-3. **Self-Hosted Friendly**: Easy Docker deployment
-4. **Quality First**: 100% test coverage, always
-5. **Real-Time**: Event-driven architecture for instant metering
-6. **Extensible**: Clean architecture for adding payment providers
-7. **UCP Native**: Payment abstraction via Universal Checkout Protocol (https://ucp.dev)
-
-### What Makes bxb Different from Lago
-
-| Aspect | Lago | bxb |
-|--------|------|-----|
-| Backend | Ruby on Rails | Python/FastAPI |
-| Type Safety | Limited | Full (Pydantic + mypy) |
-| Testing | ~70% coverage | 100% coverage (enforced) |
-| API Design | REST + GraphQL | REST (OpenAPI 3.1) |
-| Async Support | Limited | Native async/await |
-| Learning Curve | Steep | Moderate |
-
----
-
-## 2. Tech Stack
-
-### Backend
-- **Language**: Python 3.12+
-- **Framework**: FastAPI (async, OpenAPI native)
-- **ORM**: SQLAlchemy 2.0 (async support)
-- **Main Database**: Postgres
-- **Streamed Events**: ClickHouse
-- **Validation**: Pydantic v2
-- **Migrations**: Alembic
-- **Background Jobs**: arq (Redis-based async)
-- **Package Manager**: uv
-
-### Database
-- **Primary**: PostgreSQL 16 (ACID transactions, JSONB)
-- **Queue/Cache**: Redis (for arq background jobs)
-
-### Frontend
-- **Framework**: React 18+ with TypeScript
-- **Build Tool**: Vite
-- **UI Library**: Radix UI + Tailwind CSS
-- **API Client**: Auto-generated from OpenAPI
-
-### Testing & Quality
-- **Testing**: pytest + pytest-cov
-- **Linting**: ruff (replaces black, isort, flake8)
-- **Type Checking**: mypy (strict mode)
-- **Coverage**: 100% enforced via CI
-
-### Infrastructure
-- **CI/CD**: GitHub Actions
-- **Containerization**: Docker
-- **Local Dev**: Docker Compose
-
----
-
-## 3. Core Entities (Based on Lago)
-
-### Entity Relationship
+## Architecture (Adapted from Lago)
 
 ```
-┌─────────────────┐       ┌──────────────────┐
-│   Organization  │──────<│     Customer     │
-└─────────────────┘       └──────────────────┘
-                                   │
-                                   │ 1:N
-                                   ▼
-┌─────────────────┐       ┌──────────────────┐
-│      Plan       │──────<│   Subscription   │
-└─────────────────┘       └──────────────────┘
-        │                          │
-        │ N:M                      │ 1:N
-        ▼                          ▼
-┌─────────────────┐       ┌──────────────────┐
-│ BillableMetric  │       │      Invoice     │
-└─────────────────┘       └──────────────────┘
-        │                          │
-        │ 1:N                      │ 1:N
-        ▼                          ▼
-┌─────────────────┐       ┌──────────────────┐
-│      Event      │       │       Fee        │
-└─────────────────┘       └──────────────────┘
+POST /v1/events/
+    ↓
+EventRepository.create()
+    ├→ SQL (existing) — for API list/get/idempotency
+    └→ ClickHouseEventStore.insert() — for aggregation (when configured)
+
+UsageAggregationService
+    ├→ CLICKHOUSE_URL set? → ClickHouseAggregationService (new)
+    └→ CLICKHOUSE_URL unset? → current SQL-based aggregation (unchanged)
 ```
 
-### Models
+**Key Lago patterns we're adopting:**
+- **Store factory** pattern (Lago's `StoreFactory`) → our `UsageAggregationService` delegates based on config
+- **events_enriched table** schema with `decimal_value` column for pre-computed numeric values
+- **ReplacingMergeTree** engine for automatic deduplication by `transaction_id`
+- **Query-time deduplication** via `argMax(value, enriched_at)` as a safety net
+- **Direct write** instead of Kafka (we don't have Kafka infrastructure)
 
-#### Customer
+## Implementation Steps
+
+### Step 1: Add `clickhouse-connect` dependency and ClickHouse config
+
+**Files:** `backend/pyproject.toml`, `backend/app/core/config.py`
+
+- Add `clickhouse-connect>=0.8.0` to dependencies
+- Add `CLICKHOUSE_URL: str = ""` to `Settings` (empty = disabled)
+- Add helper `@property clickhouse_enabled` that returns `bool(self.CLICKHOUSE_URL)`
+
+### Step 2: Create ClickHouse client module
+
+**New file:** `backend/app/core/clickhouse.py`
+
+- Singleton `get_clickhouse_client()` function that creates/caches a `clickhouse_connect.Client`
+- Parses `CLICKHOUSE_URL` (format: `clickhouse://user:pass@host:port/database`)
+- Returns `None` when `CLICKHOUSE_URL` is empty
+- Table creation on first connection (events_raw table)
+
+### Step 3: Create ClickHouse events table schema
+
+**Table: `events_raw`** (adapted from Lago's `events_enriched`)
+
+```sql
+CREATE TABLE IF NOT EXISTS events_raw (
+    organization_id String,
+    transaction_id String,
+    external_customer_id String,
+    code String,
+    timestamp DateTime64(3),
+    properties String,          -- JSON string (ClickHouse JSON type)
+    value Nullable(String),     -- extracted field_name value
+    decimal_value Nullable(Decimal(38, 26)),  -- numeric conversion
+    created_at DateTime64(3) DEFAULT now()
+)
+ENGINE = ReplacingMergeTree(created_at)
+PRIMARY KEY (organization_id, code, external_customer_id, toDate(timestamp))
+ORDER BY (organization_id, code, external_customer_id, toDate(timestamp), timestamp, transaction_id)
+```
+
+Key design choices (from Lago):
+- `ReplacingMergeTree` deduplicates by `transaction_id` within the ORDER BY automatically
+- PRIMARY KEY prefix enables fast aggregation queries by `(org, code, customer, date)`
+- `decimal_value` pre-computes the numeric field for SUM/MAX aggregations
+- `properties` stored as JSON string for UNIQUE_COUNT and CUSTOM aggregations
+
+### Step 4: Create ClickHouse event store
+
+**New file:** `backend/app/services/clickhouse_event_store.py`
+
 ```python
-class Customer(Base):
-    __tablename__ = "customers"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    external_id: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    email: Mapped[str | None] = mapped_column(String(255))
-    currency: Mapped[str] = mapped_column(String(3), default="USD")
-    timezone: Mapped[str] = mapped_column(String(50), default="UTC")
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
+class ClickHouseEventStore:
+    """Write and query events in ClickHouse."""
+
+    def insert(self, event_data: EventCreate, organization_id: UUID, field_name: str | None = None) -> None:
+        """Insert a single event into ClickHouse."""
+
+    def insert_batch(self, events: list[EventCreate], organization_id: UUID) -> None:
+        """Insert a batch of events into ClickHouse."""
+
+    def ensure_table(self) -> None:
+        """Create events_raw table if it doesn't exist."""
 ```
 
-#### BillableMetric
+- Uses `clickhouse_connect` client for inserts
+- Extracts `value`/`decimal_value` from properties based on the billable metric's `field_name` at write time
+- Batch insert uses `client.insert()` with column-oriented data for efficiency
+
+### Step 5: Create ClickHouse aggregation service
+
+**New file:** `backend/app/services/clickhouse_aggregation.py`
+
 ```python
-class AggregationType(str, Enum):
-    COUNT = "count"
-    SUM = "sum"
-    MAX = "max"
-    UNIQUE_COUNT = "unique_count"
+class ClickHouseAggregationService:
+    """Aggregation queries against ClickHouse (adapted from Lago's ClickhouseStore)."""
 
-class BillableMetric(Base):
-    __tablename__ = "billable_metrics"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    code: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text)
-    aggregation_type: Mapped[AggregationType]
-    field_name: Mapped[str | None] = mapped_column(String(255))  # For SUM, MAX
+    def aggregate(self, external_customer_id, code, from_ts, to_ts,
+                  aggregation_type, field_name, filters, org_id) -> UsageResult:
+        """Run aggregation query and return UsageResult."""
+
+    def get_events(self, external_customer_id, code, from_ts, to_ts, org_id) -> list[dict]:
+        """Get raw events for DYNAMIC charge model."""
 ```
 
-#### Plan
-```python
-class PlanInterval(str, Enum):
-    WEEKLY = "weekly"
-    MONTHLY = "monthly"
-    QUARTERLY = "quarterly"
-    YEARLY = "yearly"
+Aggregation queries (from Lago's `clickhouse_store.rb`):
 
-class Plan(Base):
-    __tablename__ = "plans"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    code: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    name: Mapped[str] = mapped_column(String(255))
-    description: Mapped[str | None] = mapped_column(Text)
-    interval: Mapped[PlanInterval]
-    amount_cents: Mapped[int] = mapped_column(default=0)  # Base subscription fee
-    currency: Mapped[str] = mapped_column(String(3), default="USD")
-    trial_period_days: Mapped[int] = mapped_column(default=0)
-```
+| Type | ClickHouse SQL |
+|------|---------------|
+| **COUNT** | `SELECT count() FROM events_raw WHERE ...` |
+| **SUM** | `SELECT sum(decimal_value) FROM events_raw WHERE ...` |
+| **MAX** | `SELECT max(decimal_value) FROM events_raw WHERE ...` |
+| **UNIQUE_COUNT** | `SELECT uniq(JSONExtractString(properties, :field)) FROM events_raw WHERE ...` |
+| **LATEST** | `SELECT decimal_value FROM events_raw WHERE ... ORDER BY timestamp DESC LIMIT 1` |
+| **WEIGHTED_SUM** | Window function query with cumulative sums and duration ratios (adapted from Lago's `WeightedSumQuery`) |
+| **CUSTOM** | Fetch events, evaluate expression in Python (same as current) |
 
-#### Charge (connects Plan to BillableMetric)
-```python
-class ChargeModel(str, Enum):
-    STANDARD = "standard"      # Fixed price per unit
-    GRADUATED = "graduated"    # Tiered pricing
-    VOLUME = "volume"          # Volume discounts
-    PACKAGE = "package"        # Price per X units
-    PERCENTAGE = "percentage"  # % of transaction
+Property-based filters: `JSONExtractString(properties, :key) = :value`
 
-class Charge(Base):
-    __tablename__ = "charges"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("plans.id"))
-    billable_metric_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("billable_metrics.id"))
-    charge_model: Mapped[ChargeModel]
-    properties: Mapped[dict] = mapped_column(JSONB, default=dict)
-    # Properties vary by model: amount, graduated_ranges, volume_ranges, etc.
-```
+### Step 6: Modify `UsageAggregationService` to delegate
 
-#### Subscription
-```python
-class SubscriptionStatus(str, Enum):
-    PENDING = "pending"
-    ACTIVE = "active"
-    CANCELED = "canceled"
-    TERMINATED = "terminated"
+**File:** `backend/app/services/usage_aggregation.py`
 
-class Subscription(Base):
-    __tablename__ = "subscriptions"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    external_id: Mapped[str] = mapped_column(String(255), unique=True)
-    customer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("customers.id"))
-    plan_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("plans.id"))
-    status: Mapped[SubscriptionStatus] = mapped_column(default=SubscriptionStatus.ACTIVE)
-    started_at: Mapped[datetime]
-    ending_at: Mapped[datetime | None]
-    canceled_at: Mapped[datetime | None]
-    billing_time: Mapped[str] = mapped_column(default="calendar")  # calendar or anniversary
-```
+- Add a check at the top of `aggregate_usage_with_count()`:
+  - If `settings.clickhouse_enabled`, delegate to `ClickHouseAggregationService`
+  - Otherwise, use current SQL-based logic (unchanged)
+- Same delegation in `get_customer_usage_summary()`
 
-#### Event (usage data)
-```python
-class Event(Base):
-    __tablename__ = "events"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    transaction_id: Mapped[str] = mapped_column(String(255), unique=True)  # Idempotency key
-    external_customer_id: Mapped[str] = mapped_column(String(255), index=True)
-    code: Mapped[str] = mapped_column(String(255), index=True)  # Billable metric code
-    timestamp: Mapped[datetime] = mapped_column(index=True)
-    properties: Mapped[dict] = mapped_column(JSONB, default=dict)
-    created_at: Mapped[datetime] = mapped_column(default=datetime.utcnow)
-```
+### Step 7: Modify `EventRepository` for dual-write
 
-#### Invoice
-```python
-class InvoiceStatus(str, Enum):
-    DRAFT = "draft"
-    FINALIZED = "finalized"
-    PAID = "paid"
-    VOIDED = "voided"
+**File:** `backend/app/repositories/event_repository.py`
 
-class Invoice(Base):
-    __tablename__ = "invoices"
-    
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    number: Mapped[str] = mapped_column(String(255), unique=True)
-    customer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("customers.id"))
-    subscription_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("subscriptions.id"))
-    status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
-    currency: Mapped[str] = mapped_column(String(3))
-    amount_cents: Mapped[int] = mapped_column(default=0)
-    taxes_amount_cents: Mapped[int] = mapped_column(default=0)
-    total_amount_cents: Mapped[int] = mapped_column(default=0)
-    issuing_date: Mapped[date]
-    due_date: Mapped[date]
-```
+- In `create()` and `create_batch()`, after SQL commit, fire-and-forget insert to ClickHouse
+- Only when `settings.clickhouse_enabled`
+- ClickHouse insert failures are logged but don't fail the API request (eventual consistency)
 
----
+### Step 8: Modify raw event queries for DYNAMIC charges
 
-## 4. MVP Feature Set
+**Files:** `backend/app/services/invoice_generation.py`, `backend/app/services/usage_threshold_service.py`
 
-### Must Have (Phase 1-2)
-1. **Customer Management**
-   - Create, read, update, delete customers
-   - External ID for integration
+- Where these services query `Event` model directly for raw event properties (DYNAMIC charge model), add ClickHouse-aware path
+- When ClickHouse is enabled, query `events_raw` for properties instead of SQL
 
-2. **Billable Metrics**
-   - Define what to meter (API calls, storage, users, etc.)
-   - Aggregation types: COUNT, SUM, MAX, UNIQUE_COUNT
+### Step 9: Tests
 
-3. **Plans & Charges**
-   - Create plans with base fees
-   - Attach charges (usage-based pricing)
-   - Standard charge model (price per unit)
+**New file:** `backend/tests/test_clickhouse.py`
 
-4. **Subscriptions**
-   - Subscribe customers to plans
-   - Handle billing periods
+All ClickHouse code will be tested by **mocking the clickhouse_connect client**. This means:
+- No actual ClickHouse server needed for tests
+- Mock `client.query()` and `client.insert()` to verify correct SQL and parameters
+- Test the aggregation service returns correct `UsageResult` from mocked query results
+- Test dual-write: verify ClickHouse insert is called after SQL commit
+- Test fallback: verify ClickHouse code is skipped when `CLICKHOUSE_URL` is empty
+- Test each aggregation type produces correct ClickHouse SQL
 
-5. **Event Ingestion**
-   - Accept usage events via API
-   - Idempotency via transaction_id
-   - Timestamp support
+**Modified file:** `backend/tests/test_events.py`
 
-6. **Usage Aggregation**
-   - Aggregate events per billing period
-   - Support all aggregation types
+- Add tests verifying dual-write behavior (mock ClickHouse client)
+- Verify existing behavior unchanged when `CLICKHOUSE_URL` is empty
 
-7. **Invoice Generation**
-   - Calculate subscription fees
-   - Calculate usage fees
-   - Generate invoices
+### Step 10: Update existing test files for coverage
 
----
+Any services modified (invoice_generation, usage_threshold_service) need test updates to cover the new ClickHouse branches.
 
-## 5. Development Phases
+## Files Changed Summary
 
-### Phase 1: Foundation (Week 1-2) ✅
-- [x] Project setup with FastAPI + React
-- [x] CI/CD with 100% coverage enforcement
-- [x] Docker Compose for local dev
-- [ ] Database schema (Customer, BillableMetric)
-- [ ] Basic CRUD APIs for Customer
+| File | Change |
+|------|--------|
+| `backend/pyproject.toml` | Add `clickhouse-connect` dependency |
+| `backend/app/core/config.py` | Add `CLICKHOUSE_URL` setting |
+| `backend/app/core/clickhouse.py` | **NEW** — Client singleton, table setup |
+| `backend/app/services/clickhouse_event_store.py` | **NEW** — Write events to ClickHouse |
+| `backend/app/services/clickhouse_aggregation.py` | **NEW** — Aggregation queries |
+| `backend/app/services/usage_aggregation.py` | Delegate to ClickHouse when enabled |
+| `backend/app/repositories/event_repository.py` | Dual-write to ClickHouse |
+| `backend/app/services/invoice_generation.py` | ClickHouse path for DYNAMIC charges |
+| `backend/app/services/usage_threshold_service.py` | ClickHouse path for DYNAMIC charges |
+| `backend/tests/test_clickhouse.py` | **NEW** — Full test coverage |
+| `backend/tests/test_events.py` | Additional dual-write tests |
 
-### Phase 2: Core Billing (Week 3-4) ✅
-- [x] BillableMetric API
-- [x] Plan & Charge models
-- [x] Plan API
-- [x] Subscription model and API
+## What We're NOT Doing
 
-### Phase 3: Event Ingestion (Week 5-6) ✅
-- [x] Event model and API
-- [x] Batch event ingestion
-- [x] Idempotency handling
-- [x] Event validation
-
-### Phase 4: Aggregation Engine (Week 7-8) ✅
-- [x] Usage aggregation service
-- [x] All aggregation types
-- [x] Billing period calculations
-- [x] Background job for aggregation
-
-### Phase 5: Invoicing (Week 9-10) ✅
-- [x] Invoice generation
-- [x] Fee calculation
-- [x] Invoice finalization
-- [ ] PDF generation (optional)
-
-### Phase 6: Payments (Week 11-12) ✅
-- [x] Payment provider abstraction (Stripe + UCP + Manual, extensible for PayPal, Adyen, etc.)
-- [x] Checkout session management
-- [x] Payment webhook handling
-- [x] Invoice status updates on payment
-- [x] UCP (Universal Commerce Protocol) integration - https://ucp.dev
-
-### Phase 7: Advanced Charges (Week 13-14) ✅
-- [x] Graduated pricing
-- [x] Volume pricing
-- [x] Package pricing
-- [x] Percentage pricing
-- [x] Graduated percentage pricing
-
-### Phase 8: Polish (Week 15-16)
-- [ ] Admin UI improvements
-- [ ] API documentation
-- [ ] Performance optimization
-- [ ] Security audit
-
----
-
-## 6. API Design
-
-Following Lago's API patterns for familiarity.
-
-### Customers
-```
-POST   /v1/customers           Create customer
-GET    /v1/customers           List customers
-GET    /v1/customers/:id       Get customer
-PUT    /v1/customers/:id       Update customer
-DELETE /v1/customers/:id       Delete customer
-```
-
-### Billable Metrics
-```
-POST   /v1/billable_metrics    Create metric
-GET    /v1/billable_metrics    List metrics
-GET    /v1/billable_metrics/:code  Get metric
-PUT    /v1/billable_metrics/:code  Update metric
-DELETE /v1/billable_metrics/:code  Delete metric
-```
-
-### Plans
-```
-POST   /v1/plans               Create plan
-GET    /v1/plans               List plans
-GET    /v1/plans/:code         Get plan
-PUT    /v1/plans/:code         Update plan
-DELETE /v1/plans/:code         Delete plan
-```
-
-### Subscriptions
-```
-POST   /v1/subscriptions       Create subscription
-GET    /v1/subscriptions       List subscriptions
-GET    /v1/subscriptions/:id   Get subscription
-DELETE /v1/subscriptions/:id   Terminate subscription
-```
-
-### Events
-```
-POST   /v1/events              Send event
-POST   /v1/events/batch        Send batch events
-GET    /v1/events              List events (for debugging)
-```
-
-### Invoices
-```
-GET    /v1/invoices            List invoices
-GET    /v1/invoices/:id        Get invoice
-POST   /v1/invoices/:id/finalize  Finalize invoice
-```
-
----
-
-## 7. Testing Strategy
-
-### 100% Coverage Requirement
-
-Every line of code must be tested. No exceptions.
-
-```bash
-# Run locally before pushing
-make test-cov
-```
-
-### Test Structure
-```
-tests/
-├── conftest.py           # Fixtures (db, client)
-├── test_api.py           # Basic health checks
-├── test_customers.py     # Customer API tests
-├── test_billable_metrics.py
-├── test_plans.py
-├── test_subscriptions.py
-├── test_events.py
-├── test_invoices.py
-└── test_services/
-    ├── test_aggregation.py
-    └── test_billing.py
-```
-
-### Test Categories
-1. **Unit Tests**: Services, utilities, pure functions
-2. **Integration Tests**: API endpoints with database
-3. **Edge Cases**: Error handling, validation
-
----
-
-## 8. Directory Structure
-
-```
-bxb/
-├── backend/
-│   ├── app/
-│   │   ├── alembic/          # Database migrations
-│   │   │   └── versions/
-│   │   ├── core/
-│   │   │   ├── config.py     # Settings
-│   │   │   ├── database.py   # DB connection
-│   │   │   └── deps.py       # Dependencies
-│   │   ├── models/           # SQLAlchemy models
-│   │   │   ├── customer.py
-│   │   │   ├── billable_metric.py
-│   │   │   ├── plan.py
-│   │   │   ├── subscription.py
-│   │   │   ├── event.py
-│   │   │   └── invoice.py
-│   │   ├── repositories/     # Data access
-│   │   ├── routers/          # API endpoints
-│   │   │   ├── customers.py
-│   │   │   ├── billable_metrics.py
-│   │   │   ├── plans.py
-│   │   │   ├── subscriptions.py
-│   │   │   ├── events.py
-│   │   │   └── invoices.py
-│   │   ├── schemas/          # Pydantic models
-│   │   ├── services/         # Business logic
-│   │   │   ├── aggregation.py
-│   │   │   ├── billing.py
-│   │   │   └── invoice.py
-│   │   └── main.py
-│   ├── tests/
-│   └── pyproject.toml
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── lib/
-│   │   │   └── schema.d.ts   # Generated from OpenAPI
-│   │   └── App.tsx
-│   └── package.json
-├── docker-compose.yml
-├── Makefile
-└── README.md
-```
-
----
-
-## 9. Commit Strategy
-
-**Commit after each logical unit of work.** Each commit should:
-
-1. Pass all tests (100% coverage)
-2. Pass linting
-3. Be deployable
-
-### Commit Message Format
-```
-feat(customers): add customer CRUD API
-
-- Add Customer model with migrations
-- Add CustomerRepository
-- Add /v1/customers endpoints
-- Add tests (100% coverage)
-```
-
-### Phase Commits
-- End of each phase = git tag (e.g., `v0.1.0-phase1`)
-- Squash merge to main
-
----
-
-## 10. Next Steps
-
-1. **Create Customer model** with migrations
-2. **Implement Customer API** with full CRUD
-3. **Write tests** to 100% coverage
-4. **Commit and push**
-
-Let's build this! 🚀
+- **No Kafka** — Direct write from API to ClickHouse (we don't have Kafka infra)
+- **No enrichment pipeline** — We enrich at write time (extract `decimal_value` from properties)
+- **No separate enriched table** — Single `events_raw` table with pre-computed values
+- **No ClickHouse migrations framework** — Table created programmatically on startup
+- **No Alembic migration** — ClickHouse schema is managed separately
