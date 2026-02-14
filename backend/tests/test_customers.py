@@ -1,13 +1,19 @@
 """Customer API tests for bxb."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.billable_metric import BillableMetric
+from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer, UUIDType, generate_uuid, utc_now
+from app.models.event import Event
+from app.models.plan import Plan, PlanInterval
+from app.models.subscription import BillingTime, Subscription, SubscriptionStatus
 from app.repositories.customer_repository import CustomerRepository
 from app.schemas.customer import CustomerCreate
 from tests.conftest import DEFAULT_ORG_ID
@@ -487,3 +493,293 @@ class TestCustomersAPI:
             json={"invoice_grace_period": -1},
         )
         assert response.status_code == 422
+
+
+# Fixed reference dates for usage endpoint tests
+_SUB_START = datetime(2026, 1, 1, tzinfo=UTC)
+_EVENT_TIME = datetime(2026, 2, 10, tzinfo=UTC)
+
+
+class TestCustomerUsageAPI:
+    """Tests for customer usage endpoints."""
+
+    @pytest.fixture
+    def usage_setup(self, db_session):
+        """Create customer, plan, subscription, metric, charge, and events for usage tests."""
+        customer = Customer(external_id="usage-cust-001", name="Usage Customer")
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = Plan(
+            code="usage-plan",
+            name="Usage Plan",
+            interval=PlanInterval.MONTHLY.value,
+            currency="USD",
+        )
+        db_session.add(plan)
+        db_session.commit()
+        db_session.refresh(plan)
+
+        subscription = Subscription(
+            external_id="usage-sub-001",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            billing_time=BillingTime.CALENDAR.value,
+            started_at=_SUB_START,
+        )
+        db_session.add(subscription)
+        db_session.commit()
+        db_session.refresh(subscription)
+
+        metric = BillableMetric(
+            code="usage_api_calls",
+            name="API Calls",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        charge = Charge(
+            plan_id=plan.id,
+            billable_metric_id=metric.id,
+            charge_model=ChargeModel.STANDARD.value,
+            properties={"unit_price": "0.10"},
+        )
+        db_session.add(charge)
+        db_session.commit()
+        db_session.refresh(charge)
+
+        # Add events in the current billing period (Feb 2026)
+        for i in range(5):
+            db_session.add(
+                Event(
+                    external_customer_id=str(customer.external_id),
+                    code="usage_api_calls",
+                    transaction_id=f"usage_tx_{uuid.uuid4()}",
+                    timestamp=_EVENT_TIME + timedelta(hours=i),
+                    properties={},
+                )
+            )
+        db_session.commit()
+
+        return {
+            "customer": customer,
+            "plan": plan,
+            "subscription": subscription,
+            "metric": metric,
+            "charge": charge,
+        }
+
+    def test_current_usage_with_charges(self, client: TestClient, db_session, usage_setup):
+        """Test GET current_usage returns charges and amount."""
+        customer = usage_setup["customer"]
+        subscription = usage_setup["subscription"]
+
+        response = client.get(
+            f"/v1/customers/{customer.external_id}/current_usage",
+            params={"subscription_id": str(subscription.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["currency"] == "USD"
+        assert data["from_datetime"] is not None
+        assert data["to_datetime"] is not None
+        assert len(data["charges"]) == 1
+        charge = data["charges"][0]
+        assert charge["billable_metric"]["code"] == "usage_api_calls"
+        assert charge["billable_metric"]["name"] == "API Calls"
+        assert float(charge["units"]) == 5.0
+        # 5 * 0.10 = 0.50
+        assert float(charge["amount_cents"]) == 0.5
+        assert float(data["amount_cents"]) == 0.5
+
+    def test_projected_usage(self, client: TestClient, db_session, usage_setup):
+        """Test GET projected_usage returns same as current for now."""
+        customer = usage_setup["customer"]
+        subscription = usage_setup["subscription"]
+
+        response = client.get(
+            f"/v1/customers/{customer.external_id}/projected_usage",
+            params={"subscription_id": str(subscription.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["currency"] == "USD"
+        assert len(data["charges"]) == 1
+        assert float(data["charges"][0]["units"]) == 5.0
+        assert float(data["amount_cents"]) == 0.5
+
+    def test_past_usage_with_multiple_periods(self, client: TestClient, db_session, usage_setup):
+        """Test GET past_usage returns usage for completed billing periods."""
+        customer = usage_setup["customer"]
+        subscription = usage_setup["subscription"]
+
+        # Add events in January 2026 (past billing period)
+        jan_time = datetime(2026, 1, 15, tzinfo=UTC)
+        for i in range(3):
+            db_session.add(
+                Event(
+                    external_customer_id=str(customer.external_id),
+                    code="usage_api_calls",
+                    transaction_id=f"usage_past_jan_{uuid.uuid4()}",
+                    timestamp=jan_time + timedelta(hours=i),
+                    properties={},
+                )
+            )
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/customers/{customer.external_id}/past_usage",
+            params={
+                "external_subscription_id": str(subscription.external_id),
+                "periods_count": 2,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        # First period (most recent past) should be January
+        # Second period should be December (no events, zero usage)
+        for period in data:
+            assert period["currency"] == "USD"
+            assert period["from_datetime"] is not None
+            assert period["to_datetime"] is not None
+            assert "charges" in period
+
+    def test_current_usage_customer_not_found(self, client: TestClient):
+        """Test 404 when customer external_id does not exist."""
+        fake_sub_id = str(uuid.uuid4())
+        response = client.get(
+            "/v1/customers/nonexistent-customer/current_usage",
+            params={"subscription_id": fake_sub_id},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+    def test_projected_usage_customer_not_found(self, client: TestClient):
+        """Test 404 for projected_usage with unknown customer."""
+        fake_sub_id = str(uuid.uuid4())
+        response = client.get(
+            "/v1/customers/nonexistent-customer/projected_usage",
+            params={"subscription_id": fake_sub_id},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+    def test_past_usage_customer_not_found(self, client: TestClient):
+        """Test 404 for past_usage with unknown customer."""
+        response = client.get(
+            "/v1/customers/nonexistent-customer/past_usage",
+            params={"external_subscription_id": "nonexistent-sub"},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+    def test_current_usage_subscription_not_belonging_to_customer(
+        self, client: TestClient, db_session, usage_setup
+    ):
+        """Test 404 when subscription does not belong to the customer."""
+        # Create another customer
+        other_customer = Customer(external_id="other-cust-001", name="Other Customer")
+        db_session.add(other_customer)
+        db_session.commit()
+        db_session.refresh(other_customer)
+
+        subscription = usage_setup["subscription"]
+
+        response = client.get(
+            f"/v1/customers/{other_customer.external_id}/current_usage",
+            params={"subscription_id": str(subscription.id)},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription does not belong to this customer"
+
+    def test_current_usage_subscription_not_found(
+        self, client: TestClient, db_session, usage_setup
+    ):
+        """Test 404 when subscription_id does not exist."""
+        customer = usage_setup["customer"]
+        fake_sub_id = str(uuid.uuid4())
+
+        response = client.get(
+            f"/v1/customers/{customer.external_id}/current_usage",
+            params={"subscription_id": fake_sub_id},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription not found"
+
+    def test_past_usage_subscription_not_found(
+        self, client: TestClient, db_session, usage_setup
+    ):
+        """Test 404 for past_usage when subscription external_id not found."""
+        customer = usage_setup["customer"]
+
+        response = client.get(
+            f"/v1/customers/{customer.external_id}/past_usage",
+            params={"external_subscription_id": "nonexistent-sub"},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription not found"
+
+    def test_past_usage_subscription_not_belonging_to_customer(
+        self, client: TestClient, db_session, usage_setup
+    ):
+        """Test 404 for past_usage when subscription belongs to another customer."""
+        other_customer = Customer(external_id="other-past-cust", name="Other Past Customer")
+        db_session.add(other_customer)
+        db_session.commit()
+        db_session.refresh(other_customer)
+
+        subscription = usage_setup["subscription"]
+
+        response = client.get(
+            f"/v1/customers/{other_customer.external_id}/past_usage",
+            params={
+                "external_subscription_id": str(subscription.external_id),
+            },
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription does not belong to this customer"
+
+    def test_past_usage_plan_not_found(self, client: TestClient, db_session):
+        """Test 404 for past_usage when subscription's plan is deleted."""
+        customer = Customer(external_id="plan-del-cust", name="Plan Del Customer")
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        plan = Plan(
+            code="plan-del-test",
+            name="Plan Del Test",
+            interval=PlanInterval.MONTHLY.value,
+            currency="USD",
+        )
+        db_session.add(plan)
+        db_session.commit()
+        db_session.refresh(plan)
+
+        subscription = Subscription(
+            external_id="plan-del-sub",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            billing_time=BillingTime.CALENDAR.value,
+            started_at=_SUB_START,
+        )
+        db_session.add(subscription)
+        db_session.commit()
+        db_session.refresh(subscription)
+
+        # Delete the plan
+        db_session.delete(plan)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/customers/{customer.external_id}/past_usage",
+            params={"external_subscription_id": str(subscription.external_id)},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"

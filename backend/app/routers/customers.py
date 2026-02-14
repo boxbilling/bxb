@@ -1,3 +1,4 @@
+from datetime import timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -7,10 +8,16 @@ from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.applied_coupon import AppliedCoupon
 from app.models.customer import Customer
+from app.models.plan import Plan
+from app.models.subscription import Subscription
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.coupon import AppliedCouponResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.usage import CurrentUsageResponse
+from app.services.subscription_dates import SubscriptionDatesService
+from app.services.usage_query_service import UsageQueryService
 
 router = APIRouter()
 
@@ -32,6 +39,142 @@ async def list_customers(
     repo = CustomerRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
+
+
+def _get_customer_by_external_id(
+    external_id: str,
+    db: Session,
+    organization_id: UUID,
+) -> Customer:
+    """Look up a customer by external_id, raising 404 if not found."""
+    repo = CustomerRepository(db)
+    customer = repo.get_by_external_id(external_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+def _get_verified_subscription(
+    subscription_id: UUID,
+    customer_id: UUID,
+    db: Session,
+    organization_id: UUID,
+) -> Subscription:
+    """Look up subscription and verify it belongs to the customer."""
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    if UUID(str(subscription.customer_id)) != UUID(str(customer_id)):
+        raise HTTPException(
+            status_code=404, detail="Subscription does not belong to this customer"
+        )
+    return subscription
+
+
+@router.get(
+    "/{external_id}/current_usage",
+    response_model=CurrentUsageResponse,
+    summary="Get customer current usage",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer or subscription not found"},
+    },
+)
+async def get_current_usage(
+    external_id: str,
+    subscription_id: UUID = Query(...),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> CurrentUsageResponse:
+    """Get current usage for a customer's subscription."""
+    customer = _get_customer_by_external_id(external_id, db, organization_id)
+    _get_verified_subscription(subscription_id, UUID(str(customer.id)), db, organization_id)
+    service = UsageQueryService(db)
+    return service.get_current_usage(
+        subscription_id=subscription_id,
+        external_customer_id=str(customer.external_id),
+    )
+
+
+@router.get(
+    "/{external_id}/projected_usage",
+    response_model=CurrentUsageResponse,
+    summary="Get customer projected usage",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer or subscription not found"},
+    },
+)
+async def get_projected_usage(
+    external_id: str,
+    subscription_id: UUID = Query(...),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> CurrentUsageResponse:
+    """Get projected usage for a customer's subscription."""
+    customer = _get_customer_by_external_id(external_id, db, organization_id)
+    _get_verified_subscription(subscription_id, UUID(str(customer.id)), db, organization_id)
+    service = UsageQueryService(db)
+    return service.get_projected_usage(
+        subscription_id=subscription_id,
+        external_customer_id=str(customer.external_id),
+    )
+
+
+@router.get(
+    "/{external_id}/past_usage",
+    response_model=list[CurrentUsageResponse],
+    summary="Get customer past usage",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer or subscription not found"},
+    },
+)
+async def get_past_usage(
+    external_id: str,
+    external_subscription_id: str = Query(...),
+    periods_count: int = Query(default=1, ge=1),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[CurrentUsageResponse]:
+    """Get past usage for completed billing periods."""
+    customer = _get_customer_by_external_id(external_id, db, organization_id)
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_external_id(external_subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    if UUID(str(subscription.customer_id)) != UUID(str(customer.id)):
+        raise HTTPException(
+            status_code=404, detail="Subscription does not belong to this customer"
+        )
+
+    plan = db.query(Plan).filter(Plan.id == subscription.plan_id).first()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    interval = str(plan.interval)
+    dates_service = SubscriptionDatesService()
+    current_start, _ = dates_service.calculate_billing_period(subscription, interval)
+
+    results: list[CurrentUsageResponse] = []
+    service = UsageQueryService(db)
+    period_end = current_start
+    for _ in range(periods_count):
+        period_start, period_end_calc = dates_service.calculate_billing_period(
+            subscription, interval, reference_date=period_end - timedelta(seconds=1),
+        )
+        results.append(
+            service._compute_usage_for_period(
+                subscription=subscription,
+                external_customer_id=str(customer.external_id),
+                period_start=period_start,
+                period_end=period_end_calc,
+            )
+        )
+        period_end = period_start
+
+    return results
 
 
 @router.get(

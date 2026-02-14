@@ -806,3 +806,38 @@ class TestComputeUsageEdgeCases:
 
         assert len(result.charges) == 1
         assert result.charges[0].amount_cents == Decimal(0)
+
+    def test_compute_usage_for_period_plan_not_found(self, db_session, customer):
+        """Test _compute_usage_for_period raises when plan is deleted."""
+        p = Plan(
+            code="uqs_period_plan",
+            name="Period Plan",
+            interval=PlanInterval.MONTHLY.value,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+
+        sub = Subscription(
+            external_id="uqs_period_sub",
+            customer_id=customer.id,
+            plan_id=p.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=_SUB_START,
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        # Delete the plan
+        db_session.delete(p)
+        db_session.commit()
+
+        service = UsageQueryService(db_session)
+        with pytest.raises(ValueError, match="Plan"):
+            service._compute_usage_for_period(
+                subscription=sub,
+                external_customer_id=str(customer.external_id),
+                period_start=_SUB_START,
+                period_end=datetime(2026, 3, 1, tzinfo=UTC),
+            )

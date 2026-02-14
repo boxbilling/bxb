@@ -1,5 +1,6 @@
 """Service for querying current and projected usage for a subscription."""
 
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 from uuid import UUID
@@ -62,23 +63,19 @@ class UsageQueryService:
 
         return self._compute_usage(subscription, external_customer_id)
 
-    def _compute_usage(
+    def _compute_usage_for_period(
         self,
         subscription: Subscription,
         external_customer_id: str,
+        period_start: datetime,
+        period_end: datetime,
     ) -> CurrentUsageResponse:
-        """Compute usage for a subscription in its current billing period."""
+        """Compute usage for a subscription in a specific billing period."""
         plan = self.db.query(Plan).filter(Plan.id == subscription.plan_id).first()
         if not plan:
             raise ValueError(f"Plan {subscription.plan_id} not found")
 
-        interval = str(plan.interval)
         currency = str(plan.currency)
-
-        period_start, period_end = self.dates_service.calculate_billing_period(
-            subscription, interval
-        )
-
         plan_id = UUID(str(subscription.plan_id))
         charges = self.charge_repo.get_by_plan_id(plan_id)
 
@@ -117,6 +114,29 @@ class UsageQueryService:
             amount_cents=total_amount,
             currency=currency,
             charges=charge_usages,
+        )
+
+    def _compute_usage(
+        self,
+        subscription: Subscription,
+        external_customer_id: str,
+    ) -> CurrentUsageResponse:
+        """Compute usage for a subscription in its current billing period."""
+        plan = self.db.query(Plan).filter(Plan.id == subscription.plan_id).first()
+        if not plan:
+            raise ValueError(f"Plan {subscription.plan_id} not found")
+
+        interval = str(plan.interval)
+
+        period_start, period_end = self.dates_service.calculate_billing_period(
+            subscription, interval
+        )
+
+        return self._compute_usage_for_period(
+            subscription=subscription,
+            external_customer_id=external_customer_id,
+            period_start=period_start,
+            period_end=period_end,
         )
 
     def _compute_charge_usage(
