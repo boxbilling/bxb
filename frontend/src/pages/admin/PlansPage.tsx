@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers, Settings, Target, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -41,8 +41,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { plansApi, billableMetricsApi, ApiError } from '@/lib/api'
-import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric } from '@/types/billing'
+import { plansApi, billableMetricsApi, commitmentsApi, usageThresholdsApi, ApiError } from '@/lib/api'
+import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThresholdCreateAPI } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -154,7 +154,7 @@ function PlanFormDialog({
         charge_model: c.charge_model,
         properties: {},
       }))
-    
+
     const data: PlanCreate = {
       code: formData.code,
       name: formData.name,
@@ -394,11 +394,481 @@ function PlanFormDialog({
   )
 }
 
+function PlanManageDialog({
+  open,
+  onOpenChange,
+  plan,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  plan: Plan | null
+}) {
+  const queryClient = useQueryClient()
+
+  // Commitments state
+  const [showAddCommitment, setShowAddCommitment] = useState(false)
+  const [editingCommitment, setEditingCommitment] = useState<Commitment | null>(null)
+  const [deleteCommitment, setDeleteCommitment] = useState<Commitment | null>(null)
+  const [commitmentForm, setCommitmentForm] = useState({
+    commitment_type: 'minimum_commitment',
+    amount_cents: '',
+    invoice_display_name: '',
+  })
+
+  // Usage threshold state
+  const [thresholdForm, setThresholdForm] = useState({
+    amount_cents: '',
+    currency: 'USD',
+    recurring: false,
+    threshold_display_name: '',
+  })
+  const [thresholdCreated, setThresholdCreated] = useState(false)
+
+  // Fetch commitments
+  const { data: commitments, isLoading: commitmentsLoading } = useQuery({
+    queryKey: ['commitments', plan?.code],
+    queryFn: () => commitmentsApi.listForPlan(plan!.code),
+    enabled: !!plan?.code,
+  })
+
+  // Commitment mutations
+  const createCommitmentMutation = useMutation({
+    mutationFn: (data: CommitmentCreateAPI) =>
+      commitmentsApi.createForPlan(plan!.code, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commitments', plan?.code] })
+      setShowAddCommitment(false)
+      setCommitmentForm({ commitment_type: 'minimum_commitment', amount_cents: '', invoice_display_name: '' })
+      toast.success('Commitment created successfully')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create commitment'
+      toast.error(message)
+    },
+  })
+
+  const updateCommitmentMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CommitmentUpdate }) =>
+      commitmentsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commitments', plan?.code] })
+      setEditingCommitment(null)
+      toast.success('Commitment updated successfully')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to update commitment'
+      toast.error(message)
+    },
+  })
+
+  const deleteCommitmentMutation = useMutation({
+    mutationFn: (id: string) => commitmentsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['commitments', plan?.code] })
+      setDeleteCommitment(null)
+      toast.success('Commitment deleted successfully')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to delete commitment'
+      toast.error(message)
+    },
+  })
+
+  // Usage threshold mutation
+  const createThresholdMutation = useMutation({
+    mutationFn: (data: UsageThresholdCreateAPI) =>
+      usageThresholdsApi.createForPlan(plan!.code, data),
+    onSuccess: () => {
+      setThresholdCreated(true)
+      setThresholdForm({ amount_cents: '', currency: 'USD', recurring: false, threshold_display_name: '' })
+      toast.success('Usage threshold created')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create usage threshold'
+      toast.error(message)
+    },
+  })
+
+  const handleCreateCommitment = (e: React.FormEvent) => {
+    e.preventDefault()
+    createCommitmentMutation.mutate({
+      commitment_type: commitmentForm.commitment_type,
+      amount_cents: parseInt(commitmentForm.amount_cents) || 0,
+      invoice_display_name: commitmentForm.invoice_display_name || undefined,
+    })
+  }
+
+  const handleUpdateCommitment = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingCommitment) return
+    updateCommitmentMutation.mutate({
+      id: editingCommitment.id,
+      data: {
+        commitment_type: commitmentForm.commitment_type,
+        amount_cents: parseInt(commitmentForm.amount_cents) || 0,
+        invoice_display_name: commitmentForm.invoice_display_name || undefined,
+      },
+    })
+  }
+
+  const handleCreateThreshold = (e: React.FormEvent) => {
+    e.preventDefault()
+    setThresholdCreated(false)
+    createThresholdMutation.mutate({
+      amount_cents: parseInt(thresholdForm.amount_cents) || 0,
+      currency: thresholdForm.currency,
+      recurring: thresholdForm.recurring,
+      threshold_display_name: thresholdForm.threshold_display_name || undefined,
+    })
+  }
+
+  const startEditCommitment = (c: Commitment) => {
+    setEditingCommitment(c)
+    setCommitmentForm({
+      commitment_type: c.commitment_type,
+      amount_cents: c.amount_cents,
+      invoice_display_name: c.invoice_display_name ?? '',
+    })
+  }
+
+  const cancelEditCommitment = () => {
+    setEditingCommitment(null)
+    setCommitmentForm({ commitment_type: 'minimum_commitment', amount_cents: '', invoice_display_name: '' })
+  }
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Manage Plan: {plan?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Configure commitments and usage thresholds for this plan
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Commitments Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Target className="h-4 w-4" />
+                    Commitments
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Minimum spend requirements for this plan
+                  </p>
+                </div>
+                {!showAddCommitment && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setShowAddCommitment(true)
+                      setCommitmentForm({ commitment_type: 'minimum_commitment', amount_cents: '', invoice_display_name: '' })
+                    }}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Commitment
+                  </Button>
+                )}
+              </div>
+
+              {/* Commitments Table */}
+              {commitmentsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : commitments && commitments.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2 font-medium">Type</th>
+                        <th className="text-left p-2 font-medium">Amount</th>
+                        <th className="text-left p-2 font-medium">Display Name</th>
+                        <th className="text-right p-2 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {commitments.map((c) =>
+                        editingCommitment?.id === c.id ? (
+                          <tr key={c.id} className="border-b">
+                            <td colSpan={4} className="p-2">
+                              <form onSubmit={handleUpdateCommitment} className="flex items-end gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Type</Label>
+                                  <Select
+                                    value={commitmentForm.commitment_type}
+                                    onValueChange={(value) =>
+                                      setCommitmentForm({ ...commitmentForm, commitment_type: value })
+                                    }
+                                  >
+                                    <SelectTrigger className="w-[180px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="minimum_commitment">Minimum Commitment</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Amount (cents)</Label>
+                                  <Input
+                                    type="number"
+                                    value={commitmentForm.amount_cents}
+                                    onChange={(e) =>
+                                      setCommitmentForm({ ...commitmentForm, amount_cents: e.target.value })
+                                    }
+                                    className="w-[120px]"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">Display Name</Label>
+                                  <Input
+                                    value={commitmentForm.invoice_display_name}
+                                    onChange={(e) =>
+                                      setCommitmentForm({ ...commitmentForm, invoice_display_name: e.target.value })
+                                    }
+                                    className="w-[140px]"
+                                  />
+                                </div>
+                                <Button type="submit" size="sm" disabled={updateCommitmentMutation.isPending}>
+                                  {updateCommitmentMutation.isPending ? 'Saving...' : 'Save'}
+                                </Button>
+                                <Button type="button" size="sm" variant="outline" onClick={cancelEditCommitment}>
+                                  Cancel
+                                </Button>
+                              </form>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={c.id} className="border-b last:border-b-0">
+                            <td className="p-2">
+                              <Badge variant="outline">{c.commitment_type}</Badge>
+                            </td>
+                            <td className="p-2">{formatCurrency(parseInt(c.amount_cents))}</td>
+                            <td className="p-2 text-muted-foreground">{c.invoice_display_name || '\u2014'}</td>
+                            <td className="p-2 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={() => startEditCommitment(c)}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive"
+                                  onClick={() => setDeleteCommitment(c)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm border border-dashed rounded-lg">
+                  No commitments configured for this plan.
+                </div>
+              )}
+
+              {/* Add Commitment Inline Form */}
+              {showAddCommitment && (
+                <form onSubmit={handleCreateCommitment} className="border rounded-lg p-3 bg-muted/50 space-y-3">
+                  <div className="flex items-end gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Commitment Type</Label>
+                      <Select
+                        value={commitmentForm.commitment_type}
+                        onValueChange={(value) =>
+                          setCommitmentForm({ ...commitmentForm, commitment_type: value })
+                        }
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="minimum_commitment">Minimum Commitment</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Amount (cents) *</Label>
+                      <Input
+                        type="number"
+                        value={commitmentForm.amount_cents}
+                        onChange={(e) =>
+                          setCommitmentForm({ ...commitmentForm, amount_cents: e.target.value })
+                        }
+                        className="w-[120px]"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Display Name</Label>
+                      <Input
+                        value={commitmentForm.invoice_display_name}
+                        onChange={(e) =>
+                          setCommitmentForm({ ...commitmentForm, invoice_display_name: e.target.value })
+                        }
+                        className="w-[140px]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button type="submit" size="sm" disabled={createCommitmentMutation.isPending}>
+                      {createCommitmentMutation.isPending ? 'Creating...' : 'Submit'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowAddCommitment(false)
+                        setCommitmentForm({ commitment_type: 'minimum_commitment', amount_cents: '', invoice_display_name: '' })
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Usage Thresholds Section */}
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Create Usage Threshold Template
+                </h4>
+                <p className="text-sm text-muted-foreground">
+                  Thresholds created here will be applied to new subscriptions using this plan.
+                </p>
+              </div>
+
+              {thresholdCreated && (
+                <div className="flex items-center gap-2 p-3 border rounded-lg bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300">
+                  <CheckCircle className="h-4 w-4" />
+                  <span className="text-sm">Usage threshold created successfully!</span>
+                </div>
+              )}
+
+              <form onSubmit={handleCreateThreshold} className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount (cents) *</Label>
+                    <Input
+                      type="number"
+                      value={thresholdForm.amount_cents}
+                      onChange={(e) =>
+                        setThresholdForm({ ...thresholdForm, amount_cents: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Currency</Label>
+                    <Select
+                      value={thresholdForm.currency}
+                      onValueChange={(value) =>
+                        setThresholdForm({ ...thresholdForm, currency: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Display Name</Label>
+                  <Input
+                    value={thresholdForm.threshold_display_name}
+                    onChange={(e) =>
+                      setThresholdForm({ ...thresholdForm, threshold_display_name: e.target.value })
+                    }
+                    placeholder="Optional display name"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="threshold-recurring"
+                    checked={thresholdForm.recurring}
+                    onChange={(e) =>
+                      setThresholdForm({ ...thresholdForm, recurring: e.target.checked })
+                    }
+                  />
+                  <Label htmlFor="threshold-recurring" className="text-sm">Recurring</Label>
+                </div>
+                <Button type="submit" size="sm" disabled={createThresholdMutation.isPending}>
+                  {createThresholdMutation.isPending ? 'Creating...' : 'Create Threshold'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Commitment Confirmation */}
+      <AlertDialog
+        open={!!deleteCommitment}
+        onOpenChange={(open) => !open && setDeleteCommitment(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Commitment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this commitment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCommitment && deleteCommitmentMutation.mutate(deleteCommitment.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteCommitmentMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
 export default function PlansPage() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null)
   const [deletePlan, setDeletePlan] = useState<Plan | null>(null)
+  const [managePlan, setManagePlan] = useState<Plan | null>(null)
 
   // Fetch plans from API
   const { data: plans, isLoading, error } = useQuery({
@@ -551,6 +1021,10 @@ export default function PlansPage() {
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setManagePlan(plan)}>
+                        <Settings className="mr-2 h-4 w-4" />
+                        Manage
+                      </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => setDeletePlan(plan)}
                         className="text-destructive"
@@ -621,6 +1095,13 @@ export default function PlansPage() {
         metrics={metrics ?? []}
         onSubmit={handleSubmit}
         isLoading={createMutation.isPending || updateMutation.isPending}
+      />
+
+      {/* Manage Plan Dialog */}
+      <PlanManageDialog
+        open={!!managePlan}
+        onOpenChange={(open) => !open && setManagePlan(null)}
+        plan={managePlan}
       />
 
       {/* Delete Confirmation */}
