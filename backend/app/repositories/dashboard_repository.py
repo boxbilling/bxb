@@ -156,9 +156,16 @@ class DashboardRepository:
         """Revenue per month for the last N months, ordered oldest first."""
         now = datetime.now(UTC)
         cutoff = now - timedelta(days=months * 31)
+        # Build a year-month expression compatible with both SQLite and PostgreSQL
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            month_expr = sa_func.to_char(Invoice.issued_at, "YYYY-MM")
+        else:
+            month_expr = sa_func.strftime("%Y-%m", Invoice.issued_at)
+
         rows = (
             self.db.query(
-                sa_func.strftime("%Y-%m", Invoice.issued_at).label("month"),
+                month_expr.label("month"),
                 sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
             )
             .filter(
@@ -167,8 +174,8 @@ class DashboardRepository:
                 Invoice.issued_at.isnot(None),
                 Invoice.issued_at >= cutoff,
             )
-            .group_by(sa_func.strftime("%Y-%m", Invoice.issued_at))
-            .order_by(sa_func.strftime("%Y-%m", Invoice.issued_at))
+            .group_by(month_expr)
+            .order_by(month_expr)
             .all()
         )
 
