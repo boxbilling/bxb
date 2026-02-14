@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "bxb API"
     APP_DOMAIN: str = "example.com"
     APP_DATA_PATH: str = "/tmp"
-    APP_DATABASE_DSN: str = ""  # e.g. postgresql://user:pass@host:port/database
+    APP_DATABASE_DSN: str = "sqlite:///./bxb.db"
     REDIS_URL: str = "redis://localhost:6379"
     OPENROUTER_API_KEY: str = ""
 
