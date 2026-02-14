@@ -18,6 +18,14 @@ def get_current_organization(
     If no Authorization header is provided, falls back to the default organization
     for backward compatibility during the transition period.
     """
+    # Allow switching organizations via header (for the admin UI)
+    org_id_header = request.headers.get("X-Organization-Id")
+    if org_id_header:
+        try:
+            return UUID(org_id_header)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid X-Organization-Id header")
+
     auth_header = request.headers.get("Authorization")
     if not auth_header:
         return DEFAULT_ORGANIZATION_ID

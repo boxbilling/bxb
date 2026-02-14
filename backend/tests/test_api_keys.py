@@ -428,7 +428,7 @@ class TestAuthMiddleware:
         from fastapi import HTTPException
 
         request = MagicMock()
-        request.headers.get.return_value = "Basic abc123"
+        request.headers.get.side_effect = lambda h: {"Authorization": "Basic abc123"}.get(h)
 
         with pytest.raises(HTTPException) as exc_info:
             get_current_organization(request, db_session)
@@ -442,7 +442,7 @@ class TestAuthMiddleware:
         from fastapi import HTTPException
 
         request = MagicMock()
-        request.headers.get.return_value = "Bearer "
+        request.headers.get.side_effect = lambda h: {"Authorization": "Bearer "}.get(h)
 
         with pytest.raises(HTTPException) as exc_info:
             get_current_organization(request, db_session)
@@ -456,7 +456,7 @@ class TestAuthMiddleware:
         from fastapi import HTTPException
 
         request = MagicMock()
-        request.headers.get.return_value = "Bearer bxb_invalidkey12345"
+        request.headers.get.side_effect = lambda h: {"Authorization": "Bearer bxb_invalidkey12345"}.get(h)
 
         with pytest.raises(HTTPException) as exc_info:
             get_current_organization(request, db_session)
@@ -471,7 +471,7 @@ class TestAuthMiddleware:
         api_key, raw_key = repo.create(DEFAULT_ORG_ID, ApiKeyCreate(name="Auth Test"))
 
         request = MagicMock()
-        request.headers.get.return_value = f"Bearer {raw_key}"
+        request.headers.get.side_effect = lambda h: {"Authorization": f"Bearer {raw_key}"}.get(h)
 
         org_id = get_current_organization(request, db_session)
         assert org_id == DEFAULT_ORG_ID
@@ -487,7 +487,7 @@ class TestAuthMiddleware:
         repo.revoke(api_key.id, DEFAULT_ORG_ID)
 
         request = MagicMock()
-        request.headers.get.return_value = f"Bearer {raw_key}"
+        request.headers.get.side_effect = lambda h: {"Authorization": f"Bearer {raw_key}"}.get(h)
 
         with pytest.raises(HTTPException) as exc_info:
             get_current_organization(request, db_session)
@@ -507,7 +507,7 @@ class TestAuthMiddleware:
         )
 
         request = MagicMock()
-        request.headers.get.return_value = f"Bearer {raw_key}"
+        request.headers.get.side_effect = lambda h: {"Authorization": f"Bearer {raw_key}"}.get(h)
 
         with pytest.raises(HTTPException) as exc_info:
             get_current_organization(request, db_session)
@@ -523,7 +523,7 @@ class TestAuthMiddleware:
         assert api_key.last_used_at is None
 
         request = MagicMock()
-        request.headers.get.return_value = f"Bearer {raw_key}"
+        request.headers.get.side_effect = lambda h: {"Authorization": f"Bearer {raw_key}"}.get(h)
 
         get_current_organization(request, db_session)
 
@@ -541,7 +541,7 @@ class TestAuthMiddleware:
         )
 
         request = MagicMock()
-        request.headers.get.return_value = f"Bearer {raw_key}"
+        request.headers.get.side_effect = lambda h: {"Authorization": f"Bearer {raw_key}"}.get(h)
 
         org_id = get_current_organization(request, db_session)
         assert org_id == DEFAULT_ORG_ID

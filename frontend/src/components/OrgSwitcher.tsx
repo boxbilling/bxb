@@ -43,7 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { organizationsApi, ApiError } from '@/lib/api'
+import { organizationsApi, ApiError, setActiveOrganizationId } from '@/lib/api'
 import type { Organization, OrganizationCreate } from '@/types/billing'
 import { useOrganization } from '@/hooks/use-organization'
 
@@ -162,7 +162,11 @@ export default function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
                   'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent transition-colors',
                   org.id === currentOrg?.id && 'bg-accent'
                 )}
-                onClick={() => setPopoverOpen(false)}
+                onClick={() => {
+                  setActiveOrganizationId(org.id)
+                  setPopoverOpen(false)
+                  queryClient.invalidateQueries()
+                }}
               >
                 <OrgAvatar org={org} className="h-5 w-5" />
                 <span className="flex-1 truncate">{org.name}</span>

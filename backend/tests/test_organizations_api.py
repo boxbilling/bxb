@@ -503,6 +503,36 @@ class TestRevokeApiKey:
         assert verify_after.status_code == 401
 
 
+class TestXOrganizationIdHeader:
+    def test_switch_org_via_header(self, client, second_org):
+        """Test that X-Organization-Id header overrides the default org."""
+        response = client.get(
+            "/v1/organizations/current",
+            headers={"X-Organization-Id": str(second_org.id)},
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] == str(second_org.id)
+        assert response.json()["name"] == "Second Test Organization"
+
+    def test_header_overrides_api_key(self, authed_client, second_org):
+        """Test that X-Organization-Id header takes precedence over API key auth."""
+        response = authed_client.get(
+            "/v1/organizations/current",
+            headers={"X-Organization-Id": str(second_org.id)},
+        )
+        assert response.status_code == 200
+        assert response.json()["id"] == str(second_org.id)
+
+    def test_invalid_header_returns_400(self, client):
+        """Test that an invalid UUID in X-Organization-Id returns 400."""
+        response = client.get(
+            "/v1/organizations/current",
+            headers={"X-Organization-Id": "not-a-uuid"},
+        )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Invalid X-Organization-Id header"
+
+
 class TestOrganizationCreateResponseSchema:
     def test_schema_includes_api_key(self):
         """Test that OrganizationCreateResponse schema has api_key field."""

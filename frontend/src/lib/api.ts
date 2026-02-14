@@ -105,6 +105,20 @@ type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const ORG_STORAGE_KEY = 'bxb_organization_id'
+
+export function getActiveOrganizationId(): string | null {
+  return localStorage.getItem(ORG_STORAGE_KEY)
+}
+
+export function setActiveOrganizationId(id: string | null) {
+  if (id) {
+    localStorage.setItem(ORG_STORAGE_KEY, id)
+  } else {
+    localStorage.removeItem(ORG_STORAGE_KEY)
+  }
+}
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -122,10 +136,19 @@ async function request<T>(
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`
 
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const orgId = getActiveOrganizationId()
+  if (orgId) {
+    headers['X-Organization-Id'] = orgId
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Content-Type': 'application/json',
+      ...headers,
       ...options.headers,
     },
   })
