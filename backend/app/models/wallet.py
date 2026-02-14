@@ -47,7 +47,7 @@ class Wallet(Base):
     )
     name = Column(String(255), nullable=True)
     code = Column(String(255), nullable=True)
-    status = Column(String(20), nullable=False, default=WalletStatus.ACTIVE.value)
+    status = Column(String(20), nullable=False, default=WalletStatus.ACTIVE.value, index=True)
     balance_cents = Column(Numeric(12, 4), nullable=False, default=0)
     credits_balance = Column(Numeric(12, 4), nullable=False, default=0)
     consumed_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)

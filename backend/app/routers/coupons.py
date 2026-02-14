@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -53,6 +53,7 @@ async def create_coupon(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_coupons(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     status: CouponStatus | None = None,
@@ -61,6 +62,7 @@ async def list_coupons(
 ) -> list[Coupon]:
     """List coupons with optional status filter."""
     repo = CouponRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit, status=status)
 
 

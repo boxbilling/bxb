@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.event import Event
@@ -36,6 +37,14 @@ class EventRepository:
             query = query.filter(Event.timestamp <= to_timestamp)
 
         return query.order_by(Event.timestamp.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID) -> int:
+        return (
+            self.db.query(func.count(Event.id))
+            .filter(Event.organization_id == organization_id)
+            .scalar()
+            or 0
+        )
 
     def get_by_id(self, event_id: UUID, organization_id: UUID | None = None) -> Event | None:
         query = self.db.query(Event).filter(Event.id == event_id)

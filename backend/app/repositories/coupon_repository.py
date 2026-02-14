@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.coupon import Coupon, CouponStatus
@@ -28,6 +29,15 @@ class CouponRepository:
             query = query.filter(Coupon.status == status.value)
 
         return query.order_by(Coupon.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID) -> int:
+        """Count coupons for an organization."""
+        return (
+            self.db.query(func.count(Coupon.id))
+            .filter(Coupon.organization_id == organization_id)
+            .scalar()
+            or 0
+        )
 
     def get_by_id(self, coupon_id: UUID) -> Coupon | None:
         """Get a coupon by ID."""

@@ -35,11 +35,13 @@ class Invoice(Base):
         default=DEFAULT_ORGANIZATION_ID,
     )
     invoice_number = Column(String(50), unique=True, index=True, nullable=False)
-    customer_id = Column(UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False)
-    subscription_id = Column(
-        UUIDType, ForeignKey("subscriptions.id", ondelete="RESTRICT"), nullable=True
+    customer_id = Column(
+        UUIDType, ForeignKey("customers.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    status = Column(String(20), nullable=False, default=InvoiceStatus.DRAFT.value)
+    subscription_id = Column(
+        UUIDType, ForeignKey("subscriptions.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    status = Column(String(20), nullable=False, default=InvoiceStatus.DRAFT.value, index=True)
     invoice_type = Column(String(30), nullable=False, default=InvoiceType.SUBSCRIPTION.value)
 
     # Billing period

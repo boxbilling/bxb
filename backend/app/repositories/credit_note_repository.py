@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.credit_note import CreditNote, CreditNoteStatus, CreditStatus
@@ -38,6 +39,13 @@ class CreditNoteRepository:
             query = query.filter(CreditNote.status == status.value)
 
         return query.order_by(CreditNote.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID | None = None) -> int:
+        """Count credit notes, optionally filtered by organization."""
+        query = self.db.query(func.count(CreditNote.id))
+        if organization_id is not None:
+            query = query.filter(CreditNote.organization_id == organization_id)
+        return query.scalar() or 0
 
     def get_by_id(
         self,

@@ -3,7 +3,7 @@
 import os
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -56,6 +56,7 @@ async def create_data_export(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_data_exports(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -63,6 +64,7 @@ async def list_data_exports(
 ) -> list[DataExport]:
     """List data exports for the organization."""
     repo = DataExportRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 

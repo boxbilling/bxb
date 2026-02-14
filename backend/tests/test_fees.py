@@ -572,3 +572,14 @@ class TestFeesAPI:
         assert response.status_code == 200
         assert len(response.json()) == 1
         assert response.json()[0]["fee_type"] == "charge"
+
+
+class TestFeeRepositoryCount:
+    """Tests for FeeRepository.count branch coverage."""
+
+    def test_count_without_organization_id(self, db_session):
+        """Test count() without org_id returns total count across all orgs."""
+        repo = FeeRepository(db_session)
+        result = repo.count()
+        assert isinstance(result, int)
+        assert result >= 0

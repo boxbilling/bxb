@@ -77,7 +77,9 @@ class Fee(Base):
     unit_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
 
     # Payment tracking
-    payment_status = Column(String(20), nullable=False, default=FeePaymentStatus.PENDING.value)
+    payment_status = Column(
+        String(20), nullable=False, default=FeePaymentStatus.PENDING.value, index=True
+    )
 
     # Descriptive fields
     description = Column(String(500), nullable=True)

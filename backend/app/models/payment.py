@@ -64,7 +64,7 @@ class Payment(Base):
     # Payment details
     amount = Column(Numeric(12, 4), nullable=False)
     currency = Column(String(3), nullable=False, default="USD")
-    status = Column(String(20), nullable=False, default=PaymentStatus.PENDING.value)
+    status = Column(String(20), nullable=False, default=PaymentStatus.PENDING.value, index=True)
 
     # Provider info
     provider = Column(String(50), nullable=False, default=PaymentProvider.STRIPE.value)

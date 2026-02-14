@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.charge import Charge
@@ -20,6 +21,14 @@ class PlanRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        return (
+            self.db.query(func.count(Plan.id))
+            .filter(Plan.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(self, plan_id: UUID, organization_id: UUID | None = None) -> Plan | None:

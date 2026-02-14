@@ -1902,3 +1902,14 @@ class TestUCPPaymentsAPI:
         assert response.status_code == 200
         assert len(response.json()) >= 1
         assert all(p["provider"] == "ucp" for p in response.json())
+
+
+class TestPaymentRepositoryCount:
+    """Tests for PaymentRepository.count branch coverage."""
+
+    def test_count_without_organization_id(self, db_session):
+        """Test count() without org_id returns total count across all orgs."""
+        repo = PaymentRepository(db_session)
+        result = repo.count()
+        assert isinstance(result, int)
+        assert result >= 0

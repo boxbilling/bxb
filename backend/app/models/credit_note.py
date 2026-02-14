@@ -69,7 +69,7 @@ class CreditNote(Base):
     )
 
     credit_note_type = Column(String(20), nullable=False)
-    status = Column(String(20), nullable=False, default=CreditNoteStatus.DRAFT.value)
+    status = Column(String(20), nullable=False, default=CreditNoteStatus.DRAFT.value, index=True)
     credit_status = Column(String(20), nullable=True)
     refund_status = Column(String(20), nullable=True)
 

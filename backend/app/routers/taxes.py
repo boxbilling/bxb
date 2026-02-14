@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -52,6 +52,7 @@ async def create_tax(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_taxes(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -59,6 +60,7 @@ async def list_taxes(
 ) -> list[Tax]:
     """List all taxes."""
     repo = TaxRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 

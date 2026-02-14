@@ -2,11 +2,13 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.rate_limiter import RateLimiter
 from app.models.event import Event
 from app.models.subscription import SubscriptionStatus
 from app.repositories.billable_metric_repository import BillableMetricRepository
@@ -24,6 +26,26 @@ from app.tasks import enqueue_check_usage_thresholds
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Module-level rate limiter instance for event ingestion
+event_rate_limiter = RateLimiter(
+    max_requests=settings.RATE_LIMIT_EVENTS_PER_MINUTE,
+    window_seconds=60,
+)
+
+
+def _check_rate_limit(
+    request: Request, organization_id: UUID = Depends(get_current_organization)
+) -> UUID:
+    """Dependency that enforces event ingestion rate limiting per organization."""
+    key = str(organization_id)
+    if not event_rate_limiter.is_allowed(key):
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded. Maximum "
+            f"{settings.RATE_LIMIT_EVENTS_PER_MINUTE} events per minute.",
+        )
+    return organization_id
 
 
 def validate_billable_metric_code(code: str, db: Session, organization_id: UUID) -> None:
@@ -73,6 +95,7 @@ async def _enqueue_threshold_checks(subscription_ids: list[str]) -> None:
     responses={401: {"description": "Unauthorized – invalid or missing API key"}},
 )
 async def list_events(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     external_customer_id: str | None = None,
@@ -84,6 +107,7 @@ async def list_events(
 ) -> list[Event]:
     """List events with optional filters."""
     repo = EventRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(
         organization_id,
         skip=skip,
@@ -125,13 +149,14 @@ async def get_event(
     responses={
         401: {"description": "Unauthorized – invalid or missing API key"},
         422: {"description": "Billable metric code does not exist"},
+        429: {"description": "Rate limit exceeded"},
     },
 )
 async def create_event(
     data: EventCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    organization_id: UUID = Depends(get_current_organization),
+    organization_id: UUID = Depends(_check_rate_limit),
 ) -> Event:
     """Ingest a single event.
 
@@ -159,13 +184,14 @@ async def create_event(
     responses={
         401: {"description": "Unauthorized – invalid or missing API key"},
         422: {"description": "Billable metric code does not exist"},
+        429: {"description": "Rate limit exceeded"},
     },
 )
 async def create_events_batch(
     data: EventBatchCreate,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    organization_id: UUID = Depends(get_current_organization),
+    organization_id: UUID = Depends(_check_rate_limit),
 ) -> EventBatchResponse:
     """Ingest a batch of events (up to 100).
 

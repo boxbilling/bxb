@@ -3,6 +3,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
@@ -59,6 +60,12 @@ class InvoiceRepository:
             query = query.filter(Invoice.status == status.value)
 
         return query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID | None = None) -> int:
+        query = self.db.query(func.count(Invoice.id))
+        if organization_id is not None:
+            query = query.filter(Invoice.organization_id == organization_id)
+        return query.scalar() or 0
 
     def get_by_id(self, invoice_id: UUID, organization_id: UUID | None = None) -> Invoice | None:
         query = self.db.query(Invoice).filter(Invoice.id == invoice_id)

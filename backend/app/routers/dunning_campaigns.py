@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -66,6 +66,7 @@ async def create_dunning_campaign(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_dunning_campaigns(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     status: str | None = None,
@@ -74,6 +75,7 @@ async def list_dunning_campaigns(
 ) -> list[DunningCampaignResponse]:
     """List dunning campaigns with optional status filter."""
     repo = DunningCampaignRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     campaigns = repo.get_all(organization_id, skip=skip, limit=limit, status=status)
     return [_campaign_to_response(c, repo) for c in campaigns]
 

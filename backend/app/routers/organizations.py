@@ -3,7 +3,7 @@
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -140,13 +140,15 @@ async def create_api_key(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_api_keys(
-    skip: int = 0,
-    limit: int = 100,
+    response: Response,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> list[ApiKey]:
     """List API keys for the current organization (prefix and name only)."""
     repo = ApiKeyRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.list_by_org(organization_id, skip=skip, limit=limit)
 
 

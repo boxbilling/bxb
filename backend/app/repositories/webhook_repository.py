@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.webhook import Webhook
@@ -54,6 +55,10 @@ class WebhookRepository:
         if status:
             query = query.filter(Webhook.status == status)
         return query.order_by(Webhook.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self) -> int:
+        """Count all webhooks."""
+        return self.db.query(func.count(Webhook.id)).scalar() or 0
 
     def get_pending(self) -> list[Webhook]:
         """Get all pending webhooks."""

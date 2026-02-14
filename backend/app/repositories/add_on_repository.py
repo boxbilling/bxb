@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.add_on import AddOn
@@ -28,6 +29,15 @@ class AddOnRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        """Count add-ons for an organization."""
+        return (
+            self.db.query(func.count(AddOn.id))
+            .filter(AddOn.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(self, add_on_id: UUID, organization_id: UUID | None = None) -> AddOn | None:

@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -58,6 +58,7 @@ async def create_wallet(
     responses={401: {"description": "Unauthorized – invalid or missing API key"}},
 )
 async def list_wallets(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     customer_id: UUID | None = None,
@@ -67,6 +68,7 @@ async def list_wallets(
 ) -> list[Wallet]:
     """List wallets with optional filters."""
     repo = WalletRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(
         organization_id,
         skip=skip,

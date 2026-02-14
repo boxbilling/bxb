@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
@@ -41,6 +42,13 @@ class PaymentRepository:
             query = query.filter(Payment.provider == provider.value)
 
         return query.order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID | None = None) -> int:
+        """Count payments, optionally filtered by organization."""
+        query = self.db.query(func.count(Payment.id))
+        if organization_id is not None:
+            query = query.filter(Payment.organization_id == organization_id)
+        return query.scalar() or 0
 
     def get_by_id(self, payment_id: UUID, organization_id: UUID | None = None) -> Payment | None:
         """Get a payment by ID."""

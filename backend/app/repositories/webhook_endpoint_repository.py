@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.webhook_endpoint import WebhookEndpoint
@@ -28,6 +29,15 @@ class WebhookEndpointRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        """Count webhook endpoints for an organization."""
+        return (
+            self.db.query(func.count(WebhookEndpoint.id))
+            .filter(WebhookEndpoint.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(

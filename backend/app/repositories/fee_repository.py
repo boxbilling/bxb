@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.fee import Fee, FeePaymentStatus, FeeType
@@ -45,6 +46,13 @@ class FeeRepository:
             query = query.filter(Fee.payment_status == payment_status.value)
 
         return query.order_by(Fee.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID | None = None) -> int:
+        """Count fees, optionally filtered by organization."""
+        query = self.db.query(func.count(Fee.id))
+        if organization_id is not None:
+            query = query.filter(Fee.organization_id == organization_id)
+        return query.scalar() or 0
 
     def get_by_id(self, fee_id: UUID, organization_id: UUID | None = None) -> Fee | None:
         """Get a fee by ID."""

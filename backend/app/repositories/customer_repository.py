@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.customer import Customer
@@ -17,6 +18,14 @@ class CustomerRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        return (
+            self.db.query(func.count(Customer.id))
+            .filter(Customer.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(self, customer_id: UUID, organization_id: UUID | None = None) -> Customer | None:

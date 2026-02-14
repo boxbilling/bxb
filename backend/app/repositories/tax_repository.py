@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.tax import Tax
@@ -23,6 +24,15 @@ class TaxRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        """Count taxes for an organization."""
+        return (
+            self.db.query(func.count(Tax.id))
+            .filter(Tax.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(self, tax_id: UUID, organization_id: UUID | None = None) -> Tax | None:

@@ -411,6 +411,7 @@ class TestEventsAPI:
         response = client.get("/v1/events/")
         assert response.status_code == 200
         assert response.json() == []
+        assert response.headers["X-Total-Count"] == "0"
 
     def test_create_event_minimal(self, client: TestClient, billable_metric):
         """Test creating an event with minimal data."""
@@ -1163,3 +1164,44 @@ class TestEventThresholdIntegration:
         assert mock_enqueue.call_count == 2
         enqueued_ids = {call.args[0] for call in mock_enqueue.call_args_list}
         assert enqueued_ids == {str(sub1.id), str(sub2.id)}
+
+
+class TestEventRateLimit:
+    """Tests for event ingestion rate limiting."""
+
+    def test_rate_limit_exceeded(self, client: TestClient, billable_metric):
+        """Test that exceeding the rate limit returns 429."""
+        from app.routers.events import event_rate_limiter
+
+        event_rate_limiter.reset()
+        # Patch max_requests to 1 so the second request exceeds the limit
+        original = event_rate_limiter.max_requests
+        event_rate_limiter.max_requests = 1
+        try:
+            # First request should succeed
+            resp1 = client.post(
+                "/v1/events/",
+                json={
+                    "transaction_id": "tx-rate-1",
+                    "external_customer_id": "cust-001",
+                    "code": "api_calls",
+                    "timestamp": "2026-01-15T10:00:00Z",
+                },
+            )
+            assert resp1.status_code == 201
+
+            # Second request should be rate-limited
+            resp2 = client.post(
+                "/v1/events/",
+                json={
+                    "transaction_id": "tx-rate-2",
+                    "external_customer_id": "cust-001",
+                    "code": "api_calls",
+                    "timestamp": "2026-01-15T10:01:00Z",
+                },
+            )
+            assert resp2.status_code == 429
+            assert "Rate limit exceeded" in resp2.json()["detail"]
+        finally:
+            event_rate_limiter.max_requests = original
+            event_rate_limiter.reset()

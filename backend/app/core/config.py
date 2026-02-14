@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     adyen_environment: str = "test"  # "test" or "live"
     adyen_live_url_prefix: str = ""
 
+    # CORS
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
+    # Rate limiting
+    RATE_LIMIT_EVENTS_PER_MINUTE: int = 1000
+
     # ClickHouse settings
     CLICKHOUSE_URL: str = ""  # e.g. clickhouse://user:pass@host:port/database
 

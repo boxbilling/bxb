@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.subscription import Subscription, SubscriptionStatus
@@ -18,6 +19,14 @@ class SubscriptionRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        return (
+            self.db.query(func.count(Subscription.id))
+            .filter(Subscription.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(

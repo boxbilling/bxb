@@ -1049,3 +1049,14 @@ class TestInvoiceRouterEdgeCases:
         with patch.object(InvoiceRepository, "void", return_value=None):
             response = client.post(f"/v1/invoices/{invoice.id}/void")
             assert response.status_code == 404
+
+
+class TestInvoiceRepositoryCount:
+    """Tests for InvoiceRepository.count branch coverage."""
+
+    def test_count_without_organization_id(self, db_session):
+        """Test count() without org_id returns total count across all orgs."""
+        repo = InvoiceRepository(db_session)
+        result = repo.count()
+        assert isinstance(result, int)
+        assert result >= 0

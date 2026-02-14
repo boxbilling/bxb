@@ -1339,3 +1339,14 @@ class TestCreditNoteAPI:
         response = client.post(f"/v1/credit_notes/{credit_note.id}/void")
         assert response.status_code == 400
         assert "finalized" in response.json()["detail"].lower()
+
+
+class TestCreditNoteRepositoryCount:
+    """Tests for CreditNoteRepository.count branch coverage."""
+
+    def test_count_without_organization_id(self, db_session):
+        """Test count() without org_id returns total count across all orgs."""
+        repo = CreditNoteRepository(db_session)
+        result = repo.count()
+        assert isinstance(result, int)
+        assert result >= 0

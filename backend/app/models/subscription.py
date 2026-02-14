@@ -49,7 +49,9 @@ class Subscription(Base):
         nullable=False,
         index=True,
     )
-    status = Column(String(20), nullable=False, default=SubscriptionStatus.PENDING.value)
+    status = Column(
+        String(20), nullable=False, default=SubscriptionStatus.PENDING.value, index=True
+    )
     billing_time = Column(String(20), nullable=False, default=BillingTime.CALENDAR.value)
     trial_period_days = Column(Integer, nullable=False, default=0)
     trial_ended_at = Column(DateTime(timezone=True), nullable=True)

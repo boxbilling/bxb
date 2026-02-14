@@ -115,7 +115,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - Show credit notes linked to this invoice
     - Show invoice type (subscription/add_on/progressive_billing/etc.)
 
-- [ ] Add comprehensive OpenAPI documentation:
+- [x] Add comprehensive OpenAPI documentation:
   - Review all FastAPI router endpoints and ensure they have:
     - Descriptive `summary` and `description` parameters
     - Proper `response_model` return types
@@ -124,7 +124,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
   - Run `make openapi` to regenerate the final OpenAPI spec
   - Verify the auto-generated Swagger UI at `/docs` is comprehensive and well-organized
 
-- [ ] Performance and security hardening:
+- [x] Performance and security hardening:
   - Add rate limiting to event ingestion endpoint (use a simple in-memory or Redis-based rate limiter):
     - Default: 1000 events/minute per API key
     - Configurable via settings
@@ -141,6 +141,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - Verify webhook signatures use timing-safe comparison (`hmac.compare_digest`)
     - Ensure no SQL injection possible (SQLAlchemy parameterized queries)
     - Add CORS configuration to FastAPI app for frontend domain
+  - **Note:** Implemented all four subtasks. Rate limiting: created `app/core/rate_limiter.py` with sliding-window in-memory rate limiter (1000 events/min default, configurable via `RATE_LIMIT_EVENTS_PER_MINUTE` setting), applied to `POST /v1/events/` and `POST /v1/events/batch` endpoints with 429 response on limit exceeded. Pagination: added `count()` methods to all 18 repositories, added `X-Total-Count` response header to all 20 list endpoints, converted 5 older routers (customers, subscriptions, plans, billable_metrics, organizations) from plain params to validated `Query()` with `ge=0`/`ge=1`/`le=1000` constraints, added `expose_headers=["X-Total-Count"]` to CORS middleware. Database optimization: added indexes on `status` columns for Invoice, Payment, CreditNote, Wallet, Subscription, and Fee models; added indexes on `customer_id` and `subscription_id` FK columns on Invoice model. Security: verified API key hashing uses SHA-256, webhook signatures use `hmac.compare_digest`, all inputs validated via Pydantic/Query, no SQL injection (all SQLAlchemy parameterized), replaced wildcard CORS `allow_origins=["*"]` with configurable `CORS_ORIGINS` setting (defaults to `http://localhost:3000,http://localhost:5173`). All 2620 tests pass with 100% coverage.
 
 - [ ] Write frontend tests and backend integration tests:
   - `backend/tests/test_dashboard.py` — Test all dashboard analytics endpoints return correct aggregated data

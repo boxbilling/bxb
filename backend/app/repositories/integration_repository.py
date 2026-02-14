@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.integration import Integration
@@ -28,6 +29,15 @@ class IntegrationRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        """Count integrations for an organization."""
+        return (
+            self.db.query(func.count(Integration.id))
+            .filter(Integration.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(

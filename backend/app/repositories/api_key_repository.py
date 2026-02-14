@@ -3,6 +3,7 @@ import secrets
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.api_key import ApiKey
@@ -58,6 +59,15 @@ class ApiKeyRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        """Count API keys for an organization."""
+        return (
+            self.db.query(func.count(ApiKey.id))
+            .filter(ApiKey.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def revoke(self, api_key_id: UUID, organization_id: UUID) -> ApiKey | None:

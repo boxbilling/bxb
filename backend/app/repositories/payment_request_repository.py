@@ -3,6 +3,7 @@
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.payment_request import PaymentRequest
@@ -32,6 +33,15 @@ class PaymentRequestRepository:
         if payment_status is not None:
             query = query.filter(PaymentRequest.payment_status == payment_status)
         return query.order_by(PaymentRequest.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID) -> int:
+        """Count payment requests for an organization."""
+        return (
+            self.db.query(func.count(PaymentRequest.id))
+            .filter(PaymentRequest.organization_id == organization_id)
+            .scalar()
+            or 0
+        )
 
     def get_by_id(
         self,

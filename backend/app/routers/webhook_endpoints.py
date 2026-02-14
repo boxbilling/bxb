@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -49,6 +49,7 @@ async def create_webhook_endpoint(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_webhook_endpoints(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -56,6 +57,7 @@ async def list_webhook_endpoints(
 ) -> list[WebhookEndpoint]:
     """List all webhook endpoints."""
     repo = WebhookEndpointRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
@@ -132,6 +134,7 @@ async def delete_webhook_endpoint(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_webhooks(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     webhook_type: str | None = None,
@@ -140,6 +143,7 @@ async def list_webhooks(
 ) -> list[Webhook]:
     """List recent webhooks with optional filters."""
     repo = WebhookRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count())
     return repo.get_all(
         skip=skip,
         limit=limit,

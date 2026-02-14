@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -68,6 +68,7 @@ async def create_payment_request(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_payment_requests(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     customer_id: UUID | None = None,
@@ -77,6 +78,7 @@ async def list_payment_requests(
 ) -> list[PaymentRequestResponse]:
     """List payment requests with optional filters."""
     repo = PaymentRequestRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     prs = repo.get_all(
         organization_id,
         skip=skip,

@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.wallet import Wallet, WalletStatus
@@ -33,6 +34,15 @@ class WalletRepository:
             query = query.filter(Wallet.status == status.value)
 
         return query.order_by(Wallet.created_at.desc()).offset(skip).limit(limit).all()
+
+    def count(self, organization_id: UUID) -> int:
+        """Count wallets for an organization."""
+        return (
+            self.db.query(func.count(Wallet.id))
+            .filter(Wallet.organization_id == organization_id)
+            .scalar()
+            or 0
+        )
 
     def get_by_id(self, wallet_id: UUID, organization_id: UUID | None = None) -> Wallet | None:
         """Get a wallet by ID."""

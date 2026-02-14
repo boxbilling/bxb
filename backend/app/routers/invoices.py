@@ -1,7 +1,7 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -25,6 +25,7 @@ router = APIRouter()
     responses={401: {"description": "Unauthorized – invalid or missing API key"}},
 )
 async def list_invoices(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     customer_id: UUID | None = None,
@@ -35,6 +36,7 @@ async def list_invoices(
 ) -> list[Invoice]:
     """List invoices with optional filters."""
     repo = InvoiceRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(
         organization_id=organization_id,
         skip=skip,

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -22,13 +22,15 @@ router = APIRouter()
     responses={401: {"description": "Unauthorized – invalid or missing API key"}},
 )
 async def list_customers(
-    skip: int = 0,
-    limit: int = 100,
+    response: Response,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> list[Customer]:
     """List all customers with pagination."""
     repo = CustomerRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 

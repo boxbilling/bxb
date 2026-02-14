@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -53,6 +53,7 @@ async def create_add_on(
     responses={401: {"description": "Unauthorized"}},
 )
 async def list_add_ons(
+    response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
@@ -60,6 +61,7 @@ async def list_add_ons(
 ) -> list[AddOn]:
     """List add-ons with pagination."""
     repo = AddOnRepository(db)
+    response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 

@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.data_export import DataExport
@@ -28,6 +29,15 @@ class DataExportRepository:
             .offset(skip)
             .limit(limit)
             .all()
+        )
+
+    def count(self, organization_id: UUID) -> int:
+        """Count data exports for an organization."""
+        return (
+            self.db.query(func.count(DataExport.id))
+            .filter(DataExport.organization_id == organization_id)
+            .scalar()
+            or 0
         )
 
     def get_by_id(self, export_id: UUID, organization_id: UUID | None = None) -> DataExport | None:
