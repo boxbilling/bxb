@@ -1051,6 +1051,84 @@ class TestInvoiceRouterEdgeCases:
             assert response.status_code == 404
 
 
+class TestDownloadInvoicePdf:
+    """Tests for POST /v1/invoices/{invoice_id}/download_pdf endpoint."""
+
+    def test_download_pdf_finalized(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful PDF download for a finalized invoice."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch(
+            "app.routers.invoices.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-test",
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/download_pdf")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-test"
+        assert response.headers["content-type"] == "application/pdf"
+        assert "attachment" in response.headers["content-disposition"]
+        assert invoice.invoice_number in response.headers["content-disposition"]
+
+    def test_download_pdf_paid(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful PDF download for a paid invoice."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+        repo.mark_paid(invoice.id)
+
+        with patch(
+            "app.routers.invoices.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-test",
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/download_pdf")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-test"
+
+    def test_download_pdf_draft_returns_400(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that downloading PDF for a draft invoice returns 400."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/download_pdf")
+        assert response.status_code == 400
+
+    def test_download_pdf_not_found(self, client):
+        """Test that downloading PDF for a non-existent invoice returns 404."""
+        response = client.post(f"/v1/invoices/{uuid4()}/download_pdf")
+        assert response.status_code == 404
+
+
 class TestInvoiceRepositoryCount:
     """Tests for InvoiceRepository.count branch coverage."""
 

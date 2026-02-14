@@ -8,10 +8,14 @@ from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_settlement import InvoiceSettlement
+from app.repositories.customer_repository import CustomerRepository
+from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
+from app.repositories.organization_repository import OrganizationRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
 from app.schemas.invoice_settlement import InvoiceSettlementResponse
+from app.services.pdf_service import PdfService
 from app.services.wallet_service import WalletService
 from app.services.webhook_service import WebhookService
 
@@ -275,3 +279,55 @@ async def delete_invoice(
             raise HTTPException(status_code=404, detail="Invoice not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+
+@router.post(
+    "/{invoice_id}/download_pdf",
+    summary="Download invoice PDF",
+    responses={
+        400: {"description": "Invoice must be finalized or paid to generate PDF"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def download_invoice_pdf(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Response:
+    """Generate and download a PDF for a finalized or paid invoice."""
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status not in (InvoiceStatus.FINALIZED.value, InvoiceStatus.PAID.value):
+        raise HTTPException(
+            status_code=400,
+            detail="Invoice must be finalized or paid to generate PDF",
+        )
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(invoice.customer_id)  # type: ignore[arg-type]
+
+    org_repo = OrganizationRepository(db)
+    organization = org_repo.get_by_id(organization_id)
+
+    fee_repo = FeeRepository(db)
+    fees = fee_repo.get_by_invoice_id(invoice_id)
+
+    pdf_service = PdfService()
+    pdf_bytes = pdf_service.generate_invoice_pdf(
+        invoice=invoice,
+        fees=fees,
+        customer=customer,  # type: ignore[arg-type]
+        organization=organization,  # type: ignore[arg-type]
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
+        },
+    )
