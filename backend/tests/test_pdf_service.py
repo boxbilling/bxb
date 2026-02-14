@@ -1,4 +1,4 @@
-"""Tests for PdfService – invoice PDF generation."""
+"""Tests for PdfService – invoice and credit note PDF generation."""
 
 import sys
 from datetime import UTC, datetime
@@ -326,4 +326,182 @@ class TestGenerateInvoicePdf:
             )
 
         # Should not raise – None dates are handled
+        mock_doc.write_pdf.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Helpers for credit note tests
+# ---------------------------------------------------------------------------
+
+_FAKE_FEE_ID = "fee-abc-123"
+
+
+def _make_credit_note(**overrides):  # type: ignore[no-untyped-def]
+    defaults = {
+        "number": "CN-001",
+        "status": "finalized",
+        "credit_note_type": "credit",
+        "reason": "duplicated_charge",
+        "issued_at": datetime(2025, 3, 1, tzinfo=UTC),
+        "credit_amount_cents": Decimal("5000.0000"),
+        "refund_amount_cents": Decimal("0.0000"),
+        "taxes_amount_cents": Decimal("500.0000"),
+        "total_amount_cents": Decimal("5500.0000"),
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+def _make_credit_note_item(**overrides):  # type: ignore[no-untyped-def]
+    defaults = {
+        "fee_id": _FAKE_FEE_ID,
+        "amount_cents": Decimal("2500.0000"),
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# Tests for PdfService.generate_credit_note_pdf
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateCreditNotePdf:
+    def test_returns_pdf_bytes(self) -> None:
+        patcher, mock_wp, mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            result = service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(),
+                items=[_make_credit_note_item()],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        assert result == b"%PDF-1.4 fake"
+        mock_wp.HTML.assert_called_once()
+        mock_doc.write_pdf.assert_called_once()
+
+    def test_html_contains_org_info(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(),
+                items=[],
+                customer=_make_customer(),
+                organization=_make_organization(name="TestOrg Inc"),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "TestOrg Inc" in html_arg
+        assert "123 Main St" in html_arg
+
+    def test_html_contains_customer_info(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(),
+                items=[],
+                customer=_make_customer(name="Bob Smith", email="bob@test.com"),
+                organization=_make_organization(),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "Bob Smith" in html_arg
+        assert "bob@test.com" in html_arg
+
+    def test_html_contains_credit_note_details(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(
+                    number="CN-2025-007",
+                    credit_note_type="refund",
+                    reason="order_cancellation",
+                    credit_amount_cents=Decimal("8000.0000"),
+                    total_amount_cents=Decimal("8500.0000"),
+                ),
+                items=[],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "CN-2025-007" in html_arg
+        assert "refund" in html_arg
+        assert "order_cancellation" in html_arg
+        assert "8000.00" in html_arg
+        assert "8500.00" in html_arg
+
+    def test_html_contains_item_rows(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        items = [
+            _make_credit_note_item(fee_id="fee-1", amount_cents=Decimal("3000.0000")),
+            _make_credit_note_item(fee_id="fee-2", amount_cents=Decimal("2000.0000")),
+        ]
+
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(),
+                items=items,
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "fee-1" in html_arg
+        assert "fee-2" in html_arg
+        assert "3000.00" in html_arg
+        assert "2000.00" in html_arg
+
+    def test_html_contains_amounts(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(
+                    credit_amount_cents=Decimal("5000.0000"),
+                    refund_amount_cents=Decimal("1000.0000"),
+                    taxes_amount_cents=Decimal("500.0000"),
+                    total_amount_cents=Decimal("6500.0000"),
+                ),
+                items=[],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "5000.00" in html_arg
+        assert "1000.00" in html_arg
+        assert "500.00" in html_arg
+        assert "6500.00" in html_arg
+
+    def test_empty_items_list(self) -> None:
+        patcher, _mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            result = service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(),
+                items=[],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        assert result == b"%PDF-1.4 fake"
+
+    def test_credit_note_with_none_issued_at(self) -> None:
+        patcher, _mock_wp, mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(issued_at=None),
+                items=[],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
         mock_doc.write_pdf.assert_called_once()

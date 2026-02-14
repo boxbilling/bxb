@@ -10,11 +10,14 @@ from app.core.database import get_db
 from app.models.credit_note import CreditNote, CreditNoteStatus
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
+from app.repositories.customer_repository import CustomerRepository
+from app.repositories.organization_repository import OrganizationRepository
 from app.schemas.credit_note import (
     CreditNoteCreate,
     CreditNoteResponse,
     CreditNoteUpdate,
 )
+from app.services.pdf_service import PdfService
 
 router = APIRouter()
 
@@ -192,3 +195,55 @@ async def void_credit_note(
 
     voided = repo.void(credit_note_id)
     return voided  # type: ignore[return-value]
+
+
+@router.post(
+    "/{credit_note_id}/download_pdf",
+    summary="Download credit note PDF",
+    responses={
+        400: {"description": "Credit note must be finalized to generate PDF"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Credit note not found"},
+    },
+)
+async def download_credit_note_pdf(
+    credit_note_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Response:
+    """Generate and download a PDF for a finalized credit note."""
+    repo = CreditNoteRepository(db)
+    credit_note = repo.get_by_id(credit_note_id, organization_id)
+    if not credit_note:
+        raise HTTPException(status_code=404, detail="Credit note not found")
+
+    if credit_note.status != CreditNoteStatus.FINALIZED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Credit note must be finalized to generate PDF",
+        )
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(credit_note.customer_id)  # type: ignore[arg-type]
+
+    org_repo = OrganizationRepository(db)
+    organization = org_repo.get_by_id(organization_id)
+
+    item_repo = CreditNoteItemRepository(db)
+    items = item_repo.get_by_credit_note_id(credit_note_id)
+
+    pdf_service = PdfService()
+    pdf_bytes = pdf_service.generate_credit_note_pdf(
+        credit_note=credit_note,
+        items=items,
+        customer=customer,  # type: ignore[arg-type]
+        organization=organization,  # type: ignore[arg-type]
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="credit_note_{credit_note.number}.pdf"'
+        },
+    )

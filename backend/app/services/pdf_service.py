@@ -7,6 +7,8 @@ from string import Template
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from app.models.credit_note import CreditNote
+    from app.models.credit_note_item import CreditNoteItem
     from app.models.customer import Customer
     from app.models.fee import Fee
     from app.models.invoice import Invoice
@@ -90,6 +92,78 @@ _INVOICE_TEMPLATE = Template("""\
 _FEE_ROW_TEMPLATE = Template(
     '<tr><td>${description}</td><td class="right">${units}</td>'
     '<td class="right">${unit_price}</td><td class="right">${amount}</td></tr>'
+)
+
+_CREDIT_NOTE_TEMPLATE = Template("""\
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 12px; color: #333; margin: 40px; }
+  h1 { font-size: 24px; margin-bottom: 4px; }
+  .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+  .header-left, .header-right { width: 48%; }
+  .meta { margin-bottom: 20px; }
+  .meta td { padding: 2px 8px 2px 0; }
+  table.items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  table.items th { text-align: left; border-bottom: 2px solid #333; padding: 6px 8px; }
+  table.items td { padding: 6px 8px; border-bottom: 1px solid #ddd; }
+  table.items .right { text-align: right; }
+  .totals { width: 300px; margin-left: auto; }
+  .totals td { padding: 4px 8px; }
+  .totals .label { text-align: right; }
+  .totals .total-row { font-weight: bold; border-top: 2px solid #333; }
+  .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold;
+             text-transform: uppercase; font-size: 11px; }
+  .status-finalized { background: #e8f0fe; color: #1a73e8; }
+  .status-draft { background: #fce8e6; color: #c5221f; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="header-left">
+    <h1>${org_name}</h1>
+    <p>${org_address}</p>
+  </div>
+  <div class="header-right" style="text-align: right;">
+    <h1>CREDIT NOTE</h1>
+    <span class="status status-${status}">${status}</span>
+  </div>
+</div>
+<table class="meta">
+  <tr><td><strong>Credit Note #:</strong></td><td>${credit_note_number}</td></tr>
+  <tr><td><strong>Type:</strong></td><td>${credit_note_type}</td></tr>
+  <tr><td><strong>Reason:</strong></td><td>${reason}</td></tr>
+  <tr><td><strong>Issued:</strong></td><td>${issued_at}</td></tr>
+</table>
+<table class="meta">
+  <tr><td><strong>Customer:</strong></td></tr>
+  <tr><td>${customer_name}</td></tr>
+  <tr><td>${customer_email}</td></tr>
+</table>
+<table class="items">
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th class="right">Amount</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${item_rows}
+  </tbody>
+</table>
+<table class="totals">
+  <tr><td class="label">Credit Amount:</td><td class="right">${credit_amount}</td></tr>
+  <tr><td class="label">Refund Amount:</td><td class="right">${refund_amount}</td></tr>
+  <tr><td class="label">Tax:</td><td class="right">${taxes_amount}</td></tr>
+  <tr class="total-row"><td class="label">Total:</td><td class="right">${total}</td></tr>
+</table>
+</body>
+</html>
+""")
+
+_CREDIT_NOTE_ITEM_ROW_TEMPLATE = Template(
+    '<tr><td>${description}</td><td class="right">${amount}</td></tr>'
 )
 
 
@@ -185,6 +259,54 @@ class PdfService:
                 invoice.progressive_billing_credit_amount_cents
             ),
             total=_format_amount(invoice.total),
+        )
+
+        import weasyprint
+
+        pdf_bytes: bytes = weasyprint.HTML(string=html).write_pdf()
+        return pdf_bytes
+
+    def generate_credit_note_pdf(
+        self,
+        credit_note: CreditNote,
+        items: list[CreditNoteItem],
+        customer: Customer,
+        organization: Organization,
+    ) -> bytes:
+        """Generate a PDF for a credit note.
+
+        Args:
+            credit_note: The credit note to render.
+            items: Line items associated with the credit note.
+            customer: The customer credited.
+            organization: The issuing organization.
+
+        Returns:
+            Raw PDF bytes.
+        """
+        item_rows = "\n    ".join(
+            _CREDIT_NOTE_ITEM_ROW_TEMPLATE.substitute(
+                description=f"Fee item ({item.fee_id})",
+                amount=_format_amount(item.amount_cents),
+            )
+            for item in items
+        )
+
+        html = _CREDIT_NOTE_TEMPLATE.substitute(
+            org_name=organization.name or "",
+            org_address=_build_org_address(organization),
+            credit_note_number=credit_note.number or "",
+            status=str(credit_note.status or ""),
+            credit_note_type=str(credit_note.credit_note_type or ""),
+            reason=str(credit_note.reason or ""),
+            issued_at=_format_date(credit_note.issued_at),
+            customer_name=customer.name or "",
+            customer_email=customer.email or "",
+            item_rows=item_rows,
+            credit_amount=_format_amount(credit_note.credit_amount_cents),
+            refund_amount=_format_amount(credit_note.refund_amount_cents),
+            taxes_amount=_format_amount(credit_note.taxes_amount_cents),
+            total=_format_amount(credit_note.total_amount_cents),
         )
 
         import weasyprint
