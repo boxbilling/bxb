@@ -8,6 +8,7 @@ import {
   Activity,
   FileText,
   FileMinus,
+  Calculator,
   Wallet,
   Coins,
   Percent,
@@ -43,6 +44,7 @@ const navigation = [
   { name: 'Coupons', href: '/admin/coupons', icon: Percent },
   { name: 'Add-ons', href: '/admin/add-ons', icon: Gift },
   { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
+  { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
 ]
 
 function NavItem({
