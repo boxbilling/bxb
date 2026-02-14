@@ -30,7 +30,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV PYTHONPATH=/app
 
 COPY pyproject.toml uv.lock alembic.ini ./
-COPY VERSION ./
+
+ARG APP_VERSION=0.0.0
+RUN echo "${APP_VERSION}" > VERSION
 
 COPY ./app /app/app
 
