@@ -15,6 +15,7 @@ import {
   Percent,
   Gift,
   Megaphone,
+  Plug,
   Settings,
   Moon,
   Sun,
@@ -49,6 +50,7 @@ const navigation = [
   { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
   { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
   { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
+  { name: 'Integrations', href: '/admin/integrations', icon: Plug },
 ]
 
 function NavItem({
