@@ -21,7 +21,7 @@ class ApiKey(Base):
         index=True,
     )
     key_hash = Column(String(255), nullable=False, unique=True, index=True)
-    key_prefix = Column(String(10), nullable=False)
+    key_prefix = Column(String(20), nullable=False)
     name = Column(String(255), nullable=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
