@@ -41,6 +41,22 @@ class TestRootEndpoints:
         assert "domain" in data
         assert data["status"] == "running"
 
+    def test_options_preflight(self, client: TestClient):
+        response = client.options(
+            "/v1/customers/",
+            headers={"Origin": "http://localhost:5173"},
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+        assert response.headers["access-control-allow-methods"] == "*"
+        assert response.headers["access-control-allow-credentials"] == "true"
+
+    def test_options_preflight_no_origin(self, client: TestClient):
+        response = client.options("/v1/plans/")
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "*"
+
+
 class TestConfig:
     def test_version_from_file(self):
         s = Settings()
