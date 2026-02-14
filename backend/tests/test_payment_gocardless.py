@@ -2,7 +2,7 @@
 
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -95,9 +95,9 @@ def finalized_invoice(db_session, customer, subscription):
         InvoiceCreate(
             customer_id=customer.id,
             subscription_id=subscription.id,
-            billing_period_start=datetime.utcnow(),
-            billing_period_end=datetime.utcnow() + timedelta(days=30),
-            due_date=datetime.utcnow() + timedelta(days=14),
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            due_date=datetime.now(UTC) + timedelta(days=14),
             line_items=[
                 InvoiceLineItem(
                     description="GC Test Service",
@@ -679,7 +679,7 @@ class TestGoCardlessAPI:
         mock_provider.create_checkout_session.return_value = CheckoutSession(
             provider_checkout_id="RE_GC_123",
             checkout_url="https://pay.gocardless.com/flow/auth",
-            expires_at=datetime.utcnow() + timedelta(hours=1),
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
         )
         mock_get_provider.return_value = mock_provider
 

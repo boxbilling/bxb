@@ -1,6 +1,6 @@
 """Tests for InvoiceSettlement model, repository, and payment flow integration."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
@@ -95,9 +95,9 @@ def finalized_invoice(db_session, customer, subscription):
         InvoiceCreate(
             customer_id=customer.id,
             subscription_id=subscription.id,
-            billing_period_start=datetime.utcnow(),
-            billing_period_end=datetime.utcnow() + timedelta(days=30),
-            due_date=datetime.utcnow() + timedelta(days=14),
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            due_date=datetime.now(UTC) + timedelta(days=14),
             line_items=[
                 InvoiceLineItem(
                     description="Test Service",
@@ -163,7 +163,7 @@ class TestInvoiceSettlementSchema:
         settlement.settlement_type = SettlementType.PAYMENT.value
         settlement.source_id = uuid4()
         settlement.amount_cents = Decimal("50.00")
-        settlement.created_at = datetime.utcnow()
+        settlement.created_at = datetime.now(UTC)
 
         response = InvoiceSettlementResponse.model_validate(settlement)
         assert response.settlement_type == "payment"

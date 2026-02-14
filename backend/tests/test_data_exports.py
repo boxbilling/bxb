@@ -3,7 +3,7 @@
 import csv
 import io
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -102,9 +102,9 @@ def invoice(db_session, customer, subscription):
         InvoiceCreate(
             customer_id=customer.id,
             subscription_id=subscription.id,
-            billing_period_start=datetime.utcnow(),
-            billing_period_end=datetime.utcnow() + timedelta(days=30),
-            due_date=datetime.utcnow() + timedelta(days=14),
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            due_date=datetime.now(UTC) + timedelta(days=14),
             line_items=[
                 InvoiceLineItem(
                     description="Test Service",
@@ -126,7 +126,7 @@ def event(db_session, customer):
             transaction_id=f"export_test_evt_{uuid4()}",
             external_customer_id=customer.external_id,
             code="api_calls",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(UTC),
             properties={"count": 5},
         ),
         DEFAULT_ORG_ID,
@@ -258,9 +258,9 @@ class TestDataExportSchema:
         export.file_path = "/tmp/test.csv"
         export.record_count = 10
         export.error_message = None
-        export.started_at = datetime.utcnow()
-        export.completed_at = datetime.utcnow()
-        export.created_at = datetime.utcnow()
+        export.started_at = datetime.now(UTC)
+        export.completed_at = datetime.now(UTC)
+        export.created_at = datetime.now(UTC)
 
         response = DataExportResponse.model_validate(export)
         assert response.export_type == "invoices"
