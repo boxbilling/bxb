@@ -145,11 +145,11 @@ function Sidebar({
         title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       />
 
-      <TooltipProvider delayDuration={0}>
-        <OrgSwitcher collapsed={collapsed} />
-      </TooltipProvider>
-
-      <Separator />
+      <div className="h-14 shrink-0 border-b">
+        <TooltipProvider delayDuration={0}>
+          <OrgSwitcher collapsed={collapsed} />
+        </TooltipProvider>
+      </div>
 
       <nav className="flex-1 overflow-y-auto space-y-0.5 px-2 pb-2 pt-1">
         <TooltipProvider delayDuration={0}>

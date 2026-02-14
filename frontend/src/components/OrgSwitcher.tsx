@@ -116,7 +116,7 @@ export default function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
 
   if (isLoading) {
     return (
-      <div className={cn('flex h-14 items-center gap-2.5 px-3', collapsed && 'justify-center')}>
+      <div className={cn('flex h-full items-center gap-2.5 px-3', collapsed && 'justify-center')}>
         <Skeleton className="h-6 w-6 rounded-full shrink-0" />
         {!collapsed && <Skeleton className="h-4 w-24" />}
       </div>
@@ -125,7 +125,7 @@ export default function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
 
   if (collapsed) {
     return (
-      <div className="flex h-14 items-center justify-center px-3">
+      <div className="flex h-full items-center justify-center px-3">
         <Tooltip>
           <TooltipTrigger asChild>
             <div><OrgAvatar org={currentOrg} /></div>
@@ -141,7 +141,7 @@ export default function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
           <button
-            className="flex h-14 w-full items-center gap-2.5 px-3 text-left hover:bg-accent/50 transition-colors"
+            className="flex h-full w-full items-center gap-2.5 px-3 text-left hover:bg-accent/50 transition-colors"
           >
             <OrgAvatar org={currentOrg} />
             <span className="flex-1 text-sm font-semibold truncate text-foreground">
