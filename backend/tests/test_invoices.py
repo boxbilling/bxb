@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -1704,3 +1704,125 @@ class TestInvoicePaymentMethodIntegration:
         data = response.json()
         # Invoice stays finalized since mark_paid returned None
         assert data["status"] == "finalized"
+
+
+class TestSendInvoiceEmailAPI:
+    """Tests for POST /v1/invoices/{invoice_id}/send_email endpoint."""
+
+    def test_send_email_finalized(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful email send for a finalized invoice."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with (
+            patch(
+                "app.routers.invoices.PdfService.generate_invoice_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.invoices.EmailService.send_invoice_email",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_send,
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": True}
+        mock_send.assert_called_once()
+
+    def test_send_email_paid(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful email send for a paid invoice."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+        repo.mark_paid(invoice.id)
+
+        with (
+            patch(
+                "app.routers.invoices.PdfService.generate_invoice_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.invoices.EmailService.send_invoice_email",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": True}
+
+    def test_send_email_draft_returns_400(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that sending email for a draft invoice returns 400."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/send_email")
+        assert response.status_code == 400
+        assert "finalized or paid" in response.json()["detail"]
+
+    def test_send_email_not_found(self, client):
+        """Test that sending email for a non-existent invoice returns 404."""
+        response = client.post(f"/v1/invoices/{uuid4()}/send_email")
+        assert response.status_code == 404
+
+    def test_send_email_service_returns_false(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test email service failure handling (returns False)."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with (
+            patch(
+                "app.routers.invoices.PdfService.generate_invoice_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.invoices.EmailService.send_invoice_email",
+                new_callable=AsyncMock,
+                return_value=False,
+            ),
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": False}

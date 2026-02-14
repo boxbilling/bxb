@@ -19,6 +19,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
 from app.schemas.invoice_preview import InvoicePreviewRequest, InvoicePreviewResponse
 from app.schemas.invoice_settlement import InvoiceSettlementResponse
+from app.services.email_service import EmailService
 from app.services.invoice_preview_service import InvoicePreviewService
 from app.services.payment_provider import get_payment_provider
 from app.services.pdf_service import PdfService
@@ -350,6 +351,59 @@ async def list_invoice_settlements(
         raise HTTPException(status_code=404, detail="Invoice not found")
     settlement_repo = InvoiceSettlementRepository(db)
     return settlement_repo.get_by_invoice_id(invoice_id)
+
+
+@router.post(
+    "/{invoice_id}/send_email",
+    summary="Send invoice email",
+    responses={
+        400: {"description": "Invoice must be finalized or paid to send email"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def send_invoice_email(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> dict[str, bool]:
+    """Send an invoice notification email to the customer."""
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status not in (InvoiceStatus.FINALIZED.value, InvoiceStatus.PAID.value):
+        raise HTTPException(
+            status_code=400,
+            detail="Invoice must be finalized or paid to send email",
+        )
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(invoice.customer_id)  # type: ignore[arg-type]
+
+    org_repo = OrganizationRepository(db)
+    organization = org_repo.get_by_id(organization_id)
+
+    pdf_bytes: bytes | None = None
+    fee_repo = FeeRepository(db)
+    fees = fee_repo.get_by_invoice_id(invoice_id)
+    pdf_service = PdfService()
+    pdf_bytes = pdf_service.generate_invoice_pdf(
+        invoice=invoice,
+        fees=fees,
+        customer=customer,  # type: ignore[arg-type]
+        organization=organization,  # type: ignore[arg-type]
+    )
+
+    email_service = EmailService()
+    sent = await email_service.send_invoice_email(
+        invoice=invoice,
+        customer=customer,  # type: ignore[arg-type]
+        organization=organization,  # type: ignore[arg-type]
+        pdf_bytes=pdf_bytes,
+    )
+    return {"sent": sent}
 
 
 @router.delete(

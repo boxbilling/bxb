@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
@@ -1411,3 +1411,102 @@ class TestDownloadCreditNotePdf:
         """Test that downloading PDF for a non-existent credit note returns 404."""
         response = client.post(f"/v1/credit_notes/{uuid4()}/download_pdf")
         assert response.status_code == 404
+
+
+class TestSendCreditNoteEmailAPI:
+    """Tests for POST /v1/credit_notes/{credit_note_id}/send_email endpoint."""
+
+    def test_send_email_finalized(self, client, db_session, customer, invoice):
+        """Test successful email send for a finalized credit note."""
+        repo = CreditNoteRepository(db_session)
+        cn = repo.create(
+            CreditNoteCreate(
+                number="CN-EMAIL-001",
+                invoice_id=invoice.id,
+                customer_id=customer.id,
+                credit_note_type=CreditNoteType.CREDIT,
+                reason=CreditNoteReason.DUPLICATED_CHARGE,
+                credit_amount_cents=Decimal("5000.0000"),
+                total_amount_cents=Decimal("5000.0000"),
+                currency="USD",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(cn.id)
+
+        with (
+            patch(
+                "app.routers.credit_notes.PdfService.generate_credit_note_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.credit_notes.EmailService.send_credit_note_email",
+                new_callable=AsyncMock,
+                return_value=True,
+            ) as mock_send,
+        ):
+            response = client.post(f"/v1/credit_notes/{cn.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": True}
+        mock_send.assert_called_once()
+
+    def test_send_email_draft_returns_400(self, client, db_session, customer, invoice):
+        """Test that sending email for a draft credit note returns 400."""
+        repo = CreditNoteRepository(db_session)
+        cn = repo.create(
+            CreditNoteCreate(
+                number="CN-EMAIL-DRAFT",
+                invoice_id=invoice.id,
+                customer_id=customer.id,
+                credit_note_type=CreditNoteType.CREDIT,
+                reason=CreditNoteReason.OTHER,
+                credit_amount_cents=Decimal("1000.0000"),
+                total_amount_cents=Decimal("1000.0000"),
+                currency="USD",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.post(f"/v1/credit_notes/{cn.id}/send_email")
+        assert response.status_code == 400
+        assert "finalized" in response.json()["detail"].lower()
+
+    def test_send_email_not_found(self, client):
+        """Test that sending email for a non-existent credit note returns 404."""
+        response = client.post(f"/v1/credit_notes/{uuid4()}/send_email")
+        assert response.status_code == 404
+
+    def test_send_email_service_returns_false(self, client, db_session, customer, invoice):
+        """Test email service failure handling (returns False)."""
+        repo = CreditNoteRepository(db_session)
+        cn = repo.create(
+            CreditNoteCreate(
+                number="CN-EMAIL-FAIL",
+                invoice_id=invoice.id,
+                customer_id=customer.id,
+                credit_note_type=CreditNoteType.CREDIT,
+                reason=CreditNoteReason.DUPLICATED_CHARGE,
+                credit_amount_cents=Decimal("5000.0000"),
+                total_amount_cents=Decimal("5000.0000"),
+                currency="USD",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(cn.id)
+
+        with (
+            patch(
+                "app.routers.credit_notes.PdfService.generate_credit_note_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.credit_notes.EmailService.send_credit_note_email",
+                new_callable=AsyncMock,
+                return_value=False,
+            ),
+        ):
+            response = client.post(f"/v1/credit_notes/{cn.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": False}
