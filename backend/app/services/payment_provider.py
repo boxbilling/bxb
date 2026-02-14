@@ -47,6 +47,15 @@ class ChargeResult:
 
 
 @dataclass
+class RefundResult:
+    """Result of a refund operation."""
+
+    provider_refund_id: str
+    status: str  # "pending", "succeeded", or "failed"
+    failure_reason: str | None = None
+
+
+@dataclass
 class WebhookResult:
     """Result of processing a webhook."""
 
@@ -113,6 +122,22 @@ class PaymentProviderBase(ABC):
         """
         raise NotImplementedError(
             f"{self.provider_name.value} does not support charging payment methods"
+        )
+
+    def create_refund(
+        self,
+        provider_payment_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> "RefundResult":
+        """Create a refund for a previous payment.
+
+        Override in providers that support refunds. By default raises
+        NotImplementedError.
+        """
+        raise NotImplementedError(
+            f"{self.provider_name.value} does not support refunds"
         )
 
     @abstractmethod
@@ -278,6 +303,34 @@ class StripeProvider(PaymentProviderBase):
                 failure_reason=reason,
             )
 
+    def create_refund(
+        self,
+        provider_payment_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> RefundResult:
+        """Create a refund via Stripe."""
+        amount_cents = int(amount * 100)
+
+        try:
+            refund = self.stripe.Refund.create(
+                payment_intent=provider_payment_id,
+                amount=amount_cents,
+                metadata=metadata or {},
+            )
+            status = "succeeded" if refund.status == "succeeded" else "pending"
+            return RefundResult(
+                provider_refund_id=refund.id,
+                status=status,
+            )
+        except self.stripe.error.InvalidRequestError as e:
+            return RefundResult(
+                provider_refund_id="",
+                status="failed",
+                failure_reason=str(e),
+            )
+
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify Stripe webhook signature."""
         if not self.webhook_secret:
@@ -346,6 +399,19 @@ class ManualProvider(PaymentProviderBase):
             provider_checkout_id=f"manual_{payment_id}",
             checkout_url="",  # No URL for manual payments
             expires_at=datetime.now(UTC) + timedelta(days=30),
+        )
+
+    def create_refund(
+        self,
+        provider_payment_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> RefundResult:
+        """Manual refund — always succeeds with a generated ID."""
+        return RefundResult(
+            provider_refund_id=f"manual_refund_{provider_payment_id}",
+            status="succeeded",
         )
 
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
@@ -486,6 +552,39 @@ class UCPProvider(PaymentProviderBase):
             checkout_url=checkout_url,
             expires_at=expires_at,
         )
+
+    def create_refund(
+        self,
+        provider_payment_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> RefundResult:
+        """Create a refund via UCP."""
+        amount_cents = int(amount * 100)
+        request_data: dict[str, Any] = {
+            "payment_id": provider_payment_id,
+            "amount": amount_cents,
+            "currency": currency.upper(),
+            "metadata": metadata or {},
+        }
+
+        try:
+            response = self._make_request("POST", "/refunds", request_data)
+            refund_id = response.get("id", f"ucp_refund_{provider_payment_id}")
+            status_raw = response.get("status", "pending")
+            status_map = {"completed": "succeeded", "pending": "pending", "failed": "failed"}
+            status = status_map.get(status_raw, "pending")
+            return RefundResult(
+                provider_refund_id=refund_id,
+                status=status,
+            )
+        except RuntimeError as e:
+            return RefundResult(
+                provider_refund_id="",
+                status="failed",
+                failure_reason=str(e),
+            )
 
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify UCP webhook signature using HMAC-SHA256."""

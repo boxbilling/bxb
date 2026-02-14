@@ -19,7 +19,12 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.models.payment import PaymentProvider
-from app.services.payment_provider import CheckoutSession, PaymentProviderBase, WebhookResult
+from app.services.payment_provider import (
+    CheckoutSession,
+    PaymentProviderBase,
+    RefundResult,
+    WebhookResult,
+)
 
 
 class AdyenProvider(PaymentProviderBase):
@@ -125,6 +130,45 @@ class AdyenProvider(PaymentProviderBase):
             checkout_url=session_url,
             expires_at=datetime.now(UTC) + timedelta(hours=1),
         )
+
+    def create_refund(
+        self,
+        provider_payment_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> RefundResult:
+        """Create a refund via Adyen.
+
+        Uses the Adyen Modifications API to create a refund.
+        """
+        amount_minor = int(amount * 100)
+        request_data: dict[str, Any] = {
+            "merchantAccount": self.merchant_account,
+            "amount": {
+                "value": amount_minor,
+                "currency": currency.upper(),
+            },
+            "reference": f"refund_{provider_payment_id}",
+            "paymentPspReference": provider_payment_id,
+            "metadata": metadata or {},
+        }
+
+        try:
+            response = self._make_request("POST", "/payments/refunds", request_data)
+            psp_reference = response.get("pspReference", f"adyen_refund_{provider_payment_id}")
+            status_raw = response.get("status", "received")
+            status = "succeeded" if status_raw == "received" else "pending"
+            return RefundResult(
+                provider_refund_id=psp_reference,
+                status=status,
+            )
+        except RuntimeError as e:
+            return RefundResult(
+                provider_refund_id="",
+                status="failed",
+                failure_reason=str(e),
+            )
 
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify Adyen webhook HMAC signature.

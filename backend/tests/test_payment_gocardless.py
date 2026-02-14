@@ -2,9 +2,11 @@
 
 import hashlib
 import hmac
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+from urllib.error import URLError
 from uuid import uuid4
 
 import pytest
@@ -22,7 +24,7 @@ from app.schemas.customer import CustomerCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
-from app.services.payment_provider import get_payment_provider
+from app.services.payment_provider import RefundResult, get_payment_provider
 from app.services.payment_providers.gocardless import GoCardlessProvider
 from tests.conftest import DEFAULT_ORG_ID
 
@@ -819,3 +821,103 @@ class TestGoCardlessAPI:
         assert response.status_code == 200
         assert len(response.json()) >= 1
         assert all(p["provider"] == "gocardless" for p in response.json())
+
+
+class TestGoCardlessRefund:
+    """Tests for GoCardlessProvider.create_refund."""
+
+    @patch("app.services.payment_providers.gocardless.urlopen")
+    def test_refund_success(self, mock_urlopen):
+        """Test successful GoCardless refund."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"refunds": {"id": "RF00123"}}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = GoCardlessProvider(
+            access_token="test_token",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PM00123",
+            amount=Decimal("50.00"),
+            currency="GBP",
+            metadata={"reason": "customer_request"},
+        )
+
+        assert isinstance(result, RefundResult)
+        assert result.provider_refund_id == "RF00123"
+        assert result.status == "pending"
+        assert result.failure_reason is None
+
+    @patch("app.services.payment_providers.gocardless.urlopen")
+    def test_refund_partial_amount(self, mock_urlopen):
+        """Test GoCardless partial refund."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"refunds": {"id": "RF00456"}}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = GoCardlessProvider(
+            access_token="test_token",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PM00456",
+            amount=Decimal("25.50"),
+            currency="EUR",
+        )
+
+        assert result.provider_refund_id == "RF00456"
+        assert result.status == "pending"
+
+    @patch("app.services.payment_providers.gocardless.urlopen")
+    def test_refund_api_error(self, mock_urlopen):
+        """Test GoCardless refund with API error."""
+        mock_urlopen.side_effect = URLError("Connection refused")
+
+        provider = GoCardlessProvider(
+            access_token="test_token",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PM00789",
+            amount=Decimal("100.00"),
+            currency="GBP",
+        )
+
+        assert result.provider_refund_id == ""
+        assert result.status == "failed"
+        assert result.failure_reason is not None
+
+    @patch("app.services.payment_providers.gocardless.urlopen")
+    def test_refund_empty_response(self, mock_urlopen):
+        """Test GoCardless refund with empty response uses fallback."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({"refunds": {}}).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = GoCardlessProvider(
+            access_token="test_token",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PM00999",
+            amount=Decimal("10.00"),
+            currency="GBP",
+        )
+
+        assert result.provider_refund_id == "gc_refund_PM00999"
+        assert result.status == "pending"

@@ -3,9 +3,11 @@
 import base64
 import hashlib
 import hmac
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+from urllib.error import URLError
 from uuid import uuid4
 
 import pytest
@@ -23,7 +25,7 @@ from app.schemas.customer import CustomerCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
-from app.services.payment_provider import get_payment_provider
+from app.services.payment_provider import RefundResult, get_payment_provider
 from app.services.payment_providers.adyen import AdyenProvider
 from tests.conftest import DEFAULT_ORG_ID
 
@@ -849,3 +851,133 @@ class TestAdyenAPI:
         assert response.status_code == 200
         assert len(response.json()) >= 1
         assert all(p["provider"] == "adyen" for p in response.json())
+
+
+class TestAdyenRefund:
+    """Tests for AdyenProvider.create_refund."""
+
+    @patch("app.services.payment_providers.adyen.urlopen")
+    def test_refund_success(self, mock_urlopen):
+        """Test successful Adyen refund."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"pspReference": "ADYEN_RF_123", "status": "received"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = AdyenProvider(
+            api_key="test_key",
+            merchant_account="TestMerchant",
+            webhook_hmac_key="test_hmac",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PSP_123",
+            amount=Decimal("50.00"),
+            currency="EUR",
+            metadata={"reason": "customer_request"},
+        )
+
+        assert isinstance(result, RefundResult)
+        assert result.provider_refund_id == "ADYEN_RF_123"
+        assert result.status == "succeeded"
+        assert result.failure_reason is None
+
+    @patch("app.services.payment_providers.adyen.urlopen")
+    def test_refund_partial_amount(self, mock_urlopen):
+        """Test Adyen partial refund."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"pspReference": "ADYEN_RF_456", "status": "received"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = AdyenProvider(
+            api_key="test_key",
+            merchant_account="TestMerchant",
+            webhook_hmac_key="test_hmac",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PSP_456",
+            amount=Decimal("25.50"),
+            currency="EUR",
+        )
+
+        assert result.provider_refund_id == "ADYEN_RF_456"
+        assert result.status == "succeeded"
+
+    @patch("app.services.payment_providers.adyen.urlopen")
+    def test_refund_non_received_status(self, mock_urlopen):
+        """Test Adyen refund with non-received status."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"pspReference": "ADYEN_RF_789", "status": "pending"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = AdyenProvider(
+            api_key="test_key",
+            merchant_account="TestMerchant",
+            webhook_hmac_key="test_hmac",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PSP_789",
+            amount=Decimal("100.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == "ADYEN_RF_789"
+        assert result.status == "pending"
+
+    @patch("app.services.payment_providers.adyen.urlopen")
+    def test_refund_api_error(self, mock_urlopen):
+        """Test Adyen refund with API error."""
+        mock_urlopen.side_effect = URLError("Connection refused")
+
+        provider = AdyenProvider(
+            api_key="test_key",
+            merchant_account="TestMerchant",
+            webhook_hmac_key="test_hmac",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PSP_ERR",
+            amount=Decimal("50.00"),
+            currency="EUR",
+        )
+
+        assert result.provider_refund_id == ""
+        assert result.status == "failed"
+        assert result.failure_reason is not None
+
+    @patch("app.services.payment_providers.adyen.urlopen")
+    def test_refund_empty_response(self, mock_urlopen):
+        """Test Adyen refund with empty response uses fallback."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({}).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = AdyenProvider(
+            api_key="test_key",
+            merchant_account="TestMerchant",
+            webhook_hmac_key="test_hmac",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="PSP_EMPTY",
+            amount=Decimal("10.00"),
+            currency="EUR",
+        )
+
+        assert result.provider_refund_id == "adyen_refund_PSP_EMPTY"
+        assert result.status == "succeeded"

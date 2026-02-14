@@ -1,8 +1,10 @@
 """Tests for payment API and repository."""
 
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
+from urllib.error import URLError
 from uuid import uuid4
 
 import pytest
@@ -24,6 +26,7 @@ from app.schemas.subscription import SubscriptionCreate
 from app.services.payment_provider import (
     ChargeResult,
     ManualProvider,
+    RefundResult,
     StripeProvider,
     UCPProvider,
     WebhookResult,
@@ -2031,6 +2034,308 @@ class TestChargePaymentMethod:
         assert result.status == "succeeded"
         call_kwargs = mock_stripe.PaymentIntent.create.call_args[1]
         assert call_kwargs["metadata"] == {}
+
+
+class TestStripeRefund:
+    """Tests for StripeProvider.create_refund."""
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_refund_success(self, mock_settings):
+        """Test successful Stripe refund."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        mock_refund = MagicMock()
+        mock_refund.id = "re_123"
+        mock_refund.status = "succeeded"
+        mock_stripe.Refund.create.return_value = mock_refund
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.create_refund(
+            provider_payment_id="pi_123",
+            amount=Decimal("50.00"),
+            currency="USD",
+            metadata={"reason": "customer_request"},
+        )
+
+        assert isinstance(result, RefundResult)
+        assert result.provider_refund_id == "re_123"
+        assert result.status == "succeeded"
+        assert result.failure_reason is None
+
+        mock_stripe.Refund.create.assert_called_once_with(
+            payment_intent="pi_123",
+            amount=5000,
+            metadata={"reason": "customer_request"},
+        )
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_refund_partial_amount(self, mock_settings):
+        """Test Stripe partial refund."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        mock_refund = MagicMock()
+        mock_refund.id = "re_partial_123"
+        mock_refund.status = "succeeded"
+        mock_stripe.Refund.create.return_value = mock_refund
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.create_refund(
+            provider_payment_id="pi_123",
+            amount=Decimal("25.50"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == "re_partial_123"
+        assert result.status == "succeeded"
+
+        mock_stripe.Refund.create.assert_called_once_with(
+            payment_intent="pi_123",
+            amount=2550,
+            metadata={},
+        )
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_refund_pending_status(self, mock_settings):
+        """Test Stripe refund with pending status."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        mock_refund = MagicMock()
+        mock_refund.id = "re_pending_123"
+        mock_refund.status = "pending"
+        mock_stripe.Refund.create.return_value = mock_refund
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.create_refund(
+            provider_payment_id="pi_123",
+            amount=Decimal("100.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == "re_pending_123"
+        assert result.status == "pending"
+
+    @patch("app.services.payment_provider.settings")
+    def test_stripe_refund_failure(self, mock_settings):
+        """Test Stripe refund failure (invalid request)."""
+        mock_settings.stripe_api_key = "sk_test_123"
+        mock_settings.stripe_webhook_secret = "whsec_test"
+
+        mock_stripe = MagicMock()
+        error = Exception("No such payment_intent: pi_invalid")
+        mock_stripe.error.InvalidRequestError = type(error)
+        mock_stripe.Refund.create.side_effect = error
+
+        provider = StripeProvider(api_key="sk_test_123")
+        provider._stripe = mock_stripe
+
+        result = provider.create_refund(
+            provider_payment_id="pi_invalid",
+            amount=Decimal("50.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == ""
+        assert result.status == "failed"
+        assert "No such payment_intent" in result.failure_reason
+
+
+class TestManualRefund:
+    """Tests for ManualProvider.create_refund."""
+
+    def test_manual_refund_success(self):
+        """Test manual refund always succeeds."""
+        provider = ManualProvider()
+        result = provider.create_refund(
+            provider_payment_id="manual_pay_123",
+            amount=Decimal("50.00"),
+            currency="USD",
+        )
+
+        assert isinstance(result, RefundResult)
+        assert result.provider_refund_id == "manual_refund_manual_pay_123"
+        assert result.status == "succeeded"
+        assert result.failure_reason is None
+
+    def test_manual_refund_partial(self):
+        """Test manual partial refund."""
+        provider = ManualProvider()
+        result = provider.create_refund(
+            provider_payment_id="manual_pay_456",
+            amount=Decimal("25.00"),
+            currency="EUR",
+            metadata={"note": "partial refund"},
+        )
+
+        assert result.provider_refund_id == "manual_refund_manual_pay_456"
+        assert result.status == "succeeded"
+
+
+class TestUCPRefund:
+    """Tests for UCPProvider.create_refund."""
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_refund_success(self, mock_urlopen):
+        """Test successful UCP refund."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"id": "ucp_re_123", "status": "completed"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://ucp.example.com",
+            api_key="test_key",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="ucp_pay_123",
+            amount=Decimal("75.00"),
+            currency="USD",
+            metadata={"reason": "refund"},
+        )
+
+        assert isinstance(result, RefundResult)
+        assert result.provider_refund_id == "ucp_re_123"
+        assert result.status == "succeeded"
+        assert result.failure_reason is None
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_refund_pending(self, mock_urlopen):
+        """Test UCP refund with pending status."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"id": "ucp_re_456", "status": "pending"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://ucp.example.com",
+            api_key="test_key",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="ucp_pay_456",
+            amount=Decimal("30.00"),
+            currency="EUR",
+        )
+
+        assert result.provider_refund_id == "ucp_re_456"
+        assert result.status == "pending"
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_refund_failed_status(self, mock_urlopen):
+        """Test UCP refund with failed status from API."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"id": "ucp_re_789", "status": "failed"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://ucp.example.com",
+            api_key="test_key",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="ucp_pay_789",
+            amount=Decimal("10.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == "ucp_re_789"
+        assert result.status == "failed"
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_refund_unknown_status(self, mock_urlopen):
+        """Test UCP refund with unknown status defaults to pending."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps(
+            {"id": "ucp_re_unknown", "status": "processing"}
+        ).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://ucp.example.com",
+            api_key="test_key",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="ucp_pay_unknown",
+            amount=Decimal("10.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == "ucp_re_unknown"
+        assert result.status == "pending"
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_refund_api_error(self, mock_urlopen):
+        """Test UCP refund with API error."""
+        mock_urlopen.side_effect = URLError("Connection refused")
+
+        provider = UCPProvider(
+            base_url="https://ucp.example.com",
+            api_key="test_key",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="ucp_pay_err",
+            amount=Decimal("50.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == ""
+        assert result.status == "failed"
+        assert result.failure_reason is not None
+
+    @patch("app.services.payment_provider.urlopen")
+    def test_ucp_refund_empty_response(self, mock_urlopen):
+        """Test UCP refund with empty response uses fallback values."""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({}).encode()
+        mock_response.__enter__ = lambda s: s
+        mock_response.__exit__ = MagicMock(return_value=False)
+        mock_urlopen.return_value = mock_response
+
+        provider = UCPProvider(
+            base_url="https://ucp.example.com",
+            api_key="test_key",
+            webhook_secret="test_secret",
+        )
+
+        result = provider.create_refund(
+            provider_payment_id="ucp_pay_empty",
+            amount=Decimal("10.00"),
+            currency="USD",
+        )
+
+        assert result.provider_refund_id == "ucp_refund_ucp_pay_empty"
+        assert result.status == "pending"
 
 
 class TestPaymentRepositoryCount:

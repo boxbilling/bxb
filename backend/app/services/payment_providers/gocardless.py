@@ -20,7 +20,12 @@ from uuid import UUID
 
 from app.core.config import settings
 from app.models.payment import PaymentProvider
-from app.services.payment_provider import CheckoutSession, PaymentProviderBase, WebhookResult
+from app.services.payment_provider import (
+    CheckoutSession,
+    PaymentProviderBase,
+    RefundResult,
+    WebhookResult,
+)
 
 
 class GoCardlessProvider(PaymentProviderBase):
@@ -122,6 +127,40 @@ class GoCardlessProvider(PaymentProviderBase):
             checkout_url=redirect_url,
             expires_at=datetime.now(UTC) + timedelta(hours=1),
         )
+
+    def create_refund(
+        self,
+        provider_payment_id: str,
+        amount: Decimal,
+        currency: str,
+        metadata: dict[str, Any] | None = None,
+    ) -> RefundResult:
+        """Create a refund via GoCardless.
+
+        GoCardless refunds are created against a payment ID.
+        """
+        request_data: dict[str, Any] = {
+            "refunds": {
+                "amount": int(amount * 100),
+                "links": {"payment": provider_payment_id},
+                "metadata": metadata or {},
+            }
+        }
+
+        try:
+            response = self._make_request("POST", "/refunds", request_data)
+            refund = response.get("refunds", {})
+            refund_id = refund.get("id", f"gc_refund_{provider_payment_id}")
+            return RefundResult(
+                provider_refund_id=refund_id,
+                status="pending",
+            )
+        except RuntimeError as e:
+            return RefundResult(
+                provider_refund_id="",
+                status="failed",
+                failure_reason=str(e),
+            )
 
     def verify_webhook_signature(self, payload: bytes, signature: str) -> bool:
         """Verify GoCardless webhook signature.
