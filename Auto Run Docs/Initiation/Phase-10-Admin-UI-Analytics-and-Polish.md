@@ -43,21 +43,23 @@ This phase brings everything together with a comprehensive admin UI that exposes
   - Link credit notes from InvoicesPage (button on invoice detail to create credit note)
   - **Note:** CreditNotesPage was already implemented with full functionality: stat cards (total/draft/finalized/total amount), search + status filter, list table with all columns, create dialog with fee selection, detail dialog with amounts breakdown and status badges, finalize and void confirmation dialogs. Added `useLocation` integration so that navigating from InvoicesPage "Create Credit Note" button auto-opens the create dialog with pre-selected invoice and customer. Route, sidebar nav (FileMinus icon in Billing group), and barrel export were already configured. Frontend builds clean, all 2589 backend tests pass with 100% coverage.
 
-- [ ] Build the Tax management UI:
+- [x] Build the Tax management UI:
   - `frontend/src/pages/admin/TaxesPage.tsx`:
     - Tax list table: code, name, rate, description, applied_to_organization flag
     - Create tax form: code, name, rate (percentage input), description
     - Toggle organization-wide default
     - Apply tax to entity dialog: select entity type + entity, apply tax
   - Show applied taxes on Invoice detail, Fee detail, and Customer detail pages
+  - **Note:** TaxesPage was already implemented with full functionality: stat cards (total/org-wide/avg rate/recent), search + scope filter, list table with all columns, create/edit dialog, apply-to-entity dialog (customer/invoice), delete with confirmation. Added `GET /v1/taxes/applied` backend endpoint to query applied taxes by entity type + ID (with 3 new tests). Added applied taxes breakdown to InvoicesPage detail dialog (below tax total line), FeesPage detail dialog (between tax and total), and a new "Taxes" tab on CustomerDetailPage. Regenerated OpenAPI schema. All 2592 backend tests pass with 100% coverage, frontend builds clean.
 
-- [ ] Build the Webhooks management UI:
+- [x] Build the Webhooks management UI:
   - `frontend/src/pages/admin/WebhooksPage.tsx`:
     - Webhook endpoints list: URL, signature algorithm, status
     - Create endpoint form: URL, signature algorithm
     - Recent webhooks table: type, status, retries, timestamp, http_status
     - Webhook detail view: full payload (JSON viewer), response body, retry button for failed
     - Status indicators: green (succeeded), red (failed), yellow (pending)
+  - **Note:** Implemented full WebhooksPage with: stat cards (total endpoints/active/recent webhooks/failed), tabbed interface (Endpoints + Recent Webhooks), endpoint list table with URL/signature algo/status/created columns, create/edit endpoint dialog with URL/signature algorithm/status fields, delete endpoint with confirmation, recent webhooks table with event type/status/HTTP status/retries/timestamp columns, webhook detail dialog with full payload JSON viewer/response body/retry button for failed webhooks, status color indicators (green=succeeded, red=failed, yellow=pending). Added route in App.tsx, sidebar nav item with Radio icon in Operations group, page export in index.ts. All 2592 backend tests pass with 100% coverage, frontend builds clean.
 
 - [ ] Build the Organization settings and API key management:
   - Update `frontend/src/pages/admin/SettingsPage.tsx`:

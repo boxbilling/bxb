@@ -16,6 +16,7 @@ import {
   Puzzle,
   Bell,
   Plug,
+  Radio,
   Send,
   FileDown,
   Settings,
@@ -75,6 +76,7 @@ const navigationGroups = [
   {
     label: 'Operations',
     items: [
+      { name: 'Webhooks', href: '/admin/webhooks', icon: Radio },
       { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Bell },
       { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
       { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
