@@ -17,6 +17,7 @@ import {
   Megaphone,
   Plug,
   Send,
+  FileDown,
   Settings,
   Moon,
   Sun,
@@ -53,6 +54,7 @@ const navigation = [
   { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
   { name: 'Integrations', href: '/admin/integrations', icon: Plug },
   { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
+  { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
 ]
 
 function NavItem({

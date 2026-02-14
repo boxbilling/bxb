@@ -18,6 +18,7 @@ import {
   DunningCampaignsPage,
   IntegrationsPage,
   PaymentRequestsPage,
+  DataExportsPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 
@@ -43,6 +44,7 @@ function App() {
         <Route path="dunning-campaigns" element={<DunningCampaignsPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="payment-requests" element={<PaymentRequestsPage />} />
+        <Route path="data-exports" element={<DataExportsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
