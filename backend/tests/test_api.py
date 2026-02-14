@@ -1,10 +1,12 @@
 """API tests for bxb."""
 
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.config import Settings
 from app.core.database import get_db, init_db
 from app.main import app
 from app.repositories.item_repository import ItemRepository
@@ -27,6 +29,33 @@ def db_session():
         # Exhaust the generator to trigger cleanup
         for _ in gen:
             pass
+
+
+class TestRootEndpoints:
+    def test_root(self, client: TestClient):
+        response = client.get("/")
+        assert response.status_code == 200
+        data = response.json()
+        assert "app" in data
+        assert "version" in data
+        assert "domain" in data
+        assert data["status"] == "running"
+
+class TestConfig:
+    def test_version_from_file(self):
+        s = Settings()
+        assert s.version != ""
+
+    def test_version_fallback(self):
+        with patch.object(Path, "is_file", return_value=False):
+            s = Settings()
+            assert s.version == "0.0.0"
+
+    def test_clickhouse_enabled(self):
+        s = Settings(CLICKHOUSE_URL="")
+        assert s.clickhouse_enabled is False
+        s = Settings(CLICKHOUSE_URL="clickhouse://localhost")
+        assert s.clickhouse_enabled is True
 
 
 class TestDashboardEndpoints:
