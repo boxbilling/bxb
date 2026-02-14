@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Mail, Users, Clock, Globe, ExternalLink } from 'lucide-react'
+import { Plus, Search, Mail, Users, Clock, Globe } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -32,12 +32,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
@@ -225,6 +219,7 @@ function CustomerFormDialog({
 }
 
 export default function CustomersPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
@@ -301,11 +296,6 @@ export default function CustomersPage() {
     } else {
       createMutation.mutate(data as CustomerCreate)
     }
-  }
-
-  const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer)
-    setFormOpen(true)
   }
 
   const handleCloseForm = (open: boolean) => {
@@ -410,7 +400,6 @@ export default function CustomersPage() {
               <TableHead>Email</TableHead>
               <TableHead>Timezone</TableHead>
               <TableHead>Currency</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -422,22 +411,23 @@ export default function CustomersPage() {
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
             ) : filteredCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No customers found
                 </TableCell>
               </TableRow>
             ) : (
               filteredCustomers.map((customer) => (
-                <TableRow key={customer.id}>
-                  <TableCell>
-                    <Link to={`/admin/customers/${customer.id}`} className="font-medium hover:underline">
-                      {customer.name}
-                    </Link>
+                <TableRow
+                  key={customer.id}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/admin/customers/${customer.id}`)}
+                >
+                  <TableCell className="font-medium">
+                    {customer.name}
                   </TableCell>
                   <TableCell>
                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
@@ -459,34 +449,6 @@ export default function CustomersPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{customer.currency}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link to={`/admin/customers/${customer.id}`}>
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            View Details
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(customer)}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteCustomer(customer)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))

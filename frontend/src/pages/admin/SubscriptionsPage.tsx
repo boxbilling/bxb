@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MoreHorizontal, XCircle, ExternalLink } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -24,22 +24,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -50,7 +34,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { subscriptionsApi, customersApi, plansApi, ApiError } from '@/lib/api'
-import type { Subscription, SubscriptionCreate, SubscriptionStatus, Customer, Plan } from '@/types/billing'
+import type { SubscriptionCreate, SubscriptionStatus, Customer, Plan } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -186,11 +170,11 @@ function SubscriptionFormDialog({
 }
 
 export default function SubscriptionsPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [formOpen, setFormOpen] = useState(false)
-  const [terminateSub, setTerminateSub] = useState<Subscription | null>(null)
 
   // Fetch subscriptions from API
   const { data: subscriptions, isLoading, error } = useQuery({
@@ -238,20 +222,6 @@ export default function SubscriptionsPage() {
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to create subscription'
-      toast.error(message)
-    },
-  })
-
-  // Terminate mutation
-  const terminateMutation = useMutation({
-    mutationFn: (id: string) => subscriptionsApi.terminate(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
-      setTerminateSub(null)
-      toast.success('Subscription terminated')
-    },
-    onError: (error) => {
-      const message = error instanceof ApiError ? error.message : 'Failed to terminate subscription'
       toast.error(message)
     },
   })
@@ -314,7 +284,6 @@ export default function SubscriptionsPage() {
               <TableHead>Status</TableHead>
               <TableHead>Started</TableHead>
               <TableHead>External ID</TableHead>
-              <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -326,12 +295,11 @@ export default function SubscriptionsPage() {
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
             ) : filteredSubscriptions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   No subscriptions found
                 </TableCell>
               </TableRow>
@@ -341,7 +309,11 @@ export default function SubscriptionsPage() {
                 const plan = planMap.get(sub.plan_id)
 
                 return (
-                  <TableRow key={sub.id}>
+                  <TableRow
+                    key={sub.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/admin/subscriptions/${sub.id}`)}
+                  >
                     <TableCell>
                       <div>
                         <div className="font-medium">{customer?.name ?? 'Unknown'}</div>
@@ -371,32 +343,6 @@ export default function SubscriptionsPage() {
                         {sub.external_id}
                       </code>
                     </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link to={`/admin/subscriptions/${sub.id}`}>
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          {sub.status === 'active' && (
-                            <DropdownMenuItem
-                              onClick={() => setTerminateSub(sub)}
-                              className="text-destructive"
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Terminate
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
                   </TableRow>
                 )
               })
@@ -415,29 +361,6 @@ export default function SubscriptionsPage() {
         isLoading={createMutation.isPending}
       />
 
-      {/* Terminate Confirmation */}
-      <AlertDialog
-        open={!!terminateSub}
-        onOpenChange={(open) => !open && setTerminateSub(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Terminate Subscription</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to terminate this subscription? This will end access immediately.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => terminateSub && terminateMutation.mutate(terminateSub.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {terminateMutation.isPending ? 'Terminating...' : 'Terminate'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
