@@ -6,6 +6,7 @@ import {
   MetricsPage,
   PlansPage,
   SubscriptionsPage,
+  EventsPage,
   InvoicesPage,
   PaymentsPage,
   WalletsPage,
@@ -25,6 +26,7 @@ function App() {
         <Route path="metrics" element={<MetricsPage />} />
         <Route path="plans" element={<PlansPage />} />
         <Route path="subscriptions" element={<SubscriptionsPage />} />
+        <Route path="events" element={<EventsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="wallets" element={<WalletsPage />} />

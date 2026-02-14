@@ -244,7 +244,7 @@ export const subscriptionsApi = {
 
 // Events API
 export const eventsApi = {
-  list: (params?: { skip?: number; limit?: number; customer_id?: string; code?: string }) =>
+  list: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string }) =>
     request<EventResponse[]>(`/v1/events/${buildQuery(params)}`),
   get: (id: string) => request<EventResponse>(`/v1/events/${id}`),
   create: (data: EventCreate) =>

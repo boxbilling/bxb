@@ -69,22 +69,14 @@ class DailyUsageService:
             Number of records upserted.
         """
         # Get the customer's external_id
-        customer = (
-            self.db.query(Customer)
-            .filter(Customer.id == subscription.customer_id)
-            .first()
-        )
+        customer = self.db.query(Customer).filter(Customer.id == subscription.customer_id).first()
         if not customer:
             return 0
 
         external_customer_id = str(customer.external_id)
 
         # Get charges for the subscription's plan
-        charges = (
-            self.db.query(Charge)
-            .filter(Charge.plan_id == subscription.plan_id)
-            .all()
-        )
+        charges = self.db.query(Charge).filter(Charge.plan_id == subscription.plan_id).all()
 
         count = 0
         for charge in charges:
@@ -92,11 +84,7 @@ class DailyUsageService:
             # Look up the billable metric to get its code
             from app.models.billable_metric import BillableMetric
 
-            metric = (
-                self.db.query(BillableMetric)
-                .filter(BillableMetric.id == metric_id)
-                .first()
-            )
+            metric = self.db.query(BillableMetric).filter(BillableMetric.id == metric_id).first()
             if not metric:
                 continue
 
@@ -150,6 +138,4 @@ class DailyUsageService:
         Returns:
             Summed usage value for the period.
         """
-        return self.repo.sum_for_period(
-            subscription_id, billable_metric_id, start_date, end_date
-        )
+        return self.repo.sum_for_period(subscription_id, billable_metric_id, start_date, end_date)

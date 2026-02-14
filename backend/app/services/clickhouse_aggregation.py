@@ -33,9 +33,7 @@ def _build_filter_clause(filters: dict[str, str] | None) -> str:
         return ""
     clauses = []
     for i, (_key, _value) in enumerate(filters.items()):
-        clauses.append(
-            f" AND JSONExtractString(properties, {{fk{i}:String}}) = {{fv{i}:String}}"
-        )
+        clauses.append(f" AND JSONExtractString(properties, {{fk{i}:String}}) = {{fv{i}:String}}")
     return "".join(clauses)
 
 
@@ -77,8 +75,11 @@ def _query_params(
     """Build combined base + filter query parameters."""
     return {
         **_base_params(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
         ),
         **_build_filter_params(filters),
     }
@@ -99,8 +100,12 @@ def aggregate_count(
     filter_clause = _build_filter_clause(filters)
     sql = f"SELECT count() FROM {EVENTS_RAW_TABLE} WHERE {_BASE_WHERE}{filter_clause}"
     params = _query_params(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
 
     result = client.query(sql, parameters=params)
@@ -126,8 +131,12 @@ def aggregate_sum(
         f" FROM {EVENTS_RAW_TABLE} WHERE {_BASE_WHERE}{filter_clause}"
     )
     params = _query_params(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
 
     result = client.query(sql, parameters=params)
@@ -153,8 +162,12 @@ def aggregate_max(
         f" FROM {EVENTS_RAW_TABLE} WHERE {_BASE_WHERE}{filter_clause}"
     )
     params = _query_params(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
 
     result = client.query(sql, parameters=params)
@@ -183,8 +196,12 @@ def aggregate_unique_count(
     )
     params = {
         **_query_params(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            filters,
         ),
         "field": field_name,
     }
@@ -217,8 +234,12 @@ def aggregate_latest(
         f"  WHERE {_BASE_WHERE}{filter_clause}) AS cnt"
     )
     params = _query_params(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
 
     result = client.query(sql, parameters=params)
@@ -254,13 +275,14 @@ def aggregate_weighted_sum(
     filter_clause = _build_filter_clause(filters)
 
     # Count events first
-    count_sql = (
-        f"SELECT count() FROM {EVENTS_RAW_TABLE}"
-        f" WHERE {_BASE_WHERE}{filter_clause}"
-    )
+    count_sql = f"SELECT count() FROM {EVENTS_RAW_TABLE} WHERE {_BASE_WHERE}{filter_clause}"
     params: dict[str, object] = _query_params(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
     count_result = client.query(count_sql, parameters=params)
     events_count = int(count_result.first_row[0])
@@ -287,11 +309,7 @@ def aggregate_weighted_sum(
     params["total_seconds"] = total_seconds
 
     result = client.query(sql, parameters=params)
-    value = (
-        Decimal(str(result.first_row[0]))
-        if result.first_row[0] is not None
-        else Decimal(0)
-    )
+    value = Decimal(str(result.first_row[0])) if result.first_row[0] is not None else Decimal(0)
     return UsageResult(value=value, events_count=events_count)
 
 
@@ -314,8 +332,12 @@ def fetch_events_for_custom(
         " ORDER BY timestamp ASC"
     )
     params = _query_params(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
 
     result = client.query(sql, parameters=params)
@@ -333,8 +355,12 @@ def aggregate_custom(
 ) -> UsageResult:
     """CUSTOM aggregation — fetch events from ClickHouse, evaluate in Python."""
     events_props = fetch_events_for_custom(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
     events_count = len(events_props)
     if events_count == 0:
@@ -361,8 +387,12 @@ def fetch_raw_event_properties(
 ) -> list[dict[str, Any]]:
     """Fetch raw event properties from ClickHouse for DYNAMIC charges."""
     return fetch_events_for_custom(
-        organization_id, code, external_customer_id,
-        from_timestamp, to_timestamp, filters,
+        organization_id,
+        code,
+        external_customer_id,
+        from_timestamp,
+        to_timestamp,
+        filters,
     )
 
 
@@ -384,40 +414,70 @@ def clickhouse_aggregate(
     """
     if aggregation_type == AggregationType.COUNT:
         return aggregate_count(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            filters,
         )
     elif aggregation_type == AggregationType.SUM:
         return aggregate_sum(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            filters,
         )
     elif aggregation_type == AggregationType.MAX:
         return aggregate_max(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            filters,
         )
     elif aggregation_type == AggregationType.UNIQUE_COUNT:
         assert field_name is not None
         return aggregate_unique_count(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, field_name, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            field_name,
+            filters,
         )
     elif aggregation_type == AggregationType.LATEST:
         return aggregate_latest(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            filters,
         )
     elif aggregation_type == AggregationType.WEIGHTED_SUM:
         return aggregate_weighted_sum(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            filters,
         )
     elif aggregation_type == AggregationType.CUSTOM:
         assert expression is not None
         return aggregate_custom(
-            organization_id, code, external_customer_id,
-            from_timestamp, to_timestamp, expression, filters,
+            organization_id,
+            code,
+            external_customer_id,
+            from_timestamp,
+            to_timestamp,
+            expression,
+            filters,
         )
     else:
         raise ValueError(f"Unknown aggregation type: {aggregation_type}")

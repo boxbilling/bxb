@@ -205,9 +205,7 @@ class UsageAggregationService:
                 str(metric.rounding_function) if metric.rounding_function else None
             )
             ch_rounding_prec: int | None = (
-                int(metric.rounding_precision)
-                if metric.rounding_precision is not None
-                else None
+                int(metric.rounding_precision) if metric.rounding_precision is not None else None
             )
             return UsageResult(
                 value=_apply_rounding(ch_result.value, ch_rounding_fn, ch_rounding_prec),

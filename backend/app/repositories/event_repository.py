@@ -129,9 +129,11 @@ class EventRepository:
                 self.db.refresh(event)
 
         # Dual-write new events to ClickHouse
-        new_event_data = [d for d in events_data if d.transaction_id not in {
-            e.transaction_id for e in events if e not in new_events
-        }][:ingested]
+        new_event_data = [
+            d
+            for d in events_data
+            if d.transaction_id not in {e.transaction_id for e in events if e not in new_events}
+        ][:ingested]
         if new_event_data:
             self._clickhouse_insert_batch(new_event_data, organization_id)
 

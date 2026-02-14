@@ -42,7 +42,7 @@ test-cov:
 	cd backend && uv run pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=100
 
 lint:
-	cd backend && uv run ruff check app/ tests/
+	cd backend && uv run ruff check --fix app/ tests/
 	cd backend && uv run mypy app/
 
 format:

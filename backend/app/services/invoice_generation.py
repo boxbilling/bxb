@@ -308,8 +308,11 @@ class InvoiceGenerationService:
             # For dynamic charges, fetch raw event properties
             if charge_model == ChargeModel.DYNAMIC:
                 event_properties_list = fetch_event_properties(
-                    self.db, external_customer_id, metric_code,
-                    billing_period_start, billing_period_end,
+                    self.db,
+                    external_customer_id,
+                    metric_code,
+                    billing_period_start,
+                    billing_period_end,
                 )
 
             description = str(metric.name)
@@ -466,8 +469,11 @@ class InvoiceGenerationService:
             event_properties_list: list[dict[str, Any]] = []
             if charge_model == ChargeModel.DYNAMIC:
                 event_properties_list = fetch_event_properties(
-                    self.db, external_customer_id, metric_code,
-                    billing_period_start, billing_period_end,
+                    self.db,
+                    external_customer_id,
+                    metric_code,
+                    billing_period_start,
+                    billing_period_end,
                     filters=filters,
                 )
 
@@ -592,8 +598,11 @@ class InvoiceGenerationService:
             # For dynamic charges, fetch raw event properties
             if charge_model == ChargeModel.DYNAMIC:
                 event_properties_list = fetch_event_properties(
-                    self.db, external_customer_id, metric_code,
-                    billing_period_start, billing_period_end,
+                    self.db,
+                    external_customer_id,
+                    metric_code,
+                    billing_period_start,
+                    billing_period_end,
                 )
 
             description = str(metric.name)

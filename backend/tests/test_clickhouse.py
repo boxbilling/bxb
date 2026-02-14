@@ -83,8 +83,10 @@ class TestGetClickhouseClient:
 
     def test_creates_client_and_ensures_table(self):
         mock_client = MagicMock()
-        with patch("app.core.clickhouse.settings") as mock_settings, \
-             patch("app.core.clickhouse.clickhouse_connect") as mock_cc:
+        with (
+            patch("app.core.clickhouse.settings") as mock_settings,
+            patch("app.core.clickhouse.clickhouse_connect") as mock_cc,
+        ):
             mock_settings.clickhouse_enabled = True
             mock_settings.CLICKHOUSE_URL = "clickhouse://localhost/testdb"
             mock_cc.get_client.return_value = mock_client
@@ -96,8 +98,10 @@ class TestGetClickhouseClient:
 
     def test_returns_cached_client(self):
         mock_client = MagicMock()
-        with patch("app.core.clickhouse.settings") as mock_settings, \
-             patch("app.core.clickhouse.clickhouse_connect") as mock_cc:
+        with (
+            patch("app.core.clickhouse.settings") as mock_settings,
+            patch("app.core.clickhouse.clickhouse_connect") as mock_cc,
+        ):
             mock_settings.clickhouse_enabled = True
             mock_settings.CLICKHOUSE_URL = "clickhouse://localhost/testdb"
             mock_cc.get_client.return_value = mock_client
@@ -117,8 +121,10 @@ class TestGetClickhouseClient:
         ch_mod._initialized = True
 
         mock_client = MagicMock()
-        with patch("app.core.clickhouse.settings") as mock_settings, \
-             patch("app.core.clickhouse.clickhouse_connect") as mock_cc:
+        with (
+            patch("app.core.clickhouse.settings") as mock_settings,
+            patch("app.core.clickhouse.clickhouse_connect") as mock_cc,
+        ):
             mock_settings.clickhouse_enabled = True
             mock_settings.CLICKHOUSE_URL = "clickhouse://localhost/testdb"
             mock_cc.get_client.return_value = mock_client
@@ -203,7 +209,9 @@ class TestInsertEvent:
 
     def test_inserts_to_clickhouse(self):
         mock_client = MagicMock()
-        with patch("app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client):
+        with patch(
+            "app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client
+        ):
             event = EventCreate(
                 transaction_id="tx-001",
                 external_customer_id="cust-001",
@@ -221,7 +229,9 @@ class TestInsertEvent:
     def test_logs_on_failure(self):
         mock_client = MagicMock()
         mock_client.insert.side_effect = Exception("Connection failed")
-        with patch("app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client):
+        with patch(
+            "app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client
+        ):
             event = EventCreate(
                 transaction_id="tx-fail",
                 external_customer_id="cust-001",
@@ -238,9 +248,16 @@ class TestInsertEventsBatch:
 
     def test_inserts_batch(self):
         mock_client = MagicMock()
-        with patch("app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client):
+        with patch(
+            "app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client
+        ):
             events = [
-                EventCreate(transaction_id=f"tx-{i}", external_customer_id="cust-001", code="api_calls", timestamp=NOW)
+                EventCreate(
+                    transaction_id=f"tx-{i}",
+                    external_customer_id="cust-001",
+                    code="api_calls",
+                    timestamp=NOW,
+                )
                 for i in range(3)
             ]
             insert_events_batch(events, ORG_ID, field_names={"api_calls": None})
@@ -252,8 +269,14 @@ class TestInsertEventsBatch:
     def test_logs_on_failure(self):
         mock_client = MagicMock()
         mock_client.insert.side_effect = Exception("Batch insert failed")
-        with patch("app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client):
-            events = [EventCreate(transaction_id="tx-fail", external_customer_id="c", code="x", timestamp=NOW)]
+        with patch(
+            "app.services.clickhouse_event_store.get_clickhouse_client", return_value=mock_client
+        ):
+            events = [
+                EventCreate(
+                    transaction_id="tx-fail", external_customer_id="c", code="x", timestamp=NOW
+                )
+            ]
             insert_events_batch(events, ORG_ID)
 
 
@@ -292,7 +315,9 @@ class TestAggregateCount:
     def test_count(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(5,)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
             result = aggregate_count(ORG_ID, "api_calls", "cust-001", NOW, NOW + timedelta(days=1))
             assert result == UsageResult(value=Decimal(5), events_count=5)
 
@@ -301,8 +326,12 @@ class TestAggregateSum:
     def test_sum(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(Decimal("150.5"), 3)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_sum(ORG_ID, "data_transfer", "cust-001", NOW, NOW + timedelta(days=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_sum(
+                ORG_ID, "data_transfer", "cust-001", NOW, NOW + timedelta(days=1)
+            )
             assert result.value == Decimal("150.5")
             assert result.events_count == 3
 
@@ -311,7 +340,9 @@ class TestAggregateMax:
     def test_max(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(Decimal("99.9"), 3)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
             result = aggregate_max(ORG_ID, "cpu_usage", "cust-001", NOW, NOW + timedelta(days=1))
             assert result.value == Decimal("99.9")
             assert result.events_count == 3
@@ -321,8 +352,12 @@ class TestAggregateUniqueCount:
     def test_unique_count(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(7, 20)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_unique_count(ORG_ID, "users", "cust-001", NOW, NOW + timedelta(days=1), "user_id")
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_unique_count(
+                ORG_ID, "users", "cust-001", NOW, NOW + timedelta(days=1), "user_id"
+            )
             assert result.value == Decimal(7)
             assert result.events_count == 20
 
@@ -331,16 +366,24 @@ class TestAggregateLatest:
     def test_latest_with_events(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(Decimal("42.0"), 5)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_latest(ORG_ID, "temperature", "cust-001", NOW, NOW + timedelta(days=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_latest(
+                ORG_ID, "temperature", "cust-001", NOW, NOW + timedelta(days=1)
+            )
             assert result.value == Decimal("42.0")
             assert result.events_count == 5
 
     def test_latest_no_events(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(None, 0)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_latest(ORG_ID, "temperature", "cust-001", NOW, NOW + timedelta(days=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_latest(
+                ORG_ID, "temperature", "cust-001", NOW, NOW + timedelta(days=1)
+            )
             assert result.value == Decimal(0)
             assert result.events_count == 0
 
@@ -348,7 +391,9 @@ class TestAggregateLatest:
 class TestAggregateWeightedSum:
     def test_zero_duration(self):
         mock_client = MagicMock()
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
             result = aggregate_weighted_sum(ORG_ID, "usage", "cust-001", NOW, NOW)
             assert result == UsageResult(value=Decimal(0), events_count=0)
             mock_client.query.assert_not_called()
@@ -356,8 +401,12 @@ class TestAggregateWeightedSum:
     def test_no_events(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([(0,)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_weighted_sum(ORG_ID, "usage", "cust-001", NOW, NOW + timedelta(hours=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_weighted_sum(
+                ORG_ID, "usage", "cust-001", NOW, NOW + timedelta(hours=1)
+            )
             assert result == UsageResult(value=Decimal(0), events_count=0)
 
     def test_with_events(self):
@@ -367,8 +416,12 @@ class TestAggregateWeightedSum:
             _mock_query_result([(2,)]),
             _mock_query_result([(Decimal("1.5"),)]),
         ]
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_weighted_sum(ORG_ID, "usage", "cust-001", NOW, NOW + timedelta(hours=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_weighted_sum(
+                ORG_ID, "usage", "cust-001", NOW, NOW + timedelta(hours=1)
+            )
             assert result.value == Decimal("1.5")
             assert result.events_count == 2
 
@@ -378,19 +431,27 @@ class TestAggregateWeightedSum:
             _mock_query_result([(1,)]),
             _mock_query_result([(None,)]),
         ]
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_weighted_sum(ORG_ID, "usage", "cust-001", NOW, NOW + timedelta(hours=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_weighted_sum(
+                ORG_ID, "usage", "cust-001", NOW, NOW + timedelta(hours=1)
+            )
             assert result.value == Decimal(0)
 
 
 class TestFetchEventsForCustom:
     def test_fetches_and_parses(self):
         mock_client = MagicMock()
-        mock_client.query.return_value = _mock_query_result([
-            ('{"a": 1, "b": 2}',),
-            ('{"a": 3, "b": 4}',),
-        ])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
+        mock_client.query.return_value = _mock_query_result(
+            [
+                ('{"a": 1, "b": 2}',),
+                ('{"a": 3, "b": 4}',),
+            ]
+        )
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
             result = fetch_events_for_custom(ORG_ID, "metric", "cust", NOW, NOW + timedelta(days=1))
             assert result == [{"a": 1, "b": 2}, {"a": 3, "b": 4}]
 
@@ -399,18 +460,28 @@ class TestAggregateCustom:
     def test_empty_events(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_custom(ORG_ID, "metric", "cust", NOW, NOW + timedelta(days=1), "a + b")
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_custom(
+                ORG_ID, "metric", "cust", NOW, NOW + timedelta(days=1), "a + b"
+            )
             assert result == UsageResult(value=Decimal(0), events_count=0)
 
     def test_with_expression(self):
         mock_client = MagicMock()
-        mock_client.query.return_value = _mock_query_result([
-            ('{"x": 10, "y": 5}',),
-            ('{"x": 20, "y": 3}',),
-        ])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = aggregate_custom(ORG_ID, "metric", "cust", NOW, NOW + timedelta(days=1), "x + y")
+        mock_client.query.return_value = _mock_query_result(
+            [
+                ('{"x": 10, "y": 5}',),
+                ('{"x": 20, "y": 3}',),
+            ]
+        )
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = aggregate_custom(
+                ORG_ID, "metric", "cust", NOW, NOW + timedelta(days=1), "x + y"
+            )
             assert result.value == Decimal(38)  # (10+5) + (20+3)
             assert result.events_count == 2
 
@@ -419,8 +490,12 @@ class TestFetchRawEventProperties:
     def test_delegates_to_fetch_events_for_custom(self):
         mock_client = MagicMock()
         mock_client.query.return_value = _mock_query_result([('{"k": "v"}',)])
-        with patch("app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client):
-            result = fetch_raw_event_properties(ORG_ID, "code", "cust", NOW, NOW + timedelta(days=1))
+        with patch(
+            "app.services.clickhouse_aggregation.get_clickhouse_client", return_value=mock_client
+        ):
+            result = fetch_raw_event_properties(
+                ORG_ID, "code", "cust", NOW, NOW + timedelta(days=1)
+            )
             assert result == [{"k": "v"}]
 
 
@@ -428,43 +503,69 @@ class TestClickhouseAggregate:
     def test_dispatches_count(self):
         with patch("app.services.clickhouse_aggregation.aggregate_count") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal(5), events_count=5)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.COUNT)
+            result = clickhouse_aggregate(
+                ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.COUNT
+            )
             assert result.value == Decimal(5)
 
     def test_dispatches_sum(self):
         with patch("app.services.clickhouse_aggregation.aggregate_sum") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal(100), events_count=3)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.SUM)
+            result = clickhouse_aggregate(
+                ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.SUM
+            )
             assert result.value == Decimal(100)
 
     def test_dispatches_max(self):
         with patch("app.services.clickhouse_aggregation.aggregate_max") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal(50), events_count=2)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.MAX)
+            result = clickhouse_aggregate(
+                ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.MAX
+            )
             assert result.value == Decimal(50)
 
     def test_dispatches_unique_count(self):
         with patch("app.services.clickhouse_aggregation.aggregate_unique_count") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal(7), events_count=20)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.UNIQUE_COUNT, field_name="user_id")
+            result = clickhouse_aggregate(
+                ORG_ID,
+                "c",
+                "cust",
+                NOW,
+                NOW + timedelta(days=1),
+                AggregationType.UNIQUE_COUNT,
+                field_name="user_id",
+            )
             assert result.value == Decimal(7)
 
     def test_dispatches_latest(self):
         with patch("app.services.clickhouse_aggregation.aggregate_latest") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal(42), events_count=5)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.LATEST)
+            result = clickhouse_aggregate(
+                ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.LATEST
+            )
             assert result.value == Decimal(42)
 
     def test_dispatches_weighted_sum(self):
         with patch("app.services.clickhouse_aggregation.aggregate_weighted_sum") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal("1.5"), events_count=2)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.WEIGHTED_SUM)
+            result = clickhouse_aggregate(
+                ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.WEIGHTED_SUM
+            )
             assert result.value == Decimal("1.5")
 
     def test_dispatches_custom(self):
         with patch("app.services.clickhouse_aggregation.aggregate_custom") as mock_fn:
             mock_fn.return_value = UsageResult(value=Decimal(38), events_count=2)
-            result = clickhouse_aggregate(ORG_ID, "c", "cust", NOW, NOW + timedelta(days=1), AggregationType.CUSTOM, expression="x + y")
+            result = clickhouse_aggregate(
+                ORG_ID,
+                "c",
+                "cust",
+                NOW,
+                NOW + timedelta(days=1),
+                AggregationType.CUSTOM,
+                expression="x + y",
+            )
             assert result.value == Decimal(38)
 
     def test_raises_for_unknown_type(self):
@@ -493,8 +594,11 @@ class TestFetchEventProperties:
         with patch("app.services.events_query.settings") as mock_settings:
             mock_settings.clickhouse_enabled = False
             result = fetch_event_properties(
-                db_session, "cust-001", "api_calls",
-                NOW - timedelta(hours=1), NOW + timedelta(hours=1),
+                db_session,
+                "cust-001",
+                "api_calls",
+                NOW - timedelta(hours=1),
+                NOW + timedelta(hours=1),
             )
 
         assert len(result) == 1
@@ -504,16 +608,31 @@ class TestFetchEventProperties:
         """Applies property filters in SQL path."""
         from app.models.event import Event
 
-        e1 = Event(transaction_id="eq-f-001", external_customer_id="cust-001", code="api_calls", timestamp=NOW, properties={"region": "us"})
-        e2 = Event(transaction_id="eq-f-002", external_customer_id="cust-001", code="api_calls", timestamp=NOW, properties={"region": "eu"})
+        e1 = Event(
+            transaction_id="eq-f-001",
+            external_customer_id="cust-001",
+            code="api_calls",
+            timestamp=NOW,
+            properties={"region": "us"},
+        )
+        e2 = Event(
+            transaction_id="eq-f-002",
+            external_customer_id="cust-001",
+            code="api_calls",
+            timestamp=NOW,
+            properties={"region": "eu"},
+        )
         db_session.add_all([e1, e2])
         db_session.commit()
 
         with patch("app.services.events_query.settings") as mock_settings:
             mock_settings.clickhouse_enabled = False
             result = fetch_event_properties(
-                db_session, "cust-001", "api_calls",
-                NOW - timedelta(hours=1), NOW + timedelta(hours=1),
+                db_session,
+                "cust-001",
+                "api_calls",
+                NOW - timedelta(hours=1),
+                NOW + timedelta(hours=1),
                 filters={"region": "us"},
             )
 
@@ -524,17 +643,24 @@ class TestFetchEventProperties:
         """Delegates to ClickHouse when enabled."""
         from app.core.config import settings as _settings
 
-        with patch.object(
-            type(_settings), "clickhouse_enabled",
-            new_callable=lambda: property(lambda self: True),
-        ), patch(
-            "app.services.clickhouse_aggregation.fetch_raw_event_properties",
-        ) as mock_ch:
+        with (
+            patch.object(
+                type(_settings),
+                "clickhouse_enabled",
+                new_callable=lambda: property(lambda self: True),
+            ),
+            patch(
+                "app.services.clickhouse_aggregation.fetch_raw_event_properties",
+            ) as mock_ch,
+        ):
             mock_ch.return_value = [{"key": "val"}]
 
             result = fetch_event_properties(
-                db_session, "cust-001", "api_calls",
-                NOW - timedelta(hours=1), NOW + timedelta(hours=1),
+                db_session,
+                "cust-001",
+                "api_calls",
+                NOW - timedelta(hours=1),
+                NOW + timedelta(hours=1),
                 organization_id=ORG_ID,
             )
 
@@ -545,20 +671,27 @@ class TestFetchEventProperties:
         """Applies property filters to ClickHouse results."""
         from app.core.config import settings as _settings
 
-        with patch.object(
-            type(_settings), "clickhouse_enabled",
-            new_callable=lambda: property(lambda self: True),
-        ), patch(
-            "app.services.clickhouse_aggregation.fetch_raw_event_properties",
-        ) as mock_ch:
+        with (
+            patch.object(
+                type(_settings),
+                "clickhouse_enabled",
+                new_callable=lambda: property(lambda self: True),
+            ),
+            patch(
+                "app.services.clickhouse_aggregation.fetch_raw_event_properties",
+            ) as mock_ch,
+        ):
             mock_ch.return_value = [
                 {"region": "us", "val": 1},
                 {"region": "eu", "val": 2},
             ]
 
             result = fetch_event_properties(
-                db_session, "cust-001", "api_calls",
-                NOW - timedelta(hours=1), NOW + timedelta(hours=1),
+                db_session,
+                "cust-001",
+                "api_calls",
+                NOW - timedelta(hours=1),
+                NOW + timedelta(hours=1),
                 organization_id=ORG_ID,
                 filters={"region": "us"},
             )
@@ -573,19 +706,25 @@ class TestFetchEventProperties:
 
         event = Event(
             transaction_id="eq-no-org",
-            external_customer_id="c", code="x",
-            timestamp=NOW, properties={"a": 1},
+            external_customer_id="c",
+            code="x",
+            timestamp=NOW,
+            properties={"a": 1},
         )
         db_session.add(event)
         db_session.commit()
 
         with patch.object(
-            type(_settings), "clickhouse_enabled",
+            type(_settings),
+            "clickhouse_enabled",
             new_callable=lambda: property(lambda self: True),
         ):
             result = fetch_event_properties(
-                db_session, "c", "x",
-                NOW - timedelta(hours=1), NOW + timedelta(hours=1),
+                db_session,
+                "c",
+                "x",
+                NOW - timedelta(hours=1),
+                NOW + timedelta(hours=1),
                 organization_id=None,
             )
 
@@ -605,7 +744,8 @@ class TestUsageAggregationClickhouseDelegation:
         metric_repo = BillableMetricRepository(db_session)
         metric_repo.create(
             BillableMetricCreate(
-                code="ch_test", name="CH Test",
+                code="ch_test",
+                name="CH Test",
                 aggregation_type=AggregationType.COUNT,
             ),
             ORG_ID,
@@ -613,13 +753,16 @@ class TestUsageAggregationClickhouseDelegation:
 
         service = UsageAggregationService(db_session)
 
-        with patch("app.core.config.settings") as mock_settings, \
-             patch(
-                 "app.services.clickhouse_aggregation.clickhouse_aggregate",
-             ) as mock_ch:
+        with (
+            patch("app.core.config.settings") as mock_settings,
+            patch(
+                "app.services.clickhouse_aggregation.clickhouse_aggregate",
+            ) as mock_ch,
+        ):
             mock_settings.clickhouse_enabled = True
             mock_ch.return_value = UsageResult(
-                value=Decimal(10), events_count=10,
+                value=Decimal(10),
+                events_count=10,
             )
 
             result = service.aggregate_usage_with_count(
@@ -642,7 +785,8 @@ class TestUsageAggregationClickhouseDelegation:
         metric_repo = BillableMetricRepository(db_session)
         metric_repo.create(
             BillableMetricCreate(
-                code="sql_test", name="SQL Test",
+                code="sql_test",
+                name="SQL Test",
                 aggregation_type=AggregationType.COUNT,
             ),
             ORG_ID,
@@ -690,7 +834,12 @@ class TestEventRepositoryDualWrite:
 
         repo = EventRepository(db_session)
         events_data = [
-            EventCreate(transaction_id=f"dw-batch-{i}", external_customer_id="cust-001", code="api_calls", timestamp=NOW)
+            EventCreate(
+                transaction_id=f"dw-batch-{i}",
+                external_customer_id="cust-001",
+                code="api_calls",
+                timestamp=NOW,
+            )
             for i in range(3)
         ]
 
@@ -727,10 +876,12 @@ class TestEventRepositoryDualWrite:
             timestamp=NOW,
         )
 
-        with patch("app.core.config.settings") as mock_settings, \
-             patch(
-                 "app.services.clickhouse_event_store.insert_event",
-             ) as mock_insert:
+        with (
+            patch("app.core.config.settings") as mock_settings,
+            patch(
+                "app.services.clickhouse_event_store.insert_event",
+            ) as mock_insert,
+        ):
             mock_settings.clickhouse_enabled = True
             repo._clickhouse_insert(event_data, ORG_ID)
             mock_insert.assert_called_once()
@@ -759,10 +910,12 @@ class TestEventRepositoryDualWrite:
             )
         ]
 
-        with patch("app.core.config.settings") as mock_settings, \
-             patch(
-                 "app.services.clickhouse_event_store.insert_events_batch",
-             ) as mock_insert:
+        with (
+            patch("app.core.config.settings") as mock_settings,
+            patch(
+                "app.services.clickhouse_event_store.insert_events_batch",
+            ) as mock_insert,
+        ):
             mock_settings.clickhouse_enabled = True
             repo._clickhouse_insert_batch(events_data, ORG_ID)
             mock_insert.assert_called_once()
@@ -794,8 +947,15 @@ class TestEventRepositoryDualWrite:
 
         repo = EventRepository(db_session)
         events = [
-            EventCreate(transaction_id="rfn-1", external_customer_id="c", code="api_calls", timestamp=NOW),
-            EventCreate(transaction_id="rfn-2", external_customer_id="c", code="data_transfer", timestamp=NOW),
+            EventCreate(
+                transaction_id="rfn-1", external_customer_id="c", code="api_calls", timestamp=NOW
+            ),
+            EventCreate(
+                transaction_id="rfn-2",
+                external_customer_id="c",
+                code="data_transfer",
+                timestamp=NOW,
+            ),
         ]
         result = repo._resolve_field_names(events, ORG_ID)
         assert result == {"api_calls": None, "data_transfer": "bytes"}
@@ -842,7 +1002,9 @@ def billable_metric(db_session):
     from app.schemas.billable_metric import BillableMetricCreate
 
     repo = BillableMetricRepository(db_session)
-    data = BillableMetricCreate(code="api_calls", name="API Calls", aggregation_type=AggregationType.COUNT)
+    data = BillableMetricCreate(
+        code="api_calls", name="API Calls", aggregation_type=AggregationType.COUNT
+    )
     return repo.create(data, ORG_ID)
 
 
@@ -854,7 +1016,9 @@ def billable_metric_sum(db_session):
 
     repo = BillableMetricRepository(db_session)
     data = BillableMetricCreate(
-        code="data_transfer", name="Data Transfer",
-        aggregation_type=AggregationType.SUM, field_name="bytes",
+        code="data_transfer",
+        name="Data Transfer",
+        aggregation_type=AggregationType.SUM,
+        field_name="bytes",
     )
     return repo.create(data, ORG_ID)

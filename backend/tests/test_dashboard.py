@@ -176,7 +176,9 @@ class TestDashboardStats:
         # total_invoiced includes all invoices
         assert data["total_invoiced"] == 362.0
 
-    def test_stats_excludes_draft_invoices_from_mrr(self, client: TestClient, db_session, seeded_data):
+    def test_stats_excludes_draft_invoices_from_mrr(
+        self, client: TestClient, db_session, seeded_data
+    ):
         """MRR should only count finalized and paid invoices."""
         draft_invoice = Invoice(
             organization_id=DEFAULT_ORG_ID,
@@ -217,7 +219,12 @@ class TestDashboardActivity:
 
         # Verify all activity types are present
         types = {a["type"] for a in data}
-        assert types == {"customer_created", "subscription_created", "invoice_finalized", "payment_received"}
+        assert types == {
+            "customer_created",
+            "subscription_created",
+            "invoice_finalized",
+            "payment_received",
+        }
 
         # Verify sorted by timestamp descending
         timestamps = [a["timestamp"] for a in data]

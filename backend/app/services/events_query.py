@@ -45,10 +45,7 @@ def fetch_event_properties(
             organization_id, code, external_customer_id, from_timestamp, to_timestamp
         )
         if filters:
-            return [
-                p for p in all_props
-                if all(p.get(k) == v for k, v in filters.items())
-            ]
+            return [p for p in all_props if all(p.get(k) == v for k, v in filters.items())]
         return all_props
 
     from app.models.event import Event

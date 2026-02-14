@@ -641,9 +641,7 @@ class TestDailyUsageService:
         assert Decimal(str(record.usage_value)) == Decimal("0")
         assert record.events_count == 0
 
-    def test_aggregate_skips_subscription_without_customer(
-        self, db_session, plan, billable_metric
-    ):
+    def test_aggregate_skips_subscription_without_customer(self, db_session, plan, billable_metric):
         """Test aggregation skips subscriptions whose customer was deleted."""
         # Create subscription pointing to a non-existent customer
         # Test the _aggregate_for_subscription method directly
@@ -666,9 +664,7 @@ class TestDailyUsageService:
         result = service._aggregate_for_subscription(fake_sub, yesterday, from_ts, to_ts)
         assert result == 0
 
-    def test_aggregate_skips_missing_metric(
-        self, db_session, active_subscription, customer, plan
-    ):
+    def test_aggregate_skips_missing_metric(self, db_session, active_subscription, customer, plan):
         """Test aggregation skips charges whose billable metric doesn't exist."""
         from app.models.charge import Charge
 
@@ -687,9 +683,7 @@ class TestDailyUsageService:
         from_ts = datetime(yesterday.year, yesterday.month, yesterday.day)
         to_ts = from_ts + timedelta(days=1)
         # Should not raise, just skip
-        result = service._aggregate_for_subscription(
-            active_subscription, yesterday, from_ts, to_ts
-        )
+        result = service._aggregate_for_subscription(active_subscription, yesterday, from_ts, to_ts)
         assert result == 0
 
     def test_get_usage_for_period(
@@ -814,16 +808,12 @@ class TestDailyUsageService:
         def _raise(*args, **kwargs):
             raise ValueError("Simulated aggregation error")
 
-        monkeypatch.setattr(
-            service.usage_service, "aggregate_usage_with_count", _raise
-        )
+        monkeypatch.setattr(service.usage_service, "aggregate_usage_with_count", _raise)
 
         yesterday = (datetime.now(UTC) - timedelta(days=1)).date()
         from_ts = datetime(yesterday.year, yesterday.month, yesterday.day)
         to_ts = from_ts + timedelta(days=1)
-        result = service._aggregate_for_subscription(
-            active_subscription, yesterday, from_ts, to_ts
-        )
+        result = service._aggregate_for_subscription(active_subscription, yesterday, from_ts, to_ts)
         assert result == 0
 
 

@@ -275,8 +275,11 @@ class UsageThresholdService:
             from app.services.events_query import fetch_event_properties
 
             event_properties_list = fetch_event_properties(
-                self.db, external_customer_id, metric_code,
-                billing_period_start, billing_period_end,
+                self.db,
+                external_customer_id,
+                metric_code,
+                billing_period_start,
+                billing_period_end,
             )
 
         calculator = get_charge_calculator(charge_model)

@@ -65,9 +65,7 @@ class DailyUsageRepository:
         end_date: date,
     ) -> Decimal:
         """Sum daily usage values for a subscription/metric within a date range."""
-        records = self.get_for_period(
-            subscription_id, billable_metric_id, start_date, end_date
-        )
+        records = self.get_for_period(subscription_id, billable_metric_id, start_date, end_date)
         return sum((Decimal(str(r.usage_value)) for r in records), Decimal("0"))
 
     def upsert(self, data: DailyUsageCreate) -> DailyUsage:

@@ -104,10 +104,7 @@ def insert_events_batch(
         return
 
     field_names = field_names or {}
-    rows = [
-        _build_row(event, organization_id, field_names.get(event.code))
-        for event in events
-    ]
+    rows = [_build_row(event, organization_id, field_names.get(event.code)) for event in events]
 
     try:
         client.insert(EVENTS_RAW_TABLE, rows, column_names=COLUMNS)

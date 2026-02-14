@@ -199,9 +199,7 @@ class DataExportService:
         filters: dict[str, Any],
     ) -> tuple[str, int]:
         """Generate CSV for subscriptions."""
-        query = self.db.query(Subscription).filter(
-            Subscription.organization_id == organization_id
-        )
+        query = self.db.query(Subscription).filter(Subscription.organization_id == organization_id)
         if filters.get("status"):
             query = query.filter(Subscription.status == filters["status"])
         if filters.get("customer_id"):
@@ -324,9 +322,7 @@ class DataExportService:
         filters: dict[str, Any],
     ) -> tuple[str, int]:
         """Generate CSV for credit notes."""
-        query = self.db.query(CreditNote).filter(
-            CreditNote.organization_id == organization_id
-        )
+        query = self.db.query(CreditNote).filter(CreditNote.organization_id == organization_id)
         if filters.get("status"):
             query = query.filter(CreditNote.status == filters["status"])
 

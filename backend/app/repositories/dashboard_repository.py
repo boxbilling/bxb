@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func as sa_func
@@ -34,7 +34,7 @@ class DashboardRepository:
         )
 
     def sum_monthly_revenue(self, organization_id: UUID) -> float:
-        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
         result = (
             self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
             .filter(
