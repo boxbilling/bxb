@@ -20,6 +20,7 @@ import {
   Send,
   FileDown,
   Settings,
+  Key,
   Moon,
   Sun,
   Menu,
@@ -222,7 +223,7 @@ function SettingsMenu({ collapsed }: { collapsed: boolean }) {
   const { theme, toggle } = useTheme()
   const navigate = useNavigate()
   const location = useLocation()
-  const isActive = location.pathname.startsWith('/admin/settings')
+  const isActive = location.pathname.startsWith('/admin/settings') || location.pathname.startsWith('/admin/api-keys')
 
   const trigger = (
     <DropdownMenuTrigger asChild>
@@ -254,6 +255,10 @@ function SettingsMenu({ collapsed }: { collapsed: boolean }) {
         <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           Organization
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/admin/api-keys')}>
+          <Key className="mr-2 h-4 w-4" />
+          API Keys
         </DropdownMenuItem>
         <DropdownMenuItem onClick={(e) => { e.preventDefault(); toggle() }}>
           {theme === 'light' ? (

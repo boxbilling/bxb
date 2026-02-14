@@ -24,6 +24,7 @@ import {
   WebhooksPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
+import ApiKeysPage from './pages/admin/ApiKeysPage'
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
         <Route path="data-exports" element={<DataExportsPage />} />
         <Route path="webhooks" element={<WebhooksPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="api-keys" element={<ApiKeysPage />} />
       </Route>
 
       {/* Redirect root to admin */}
