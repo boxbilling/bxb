@@ -34,13 +34,14 @@ This phase brings everything together with a comprehensive admin UI that exposes
   - Add both to sidebar navigation
   - **Note:** Implemented full CouponsPage with: stat cards (total/active/fixed/percentage), search + status filter, list table with all columns (code, name, type, discount, frequency, status, expiration), create/edit coupon dialog with all fields (code, name, description, type selector, amount/percentage, frequency, duration, reusable toggle, expiration), apply coupon dialog (customer selector + amount override), view applied coupons dialog (shows all customers with this coupon applied). Implemented full AddOnsPage with: stat cards (total/currencies/avg amount), search filter, list table (code, name, description, amount, currency, created), create/edit dialog, apply to customer dialog with amount override, delete confirmation. Added both pages to sidebar navigation (Percent icon for Coupons, Gift icon for Add-ons), App.tsx routing, and barrel export. TypeScript and build pass clean.
 
-- [ ] Build the Credit Notes management UI:
+- [x] Build the Credit Notes management UI:
   - `frontend/src/pages/admin/CreditNotesPage.tsx`:
     - Credit note list table: number, customer, invoice, type, status, total amount
     - Create credit note from invoice: select fees to credit, set reason, amounts
     - Credit note detail view: items, amounts breakdown, status actions
     - Actions: finalize (draft→finalized), void (finalized→voided)
   - Link credit notes from InvoicesPage (button on invoice detail to create credit note)
+  - **Note:** CreditNotesPage was already implemented with full functionality: stat cards (total/draft/finalized/total amount), search + status filter, list table with all columns, create dialog with fee selection, detail dialog with amounts breakdown and status badges, finalize and void confirmation dialogs. Added `useLocation` integration so that navigating from InvoicesPage "Create Credit Note" button auto-opens the create dialog with pre-selected invoice and customer. Route, sidebar nav (FileMinus icon in Billing group), and barrel export were already configured. Frontend builds clean, all 2589 backend tests pass with 100% coverage.
 
 - [ ] Build the Tax management UI:
   - `frontend/src/pages/admin/TaxesPage.tsx`:

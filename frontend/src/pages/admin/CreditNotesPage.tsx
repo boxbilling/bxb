@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -630,12 +631,28 @@ function CreditNoteDetailDialog({
 
 export default function CreditNotesPage() {
   const queryClient = useQueryClient()
+  const location = useLocation()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [detailCreditNote, setDetailCreditNote] = useState<CreditNote | null>(null)
   const [finalizeCreditNote, setFinalizeCreditNote] = useState<CreditNote | null>(null)
   const [voidCreditNote, setVoidCreditNote] = useState<CreditNote | null>(null)
+
+  // Read navigation state from InvoicesPage to pre-select invoice/customer
+  const locationState = location.state as { invoiceId?: string; customerId?: string } | null
+  const [preselectedInvoiceId, setPreselectedInvoiceId] = useState<string | undefined>(undefined)
+  const [preselectedCustomerId, setPreselectedCustomerId] = useState<string | undefined>(undefined)
+
+  useEffect(() => {
+    if (locationState?.invoiceId) {
+      setPreselectedInvoiceId(locationState.invoiceId)
+      setPreselectedCustomerId(locationState.customerId)
+      setFormOpen(true)
+      // Clear the navigation state so it doesn't re-trigger
+      window.history.replaceState({}, '')
+    }
+  }, [locationState?.invoiceId, locationState?.customerId])
 
   // Fetch credit notes
   const {
@@ -936,10 +953,18 @@ export default function CreditNotesPage() {
       {/* Create Dialog */}
       <CreateCreditNoteDialog
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open)
+          if (!open) {
+            setPreselectedInvoiceId(undefined)
+            setPreselectedCustomerId(undefined)
+          }
+        }}
         customers={customers}
         onSubmit={(data) => createMutation.mutate(data)}
         isLoading={createMutation.isPending}
+        preselectedInvoiceId={preselectedInvoiceId}
+        preselectedCustomerId={preselectedCustomerId}
       />
 
       {/* Detail Dialog */}
