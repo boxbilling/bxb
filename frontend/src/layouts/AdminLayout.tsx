@@ -140,9 +140,21 @@ function Sidebar({
         collapsed ? 'w-14' : 'w-56'
       )}
     >
-      <TooltipProvider delayDuration={0}>
-        <OrgSwitcher collapsed={collapsed} />
-      </TooltipProvider>
+      <div className="flex items-center">
+        <TooltipProvider delayDuration={0}>
+          <OrgSwitcher collapsed={collapsed} />
+        </TooltipProvider>
+        {!collapsed && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="h-7 w-7 shrink-0 mr-2"
+          >
+            <PanelLeftClose className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
 
       <Separator />
 
@@ -172,21 +184,24 @@ function Sidebar({
             item={{ name: 'Settings', href: '/admin/settings', icon: Settings }}
             collapsed={collapsed}
           />
+          {collapsed && (
+            <div className="flex justify-center mt-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onToggle}
+                    className="h-7 w-7"
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Expand sidebar</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </TooltipProvider>
-        <div className={cn('flex mt-1', collapsed ? 'justify-center' : 'justify-end')}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="h-7 w-7"
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="h-4 w-4" />
-            ) : (
-              <PanelLeftClose className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
       </div>
     </div>
   )

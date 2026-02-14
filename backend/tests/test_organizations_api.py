@@ -68,6 +68,24 @@ def second_org_client(db_session, second_org):
     return client
 
 
+class TestListOrganizations:
+    def test_list_organizations(self, client):
+        """Test listing organizations returns the default org."""
+        response = client.get("/v1/organizations/")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 1
+        assert any(org["name"] == "Default Test Organization" for org in data)
+        assert "X-Total-Count" in response.headers
+
+    def test_list_organizations_after_create(self, client):
+        """Test that newly created orgs appear in the list."""
+        client.post("/v1/organizations/", json={"name": "List Test Org"})
+        response = client.get("/v1/organizations/")
+        data = response.json()
+        assert any(org["name"] == "List Test Org" for org in data)
+
+
 class TestCreateOrganization:
     def test_create_organization_minimal(self, client):
         """Test creating an organization with minimal fields."""

@@ -33,6 +33,24 @@ class OrganizationCreateResponse(OrganizationResponse):
     api_key: ApiKeyCreateResponse
 
 
+@router.get(
+    "/",
+    response_model=list[OrganizationResponse],
+    summary="List organizations",
+)
+async def list_organizations(
+    response: Response,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+) -> list[Organization]:
+    """List all organizations."""
+    repo = OrganizationRepository(db)
+    orgs = repo.get_all(skip=skip, limit=limit)
+    response.headers["X-Total-Count"] = str(len(orgs))
+    return orgs
+
+
 @router.post(
     "/",
     response_model=OrganizationCreateResponse,

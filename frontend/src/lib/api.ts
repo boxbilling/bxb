@@ -477,6 +477,7 @@ export const organizationsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  list: () => request<OrganizationResponse[]>('/v1/organizations/'),
   getCurrent: () => request<OrganizationResponse>('/v1/organizations/current'),
   updateCurrent: (data: OrganizationUpdate) =>
     request<OrganizationResponse>('/v1/organizations/current', {

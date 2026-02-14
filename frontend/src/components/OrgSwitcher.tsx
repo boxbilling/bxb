@@ -1,18 +1,24 @@
 import { useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Copy } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Plus, Copy, Check, ChevronsUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Dialog,
   DialogContent,
@@ -38,7 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { organizationsApi, ApiError } from '@/lib/api'
-import type { OrganizationCreate } from '@/types/billing'
+import type { Organization, OrganizationCreate } from '@/types/billing'
 import { useOrganization } from '@/hooks/use-organization'
 
 const DEFAULT_FORM: OrganizationCreate = {
@@ -49,17 +55,46 @@ const DEFAULT_FORM: OrganizationCreate = {
   net_payment_term: 30,
 }
 
+function getInitials(name?: string) {
+  if (!name) return '?'
+  return name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function OrgAvatar({ org, className }: { org?: Organization | null; className?: string }) {
+  return (
+    <Avatar className={cn('h-6 w-6 shrink-0', className)}>
+      {org?.logo_url && <AvatarImage src={org.logo_url} alt={org.name} />}
+      <AvatarFallback className="text-[9px] font-semibold">
+        {getInitials(org?.name)}
+      </AvatarFallback>
+    </Avatar>
+  )
+}
+
 export default function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
-  const { data: org, isLoading } = useOrganization()
+  const { data: currentOrg, isLoading } = useOrganization()
   const queryClient = useQueryClient()
+  const [popoverOpen, setPopoverOpen] = useState(false)
   const [createOpen, setCreateOpen] = useState(false)
   const [apiKeyDialog, setApiKeyDialog] = useState<string | null>(null)
   const [form, setForm] = useState<OrganizationCreate>({ ...DEFAULT_FORM })
+
+  const { data: orgs = [] } = useQuery({
+    queryKey: ['organizations'],
+    queryFn: () => organizationsApi.list(),
+    enabled: popoverOpen,
+  })
 
   const createMutation = useMutation({
     mutationFn: (data: OrganizationCreate) => organizationsApi.create(data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['organization'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] })
       setCreateOpen(false)
       setForm({ ...DEFAULT_FORM })
       setApiKeyDialog(response.api_key.raw_key)
@@ -79,64 +114,77 @@ export default function OrgSwitcher({ collapsed }: { collapsed: boolean }) {
     createMutation.mutate(form)
   }
 
-  const initials = org?.name
-    ? org.name
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .slice(0, 2)
-        .toUpperCase()
-    : '?'
-
   if (isLoading) {
     return (
       <div className={cn('flex h-14 items-center gap-2.5 px-3', collapsed && 'justify-center')}>
-        <Skeleton className="h-7 w-7 rounded-full shrink-0" />
+        <Skeleton className="h-6 w-6 rounded-full shrink-0" />
         {!collapsed && <Skeleton className="h-4 w-24" />}
       </div>
     )
   }
 
-  const avatar = (
-    <Avatar className="h-7 w-7 shrink-0">
-      {org?.logo_url && <AvatarImage src={org.logo_url} alt={org.name} />}
-      <AvatarFallback className="text-[10px] font-semibold">
-        {initials}
-      </AvatarFallback>
-    </Avatar>
-  )
+  if (collapsed) {
+    return (
+      <div className="flex h-14 items-center justify-center px-3">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div><OrgAvatar org={currentOrg} /></div>
+          </TooltipTrigger>
+          <TooltipContent side="right">{currentOrg?.name ?? 'Organization'}</TooltipContent>
+        </Tooltip>
+      </div>
+    )
+  }
 
   return (
     <>
-      <div className={cn('flex h-14 items-center px-3', collapsed ? 'justify-center' : 'justify-between')}>
-        <div className={cn('flex items-center gap-2.5 min-w-0', collapsed && 'justify-center')}>
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>{avatar}</div>
-              </TooltipTrigger>
-              <TooltipContent side="right">{org?.name ?? 'Organization'}</TooltipContent>
-            </Tooltip>
-          ) : (
-            <>
-              {avatar}
-              <span className="text-sm font-semibold truncate text-foreground">
-                {org?.name ?? 'Organization'}
-              </span>
-            </>
-          )}
-        </div>
-        {!collapsed && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            onClick={() => setCreateOpen(true)}
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="flex h-14 w-full items-center gap-2.5 px-3 text-left hover:bg-accent/50 transition-colors"
+          >
+            <OrgAvatar org={currentOrg} />
+            <span className="flex-1 text-sm font-semibold truncate text-foreground">
+              {currentOrg?.name ?? 'Organization'}
+            </span>
+            <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-1" align="start" side="right">
+          <div className="px-2 py-1.5">
+            <p className="text-xs font-medium text-muted-foreground">Organizations</p>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {orgs.map((org) => (
+              <button
+                key={org.id}
+                className={cn(
+                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent transition-colors',
+                  org.id === currentOrg?.id && 'bg-accent'
+                )}
+                onClick={() => setPopoverOpen(false)}
+              >
+                <OrgAvatar org={org} className="h-5 w-5" />
+                <span className="flex-1 truncate">{org.name}</span>
+                {org.id === currentOrg?.id && (
+                  <Check className="h-4 w-4 shrink-0 text-foreground" />
+                )}
+              </button>
+            ))}
+          </div>
+          <Separator className="my-1" />
+          <button
+            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+            onClick={() => {
+              setPopoverOpen(false)
+              setCreateOpen(true)
+            }}
           >
             <Plus className="h-4 w-4" />
-          </Button>
-        )}
-      </div>
+            <span>Create organization</span>
+          </button>
+        </PopoverContent>
+      </Popover>
 
       {/* Create Organization Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
