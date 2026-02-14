@@ -3,18 +3,18 @@ import {
   LayoutDashboard,
   Users,
   Gauge,
-  CreditCard,
-  Receipt,
+  Layers,
+  RefreshCw,
   Activity,
   FileText,
   FileMinus,
   Calculator,
-  DollarSign,
+  CircleDollarSign,
+  ArrowLeftRight,
   Wallet,
-  Coins,
   Percent,
-  Gift,
-  Megaphone,
+  Puzzle,
+  Bell,
   Plug,
   Send,
   FileDown,
@@ -22,7 +22,8 @@ import {
   Moon,
   Sun,
   Menu,
-  ChevronLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -48,33 +49,33 @@ const navigationGroups = [
     label: 'Products',
     items: [
       { name: 'Billable Metrics', href: '/admin/metrics', icon: Gauge },
-      { name: 'Plans', href: '/admin/plans', icon: CreditCard },
+      { name: 'Plans', href: '/admin/plans', icon: Layers },
     ],
   },
   {
     label: 'Billing',
     items: [
-      { name: 'Subscriptions', href: '/admin/subscriptions', icon: Receipt },
+      { name: 'Subscriptions', href: '/admin/subscriptions', icon: RefreshCw },
       { name: 'Events', href: '/admin/events', icon: Activity },
       { name: 'Invoices', href: '/admin/invoices', icon: FileText },
-      { name: 'Fees', href: '/admin/fees', icon: DollarSign },
-      { name: 'Payments', href: '/admin/payments', icon: Wallet },
+      { name: 'Fees', href: '/admin/fees', icon: CircleDollarSign },
+      { name: 'Payments', href: '/admin/payments', icon: ArrowLeftRight },
       { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
     ],
   },
   {
     label: 'Financial',
     items: [
-      { name: 'Wallets', href: '/admin/wallets', icon: Coins },
+      { name: 'Wallets', href: '/admin/wallets', icon: Wallet },
       { name: 'Coupons', href: '/admin/coupons', icon: Percent },
-      { name: 'Add-ons', href: '/admin/add-ons', icon: Gift },
+      { name: 'Add-ons', href: '/admin/add-ons', icon: Puzzle },
       { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
+      { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Bell },
       { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
       { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
       { name: 'Integrations', href: '/admin/integrations', icon: Plug },
@@ -99,13 +100,13 @@ function NavItem({
     <NavLink
       to={item.href}
       className={cn(
-        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
         isActive
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
       )}
     >
-      <item.icon className="h-5 w-5 shrink-0" />
+      <item.icon className="h-4 w-4 shrink-0" />
       {!collapsed && <span>{item.name}</span>}
     </NavLink>
   )
@@ -132,37 +133,38 @@ function Sidebar({
   return (
     <div
       className={cn(
-        'flex h-full flex-col border-r bg-card transition-all duration-300',
-        collapsed ? 'w-16' : 'w-64'
+        'flex h-full flex-col border-r bg-sidebar transition-all duration-200',
+        collapsed ? 'w-14' : 'w-56'
       )}
     >
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-4 border-b">
+      <div className="flex h-14 items-center justify-between px-3">
         {!collapsed && (
-          <span className="text-xl font-bold tracking-tight">bxb</span>
+          <span className="text-base font-bold tracking-tight text-foreground">
+            bxb
+          </span>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          className={cn(collapsed && 'mx-auto')}
+          className={cn('h-7 w-7', collapsed && 'mx-auto')}
         >
-          <ChevronLeft
-            className={cn(
-              'h-5 w-5 transition-transform',
-              collapsed && 'rotate-180'
-            )}
-          />
+          {collapsed ? (
+            <PanelLeftOpen className="h-4 w-4" />
+          ) : (
+            <PanelLeftClose className="h-4 w-4" />
+          )}
         </Button>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto space-y-1 p-2">
+      <nav className="flex-1 overflow-y-auto space-y-0.5 px-2 pb-2">
         <TooltipProvider delayDuration={0}>
           {navigationGroups.map((group, groupIndex) => (
             <div key={groupIndex}>
               {group.label && !collapsed && (
-                <p className="px-3 pt-4 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="px-2.5 pt-5 pb-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   {group.label}
                 </p>
               )}
@@ -178,7 +180,7 @@ function Sidebar({
       </nav>
 
       {/* Settings */}
-      <div className="p-2 border-t">
+      <div className="px-2 pb-2 border-t pt-2">
         <TooltipProvider delayDuration={0}>
           <NavItem
             item={{ name: 'Settings', href: '/admin/settings', icon: Settings }}
@@ -194,11 +196,11 @@ function MobileSidebar() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden">
-          <Menu className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
+          <Menu className="h-4 w-4" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 p-0">
+      <SheetContent side="left" className="w-56 p-0">
         <Sidebar collapsed={false} onToggle={() => {}} />
       </SheetContent>
     </Sheet>
@@ -220,11 +222,11 @@ function ThemeToggle() {
   }
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggleTheme}>
+    <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8">
       {theme === 'light' ? (
-        <Moon className="h-5 w-5" />
+        <Moon className="h-4 w-4" />
       ) : (
-        <Sun className="h-5 w-5" />
+        <Sun className="h-4 w-4" />
       )}
     </Button>
   )
@@ -243,12 +245,9 @@ export default function AdminLayout() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 items-center justify-between border-b px-4 md:px-6">
-          <div className="flex items-center gap-4">
-            <MobileSidebar />
-            <h1 className="text-lg font-semibold md:text-xl">Billing Admin</h1>
-          </div>
-          <div className="flex items-center gap-2">
+        <header className="flex h-14 items-center justify-between border-b px-4 md:px-6">
+          <MobileSidebar />
+          <div className="flex items-center gap-2 ml-auto">
             <ThemeToggle />
           </div>
         </header>
