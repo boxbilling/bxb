@@ -18,7 +18,17 @@ from app.services.wallet_service import WalletService
 router = APIRouter()
 
 
-@router.post("/", response_model=WalletResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=WalletResponse,
+    status_code=201,
+    summary="Create wallet",
+    responses={
+        400: {"description": "Invalid customer reference or validation error"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_wallet(
     data: WalletCreate,
     db: Session = Depends(get_db),
@@ -41,7 +51,12 @@ async def create_wallet(
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-@router.get("/", response_model=list[WalletResponse])
+@router.get(
+    "/",
+    response_model=list[WalletResponse],
+    summary="List wallets",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_wallets(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -61,7 +76,15 @@ async def list_wallets(
     )
 
 
-@router.get("/{wallet_id}", response_model=WalletResponse)
+@router.get(
+    "/{wallet_id}",
+    response_model=WalletResponse,
+    summary="Get wallet",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Wallet not found"},
+    },
+)
 async def get_wallet(
     wallet_id: UUID,
     db: Session = Depends(get_db),
@@ -75,7 +98,16 @@ async def get_wallet(
     return wallet
 
 
-@router.put("/{wallet_id}", response_model=WalletResponse)
+@router.put(
+    "/{wallet_id}",
+    response_model=WalletResponse,
+    summary="Update wallet",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Wallet not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_wallet(
     wallet_id: UUID,
     data: WalletUpdate,
@@ -90,7 +122,16 @@ async def update_wallet(
     return wallet
 
 
-@router.delete("/{wallet_id}", status_code=204)
+@router.delete(
+    "/{wallet_id}",
+    status_code=204,
+    summary="Terminate wallet",
+    responses={
+        400: {"description": "Wallet cannot be terminated in current state"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Wallet not found"},
+    },
+)
 async def terminate_wallet(
     wallet_id: UUID,
     db: Session = Depends(get_db),
@@ -107,7 +148,15 @@ async def terminate_wallet(
         raise HTTPException(status_code=400, detail=detail) from None
 
 
-@router.post("/{wallet_id}/top_up", response_model=WalletResponse)
+@router.post(
+    "/{wallet_id}/top_up",
+    response_model=WalletResponse,
+    summary="Top up wallet",
+    responses={
+        400: {"description": "Invalid top-up amount or wallet state"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
 async def top_up_wallet(
     wallet_id: UUID,
     data: WalletTopUp,
@@ -126,7 +175,15 @@ async def top_up_wallet(
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-@router.get("/{wallet_id}/transactions", response_model=list[WalletTransactionResponse])
+@router.get(
+    "/{wallet_id}/transactions",
+    response_model=list[WalletTransactionResponse],
+    summary="List wallet transactions",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Wallet not found"},
+    },
+)
 async def list_wallet_transactions(
     wallet_id: UUID,
     skip: int = Query(default=0, ge=0),

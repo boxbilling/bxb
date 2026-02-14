@@ -17,7 +17,15 @@ from app.schemas.commitment import (
 router = APIRouter()
 
 
-@router.get("/plans/{plan_code}/commitments", response_model=list[CommitmentResponse])
+@router.get(
+    "/plans/{plan_code}/commitments",
+    response_model=list[CommitmentResponse],
+    summary="List plan commitments",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Plan not found"},
+    },
+)
 async def list_commitments_for_plan(
     plan_code: str,
     db: Session = Depends(get_db),
@@ -39,6 +47,12 @@ async def list_commitments_for_plan(
     "/plans/{plan_code}/commitments",
     response_model=CommitmentResponse,
     status_code=201,
+    summary="Create commitment",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Plan not found"},
+        422: {"description": "Validation error"},
+    },
 )
 async def create_commitment(
     plan_code: str,
@@ -62,7 +76,16 @@ async def create_commitment(
     return CommitmentResponse.model_validate(commitment)
 
 
-@router.put("/commitments/{commitment_id}", response_model=CommitmentResponse)
+@router.put(
+    "/commitments/{commitment_id}",
+    response_model=CommitmentResponse,
+    summary="Update commitment",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Commitment not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_commitment(
     commitment_id: UUID,
     data: CommitmentUpdate,
@@ -77,7 +100,15 @@ async def update_commitment(
     return CommitmentResponse.model_validate(commitment)
 
 
-@router.delete("/commitments/{commitment_id}", status_code=204)
+@router.delete(
+    "/commitments/{commitment_id}",
+    status_code=204,
+    summary="Delete commitment",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Commitment not found"},
+    },
+)
 async def delete_commitment(
     commitment_id: UUID,
     db: Session = Depends(get_db),

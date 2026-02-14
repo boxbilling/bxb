@@ -23,7 +23,17 @@ from app.schemas.coupon import (
 router = APIRouter()
 
 
-@router.post("/", response_model=CouponResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=CouponResponse,
+    status_code=201,
+    summary="Create coupon",
+    responses={
+        401: {"description": "Unauthorized"},
+        409: {"description": "Coupon with this code already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_coupon(
     data: CouponCreate,
     db: Session = Depends(get_db),
@@ -36,7 +46,12 @@ async def create_coupon(
     return repo.create(data, organization_id)
 
 
-@router.get("/", response_model=list[CouponResponse])
+@router.get(
+    "/",
+    response_model=list[CouponResponse],
+    summary="List coupons",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_coupons(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -49,7 +64,15 @@ async def list_coupons(
     return repo.get_all(organization_id, skip=skip, limit=limit, status=status)
 
 
-@router.get("/{code}", response_model=CouponResponse)
+@router.get(
+    "/{code}",
+    response_model=CouponResponse,
+    summary="Get coupon",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Coupon not found"},
+    },
+)
 async def get_coupon(
     code: str,
     db: Session = Depends(get_db),
@@ -63,7 +86,16 @@ async def get_coupon(
     return coupon
 
 
-@router.put("/{code}", response_model=CouponResponse)
+@router.put(
+    "/{code}",
+    response_model=CouponResponse,
+    summary="Update coupon",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Coupon not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_coupon(
     code: str,
     data: CouponUpdate,
@@ -78,7 +110,15 @@ async def update_coupon(
     return coupon
 
 
-@router.delete("/{code}", status_code=204)
+@router.delete(
+    "/{code}",
+    status_code=204,
+    summary="Terminate coupon",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Coupon not found"},
+    },
+)
 async def terminate_coupon(
     code: str,
     db: Session = Depends(get_db),
@@ -91,7 +131,18 @@ async def terminate_coupon(
         raise HTTPException(status_code=404, detail="Coupon not found")
 
 
-@router.post("/apply", response_model=AppliedCouponResponse, status_code=201)
+@router.post(
+    "/apply",
+    response_model=AppliedCouponResponse,
+    status_code=201,
+    summary="Apply coupon to customer",
+    responses={
+        400: {"description": "Coupon is not active"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Coupon or customer not found"},
+        409: {"description": "Coupon already applied to this customer"},
+    },
+)
 async def apply_coupon(
     data: ApplyCouponRequest,
     db: Session = Depends(get_db),

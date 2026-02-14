@@ -16,7 +16,17 @@ from app.services.integrations.base import get_integration_adapter
 router = APIRouter()
 
 
-@router.post("/", response_model=IntegrationResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=IntegrationResponse,
+    status_code=201,
+    summary="Create integration",
+    responses={
+        401: {"description": "Unauthorized"},
+        409: {"description": "Integration with this provider already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_integration(
     data: IntegrationCreate,
     db: Session = Depends(get_db),
@@ -33,7 +43,12 @@ async def create_integration(
     return repo.create(data, organization_id)
 
 
-@router.get("/", response_model=list[IntegrationResponse])
+@router.get(
+    "/",
+    response_model=list[IntegrationResponse],
+    summary="List integrations",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_integrations(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -45,7 +60,15 @@ async def list_integrations(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{integration_id}", response_model=IntegrationResponse)
+@router.get(
+    "/{integration_id}",
+    response_model=IntegrationResponse,
+    summary="Get integration",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+    },
+)
 async def get_integration(
     integration_id: UUID,
     db: Session = Depends(get_db),
@@ -59,14 +82,23 @@ async def get_integration(
     return integration
 
 
-@router.put("/{integration_id}", response_model=IntegrationResponse)
+@router.put(
+    "/{integration_id}",
+    response_model=IntegrationResponse,
+    summary="Update integration",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_integration(
     integration_id: UUID,
     data: IntegrationUpdate,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> Integration:
-    """Update an integration's settings."""
+    """Update an integration\'s settings."""
     repo = IntegrationRepository(db)
     integration = repo.update(integration_id, data, organization_id)
     if not integration:
@@ -74,7 +106,15 @@ async def update_integration(
     return integration
 
 
-@router.delete("/{integration_id}", status_code=204)
+@router.delete(
+    "/{integration_id}",
+    status_code=204,
+    summary="Delete integration",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+    },
+)
 async def delete_integration(
     integration_id: UUID,
     db: Session = Depends(get_db),
@@ -86,13 +126,22 @@ async def delete_integration(
         raise HTTPException(status_code=404, detail="Integration not found")
 
 
-@router.post("/{integration_id}/test", response_model=dict[str, Any])
+@router.post(
+    "/{integration_id}/test",
+    response_model=dict[str, Any],
+    summary="Test integration connection",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+        422: {"description": "Unsupported integration type"},
+    },
+)
 async def test_integration_connection(
     integration_id: UUID,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> dict[str, Any]:
-    """Test an integration's connection credentials."""
+    """Test an integration\'s connection credentials."""
     repo = IntegrationRepository(db)
     integration = repo.get_by_id(integration_id, organization_id)
     if not integration:

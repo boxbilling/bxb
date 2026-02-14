@@ -66,7 +66,12 @@ async def _enqueue_threshold_checks(subscription_ids: list[str]) -> None:
             logger.exception("Failed to enqueue threshold check for subscription %s", sub_id)
 
 
-@router.get("/", response_model=list[EventResponse])
+@router.get(
+    "/",
+    response_model=list[EventResponse],
+    summary="List events",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_events(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -90,7 +95,15 @@ async def list_events(
     )
 
 
-@router.get("/{event_id}", response_model=EventResponse)
+@router.get(
+    "/{event_id}",
+    response_model=EventResponse,
+    summary="Get event",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Event not found"},
+    },
+)
 async def get_event(
     event_id: UUID,
     db: Session = Depends(get_db),
@@ -104,7 +117,16 @@ async def get_event(
     return event
 
 
-@router.post("/", response_model=EventResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=EventResponse,
+    status_code=201,
+    summary="Ingest event",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        422: {"description": "Billable metric code does not exist"},
+    },
+)
 async def create_event(
     data: EventCreate,
     background_tasks: BackgroundTasks,
@@ -129,7 +151,16 @@ async def create_event(
     return event
 
 
-@router.post("/batch", response_model=EventBatchResponse, status_code=201)
+@router.post(
+    "/batch",
+    response_model=EventBatchResponse,
+    status_code=201,
+    summary="Ingest event batch",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        422: {"description": "Billable metric code does not exist"},
+    },
+)
 async def create_events_batch(
     data: EventBatchCreate,
     background_tasks: BackgroundTasks,

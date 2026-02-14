@@ -57,7 +57,12 @@ def _plan_to_response(repo: PlanRepository, plan: Any) -> dict[str, Any]:
     }
 
 
-@router.get("/", response_model=list[PlanResponse])
+@router.get(
+    "/",
+    response_model=list[PlanResponse],
+    summary="List plans",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_plans(
     skip: int = 0,
     limit: int = 100,
@@ -70,7 +75,15 @@ async def list_plans(
     return [_plan_to_response(repo, plan) for plan in plans]
 
 
-@router.get("/{plan_id}", response_model=PlanResponse)
+@router.get(
+    "/{plan_id}",
+    response_model=PlanResponse,
+    summary="Get plan",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Plan not found"},
+    },
+)
 async def get_plan(
     plan_id: UUID,
     db: Session = Depends(get_db),
@@ -84,7 +97,18 @@ async def get_plan(
     return _plan_to_response(repo, plan)
 
 
-@router.post("/", response_model=PlanResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=PlanResponse,
+    status_code=201,
+    summary="Create plan",
+    responses={
+        400: {"description": "Invalid billable metric or filter reference"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        409: {"description": "Plan with this code already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_plan(
     data: PlanCreate,
     db: Session = Depends(get_db),
@@ -111,7 +135,17 @@ async def create_plan(
     return _plan_to_response(repo, plan)
 
 
-@router.put("/{plan_id}", response_model=PlanResponse)
+@router.put(
+    "/{plan_id}",
+    response_model=PlanResponse,
+    summary="Update plan",
+    responses={
+        400: {"description": "Invalid billable metric or filter reference"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Plan not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_plan(
     plan_id: UUID,
     data: PlanUpdate,
@@ -140,7 +174,15 @@ async def update_plan(
     return _plan_to_response(repo, plan)
 
 
-@router.delete("/{plan_id}", status_code=204)
+@router.delete(
+    "/{plan_id}",
+    status_code=204,
+    summary="Delete plan",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Plan not found"},
+    },
+)
 async def delete_plan(
     plan_id: UUID,
     db: Session = Depends(get_db),

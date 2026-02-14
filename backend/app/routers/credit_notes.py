@@ -19,7 +19,17 @@ from app.schemas.credit_note import (
 router = APIRouter()
 
 
-@router.post("/", response_model=CreditNoteResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=CreditNoteResponse,
+    status_code=201,
+    summary="Create credit note",
+    responses={
+        401: {"description": "Unauthorized"},
+        409: {"description": "Credit note with this number already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_credit_note(
     data: CreditNoteCreate,
     db: Session = Depends(get_db),
@@ -47,7 +57,12 @@ async def create_credit_note(
     return credit_note
 
 
-@router.get("/", response_model=list[CreditNoteResponse])
+@router.get(
+    "/",
+    response_model=list[CreditNoteResponse],
+    summary="List credit notes",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_credit_notes(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -69,7 +84,15 @@ async def list_credit_notes(
     )
 
 
-@router.get("/{credit_note_id}", response_model=CreditNoteResponse)
+@router.get(
+    "/{credit_note_id}",
+    response_model=CreditNoteResponse,
+    summary="Get credit note",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Credit note not found"},
+    },
+)
 async def get_credit_note(
     credit_note_id: UUID,
     db: Session = Depends(get_db),
@@ -83,7 +106,17 @@ async def get_credit_note(
     return credit_note
 
 
-@router.put("/{credit_note_id}", response_model=CreditNoteResponse)
+@router.put(
+    "/{credit_note_id}",
+    response_model=CreditNoteResponse,
+    summary="Update credit note",
+    responses={
+        400: {"description": "Only draft credit notes can be updated"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Credit note not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_credit_note(
     credit_note_id: UUID,
     data: CreditNoteUpdate,
@@ -103,7 +136,16 @@ async def update_credit_note(
     return updated  # type: ignore[return-value]
 
 
-@router.post("/{credit_note_id}/finalize", response_model=CreditNoteResponse)
+@router.post(
+    "/{credit_note_id}/finalize",
+    response_model=CreditNoteResponse,
+    summary="Finalize credit note",
+    responses={
+        400: {"description": "Only draft credit notes can be finalized"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Credit note not found"},
+    },
+)
 async def finalize_credit_note(
     credit_note_id: UUID,
     db: Session = Depends(get_db),
@@ -122,7 +164,16 @@ async def finalize_credit_note(
     return finalized  # type: ignore[return-value]
 
 
-@router.post("/{credit_note_id}/void", response_model=CreditNoteResponse)
+@router.post(
+    "/{credit_note_id}/void",
+    response_model=CreditNoteResponse,
+    summary="Void credit note",
+    responses={
+        400: {"description": "Only finalized credit notes can be voided"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Credit note not found"},
+    },
+)
 async def void_credit_note(
     credit_note_id: UUID,
     db: Session = Depends(get_db),

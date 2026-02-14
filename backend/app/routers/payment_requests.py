@@ -32,7 +32,16 @@ def _pr_to_response(
     return resp
 
 
-@router.post("/", response_model=PaymentRequestResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=PaymentRequestResponse,
+    status_code=201,
+    summary="Create payment request",
+    responses={
+        400: {"description": "Invalid customer or invoice reference"},
+        401: {"description": "Unauthorized"},
+    },
+)
 async def create_payment_request(
     data: PaymentRequestCreate,
     db: Session = Depends(get_db),
@@ -52,7 +61,12 @@ async def create_payment_request(
     return _pr_to_response(pr, repo)
 
 
-@router.get("/", response_model=list[PaymentRequestResponse])
+@router.get(
+    "/",
+    response_model=list[PaymentRequestResponse],
+    summary="List payment requests",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_payment_requests(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -73,7 +87,15 @@ async def list_payment_requests(
     return [_pr_to_response(pr, repo) for pr in prs]
 
 
-@router.get("/{request_id}", response_model=PaymentRequestResponse)
+@router.get(
+    "/{request_id}",
+    response_model=PaymentRequestResponse,
+    summary="Get payment request",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Payment request not found"},
+    },
+)
 async def get_payment_request(
     request_id: UUID,
     db: Session = Depends(get_db),

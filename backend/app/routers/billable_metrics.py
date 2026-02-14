@@ -22,7 +22,12 @@ from app.schemas.billable_metric_filter import (
 router = APIRouter()
 
 
-@router.get("/", response_model=list[BillableMetricResponse])
+@router.get(
+    "/",
+    response_model=list[BillableMetricResponse],
+    summary="List billable metrics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_billable_metrics(
     skip: int = 0,
     limit: int = 100,
@@ -34,7 +39,15 @@ async def list_billable_metrics(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{metric_id}", response_model=BillableMetricResponse)
+@router.get(
+    "/{metric_id}",
+    response_model=BillableMetricResponse,
+    summary="Get billable metric",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Billable metric not found"},
+    },
+)
 async def get_billable_metric(
     metric_id: UUID,
     db: Session = Depends(get_db),
@@ -48,7 +61,17 @@ async def get_billable_metric(
     return metric
 
 
-@router.post("/", response_model=BillableMetricResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=BillableMetricResponse,
+    status_code=201,
+    summary="Create billable metric",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        409: {"description": "Billable metric with this code already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_billable_metric(
     data: BillableMetricCreate,
     db: Session = Depends(get_db),
@@ -61,7 +84,16 @@ async def create_billable_metric(
     return repo.create(data, organization_id)
 
 
-@router.put("/{metric_id}", response_model=BillableMetricResponse)
+@router.put(
+    "/{metric_id}",
+    response_model=BillableMetricResponse,
+    summary="Update billable metric",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Billable metric not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_billable_metric(
     metric_id: UUID,
     data: BillableMetricUpdate,
@@ -76,7 +108,15 @@ async def update_billable_metric(
     return metric
 
 
-@router.delete("/{metric_id}", status_code=204)
+@router.delete(
+    "/{metric_id}",
+    status_code=204,
+    summary="Delete billable metric",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Billable metric not found"},
+    },
+)
 async def delete_billable_metric(
     metric_id: UUID,
     db: Session = Depends(get_db),
@@ -92,6 +132,12 @@ async def delete_billable_metric(
     "/{code}/filters",
     response_model=BillableMetricFilterResponse,
     status_code=201,
+    summary="Create metric filter",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Billable metric not found"},
+        422: {"description": "Validation error"},
+    },
 )
 async def create_billable_metric_filter(
     code: str,
@@ -112,6 +158,11 @@ async def create_billable_metric_filter(
 @router.get(
     "/{code}/filters",
     response_model=list[BillableMetricFilterResponse],
+    summary="List metric filters",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Billable metric not found"},
+    },
 )
 async def list_billable_metric_filters(
     code: str,
@@ -128,7 +179,15 @@ async def list_billable_metric_filters(
     return filter_repo.get_by_metric_id(metric.id)  # type: ignore[arg-type]
 
 
-@router.delete("/{code}/filters/{filter_id}", status_code=204)
+@router.delete(
+    "/{code}/filters/{filter_id}",
+    status_code=204,
+    summary="Delete metric filter",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Billable metric or filter not found"},
+    },
+)
 async def delete_billable_metric_filter(
     code: str,
     filter_id: UUID,

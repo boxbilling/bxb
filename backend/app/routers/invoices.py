@@ -18,7 +18,12 @@ from app.services.webhook_service import WebhookService
 router = APIRouter()
 
 
-@router.get("/", response_model=list[InvoiceResponse])
+@router.get(
+    "/",
+    response_model=list[InvoiceResponse],
+    summary="List invoices",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_invoices(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -40,7 +45,15 @@ async def list_invoices(
     )
 
 
-@router.get("/{invoice_id}", response_model=InvoiceResponse)
+@router.get(
+    "/{invoice_id}",
+    response_model=InvoiceResponse,
+    summary="Get invoice",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
 async def get_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
@@ -54,7 +67,16 @@ async def get_invoice(
     return invoice
 
 
-@router.put("/{invoice_id}", response_model=InvoiceResponse)
+@router.put(
+    "/{invoice_id}",
+    response_model=InvoiceResponse,
+    summary="Update invoice",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_invoice(
     invoice_id: UUID,
     data: InvoiceUpdate,
@@ -69,7 +91,16 @@ async def update_invoice(
     return invoice
 
 
-@router.post("/{invoice_id}/finalize", response_model=InvoiceResponse)
+@router.post(
+    "/{invoice_id}/finalize",
+    response_model=InvoiceResponse,
+    summary="Finalize invoice",
+    responses={
+        400: {"description": "Invoice cannot be finalized in current state"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
 async def finalize_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
@@ -121,7 +152,16 @@ async def finalize_invoice(
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-@router.post("/{invoice_id}/pay", response_model=InvoiceResponse)
+@router.post(
+    "/{invoice_id}/pay",
+    response_model=InvoiceResponse,
+    summary="Mark invoice paid",
+    responses={
+        400: {"description": "Invoice cannot be marked paid in current state"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
 async def mark_invoice_paid(
     invoice_id: UUID,
     db: Session = Depends(get_db),
@@ -150,7 +190,16 @@ async def mark_invoice_paid(
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-@router.post("/{invoice_id}/void", response_model=InvoiceResponse)
+@router.post(
+    "/{invoice_id}/void",
+    response_model=InvoiceResponse,
+    summary="Void invoice",
+    responses={
+        400: {"description": "Invoice cannot be voided in current state"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
 async def void_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),
@@ -179,7 +228,15 @@ async def void_invoice(
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-@router.get("/{invoice_id}/settlements", response_model=list[InvoiceSettlementResponse])
+@router.get(
+    "/{invoice_id}/settlements",
+    response_model=list[InvoiceSettlementResponse],
+    summary="List invoice settlements",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
 async def list_invoice_settlements(
     invoice_id: UUID,
     db: Session = Depends(get_db),
@@ -194,7 +251,16 @@ async def list_invoice_settlements(
     return settlement_repo.get_by_invoice_id(invoice_id)
 
 
-@router.delete("/{invoice_id}", status_code=204)
+@router.delete(
+    "/{invoice_id}",
+    status_code=204,
+    summary="Delete draft invoice",
+    responses={
+        400: {"description": "Only draft invoices can be deleted"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
 async def delete_invoice(
     invoice_id: UUID,
     db: Session = Depends(get_db),

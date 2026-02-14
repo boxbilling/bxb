@@ -21,7 +21,12 @@ from app.schemas.dashboard import (
 router = APIRouter()
 
 
-@router.get("/stats", response_model=DashboardStatsResponse)
+@router.get(
+    "/stats",
+    response_model=DashboardStatsResponse,
+    summary="Get dashboard statistics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def get_stats(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -38,7 +43,12 @@ async def get_stats(
     )
 
 
-@router.get("/activity", response_model=list[RecentActivityResponse])
+@router.get(
+    "/activity",
+    response_model=list[RecentActivityResponse],
+    summary="Get recent activity feed",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def get_recent_activity(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -91,7 +101,12 @@ async def get_recent_activity(
     return activities[:10]
 
 
-@router.get("/revenue", response_model=RevenueResponse)
+@router.get(
+    "/revenue",
+    response_model=RevenueResponse,
+    summary="Get revenue analytics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def get_revenue(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -112,7 +127,12 @@ async def get_revenue(
     )
 
 
-@router.get("/customers", response_model=CustomerMetricsResponse)
+@router.get(
+    "/customers",
+    response_model=CustomerMetricsResponse,
+    summary="Get customer metrics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def get_customer_metrics(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -126,7 +146,12 @@ async def get_customer_metrics(
     )
 
 
-@router.get("/subscriptions", response_model=SubscriptionMetricsResponse)
+@router.get(
+    "/subscriptions",
+    response_model=SubscriptionMetricsResponse,
+    summary="Get subscription metrics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def get_subscription_metrics(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -145,7 +170,12 @@ async def get_subscription_metrics(
     )
 
 
-@router.get("/usage", response_model=UsageMetricsResponse)
+@router.get(
+    "/usage",
+    response_model=UsageMetricsResponse,
+    summary="Get top usage metrics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def get_usage_metrics(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),

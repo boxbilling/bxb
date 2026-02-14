@@ -22,7 +22,16 @@ from app.services.webhook_service import WebhookService
 router = APIRouter()
 
 
-@router.post("/", response_model=WebhookEndpointResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=WebhookEndpointResponse,
+    status_code=201,
+    summary="Create webhook endpoint",
+    responses={
+        401: {"description": "Unauthorized"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_webhook_endpoint(
     data: WebhookEndpointCreate,
     db: Session = Depends(get_db),
@@ -33,7 +42,12 @@ async def create_webhook_endpoint(
     return repo.create(data, organization_id)
 
 
-@router.get("/", response_model=list[WebhookEndpointResponse])
+@router.get(
+    "/",
+    response_model=list[WebhookEndpointResponse],
+    summary="List webhook endpoints",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_webhook_endpoints(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -45,7 +59,15 @@ async def list_webhook_endpoints(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{endpoint_id}", response_model=WebhookEndpointResponse)
+@router.get(
+    "/{endpoint_id}",
+    response_model=WebhookEndpointResponse,
+    summary="Get webhook endpoint",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Webhook endpoint not found"},
+    },
+)
 async def get_webhook_endpoint(
     endpoint_id: UUID,
     db: Session = Depends(get_db),
@@ -59,7 +81,16 @@ async def get_webhook_endpoint(
     return endpoint
 
 
-@router.put("/{endpoint_id}", response_model=WebhookEndpointResponse)
+@router.put(
+    "/{endpoint_id}",
+    response_model=WebhookEndpointResponse,
+    summary="Update webhook endpoint",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Webhook endpoint not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_webhook_endpoint(
     endpoint_id: UUID,
     data: WebhookEndpointUpdate,
@@ -74,7 +105,15 @@ async def update_webhook_endpoint(
     return endpoint
 
 
-@router.delete("/{endpoint_id}", status_code=204)
+@router.delete(
+    "/{endpoint_id}",
+    status_code=204,
+    summary="Delete webhook endpoint",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Webhook endpoint not found"},
+    },
+)
 async def delete_webhook_endpoint(
     endpoint_id: UUID,
     db: Session = Depends(get_db),
@@ -86,7 +125,12 @@ async def delete_webhook_endpoint(
         raise HTTPException(status_code=404, detail="Webhook endpoint not found")
 
 
-@router.get("/hooks/list", response_model=list[WebhookResponse])
+@router.get(
+    "/hooks/list",
+    response_model=list[WebhookResponse],
+    summary="List recent webhooks",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_webhooks(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -104,7 +148,12 @@ async def list_webhooks(
     )
 
 
-@router.get("/hooks/{webhook_id}", response_model=WebhookResponse)
+@router.get(
+    "/hooks/{webhook_id}",
+    response_model=WebhookResponse,
+    summary="Get webhook details",
+    responses={404: {"description": "Webhook not found"}},
+)
 async def get_webhook(
     webhook_id: UUID,
     db: Session = Depends(get_db),
@@ -117,7 +166,15 @@ async def get_webhook(
     return webhook
 
 
-@router.post("/hooks/{webhook_id}/retry", response_model=WebhookResponse)
+@router.post(
+    "/hooks/{webhook_id}/retry",
+    response_model=WebhookResponse,
+    summary="Retry failed webhook",
+    responses={
+        400: {"description": "Only failed webhooks can be retried"},
+        404: {"description": "Webhook not found"},
+    },
+)
 async def retry_webhook(
     webhook_id: UUID,
     db: Session = Depends(get_db),

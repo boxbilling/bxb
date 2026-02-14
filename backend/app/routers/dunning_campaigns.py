@@ -32,7 +32,17 @@ def _campaign_to_response(
     return resp
 
 
-@router.post("/", response_model=DunningCampaignResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=DunningCampaignResponse,
+    status_code=201,
+    summary="Create dunning campaign",
+    responses={
+        401: {"description": "Unauthorized"},
+        409: {"description": "Dunning campaign with this code already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_dunning_campaign(
     data: DunningCampaignCreate,
     db: Session = Depends(get_db),
@@ -49,7 +59,12 @@ async def create_dunning_campaign(
     return _campaign_to_response(campaign, repo)
 
 
-@router.get("/", response_model=list[DunningCampaignResponse])
+@router.get(
+    "/",
+    response_model=list[DunningCampaignResponse],
+    summary="List dunning campaigns",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_dunning_campaigns(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -63,7 +78,15 @@ async def list_dunning_campaigns(
     return [_campaign_to_response(c, repo) for c in campaigns]
 
 
-@router.get("/{campaign_id}", response_model=DunningCampaignResponse)
+@router.get(
+    "/{campaign_id}",
+    response_model=DunningCampaignResponse,
+    summary="Get dunning campaign",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Dunning campaign not found"},
+    },
+)
 async def get_dunning_campaign(
     campaign_id: UUID,
     db: Session = Depends(get_db),
@@ -77,7 +100,16 @@ async def get_dunning_campaign(
     return _campaign_to_response(campaign, repo)
 
 
-@router.put("/{campaign_id}", response_model=DunningCampaignResponse)
+@router.put(
+    "/{campaign_id}",
+    response_model=DunningCampaignResponse,
+    summary="Update dunning campaign",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Dunning campaign not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_dunning_campaign(
     campaign_id: UUID,
     data: DunningCampaignUpdate,
@@ -92,7 +124,15 @@ async def update_dunning_campaign(
     return _campaign_to_response(campaign, repo)
 
 
-@router.delete("/{campaign_id}", status_code=204)
+@router.delete(
+    "/{campaign_id}",
+    status_code=204,
+    summary="Delete dunning campaign",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Dunning campaign not found"},
+    },
+)
 async def delete_dunning_campaign(
     campaign_id: UUID,
     db: Session = Depends(get_db),

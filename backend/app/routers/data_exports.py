@@ -17,7 +17,16 @@ from app.services.data_export_service import DataExportService
 router = APIRouter()
 
 
-@router.post("/", response_model=DataExportResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=DataExportResponse,
+    status_code=201,
+    summary="Create data export",
+    responses={
+        401: {"description": "Unauthorized"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_data_export(
     data: DataExportCreate,
     db: Session = Depends(get_db),
@@ -40,7 +49,12 @@ async def create_data_export(
     return updated  # type: ignore[return-value]
 
 
-@router.get("/", response_model=list[DataExportResponse])
+@router.get(
+    "/",
+    response_model=list[DataExportResponse],
+    summary="List data exports",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_data_exports(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -52,7 +66,15 @@ async def list_data_exports(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{export_id}", response_model=DataExportResponse)
+@router.get(
+    "/{export_id}",
+    response_model=DataExportResponse,
+    summary="Get data export",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Data export not found"},
+    },
+)
 async def get_data_export(
     export_id: UUID,
     db: Session = Depends(get_db),
@@ -66,7 +88,15 @@ async def get_data_export(
     return export
 
 
-@router.get("/{export_id}/download")
+@router.get(
+    "/{export_id}/download",
+    summary="Download data export",
+    responses={
+        400: {"description": "Export is not completed"},
+        401: {"description": "Unauthorized"},
+        404: {"description": "Data export or file not found"},
+    },
+)
 async def download_data_export(
     export_id: UUID,
     db: Session = Depends(get_db),

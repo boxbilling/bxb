@@ -22,7 +22,17 @@ from app.services.tax_service import TaxCalculationService
 router = APIRouter()
 
 
-@router.post("/", response_model=TaxResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=TaxResponse,
+    status_code=201,
+    summary="Create tax",
+    responses={
+        401: {"description": "Unauthorized"},
+        409: {"description": "Tax with this code already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_tax(
     data: TaxCreate,
     db: Session = Depends(get_db),
@@ -35,7 +45,12 @@ async def create_tax(
     return repo.create(data, organization_id)
 
 
-@router.get("/", response_model=list[TaxResponse])
+@router.get(
+    "/",
+    response_model=list[TaxResponse],
+    summary="List taxes",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_taxes(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -47,7 +62,12 @@ async def list_taxes(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/applied", response_model=list[AppliedTaxResponse])
+@router.get(
+    "/applied",
+    response_model=list[AppliedTaxResponse],
+    summary="List applied taxes",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_applied_taxes(
     taxable_type: str = Query(..., max_length=50),
     taxable_id: UUID = Query(...),
@@ -60,7 +80,16 @@ async def list_applied_taxes(
     return [AppliedTaxResponse.model_validate(a) for a in applied]
 
 
-@router.post("/apply", response_model=AppliedTaxResponse, status_code=201)
+@router.post(
+    "/apply",
+    response_model=AppliedTaxResponse,
+    status_code=201,
+    summary="Apply tax to entity",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Tax not found"},
+    },
+)
 async def apply_tax(
     data: ApplyTaxRequest,
     db: Session = Depends(get_db),
@@ -79,7 +108,15 @@ async def apply_tax(
     return AppliedTaxResponse.model_validate(applied)
 
 
-@router.delete("/applied/{applied_tax_id}", status_code=204)
+@router.delete(
+    "/applied/{applied_tax_id}",
+    status_code=204,
+    summary="Remove applied tax",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Applied tax not found"},
+    },
+)
 async def remove_applied_tax(
     applied_tax_id: UUID,
     db: Session = Depends(get_db),
@@ -91,7 +128,15 @@ async def remove_applied_tax(
         raise HTTPException(status_code=404, detail="Applied tax not found")
 
 
-@router.get("/{code}", response_model=TaxResponse)
+@router.get(
+    "/{code}",
+    response_model=TaxResponse,
+    summary="Get tax",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Tax not found"},
+    },
+)
 async def get_tax(
     code: str,
     db: Session = Depends(get_db),
@@ -105,7 +150,16 @@ async def get_tax(
     return tax
 
 
-@router.put("/{code}", response_model=TaxResponse)
+@router.put(
+    "/{code}",
+    response_model=TaxResponse,
+    summary="Update tax",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Tax not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_tax(
     code: str,
     data: TaxUpdate,
@@ -120,7 +174,15 @@ async def update_tax(
     return tax
 
 
-@router.delete("/{code}", status_code=204)
+@router.delete(
+    "/{code}",
+    status_code=204,
+    summary="Delete tax",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Tax not found"},
+    },
+)
 async def delete_tax(
     code: str,
     db: Session = Depends(get_db),

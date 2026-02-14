@@ -9,13 +9,23 @@ from app.tasks import enqueue_task
 router = APIRouter()
 
 
-@router.post("/update-prices", status_code=202)
+@router.post(
+    "/update-prices",
+    status_code=202,
+    summary="Enqueue price update",
+    description="Enqueue a background task to update all item prices.",
+)
 async def enqueue_update_prices() -> dict[str, str]:
     job = await enqueue_task("update_item_prices")
     return {"job_id": job.job_id}
 
 
-@router.get("/", response_model=list[ItemResponse])
+@router.get(
+    "/",
+    response_model=list[ItemResponse],
+    summary="List items",
+    description="List all items with pagination.",
+)
 async def list_items(
     skip: int = 0,
     limit: int = 100,
@@ -25,7 +35,13 @@ async def list_items(
     return [ItemResponse.model_validate(item) for item in repo.get_all(skip=skip, limit=limit)]
 
 
-@router.get("/{item_id}", response_model=ItemResponse)
+@router.get(
+    "/{item_id}",
+    response_model=ItemResponse,
+    summary="Get item",
+    description="Get an item by ID.",
+    responses={404: {"description": "Item not found"}},
+)
 async def get_item(
     item_id: int,
     db: Session = Depends(get_db),
@@ -37,7 +53,14 @@ async def get_item(
     return ItemResponse.model_validate(item)
 
 
-@router.post("/", response_model=ItemResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=ItemResponse,
+    status_code=201,
+    summary="Create item",
+    description="Create a new item.",
+    responses={422: {"description": "Validation error"}},
+)
 async def create_item(
     data: ItemCreate,
     db: Session = Depends(get_db),
@@ -46,7 +69,13 @@ async def create_item(
     return ItemResponse.model_validate(repo.create(data))
 
 
-@router.put("/{item_id}", response_model=ItemResponse)
+@router.put(
+    "/{item_id}",
+    response_model=ItemResponse,
+    summary="Update item",
+    description="Update an existing item.",
+    responses={404: {"description": "Item not found"}},
+)
 async def update_item(
     item_id: int,
     data: ItemUpdate,
@@ -59,7 +88,13 @@ async def update_item(
     return ItemResponse.model_validate(item)
 
 
-@router.delete("/{item_id}", status_code=204)
+@router.delete(
+    "/{item_id}",
+    status_code=204,
+    summary="Delete item",
+    description="Delete an item by ID.",
+    responses={404: {"description": "Item not found"}},
+)
 async def delete_item(
     item_id: int,
     db: Session = Depends(get_db),

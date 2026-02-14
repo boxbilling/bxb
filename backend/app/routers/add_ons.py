@@ -23,7 +23,17 @@ from app.schemas.add_on import (
 router = APIRouter()
 
 
-@router.post("/", response_model=AddOnResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=AddOnResponse,
+    status_code=201,
+    summary="Create add-on",
+    responses={
+        401: {"description": "Unauthorized"},
+        409: {"description": "Add-on with this code already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_add_on(
     data: AddOnCreate,
     db: Session = Depends(get_db),
@@ -36,7 +46,12 @@ async def create_add_on(
     return repo.create(data, organization_id)
 
 
-@router.get("/", response_model=list[AddOnResponse])
+@router.get(
+    "/",
+    response_model=list[AddOnResponse],
+    summary="List add-ons",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_add_ons(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -48,7 +63,15 @@ async def list_add_ons(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{code}", response_model=AddOnResponse)
+@router.get(
+    "/{code}",
+    response_model=AddOnResponse,
+    summary="Get add-on",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Add-on not found"},
+    },
+)
 async def get_add_on(
     code: str,
     db: Session = Depends(get_db),
@@ -62,7 +85,16 @@ async def get_add_on(
     return add_on
 
 
-@router.put("/{code}", response_model=AddOnResponse)
+@router.put(
+    "/{code}",
+    response_model=AddOnResponse,
+    summary="Update add-on",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Add-on not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_add_on(
     code: str,
     data: AddOnUpdate,
@@ -77,7 +109,15 @@ async def update_add_on(
     return add_on
 
 
-@router.delete("/{code}", status_code=204)
+@router.delete(
+    "/{code}",
+    status_code=204,
+    summary="Delete add-on",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Add-on not found"},
+    },
+)
 async def delete_add_on(
     code: str,
     db: Session = Depends(get_db),
@@ -89,7 +129,16 @@ async def delete_add_on(
         raise HTTPException(status_code=404, detail="Add-on not found")
 
 
-@router.post("/apply", response_model=AppliedAddOnResponse, status_code=201)
+@router.post(
+    "/apply",
+    response_model=AppliedAddOnResponse,
+    status_code=201,
+    summary="Apply add-on to customer",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Add-on or customer not found"},
+    },
+)
 async def apply_add_on(
     data: ApplyAddOnRequest,
     db: Session = Depends(get_db),

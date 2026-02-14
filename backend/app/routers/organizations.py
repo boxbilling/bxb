@@ -33,7 +33,13 @@ class OrganizationCreateResponse(OrganizationResponse):
     api_key: ApiKeyCreateResponse
 
 
-@router.post("/", response_model=OrganizationCreateResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=OrganizationCreateResponse,
+    status_code=201,
+    summary="Create organization",
+    responses={422: {"description": "Validation error"}},
+)
 async def create_organization(
     data: OrganizationCreate,
     db: Session = Depends(get_db),
@@ -59,7 +65,15 @@ async def create_organization(
     return org_response
 
 
-@router.get("/current", response_model=OrganizationResponse)
+@router.get(
+    "/current",
+    response_model=OrganizationResponse,
+    summary="Get current organization",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Organization not found"},
+    },
+)
 async def get_current_org(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -72,7 +86,16 @@ async def get_current_org(
     return org
 
 
-@router.put("/current", response_model=OrganizationResponse)
+@router.put(
+    "/current",
+    response_model=OrganizationResponse,
+    summary="Update current organization",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Organization not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_current_org(
     data: OrganizationUpdate,
     db: Session = Depends(get_db),
@@ -90,6 +113,11 @@ async def update_current_org(
     "/current/api_keys",
     response_model=ApiKeyCreateResponse,
     status_code=201,
+    summary="Create API key",
+    responses={
+        401: {"description": "Unauthorized"},
+        422: {"description": "Validation error"},
+    },
 )
 async def create_api_key(
     data: ApiKeyCreate,
@@ -105,7 +133,12 @@ async def create_api_key(
     return response
 
 
-@router.get("/current/api_keys", response_model=list[ApiKeyListResponse])
+@router.get(
+    "/current/api_keys",
+    response_model=list[ApiKeyListResponse],
+    summary="List API keys",
+    responses={401: {"description": "Unauthorized"}},
+)
 async def list_api_keys(
     skip: int = 0,
     limit: int = 100,
@@ -117,7 +150,15 @@ async def list_api_keys(
     return repo.list_by_org(organization_id, skip=skip, limit=limit)
 
 
-@router.delete("/current/api_keys/{api_key_id}", status_code=204)
+@router.delete(
+    "/current/api_keys/{api_key_id}",
+    status_code=204,
+    summary="Revoke API key",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "API key not found"},
+    },
+)
 async def revoke_api_key(
     api_key_id: UUID,
     db: Session = Depends(get_db),

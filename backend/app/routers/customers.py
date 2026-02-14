@@ -15,7 +15,12 @@ from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdat
 router = APIRouter()
 
 
-@router.get("/", response_model=list[CustomerResponse])
+@router.get(
+    "/",
+    response_model=list[CustomerResponse],
+    summary="List customers",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_customers(
     skip: int = 0,
     limit: int = 100,
@@ -27,7 +32,15 @@ async def list_customers(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{customer_id}", response_model=CustomerResponse)
+@router.get(
+    "/{customer_id}",
+    response_model=CustomerResponse,
+    summary="Get customer",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
 async def get_customer(
     customer_id: UUID,
     db: Session = Depends(get_db),
@@ -41,7 +54,17 @@ async def get_customer(
     return customer
 
 
-@router.post("/", response_model=CustomerResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=CustomerResponse,
+    status_code=201,
+    summary="Create customer",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        409: {"description": "Customer with this external_id already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_customer(
     data: CustomerCreate,
     db: Session = Depends(get_db),
@@ -54,7 +77,16 @@ async def create_customer(
     return repo.create(data, organization_id)
 
 
-@router.put("/{customer_id}", response_model=CustomerResponse)
+@router.put(
+    "/{customer_id}",
+    response_model=CustomerResponse,
+    summary="Update customer",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_customer(
     customer_id: UUID,
     data: CustomerUpdate,
@@ -69,7 +101,15 @@ async def update_customer(
     return customer
 
 
-@router.delete("/{customer_id}", status_code=204)
+@router.delete(
+    "/{customer_id}",
+    status_code=204,
+    summary="Delete customer",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
 async def delete_customer(
     customer_id: UUID,
     db: Session = Depends(get_db),
@@ -84,6 +124,11 @@ async def delete_customer(
 @router.get(
     "/{customer_id}/applied_coupons",
     response_model=list[AppliedCouponResponse],
+    summary="List customer applied coupons",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
 )
 async def list_applied_coupons(
     customer_id: UUID,

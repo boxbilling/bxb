@@ -26,6 +26,12 @@ router = APIRouter()
     "/plans/{plan_code}/usage_thresholds",
     response_model=UsageThresholdResponse,
     status_code=201,
+    summary="Create plan usage threshold",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Plan not found"},
+        422: {"description": "Validation error"},
+    },
 )
 async def create_plan_usage_threshold(
     plan_code: str,
@@ -53,6 +59,11 @@ async def create_plan_usage_threshold(
 @router.get(
     "/plans/{plan_code}/usage_thresholds",
     response_model=list[UsageThresholdResponse],
+    summary="List plan usage thresholds",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Plan not found"},
+    },
 )
 async def list_plan_usage_thresholds(
     plan_code: str,
@@ -73,6 +84,12 @@ async def list_plan_usage_thresholds(
     "/subscriptions/{subscription_id}/usage_thresholds",
     response_model=UsageThresholdResponse,
     status_code=201,
+    summary="Create subscription usage threshold",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Subscription not found"},
+        422: {"description": "Validation error"},
+    },
 )
 async def create_subscription_usage_threshold(
     subscription_id: UUID,
@@ -100,6 +117,11 @@ async def create_subscription_usage_threshold(
 @router.get(
     "/subscriptions/{subscription_id}/usage_thresholds",
     response_model=list[UsageThresholdResponse],
+    summary="List subscription usage thresholds",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Subscription not found"},
+    },
 )
 async def list_subscription_usage_thresholds(
     subscription_id: UUID,
@@ -119,6 +141,11 @@ async def list_subscription_usage_thresholds(
 @router.get(
     "/subscriptions/{subscription_id}/current_usage",
     response_model=CurrentUsageResponse,
+    summary="Get current subscription usage",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Subscription, plan, or customer not found"},
+    },
 )
 async def get_current_usage(
     subscription_id: UUID,
@@ -163,7 +190,15 @@ async def get_current_usage(
     )
 
 
-@router.delete("/usage_thresholds/{threshold_id}", status_code=204)
+@router.delete(
+    "/usage_thresholds/{threshold_id}",
+    status_code=204,
+    summary="Delete usage threshold",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Usage threshold not found"},
+    },
+)
 async def delete_usage_threshold(
     threshold_id: UUID,
     db: Session = Depends(get_db),

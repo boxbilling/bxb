@@ -12,7 +12,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Stats
+         * Get dashboard statistics
          * @description Get dashboard statistics.
          */
         get: operations["get_stats_dashboard_stats_get"];
@@ -32,7 +32,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Recent Activity
+         * Get recent activity feed
          * @description Get recent billing activity.
          */
         get: operations["get_recent_activity_dashboard_activity_get"];
@@ -52,7 +52,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Revenue
+         * Get revenue analytics
          * @description Get revenue analytics: MRR, total this month, outstanding, overdue, and trend.
          */
         get: operations["get_revenue_dashboard_revenue_get"];
@@ -72,7 +72,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Customer Metrics
+         * Get customer metrics
          * @description Get customer metrics: total, new this month, churned this month.
          */
         get: operations["get_customer_metrics_dashboard_customers_get"];
@@ -92,7 +92,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Subscription Metrics
+         * Get subscription metrics
          * @description Get subscription metrics: active, new, canceled, by-plan breakdown.
          */
         get: operations["get_subscription_metrics_dashboard_subscriptions_get"];
@@ -112,7 +112,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Usage Metrics
+         * Get top usage metrics
          * @description Get top billable metrics by usage volume in the last 30 days.
          */
         get: operations["get_usage_metrics_dashboard_usage_get"];
@@ -133,7 +133,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Enqueue Update Prices */
+        /**
+         * Enqueue price update
+         * @description Enqueue a background task to update all item prices.
+         */
         post: operations["enqueue_update_prices_items_update_prices_post"];
         delete?: never;
         options?: never;
@@ -148,10 +151,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Items */
+        /**
+         * List items
+         * @description List all items with pagination.
+         */
         get: operations["list_items_items__get"];
         put?: never;
-        /** Create Item */
+        /**
+         * Create item
+         * @description Create a new item.
+         */
         post: operations["create_item_items__post"];
         delete?: never;
         options?: never;
@@ -166,12 +175,21 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Item */
+        /**
+         * Get item
+         * @description Get an item by ID.
+         */
         get: operations["get_item_items__item_id__get"];
-        /** Update Item */
+        /**
+         * Update item
+         * @description Update an existing item.
+         */
         put: operations["update_item_items__item_id__put"];
         post?: never;
-        /** Delete Item */
+        /**
+         * Delete item
+         * @description Delete an item by ID.
+         */
         delete: operations["delete_item_items__item_id__delete"];
         options?: never;
         head?: never;
@@ -186,13 +204,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Customers
+         * List customers
          * @description List all customers with pagination.
          */
         get: operations["list_customers_v1_customers__get"];
         put?: never;
         /**
-         * Create Customer
+         * Create customer
          * @description Create a new customer.
          */
         post: operations["create_customer_v1_customers__post"];
@@ -210,18 +228,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Customer
+         * Get customer
          * @description Get a customer by ID.
          */
         get: operations["get_customer_v1_customers__customer_id__get"];
         /**
-         * Update Customer
+         * Update customer
          * @description Update a customer.
          */
         put: operations["update_customer_v1_customers__customer_id__put"];
         post?: never;
         /**
-         * Delete Customer
+         * Delete customer
          * @description Delete a customer.
          */
         delete: operations["delete_customer_v1_customers__customer_id__delete"];
@@ -238,7 +256,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Applied Coupons
+         * List customer applied coupons
          * @description List applied coupons for a customer.
          */
         get: operations["list_applied_coupons_v1_customers__customer_id__applied_coupons_get"];
@@ -258,13 +276,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Billable Metrics
+         * List billable metrics
          * @description List all billable metrics with pagination.
          */
         get: operations["list_billable_metrics_v1_billable_metrics__get"];
         put?: never;
         /**
-         * Create Billable Metric
+         * Create billable metric
          * @description Create a new billable metric.
          */
         post: operations["create_billable_metric_v1_billable_metrics__post"];
@@ -282,18 +300,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Billable Metric
+         * Get billable metric
          * @description Get a billable metric by ID.
          */
         get: operations["get_billable_metric_v1_billable_metrics__metric_id__get"];
         /**
-         * Update Billable Metric
+         * Update billable metric
          * @description Update a billable metric.
          */
         put: operations["update_billable_metric_v1_billable_metrics__metric_id__put"];
         post?: never;
         /**
-         * Delete Billable Metric
+         * Delete billable metric
          * @description Delete a billable metric.
          */
         delete: operations["delete_billable_metric_v1_billable_metrics__metric_id__delete"];
@@ -310,13 +328,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Billable Metric Filters
+         * List metric filters
          * @description List filters for a billable metric.
          */
         get: operations["list_billable_metric_filters_v1_billable_metrics__code__filters_get"];
         put?: never;
         /**
-         * Create Billable Metric Filter
+         * Create metric filter
          * @description Add a filter to a billable metric.
          */
         post: operations["create_billable_metric_filter_v1_billable_metrics__code__filters_post"];
@@ -337,7 +355,7 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete Billable Metric Filter
+         * Delete metric filter
          * @description Remove a filter from a billable metric.
          */
         delete: operations["delete_billable_metric_filter_v1_billable_metrics__code__filters__filter_id__delete"];
@@ -354,13 +372,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Plans
+         * List plans
          * @description List all plans with pagination.
          */
         get: operations["list_plans_v1_plans__get"];
         put?: never;
         /**
-         * Create Plan
+         * Create plan
          * @description Create a new plan.
          */
         post: operations["create_plan_v1_plans__post"];
@@ -378,18 +396,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Plan
+         * Get plan
          * @description Get a plan by ID.
          */
         get: operations["get_plan_v1_plans__plan_id__get"];
         /**
-         * Update Plan
+         * Update plan
          * @description Update a plan.
          */
         put: operations["update_plan_v1_plans__plan_id__put"];
         post?: never;
         /**
-         * Delete Plan
+         * Delete plan
          * @description Delete a plan.
          */
         delete: operations["delete_plan_v1_plans__plan_id__delete"];
@@ -406,13 +424,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Subscriptions
+         * List subscriptions
          * @description List all subscriptions with pagination. Optionally filter by customer_id.
          */
         get: operations["list_subscriptions_v1_subscriptions__get"];
         put?: never;
         /**
-         * Create Subscription
+         * Create subscription
          * @description Create a new subscription.
          */
         post: operations["create_subscription_v1_subscriptions__post"];
@@ -430,18 +448,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Subscription
+         * Get subscription
          * @description Get a subscription by ID.
          */
         get: operations["get_subscription_v1_subscriptions__subscription_id__get"];
         /**
-         * Update Subscription
+         * Update subscription
          * @description Update a subscription.
          */
         put: operations["update_subscription_v1_subscriptions__subscription_id__put"];
         post?: never;
         /**
-         * Terminate Subscription
+         * Terminate subscription
          * @description Terminate a subscription with configurable financial action.
          */
         delete: operations["terminate_subscription_v1_subscriptions__subscription_id__delete"];
@@ -460,7 +478,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Cancel Subscription
+         * Cancel subscription
          * @description Cancel a subscription with configurable financial action.
          */
         post: operations["cancel_subscription_v1_subscriptions__subscription_id__cancel_post"];
@@ -478,13 +496,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Events
+         * List events
          * @description List events with optional filters.
          */
         get: operations["list_events_v1_events__get"];
         put?: never;
         /**
-         * Create Event
+         * Ingest event
          * @description Ingest a single event.
          *
          *     If an event with the same transaction_id already exists, returns the existing event.
@@ -505,7 +523,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Event
+         * Get event
          * @description Get an event by ID.
          */
         get: operations["get_event_v1_events__event_id__get"];
@@ -527,7 +545,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create Events Batch
+         * Ingest event batch
          * @description Ingest a batch of events (up to 100).
          *
          *     Duplicate transaction_ids are handled gracefully - existing events are returned
@@ -548,7 +566,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Fees
+         * List fees
          * @description List fees with optional filters.
          */
         get: operations["list_fees_v1_fees__get"];
@@ -568,12 +586,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Fee
+         * Get fee
          * @description Get a fee by ID.
          */
         get: operations["get_fee_v1_fees__fee_id__get"];
         /**
-         * Update Fee
+         * Update fee
          * @description Update a fee.
          */
         put: operations["update_fee_v1_fees__fee_id__put"];
@@ -592,7 +610,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Invoices
+         * List invoices
          * @description List invoices with optional filters.
          */
         get: operations["list_invoices_v1_invoices__get"];
@@ -612,18 +630,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Invoice
+         * Get invoice
          * @description Get an invoice by ID.
          */
         get: operations["get_invoice_v1_invoices__invoice_id__get"];
         /**
-         * Update Invoice
+         * Update invoice
          * @description Update an invoice.
          */
         put: operations["update_invoice_v1_invoices__invoice_id__put"];
         post?: never;
         /**
-         * Delete Invoice
+         * Delete draft invoice
          * @description Delete a draft invoice.
          */
         delete: operations["delete_invoice_v1_invoices__invoice_id__delete"];
@@ -642,7 +660,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Finalize Invoice
+         * Finalize invoice
          * @description Finalize a draft invoice and apply wallet credits if available.
          */
         post: operations["finalize_invoice_v1_invoices__invoice_id__finalize_post"];
@@ -662,7 +680,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Mark Invoice Paid
+         * Mark invoice paid
          * @description Mark an invoice as paid.
          */
         post: operations["mark_invoice_paid_v1_invoices__invoice_id__pay_post"];
@@ -682,7 +700,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Void Invoice
+         * Void invoice
          * @description Void an invoice.
          */
         post: operations["void_invoice_v1_invoices__invoice_id__void_post"];
@@ -700,7 +718,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Invoice Settlements
+         * List invoice settlements
          * @description List all settlements for an invoice.
          */
         get: operations["list_invoice_settlements_v1_invoices__invoice_id__settlements_get"];
@@ -720,7 +738,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Payments
+         * List payments
          * @description List payments with optional filters.
          */
         get: operations["list_payments_v1_payments__get"];
@@ -740,14 +758,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Payment
+         * Get payment
          * @description Get a payment by ID.
          */
         get: operations["get_payment_v1_payments__payment_id__get"];
         put?: never;
         post?: never;
         /**
-         * Delete Payment
+         * Delete payment
          * @description Delete a pending payment.
          */
         delete: operations["delete_payment_v1_payments__payment_id__delete"];
@@ -766,7 +784,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create Checkout Session
+         * Create checkout session
          * @description Create a checkout session for an invoice.
          *
          *     This creates a payment record and returns a URL where the customer
@@ -789,7 +807,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Handle Webhook
+         * Handle payment webhook
          * @description Handle payment provider webhooks.
          *
          *     This endpoint receives webhook events from payment providers
@@ -812,7 +830,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Mark Payment Paid
+         * Mark payment paid
          * @description Manually mark a payment as paid (for manual/offline payments).
          */
         post: operations["mark_payment_paid_v1_payments__payment_id__mark_paid_post"];
@@ -832,7 +850,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Refund Payment
+         * Refund payment
          * @description Refund a succeeded payment.
          */
         post: operations["refund_payment_v1_payments__payment_id__refund_post"];
@@ -850,13 +868,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Wallets
+         * List wallets
          * @description List wallets with optional filters.
          */
         get: operations["list_wallets_v1_wallets__get"];
         put?: never;
         /**
-         * Create Wallet
+         * Create wallet
          * @description Create a wallet for a customer.
          */
         post: operations["create_wallet_v1_wallets__post"];
@@ -874,18 +892,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Wallet
+         * Get wallet
          * @description Get a wallet by ID.
          */
         get: operations["get_wallet_v1_wallets__wallet_id__get"];
         /**
-         * Update Wallet
+         * Update wallet
          * @description Update a wallet (name, expiration_at, priority).
          */
         put: operations["update_wallet_v1_wallets__wallet_id__put"];
         post?: never;
         /**
-         * Terminate Wallet
+         * Terminate wallet
          * @description Terminate a wallet (soft delete: sets status=terminated).
          */
         delete: operations["terminate_wallet_v1_wallets__wallet_id__delete"];
@@ -904,7 +922,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Top Up Wallet
+         * Top up wallet
          * @description Top up a wallet with credits.
          */
         post: operations["top_up_wallet_v1_wallets__wallet_id__top_up_post"];
@@ -922,7 +940,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Wallet Transactions
+         * List wallet transactions
          * @description List transactions for a wallet.
          */
         get: operations["list_wallet_transactions_v1_wallets__wallet_id__transactions_get"];
@@ -942,13 +960,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Coupons
+         * List coupons
          * @description List coupons with optional status filter.
          */
         get: operations["list_coupons_v1_coupons__get"];
         put?: never;
         /**
-         * Create Coupon
+         * Create coupon
          * @description Create a new coupon.
          */
         post: operations["create_coupon_v1_coupons__post"];
@@ -966,18 +984,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Coupon
+         * Get coupon
          * @description Get a coupon by code.
          */
         get: operations["get_coupon_v1_coupons__code__get"];
         /**
-         * Update Coupon
+         * Update coupon
          * @description Update a coupon by code.
          */
         put: operations["update_coupon_v1_coupons__code__put"];
         post?: never;
         /**
-         * Terminate Coupon
+         * Terminate coupon
          * @description Terminate a coupon by code.
          */
         delete: operations["terminate_coupon_v1_coupons__code__delete"];
@@ -996,7 +1014,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Apply Coupon
+         * Apply coupon to customer
          * @description Apply a coupon to a customer.
          */
         post: operations["apply_coupon_v1_coupons_apply_post"];
@@ -1014,13 +1032,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Add Ons
+         * List add-ons
          * @description List add-ons with pagination.
          */
         get: operations["list_add_ons_v1_add_ons__get"];
         put?: never;
         /**
-         * Create Add On
+         * Create add-on
          * @description Create a new add-on.
          */
         post: operations["create_add_on_v1_add_ons__post"];
@@ -1038,18 +1056,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Add On
+         * Get add-on
          * @description Get an add-on by code.
          */
         get: operations["get_add_on_v1_add_ons__code__get"];
         /**
-         * Update Add On
+         * Update add-on
          * @description Update an add-on by code.
          */
         put: operations["update_add_on_v1_add_ons__code__put"];
         post?: never;
         /**
-         * Delete Add On
+         * Delete add-on
          * @description Delete an add-on by code.
          */
         delete: operations["delete_add_on_v1_add_ons__code__delete"];
@@ -1068,7 +1086,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Apply Add On
+         * Apply add-on to customer
          * @description Apply an add-on to a customer.
          */
         post: operations["apply_add_on_v1_add_ons_apply_post"];
@@ -1086,13 +1104,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Credit Notes
+         * List credit notes
          * @description List credit notes with optional filters.
          */
         get: operations["list_credit_notes_v1_credit_notes__get"];
         put?: never;
         /**
-         * Create Credit Note
+         * Create credit note
          * @description Create a new credit note with optional items.
          */
         post: operations["create_credit_note_v1_credit_notes__post"];
@@ -1110,12 +1128,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Credit Note
+         * Get credit note
          * @description Get a credit note by ID.
          */
         get: operations["get_credit_note_v1_credit_notes__credit_note_id__get"];
         /**
-         * Update Credit Note
+         * Update credit note
          * @description Update a credit note (only allowed in draft status).
          */
         put: operations["update_credit_note_v1_credit_notes__credit_note_id__put"];
@@ -1136,7 +1154,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Finalize Credit Note
+         * Finalize credit note
          * @description Finalize a credit note.
          */
         post: operations["finalize_credit_note_v1_credit_notes__credit_note_id__finalize_post"];
@@ -1156,7 +1174,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Void Credit Note
+         * Void credit note
          * @description Void a credit note.
          */
         post: operations["void_credit_note_v1_credit_notes__credit_note_id__void_post"];
@@ -1174,13 +1192,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Taxes
+         * List taxes
          * @description List all taxes.
          */
         get: operations["list_taxes_v1_taxes__get"];
         put?: never;
         /**
-         * Create Tax
+         * Create tax
          * @description Create a new tax.
          */
         post: operations["create_tax_v1_taxes__post"];
@@ -1198,7 +1216,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Applied Taxes
+         * List applied taxes
          * @description List applied taxes for a given entity.
          */
         get: operations["list_applied_taxes_v1_taxes_applied_get"];
@@ -1220,7 +1238,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Apply Tax
+         * Apply tax to entity
          * @description Apply a tax to an entity.
          */
         post: operations["apply_tax_v1_taxes_apply_post"];
@@ -1241,7 +1259,7 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Remove Applied Tax
+         * Remove applied tax
          * @description Remove an applied tax by ID.
          */
         delete: operations["remove_applied_tax_v1_taxes_applied__applied_tax_id__delete"];
@@ -1258,18 +1276,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Tax
+         * Get tax
          * @description Get a tax by code.
          */
         get: operations["get_tax_v1_taxes__code__get"];
         /**
-         * Update Tax
+         * Update tax
          * @description Update a tax by code.
          */
         put: operations["update_tax_v1_taxes__code__put"];
         post?: never;
         /**
-         * Delete Tax
+         * Delete tax
          * @description Delete a tax by code.
          */
         delete: operations["delete_tax_v1_taxes__code__delete"];
@@ -1286,13 +1304,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Webhook Endpoints
+         * List webhook endpoints
          * @description List all webhook endpoints.
          */
         get: operations["list_webhook_endpoints_v1_webhook_endpoints__get"];
         put?: never;
         /**
-         * Create Webhook Endpoint
+         * Create webhook endpoint
          * @description Create a new webhook endpoint.
          */
         post: operations["create_webhook_endpoint_v1_webhook_endpoints__post"];
@@ -1310,18 +1328,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Webhook Endpoint
+         * Get webhook endpoint
          * @description Get a webhook endpoint by ID.
          */
         get: operations["get_webhook_endpoint_v1_webhook_endpoints__endpoint_id__get"];
         /**
-         * Update Webhook Endpoint
+         * Update webhook endpoint
          * @description Update a webhook endpoint.
          */
         put: operations["update_webhook_endpoint_v1_webhook_endpoints__endpoint_id__put"];
         post?: never;
         /**
-         * Delete Webhook Endpoint
+         * Delete webhook endpoint
          * @description Delete a webhook endpoint.
          */
         delete: operations["delete_webhook_endpoint_v1_webhook_endpoints__endpoint_id__delete"];
@@ -1338,7 +1356,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Webhooks
+         * List recent webhooks
          * @description List recent webhooks with optional filters.
          */
         get: operations["list_webhooks_v1_webhook_endpoints_hooks_list_get"];
@@ -1358,7 +1376,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Webhook
+         * Get webhook details
          * @description Get webhook details.
          */
         get: operations["get_webhook_v1_webhook_endpoints_hooks__webhook_id__get"];
@@ -1380,7 +1398,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Retry Webhook
+         * Retry failed webhook
          * @description Manually retry a failed webhook.
          */
         post: operations["retry_webhook_v1_webhook_endpoints_hooks__webhook_id__retry_post"];
@@ -1400,7 +1418,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Create Organization
+         * Create organization
          * @description Create a new organization with an initial API key.
          */
         post: operations["create_organization_v1_organizations__post"];
@@ -1418,12 +1436,12 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Current Org
+         * Get current organization
          * @description Get the current organization (identified by API key).
          */
         get: operations["get_current_org_v1_organizations_current_get"];
         /**
-         * Update Current Org
+         * Update current organization
          * @description Update the current organization.
          */
         put: operations["update_current_org_v1_organizations_current_put"];
@@ -1442,13 +1460,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Api Keys
+         * List API keys
          * @description List API keys for the current organization (prefix and name only).
          */
         get: operations["list_api_keys_v1_organizations_current_api_keys_get"];
         put?: never;
         /**
-         * Create Api Key
+         * Create API key
          * @description Generate a new API key for the current organization.
          */
         post: operations["create_api_key_v1_organizations_current_api_keys_post"];
@@ -1469,7 +1487,7 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Revoke Api Key
+         * Revoke API key
          * @description Revoke an API key.
          */
         delete: operations["revoke_api_key_v1_organizations_current_api_keys__api_key_id__delete"];
@@ -1486,13 +1504,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Dunning Campaigns
+         * List dunning campaigns
          * @description List dunning campaigns with optional status filter.
          */
         get: operations["list_dunning_campaigns_v1_dunning_campaigns__get"];
         put?: never;
         /**
-         * Create Dunning Campaign
+         * Create dunning campaign
          * @description Create a new dunning campaign.
          */
         post: operations["create_dunning_campaign_v1_dunning_campaigns__post"];
@@ -1510,18 +1528,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Dunning Campaign
+         * Get dunning campaign
          * @description Get a dunning campaign by ID.
          */
         get: operations["get_dunning_campaign_v1_dunning_campaigns__campaign_id__get"];
         /**
-         * Update Dunning Campaign
+         * Update dunning campaign
          * @description Update a dunning campaign.
          */
         put: operations["update_dunning_campaign_v1_dunning_campaigns__campaign_id__put"];
         post?: never;
         /**
-         * Delete Dunning Campaign
+         * Delete dunning campaign
          * @description Delete a dunning campaign.
          */
         delete: operations["delete_dunning_campaign_v1_dunning_campaigns__campaign_id__delete"];
@@ -1538,13 +1556,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Payment Requests
+         * List payment requests
          * @description List payment requests with optional filters.
          */
         get: operations["list_payment_requests_v1_payment_requests__get"];
         put?: never;
         /**
-         * Create Payment Request
+         * Create payment request
          * @description Create a manual payment request.
          */
         post: operations["create_payment_request_v1_payment_requests__post"];
@@ -1562,7 +1580,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Payment Request
+         * Get payment request
          * @description Get a payment request by ID.
          */
         get: operations["get_payment_request_v1_payment_requests__request_id__get"];
@@ -1582,13 +1600,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Commitments For Plan
+         * List plan commitments
          * @description List all commitments for a plan.
          */
         get: operations["list_commitments_for_plan_v1_plans__plan_code__commitments_get"];
         put?: never;
         /**
-         * Create Commitment
+         * Create commitment
          * @description Add a commitment to a plan.
          */
         post: operations["create_commitment_v1_plans__plan_code__commitments_post"];
@@ -1607,13 +1625,13 @@ export interface paths {
         };
         get?: never;
         /**
-         * Update Commitment
+         * Update commitment
          * @description Update a commitment.
          */
         put: operations["update_commitment_v1_commitments__commitment_id__put"];
         post?: never;
         /**
-         * Delete Commitment
+         * Delete commitment
          * @description Remove a commitment.
          */
         delete: operations["delete_commitment_v1_commitments__commitment_id__delete"];
@@ -1630,13 +1648,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Plan Usage Thresholds
+         * List plan usage thresholds
          * @description List all usage thresholds for a plan.
          */
         get: operations["list_plan_usage_thresholds_v1_plans__plan_code__usage_thresholds_get"];
         put?: never;
         /**
-         * Create Plan Usage Threshold
+         * Create plan usage threshold
          * @description Add a usage threshold to a plan.
          */
         post: operations["create_plan_usage_threshold_v1_plans__plan_code__usage_thresholds_post"];
@@ -1654,13 +1672,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Subscription Usage Thresholds
+         * List subscription usage thresholds
          * @description List all usage thresholds for a subscription.
          */
         get: operations["list_subscription_usage_thresholds_v1_subscriptions__subscription_id__usage_thresholds_get"];
         put?: never;
         /**
-         * Create Subscription Usage Threshold
+         * Create subscription usage threshold
          * @description Add a usage threshold to a subscription.
          */
         post: operations["create_subscription_usage_threshold_v1_subscriptions__subscription_id__usage_thresholds_post"];
@@ -1678,7 +1696,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Current Usage
+         * Get current subscription usage
          * @description Get current period usage amount for a subscription.
          */
         get: operations["get_current_usage_v1_subscriptions__subscription_id__current_usage_get"];
@@ -1701,7 +1719,7 @@ export interface paths {
         put?: never;
         post?: never;
         /**
-         * Delete Usage Threshold
+         * Delete usage threshold
          * @description Remove a usage threshold.
          */
         delete: operations["delete_usage_threshold_v1_usage_thresholds__threshold_id__delete"];
@@ -1718,13 +1736,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Data Exports
+         * List data exports
          * @description List data exports for the organization.
          */
         get: operations["list_data_exports_v1_data_exports__get"];
         put?: never;
         /**
-         * Create Data Export
+         * Create data export
          * @description Create a new data export and enqueue background processing.
          */
         post: operations["create_data_export_v1_data_exports__post"];
@@ -1742,7 +1760,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Data Export
+         * Get data export
          * @description Get a data export by ID.
          */
         get: operations["get_data_export_v1_data_exports__export_id__get"];
@@ -1762,7 +1780,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Download Data Export
+         * Download data export
          * @description Download the CSV file for a completed data export.
          */
         get: operations["download_data_export_v1_data_exports__export_id__download_get"];
@@ -1782,13 +1800,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List Integrations
+         * List integrations
          * @description List integrations for the organization.
          */
         get: operations["list_integrations_v1_integrations__get"];
         put?: never;
         /**
-         * Create Integration
+         * Create integration
          * @description Create a new integration.
          */
         post: operations["create_integration_v1_integrations__post"];
@@ -1806,18 +1824,18 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Get Integration
+         * Get integration
          * @description Get an integration by ID.
          */
         get: operations["get_integration_v1_integrations__integration_id__get"];
         /**
-         * Update Integration
+         * Update integration
          * @description Update an integration's settings.
          */
         put: operations["update_integration_v1_integrations__integration_id__put"];
         post?: never;
         /**
-         * Delete Integration
+         * Delete integration
          * @description Remove an integration.
          */
         delete: operations["delete_integration_v1_integrations__integration_id__delete"];
@@ -1836,7 +1854,7 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Test Integration Connection
+         * Test integration connection
          * @description Test an integration's connection credentials.
          */
         post: operations["test_integration_connection_v1_integrations__integration_id__test_post"];
@@ -4368,6 +4386,13 @@ export interface operations {
                     "application/json": components["schemas"]["DashboardStatsResponse"];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     get_recent_activity_dashboard_activity_get: {
@@ -4387,6 +4412,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RecentActivityResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4408,6 +4440,13 @@ export interface operations {
                     "application/json": components["schemas"]["RevenueResponse"];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     get_customer_metrics_dashboard_customers_get: {
@@ -4427,6 +4466,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CustomerMetricsResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4448,6 +4494,13 @@ export interface operations {
                     "application/json": components["schemas"]["SubscriptionMetricsResponse"];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     get_usage_metrics_dashboard_usage_get: {
@@ -4467,6 +4520,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UsageMetricsResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -4546,14 +4606,12 @@ export interface operations {
                     "application/json": components["schemas"]["ItemResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -4576,6 +4634,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ItemResponse"];
                 };
+            };
+            /** @description Item not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4612,6 +4677,13 @@ export interface operations {
                     "application/json": components["schemas"]["ItemResponse"];
                 };
             };
+            /** @description Item not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4636,6 +4708,13 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Item not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4673,6 +4752,13 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4706,14 +4792,26 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer with this external_id already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -4736,6 +4834,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CustomerResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4772,14 +4884,26 @@ export interface operations {
                     "application/json": components["schemas"]["CustomerResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -4796,6 +4920,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -4835,6 +4973,20 @@ export interface operations {
                     "application/json": components["schemas"]["AppliedCouponResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -4866,6 +5018,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BillableMetricResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4900,14 +5059,26 @@ export interface operations {
                     "application/json": components["schemas"]["BillableMetricResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -4930,6 +5101,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BillableMetricResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -4966,14 +5151,26 @@ export interface operations {
                     "application/json": components["schemas"]["BillableMetricResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -4990,6 +5187,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5026,6 +5237,20 @@ export interface operations {
                     "application/json": components["schemas"]["BillableMetricFilterResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5061,14 +5286,26 @@ export interface operations {
                     "application/json": components["schemas"]["BillableMetricFilterResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5086,6 +5323,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric or filter not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5123,6 +5374,13 @@ export interface operations {
                     "application/json": components["schemas"]["PlanResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5156,14 +5414,33 @@ export interface operations {
                     "application/json": components["schemas"]["PlanResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid billable metric or filter reference */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5186,6 +5463,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlanResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5222,14 +5513,33 @@ export interface operations {
                     "application/json": components["schemas"]["PlanResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid billable metric or filter reference */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5246,6 +5556,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5284,6 +5608,13 @@ export interface operations {
                     "application/json": components["schemas"]["SubscriptionResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5317,14 +5648,33 @@ export interface operations {
                     "application/json": components["schemas"]["SubscriptionResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid customer or plan reference */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription with this external_id already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5347,6 +5697,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SubscriptionResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5383,14 +5747,26 @@ export interface operations {
                     "application/json": components["schemas"]["SubscriptionResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5410,6 +5786,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5449,6 +5839,20 @@ export interface operations {
                     "application/json": components["schemas"]["SubscriptionResponse"];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5485,6 +5889,13 @@ export interface operations {
                     "application/json": components["schemas"]["EventResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5518,14 +5929,19 @@ export interface operations {
                     "application/json": components["schemas"]["EventResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric code does not exist */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5548,6 +5964,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["EventResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Event not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5582,14 +6012,19 @@ export interface operations {
                     "application/json": components["schemas"]["EventBatchResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric code does not exist */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5618,6 +6053,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FeeResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5649,6 +6091,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["FeeResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fee not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5685,14 +6141,26 @@ export interface operations {
                     "application/json": components["schemas"]["FeeResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Fee not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5719,6 +6187,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5750,6 +6225,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5786,14 +6275,26 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -5810,6 +6311,27 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only draft invoices can be deleted */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5846,6 +6368,27 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceResponse"];
                 };
             };
+            /** @description Invoice cannot be finalized in current state */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5876,6 +6419,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceResponse"];
                 };
+            };
+            /** @description Invoice cannot be marked paid in current state */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5908,6 +6472,27 @@ export interface operations {
                     "application/json": components["schemas"]["InvoiceResponse"];
                 };
             };
+            /** @description Invoice cannot be voided in current state */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -5938,6 +6523,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceSettlementResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -5975,6 +6574,13 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6006,6 +6612,20 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentResponse"];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6030,6 +6650,27 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Only pending payments can be deleted */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6068,6 +6709,27 @@ export interface operations {
                     "application/json": components["schemas"]["CheckoutSessionResponse"];
                 };
             };
+            /** @description Only finalized invoices can be paid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6076,6 +6738,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description Failed to create checkout session */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment provider not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -6104,6 +6780,20 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+            /** @description Invalid provider or JSON payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid webhook signature */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6136,6 +6826,27 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentResponse"];
                 };
             };
+            /** @description Only pending payments can be marked as paid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6166,6 +6877,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PaymentResponse"];
                 };
+            };
+            /** @description Only succeeded payments can be refunded */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6201,6 +6933,13 @@ export interface operations {
                     "application/json": components["schemas"]["WalletResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6234,14 +6973,26 @@ export interface operations {
                     "application/json": components["schemas"]["WalletResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Invalid customer reference or validation error */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6264,6 +7015,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WalletResponse"];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6300,14 +7065,26 @@ export interface operations {
                     "application/json": components["schemas"]["WalletResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6324,6 +7101,27 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet cannot be terminated in current state */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6364,6 +7162,20 @@ export interface operations {
                     "application/json": components["schemas"]["WalletResponse"];
                 };
             };
+            /** @description Invalid top-up amount or wallet state */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6398,6 +7210,20 @@ export interface operations {
                     "application/json": components["schemas"]["WalletTransactionResponse"][];
                 };
             };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6430,6 +7256,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CouponResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6464,14 +7297,26 @@ export interface operations {
                     "application/json": components["schemas"]["CouponResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6494,6 +7339,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CouponResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6530,14 +7389,26 @@ export interface operations {
                     "application/json": components["schemas"]["CouponResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6554,6 +7425,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6592,6 +7477,34 @@ export interface operations {
                     "application/json": components["schemas"]["AppliedCouponResponse"];
                 };
             };
+            /** @description Coupon is not active */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon already applied to this customer */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6623,6 +7536,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AddOnResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6657,14 +7577,26 @@ export interface operations {
                     "application/json": components["schemas"]["AddOnResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6687,6 +7619,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AddOnResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6723,14 +7669,26 @@ export interface operations {
                     "application/json": components["schemas"]["AddOnResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6747,6 +7705,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6785,6 +7757,20 @@ export interface operations {
                     "application/json": components["schemas"]["AppliedAddOnResponse"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6820,6 +7806,13 @@ export interface operations {
                     "application/json": components["schemas"]["CreditNoteResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -6853,14 +7846,26 @@ export interface operations {
                     "application/json": components["schemas"]["CreditNoteResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note with this number already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6883,6 +7888,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CreditNoteResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6919,14 +7938,33 @@ export interface operations {
                     "application/json": components["schemas"]["CreditNoteResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Only draft credit notes can be updated */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -6949,6 +7987,27 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CreditNoteResponse"];
                 };
+            };
+            /** @description Only draft credit notes can be finalized */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -6981,6 +8040,27 @@ export interface operations {
                     "application/json": components["schemas"]["CreditNoteResponse"];
                 };
             };
+            /** @description Only finalized credit notes can be voided */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7012,6 +8092,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["TaxResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7046,14 +8133,26 @@ export interface operations {
                     "application/json": components["schemas"]["TaxResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7077,6 +8176,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AppliedTaxResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7111,6 +8217,20 @@ export interface operations {
                     "application/json": components["schemas"]["AppliedTaxResponse"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7135,6 +8255,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Applied tax not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7171,6 +8305,20 @@ export interface operations {
                     "application/json": components["schemas"]["TaxResponse"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7206,14 +8354,26 @@ export interface operations {
                     "application/json": components["schemas"]["TaxResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7230,6 +8390,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7267,6 +8441,13 @@ export interface operations {
                     "application/json": components["schemas"]["WebhookEndpointResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7300,14 +8481,19 @@ export interface operations {
                     "application/json": components["schemas"]["WebhookEndpointResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7330,6 +8516,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WebhookEndpointResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Webhook endpoint not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7366,14 +8566,26 @@ export interface operations {
                     "application/json": components["schemas"]["WebhookEndpointResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Webhook endpoint not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7390,6 +8602,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Webhook endpoint not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7429,6 +8655,13 @@ export interface operations {
                     "application/json": components["schemas"]["WebhookResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7460,6 +8693,13 @@ export interface operations {
                     "application/json": components["schemas"]["WebhookResponse"];
                 };
             };
+            /** @description Webhook not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7490,6 +8730,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WebhookResponse"];
                 };
+            };
+            /** @description Only failed webhooks can be retried */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Webhook not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7524,14 +8778,12 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationCreateResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7552,6 +8804,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["OrganizationResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Organization not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -7577,14 +8843,26 @@ export interface operations {
                     "application/json": components["schemas"]["OrganizationResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Organization not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7608,6 +8886,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ApiKeyListResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7642,14 +8927,19 @@ export interface operations {
                     "application/json": components["schemas"]["ApiKeyCreateResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7666,6 +8956,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description API key not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7704,6 +9008,13 @@ export interface operations {
                     "application/json": components["schemas"]["DunningCampaignResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7737,14 +9048,26 @@ export interface operations {
                     "application/json": components["schemas"]["DunningCampaignResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7767,6 +9090,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DunningCampaignResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7803,14 +9140,26 @@ export interface operations {
                     "application/json": components["schemas"]["DunningCampaignResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -7827,6 +9176,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7866,6 +9229,13 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentRequestResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7899,6 +9269,20 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentRequestResponse"];
                 };
             };
+            /** @description Invalid customer or invoice reference */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7930,6 +9314,20 @@ export interface operations {
                     "application/json": components["schemas"]["PaymentRequestResponse"];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment request not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -7960,6 +9358,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CommitmentResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7996,14 +9408,26 @@ export interface operations {
                     "application/json": components["schemas"]["CommitmentResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8031,14 +9455,26 @@ export interface operations {
                     "application/json": components["schemas"]["CommitmentResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Commitment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8055,6 +9491,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Commitment not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8091,6 +9541,20 @@ export interface operations {
                     "application/json": components["schemas"]["UsageThresholdResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8126,14 +9590,26 @@ export interface operations {
                     "application/json": components["schemas"]["UsageThresholdResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8156,6 +9632,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UsageThresholdResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8192,14 +9682,26 @@ export interface operations {
                     "application/json": components["schemas"]["UsageThresholdResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8222,6 +9724,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["CurrentUsageResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription, plan, or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8247,6 +9763,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage threshold not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8284,6 +9814,13 @@ export interface operations {
                     "application/json": components["schemas"]["DataExportResponse"][];
                 };
             };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8317,14 +9854,19 @@ export interface operations {
                     "application/json": components["schemas"]["DataExportResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8347,6 +9889,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DataExportResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Data export not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8379,6 +9935,27 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Export is not completed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Data export or file not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -8410,6 +9987,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IntegrationResponse"][];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8444,14 +10028,26 @@ export interface operations {
                     "application/json": components["schemas"]["IntegrationResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration with this provider already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8474,6 +10070,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["IntegrationResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -8510,14 +10120,26 @@ export interface operations {
                     "application/json": components["schemas"]["IntegrationResponse"];
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };
@@ -8534,6 +10156,20 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -8572,14 +10208,26 @@ export interface operations {
                     };
                 };
             };
-            /** @description Validation Error */
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unsupported integration type */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
+                content?: never;
             };
         };
     };

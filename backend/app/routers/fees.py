@@ -14,7 +14,12 @@ from app.schemas.fee import FeeResponse, FeeUpdate
 router = APIRouter()
 
 
-@router.get("/", response_model=list[FeeResponse])
+@router.get(
+    "/",
+    response_model=list[FeeResponse],
+    summary="List fees",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_fees(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -40,7 +45,15 @@ async def list_fees(
     )
 
 
-@router.get("/{fee_id}", response_model=FeeResponse)
+@router.get(
+    "/{fee_id}",
+    response_model=FeeResponse,
+    summary="Get fee",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Fee not found"},
+    },
+)
 async def get_fee(
     fee_id: UUID,
     db: Session = Depends(get_db),
@@ -54,7 +67,16 @@ async def get_fee(
     return fee
 
 
-@router.put("/{fee_id}", response_model=FeeResponse)
+@router.put(
+    "/{fee_id}",
+    response_model=FeeResponse,
+    summary="Update fee",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Fee not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_fee(
     fee_id: UUID,
     data: FeeUpdate,

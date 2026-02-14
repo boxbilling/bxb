@@ -16,7 +16,12 @@ from app.services.webhook_service import WebhookService
 router = APIRouter()
 
 
-@router.get("/", response_model=list[SubscriptionResponse])
+@router.get(
+    "/",
+    response_model=list[SubscriptionResponse],
+    summary="List subscriptions",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_subscriptions(
     skip: int = 0,
     limit: int = 100,
@@ -31,7 +36,15 @@ async def list_subscriptions(
     return repo.get_all(organization_id, skip=skip, limit=limit)
 
 
-@router.get("/{subscription_id}", response_model=SubscriptionResponse)
+@router.get(
+    "/{subscription_id}",
+    response_model=SubscriptionResponse,
+    summary="Get subscription",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
 async def get_subscription(
     subscription_id: UUID,
     db: Session = Depends(get_db),
@@ -45,7 +58,18 @@ async def get_subscription(
     return subscription
 
 
-@router.post("/", response_model=SubscriptionResponse, status_code=201)
+@router.post(
+    "/",
+    response_model=SubscriptionResponse,
+    status_code=201,
+    summary="Create subscription",
+    responses={
+        400: {"description": "Invalid customer or plan reference"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        409: {"description": "Subscription with this external_id already exists"},
+        422: {"description": "Validation error"},
+    },
+)
 async def create_subscription(
     data: SubscriptionCreate,
     db: Session = Depends(get_db),
@@ -83,7 +107,16 @@ async def create_subscription(
     return subscription
 
 
-@router.put("/{subscription_id}", response_model=SubscriptionResponse)
+@router.put(
+    "/{subscription_id}",
+    response_model=SubscriptionResponse,
+    summary="Update subscription",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+        422: {"description": "Validation error"},
+    },
+)
 async def update_subscription(
     subscription_id: UUID,
     data: SubscriptionUpdate,
@@ -98,7 +131,15 @@ async def update_subscription(
     return subscription
 
 
-@router.delete("/{subscription_id}", status_code=204)
+@router.delete(
+    "/{subscription_id}",
+    status_code=204,
+    summary="Terminate subscription",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
 async def terminate_subscription(
     subscription_id: UUID,
     on_termination_action: TerminationAction = Query(
@@ -116,7 +157,15 @@ async def terminate_subscription(
         raise HTTPException(status_code=404, detail=str(e)) from e
 
 
-@router.post("/{subscription_id}/cancel", response_model=SubscriptionResponse)
+@router.post(
+    "/{subscription_id}/cancel",
+    response_model=SubscriptionResponse,
+    summary="Cancel subscription",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
 async def cancel_subscription(
     subscription_id: UUID,
     on_termination_action: TerminationAction = Query(

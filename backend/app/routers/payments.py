@@ -55,7 +55,12 @@ def _record_settlement_and_maybe_mark_paid(
 router = APIRouter()
 
 
-@router.get("/", response_model=list[PaymentResponse])
+@router.get(
+    "/",
+    response_model=list[PaymentResponse],
+    summary="List payments",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
 async def list_payments(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
@@ -79,7 +84,15 @@ async def list_payments(
     )
 
 
-@router.get("/{payment_id}", response_model=PaymentResponse)
+@router.get(
+    "/{payment_id}",
+    response_model=PaymentResponse,
+    summary="Get payment",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Payment not found"},
+    },
+)
 async def get_payment(
     payment_id: UUID,
     db: Session = Depends(get_db),
@@ -93,7 +106,18 @@ async def get_payment(
     return payment
 
 
-@router.post("/checkout", response_model=CheckoutSessionResponse)
+@router.post(
+    "/checkout",
+    response_model=CheckoutSessionResponse,
+    summary="Create checkout session",
+    responses={
+        400: {"description": "Only finalized invoices can be paid"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+        500: {"description": "Failed to create checkout session"},
+        503: {"description": "Payment provider not configured"},
+    },
+)
 async def create_checkout_session(
     data: CheckoutSessionCreate,
     db: Session = Depends(get_db),
@@ -194,7 +218,14 @@ async def create_checkout_session(
     )
 
 
-@router.post("/webhook/{provider}")
+@router.post(
+    "/webhook/{provider}",
+    summary="Handle payment webhook",
+    responses={
+        400: {"description": "Invalid provider or JSON payload"},
+        401: {"description": "Invalid webhook signature"},
+    },
+)
 async def handle_webhook(
     provider: PaymentProvider,
     request: Request,
@@ -293,7 +324,16 @@ async def handle_webhook(
     return {"status": "processed", "event_type": result.event_type}
 
 
-@router.post("/{payment_id}/mark-paid", response_model=PaymentResponse)
+@router.post(
+    "/{payment_id}/mark-paid",
+    response_model=PaymentResponse,
+    summary="Mark payment paid",
+    responses={
+        400: {"description": "Only pending payments can be marked as paid"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Payment not found"},
+    },
+)
 async def mark_payment_paid(
     payment_id: UUID,
     db: Session = Depends(get_db),
@@ -337,7 +377,16 @@ async def mark_payment_paid(
     return updated_payment
 
 
-@router.post("/{payment_id}/refund", response_model=PaymentResponse)
+@router.post(
+    "/{payment_id}/refund",
+    response_model=PaymentResponse,
+    summary="Refund payment",
+    responses={
+        400: {"description": "Only succeeded payments can be refunded"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Payment not found"},
+    },
+)
 async def refund_payment(
     payment_id: UUID,
     db: Session = Depends(get_db),
@@ -359,7 +408,16 @@ async def refund_payment(
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
-@router.delete("/{payment_id}", status_code=204)
+@router.delete(
+    "/{payment_id}",
+    status_code=204,
+    summary="Delete payment",
+    responses={
+        400: {"description": "Only pending payments can be deleted"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Payment not found"},
+    },
+)
 async def delete_payment(
     payment_id: UUID,
     db: Session = Depends(get_db),
