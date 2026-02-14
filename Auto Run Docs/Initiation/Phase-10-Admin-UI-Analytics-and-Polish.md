@@ -90,7 +90,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - `GET /v1/dashboard/usage` — Top metrics by usage volume
   - **Note:** Implemented full analytics dashboard with 4 new backend endpoints (`/dashboard/revenue`, `/dashboard/customers`, `/dashboard/subscriptions`, `/dashboard/usage`). Added `DashboardRepository` methods for: outstanding/overdue invoice totals, monthly revenue trend (12 months), new/churned customers, new/canceled subscriptions, subscriptions by plan, top 5 metrics by usage volume, total wallet credits. Updated `DashboardStatsResponse` to include `total_wallet_credits`. Frontend DashboardPage rebuilt with: 4 revenue stat cards (MRR, outstanding, overdue, wallet credits), 3 customer metric cards (total, new, churned), 3 subscription metric cards (active, new, canceled), recharts Line chart for 12-month revenue trend, recharts Bar chart for subscriptions by plan, recharts Bar chart for top usage metrics, activity feed (preserved). Added 17 new backend tests covering all endpoints with edge cases. All 2609 backend tests pass with 100% coverage, frontend builds clean, TypeScript passes.
 
-- [ ] Update existing admin pages to reflect new features:
+- [x] Update existing admin pages to reflect new features:
   - `CustomersPage.tsx`:
     - Show customer wallets, applied coupons, credit notes, applied taxes in detail view
     - Add grace period and payment term fields to customer edit form

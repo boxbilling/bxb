@@ -31,7 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { invoicesApi, taxesApi } from '@/lib/api'
+import { invoicesApi, feesApi, taxesApi, creditNotesApi } from '@/lib/api'
 import type { Invoice, InvoiceStatus } from '@/types/billing'
 
 function formatCurrency(amount: string | number, currency: string = 'USD') {
@@ -66,6 +66,44 @@ function formatTaxRate(rate: string | number): string {
   return `${(num * 100).toFixed(2)}%`
 }
 
+function InvoiceFeesBreakdown({ invoiceId, currency }: { invoiceId: string; currency: string }) {
+  const { data: fees = [], isLoading } = useQuery({
+    queryKey: ['invoice-fees', invoiceId],
+    queryFn: () => feesApi.list({ invoice_id: invoiceId }),
+  })
+
+  if (isLoading) return <Skeleton className="h-20 w-full" />
+  if (fees.length === 0) return null
+
+  return (
+    <div>
+      <h4 className="font-medium mb-3">Fees Breakdown</h4>
+      <div className="space-y-2">
+        {fees.map((fee) => (
+          <div key={fee.id} className="border rounded-lg p-3 text-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-medium">{fee.description || fee.fee_type}</span>
+                <Badge variant="outline" className="ml-2 text-xs">{fee.fee_type}</Badge>
+                {fee.metric_code && (
+                  <span className="ml-2 text-xs text-muted-foreground">({fee.metric_code})</span>
+                )}
+              </div>
+              <span className="font-medium">{formatCurrency(fee.amount_cents, currency)}</span>
+            </div>
+            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+              <span>{fee.units} units</span>
+              <span>{fee.events_count} events</span>
+              <span>Tax: {formatCurrency(fee.taxes_amount_cents, currency)}</span>
+              <span className="font-medium text-foreground">Total: {formatCurrency(fee.total_amount_cents, currency)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AppliedTaxesBreakdown({ invoiceId }: { invoiceId: string }) {
   const { data: appliedTaxes = [] } = useQuery({
     queryKey: ['invoice-taxes', invoiceId],
@@ -86,6 +124,61 @@ function AppliedTaxesBreakdown({ invoiceId }: { invoiceId: string }) {
   )
 }
 
+function InvoiceSettlementsSection({ invoiceId, currency }: { invoiceId: string; currency: string }) {
+  const { data: settlements = [] } = useQuery({
+    queryKey: ['invoice-settlements', invoiceId],
+    queryFn: () => invoicesApi.listSettlements(invoiceId),
+  })
+
+  if (settlements.length === 0) return null
+
+  return (
+    <div>
+      <h4 className="font-medium mb-2 text-sm">Settlements</h4>
+      <div className="space-y-1">
+        {settlements.map((s) => (
+          <div key={s.id} className="flex justify-between text-sm py-1 border-b last:border-0">
+            <span className="capitalize">{s.settlement_type.replace(/_/g, ' ')}</span>
+            <span className="font-medium">{formatCurrency(Number(s.amount_cents), currency)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function InvoiceCreditNotesSection({ invoiceId, currency }: { invoiceId: string; currency: string }) {
+  const { data: creditNotes = [] } = useQuery({
+    queryKey: ['invoice-credit-notes', invoiceId],
+    queryFn: () => creditNotesApi.list({ invoice_id: invoiceId }),
+  })
+
+  if (creditNotes.length === 0) return null
+
+  const cnStatusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+    draft: 'secondary',
+    finalized: 'outline',
+    voided: 'destructive',
+  }
+
+  return (
+    <div>
+      <h4 className="font-medium mb-2 text-sm">Credit Notes</h4>
+      <div className="space-y-1">
+        {creditNotes.map((cn) => (
+          <div key={cn.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
+            <div className="flex items-center gap-2">
+              <span>{cn.number || cn.id.substring(0, 8)}</span>
+              <Badge variant={cnStatusVariant[cn.status] ?? 'outline'} className="text-xs">{cn.status}</Badge>
+            </div>
+            <span className="font-medium text-red-600">-{formatCurrency(Number(cn.credit_amount_cents), currency)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function InvoiceDetailDialog({
   invoice,
   open,
@@ -99,12 +192,18 @@ function InvoiceDetailDialog({
 }) {
   if (!invoice) return null
 
+  const walletCredit = Number(invoice.prepaid_credit_amount)
+  const couponDiscount = Number(invoice.coupons_amount_cents)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Invoice {invoice.invoice_number}</span>
+            <div className="flex items-center gap-2">
+              <span>Invoice {invoice.invoice_number}</span>
+              <Badge variant="outline" className="capitalize text-xs">{invoice.invoice_type}</Badge>
+            </div>
             <StatusBadge status={invoice.status} />
           </DialogTitle>
         </DialogHeader>
@@ -119,36 +218,19 @@ function InvoiceDetailDialog({
             <div className="text-right">
               <p className="text-muted-foreground">Issue Date</p>
               <p className="font-medium">
-                {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '—'}
+                {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}
               </p>
               <p className="text-muted-foreground mt-2">Due Date</p>
               <p className="font-medium">
-                {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '—'}
+                {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}
               </p>
             </div>
           </div>
 
           <Separator />
 
-          {/* Line Items */}
-          <div>
-            <h4 className="font-medium mb-3">Line Items</h4>
-            <div className="space-y-2">
-              {invoice.line_items.map((item: Record<string, unknown>, idx: number) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between py-2 border-b last:border-0"
-                >
-                  <div>
-                    <p>{String(item.description ?? '')}</p>
-                  </div>
-                  <p className="font-medium">
-                    {item.amount_cents != null ? formatCurrency(Number(item.amount_cents), invoice.currency) : '—'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* Fees Breakdown */}
+          <InvoiceFeesBreakdown invoiceId={invoice.id} currency={invoice.currency} />
 
           <Separator />
 
@@ -158,17 +240,41 @@ function InvoiceDetailDialog({
               <span>Subtotal</span>
               <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
             </div>
+
+            {/* Coupon Discounts */}
+            {couponDiscount > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span>Coupon Discount</span>
+                <span>-{formatCurrency(couponDiscount, invoice.currency)}</span>
+              </div>
+            )}
+
             <div className="flex justify-between text-sm">
               <span>Tax</span>
               <span>{formatCurrency(invoice.tax_amount, invoice.currency)}</span>
             </div>
             <AppliedTaxesBreakdown invoiceId={invoice.id} />
+
+            {/* Wallet Credits Applied */}
+            {walletCredit > 0 && (
+              <div className="flex justify-between text-sm text-blue-600">
+                <span>Wallet Credits Applied</span>
+                <span>-{formatCurrency(walletCredit, invoice.currency)}</span>
+              </div>
+            )}
+
             <Separator />
             <div className="flex justify-between font-medium text-lg">
               <span>Total</span>
               <span>{formatCurrency(invoice.total, invoice.currency)}</span>
             </div>
           </div>
+
+          {/* Settlements */}
+          <InvoiceSettlementsSection invoiceId={invoice.id} currency={invoice.currency} />
+
+          {/* Credit Notes */}
+          <InvoiceCreditNotesSection invoiceId={invoice.id} currency={invoice.currency} />
 
           {/* Actions */}
           <div className="flex gap-2">
@@ -352,10 +458,10 @@ export default function InvoicesPage() {
                     <StatusBadge status={invoice.status} />
                   </TableCell>
                   <TableCell>
-                    {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '—'}
+                    {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}
                   </TableCell>
                   <TableCell>
-                    {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '—'}
+                    {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(invoice.total, invoice.currency)}

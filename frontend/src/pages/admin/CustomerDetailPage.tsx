@@ -30,6 +30,52 @@ function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
 }
 
+function CustomerOutstandingBalance({ customerId, currency }: { customerId: string; currency: string }) {
+  const { data: invoices } = useQuery({
+    queryKey: ['customer-invoices-balance', customerId],
+    queryFn: () => invoicesApi.list({ customer_id: customerId }),
+  })
+
+  const outstanding = (invoices ?? [])
+    .filter((i) => i.status === 'finalized')
+    .reduce((sum, i) => sum + Number(i.total), 0)
+
+  const overdue = (invoices ?? [])
+    .filter((i) => i.status === 'finalized' && i.due_date && new Date(i.due_date) < new Date())
+    .reduce((sum, i) => sum + Number(i.total), 0)
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Outstanding Balance</CardTitle>
+          <FileText className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-orange-600">{formatCurrency(outstanding, currency)}</div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {(invoices ?? []).filter((i) => i.status === 'finalized').length} unpaid invoice(s)
+          </p>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Overdue Amount</CardTitle>
+          <FileText className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent>
+          <div className={`text-2xl font-bold ${overdue > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+            {formatCurrency(overdue, currency)}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            {(invoices ?? []).filter((i) => i.status === 'finalized' && i.due_date && new Date(i.due_date) < new Date()).length} overdue invoice(s)
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
 function CustomerSubscriptionsTab({ customerId }: { customerId: string }) {
   const { data: subscriptions, isLoading } = useQuery({
     queryKey: ['customer-subscriptions', customerId],
@@ -482,6 +528,9 @@ export default function CustomerDetailPage() {
               {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
             </p>
           </div>
+
+          {/* Outstanding Balance */}
+          <CustomerOutstandingBalance customerId={customer.id} currency={customer.currency} />
 
           {/* Customer Information */}
           <Card>

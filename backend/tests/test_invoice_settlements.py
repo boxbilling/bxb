@@ -377,6 +377,47 @@ class TestPaymentWebhookSettlement:
         assert Decimal(str(settlements[0].amount_cents)) == Decimal(str(payment.amount))
 
 
+class TestListInvoiceSettlementsAPI:
+    """Tests for the GET /v1/invoices/{invoice_id}/settlements endpoint."""
+
+    def test_list_settlements(self, client, db_session, finalized_invoice):
+        """Test listing settlements for an invoice."""
+        repo = InvoiceSettlementRepository(db_session)
+        repo.create(
+            InvoiceSettlementCreate(
+                invoice_id=finalized_invoice.id,
+                settlement_type=SettlementType.PAYMENT,
+                source_id=uuid4(),
+                amount_cents=Decimal("60.00"),
+            )
+        )
+        repo.create(
+            InvoiceSettlementCreate(
+                invoice_id=finalized_invoice.id,
+                settlement_type=SettlementType.WALLET_CREDIT,
+                source_id=uuid4(),
+                amount_cents=Decimal("40.00"),
+            )
+        )
+        response = client.get(f"/v1/invoices/{finalized_invoice.id}/settlements")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_settlements_empty(self, client, finalized_invoice):
+        """Test listing settlements when none exist."""
+        response = client.get(f"/v1/invoices/{finalized_invoice.id}/settlements")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_settlements_invoice_not_found(self, client):
+        """Test listing settlements for a non-existent invoice."""
+        fake_id = str(uuid4())
+        response = client.get(f"/v1/invoices/{fake_id}/settlements")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Invoice not found"
+
+
 class TestCreditNoteSettlement:
     """Tests for settlement creation when applying credit notes."""
 

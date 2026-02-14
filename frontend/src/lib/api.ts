@@ -234,12 +234,12 @@ export const subscriptionsApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  cancel: (id: string) =>
-    request<SubscriptionResponse>(`/v1/subscriptions/${id}/cancel`, {
+  cancel: (id: string, onTerminationAction?: string) =>
+    request<SubscriptionResponse>(`/v1/subscriptions/${id}/cancel${buildQuery({ on_termination_action: onTerminationAction })}`, {
       method: 'POST',
     }),
-  terminate: (id: string) =>
-    request<void>(`/v1/subscriptions/${id}`, { method: 'DELETE' }),
+  terminate: (id: string, onTerminationAction?: string) =>
+    request<void>(`/v1/subscriptions/${id}${buildQuery({ on_termination_action: onTerminationAction })}`, { method: 'DELETE' }),
 }
 
 // Events API
@@ -292,6 +292,10 @@ export const invoicesApi = {
   pay: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/pay`, { method: 'POST' }),
   void: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/void`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/v1/invoices/${id}`, { method: 'DELETE' }),
+  listSettlements: (invoiceId: string) =>
+    request<{ id: string; invoice_id: string; settlement_type: string; source_id: string; amount_cents: string; created_at: string }[]>(
+      `/v1/invoices/${invoiceId}/settlements`
+    ),
 }
 
 // Payments API
@@ -523,6 +527,8 @@ export const commitmentsApi = {
 
 // Usage Thresholds API
 export const usageThresholdsApi = {
+  listForPlan: (planCode: string) =>
+    request<UsageThresholdResponse[]>(`/v1/plans/${planCode}/usage_thresholds`),
   createForPlan: (planCode: string, data: UsageThresholdCreateAPI) =>
     request<UsageThresholdResponse>(`/v1/plans/${planCode}/usage_thresholds`, {
       method: 'POST',

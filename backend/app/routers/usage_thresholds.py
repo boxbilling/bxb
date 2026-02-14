@@ -50,6 +50,25 @@ async def create_plan_usage_threshold(
     return UsageThresholdResponse.model_validate(threshold)
 
 
+@router.get(
+    "/plans/{plan_code}/usage_thresholds",
+    response_model=list[UsageThresholdResponse],
+)
+async def list_plan_usage_thresholds(
+    plan_code: str,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[UsageThresholdResponse]:
+    """List all usage thresholds for a plan."""
+    plan_repo = PlanRepository(db)
+    plan = plan_repo.get_by_code(plan_code, organization_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    repo = UsageThresholdRepository(db)
+    thresholds = repo.get_by_plan_id(plan.id)  # type: ignore[arg-type]
+    return [UsageThresholdResponse.model_validate(t) for t in thresholds]
+
+
 @router.post(
     "/subscriptions/{subscription_id}/usage_thresholds",
     response_model=UsageThresholdResponse,

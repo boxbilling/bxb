@@ -692,6 +692,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/{invoice_id}/settlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Invoice Settlements
+         * @description List all settlements for an invoice.
+         */
+        get: operations["list_invoice_settlements_v1_invoices__invoice_id__settlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments/": {
         parameters: {
             query?: never;
@@ -1609,7 +1629,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List Plan Usage Thresholds
+         * @description List all usage thresholds for a plan.
+         */
+        get: operations["list_plan_usage_thresholds_v1_plans__plan_code__usage_thresholds_get"];
         put?: never;
         /**
          * Create Plan Usage Threshold
@@ -3275,6 +3299,36 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * InvoiceSettlementResponse
+         * @description Schema for invoice settlement response.
+         */
+        InvoiceSettlementResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Settlement Type */
+            settlement_type: string;
+            /**
+             * Source Id
+             * Format: uuid
+             */
+            source_id: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /**
          * InvoiceStatus
@@ -5865,6 +5919,37 @@ export interface operations {
             };
         };
     };
+    list_invoice_settlements_v1_invoices__invoice_id__settlements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceSettlementResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_payments_v1_payments__get: {
         parameters: {
             query?: {
@@ -7974,6 +8059,37 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plan_usage_thresholds_v1_plans__plan_code__usage_thresholds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageThresholdResponse"][];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -7,8 +7,11 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.invoice import Invoice, InvoiceStatus
+from app.models.invoice_settlement import InvoiceSettlement
 from app.repositories.invoice_repository import InvoiceRepository
+from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
+from app.schemas.invoice_settlement import InvoiceSettlementResponse
 from app.services.wallet_service import WalletService
 from app.services.webhook_service import WebhookService
 
@@ -174,6 +177,21 @@ async def void_invoice(
         return invoice
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+
+@router.get("/{invoice_id}/settlements", response_model=list[InvoiceSettlementResponse])
+async def list_invoice_settlements(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[InvoiceSettlement]:
+    """List all settlements for an invoice."""
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    settlement_repo = InvoiceSettlementRepository(db)
+    return settlement_repo.get_by_invoice_id(invoice_id)
 
 
 @router.delete("/{invoice_id}", status_code=204)

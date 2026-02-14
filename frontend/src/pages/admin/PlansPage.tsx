@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers, Settings, Target, CheckCircle } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers, Settings, Target } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -42,7 +42,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { plansApi, billableMetricsApi, commitmentsApi, usageThresholdsApi, ApiError } from '@/lib/api'
-import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThresholdCreateAPI } from '@/types/billing'
+import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThreshold, UsageThresholdCreateAPI } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -422,12 +422,19 @@ function PlanManageDialog({
     recurring: false,
     threshold_display_name: '',
   })
-  const [thresholdCreated, setThresholdCreated] = useState(false)
+  const [deleteThreshold, setDeleteThreshold] = useState<UsageThreshold | null>(null)
 
   // Fetch commitments
   const { data: commitments, isLoading: commitmentsLoading } = useQuery({
     queryKey: ['commitments', plan?.code],
     queryFn: () => commitmentsApi.listForPlan(plan!.code),
+    enabled: !!plan?.code,
+  })
+
+  // Fetch usage thresholds
+  const { data: thresholds, isLoading: thresholdsLoading } = useQuery({
+    queryKey: ['plan-thresholds', plan?.code],
+    queryFn: () => usageThresholdsApi.listForPlan(plan!.code),
     enabled: !!plan?.code,
   })
 
@@ -474,17 +481,30 @@ function PlanManageDialog({
     },
   })
 
-  // Usage threshold mutation
+  // Usage threshold mutations
   const createThresholdMutation = useMutation({
     mutationFn: (data: UsageThresholdCreateAPI) =>
       usageThresholdsApi.createForPlan(plan!.code, data),
     onSuccess: () => {
-      setThresholdCreated(true)
+      queryClient.invalidateQueries({ queryKey: ['plan-thresholds', plan?.code] })
       setThresholdForm({ amount_cents: '', currency: 'USD', recurring: false, threshold_display_name: '' })
       toast.success('Usage threshold created')
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to create usage threshold'
+      toast.error(message)
+    },
+  })
+
+  const deleteThresholdMutation = useMutation({
+    mutationFn: (id: string) => usageThresholdsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plan-thresholds', plan?.code] })
+      setDeleteThreshold(null)
+      toast.success('Usage threshold deleted')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to delete usage threshold'
       toast.error(message)
     },
   })
@@ -513,7 +533,6 @@ function PlanManageDialog({
 
   const handleCreateThreshold = (e: React.FormEvent) => {
     e.preventDefault()
-    setThresholdCreated(false)
     createThresholdMutation.mutate({
       amount_cents: parseInt(thresholdForm.amount_cents) || 0,
       currency: thresholdForm.currency,
@@ -760,21 +779,62 @@ function PlanManageDialog({
               <div>
                 <h4 className="font-medium flex items-center gap-2">
                   <Target className="h-4 w-4" />
-                  Create Usage Threshold Template
+                  Usage Thresholds
                 </h4>
                 <p className="text-sm text-muted-foreground">
-                  Thresholds created here will be applied to new subscriptions using this plan.
+                  Thresholds trigger progressive billing when usage reaches the specified amount.
                 </p>
               </div>
 
-              {thresholdCreated && (
-                <div className="flex items-center gap-2 p-3 border rounded-lg bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300">
-                  <CheckCircle className="h-4 w-4" />
-                  <span className="text-sm">Usage threshold created successfully!</span>
+              {/* Existing Thresholds Table */}
+              {thresholdsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : thresholds && thresholds.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-2 font-medium">Amount</th>
+                        <th className="text-left p-2 font-medium">Currency</th>
+                        <th className="text-left p-2 font-medium">Recurring</th>
+                        <th className="text-left p-2 font-medium">Display Name</th>
+                        <th className="text-right p-2 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {thresholds.map((t) => (
+                        <tr key={t.id} className="border-b last:border-b-0">
+                          <td className="p-2">{formatCurrency(parseInt(t.amount_cents))}</td>
+                          <td className="p-2">{t.currency}</td>
+                          <td className="p-2">{t.recurring ? 'Yes' : 'No'}</td>
+                          <td className="p-2 text-muted-foreground">{t.threshold_display_name || '\u2014'}</td>
+                          <td className="p-2 text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive"
+                              onClick={() => setDeleteThreshold(t)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground text-sm border border-dashed rounded-lg">
+                  No usage thresholds configured for this plan.
                 </div>
               )}
 
-              <form onSubmit={handleCreateThreshold} className="space-y-3">
+              {/* Add Threshold Form */}
+              <form onSubmit={handleCreateThreshold} className="border rounded-lg p-3 bg-muted/50 space-y-3">
+                <p className="text-xs font-medium">Add Usage Threshold</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Amount (cents) *</Label>
@@ -828,7 +888,7 @@ function PlanManageDialog({
                   <Label htmlFor="threshold-recurring" className="text-sm">Recurring</Label>
                 </div>
                 <Button type="submit" size="sm" disabled={createThresholdMutation.isPending}>
-                  {createThresholdMutation.isPending ? 'Creating...' : 'Create Threshold'}
+                  {createThresholdMutation.isPending ? 'Creating...' : 'Add Threshold'}
                 </Button>
               </form>
             </div>
@@ -855,6 +915,30 @@ function PlanManageDialog({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteCommitmentMutation.isPending ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Threshold Confirmation */}
+      <AlertDialog
+        open={!!deleteThreshold}
+        onOpenChange={(open) => !open && setDeleteThreshold(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Usage Threshold</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this usage threshold? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteThreshold && deleteThresholdMutation.mutate(deleteThreshold.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteThresholdMutation.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1064,7 +1148,7 @@ export default function PlansPage() {
                 {plan.charges && plan.charges.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Usage Charges
+                      Usage Charges ({plan.charges.length})
                     </p>
                     <div className="space-y-1">
                       {plan.charges.map((charge) => (
@@ -1075,7 +1159,14 @@ export default function PlansPage() {
                           <span className="text-muted-foreground truncate max-w-[150px]">
                             {charge.billable_metric_id.slice(0, 8)}...
                           </span>
-                          <ChargeModelBadge model={charge.charge_model} />
+                          <div className="flex items-center gap-1">
+                            {charge.properties && Object.keys(charge.properties).length > 0 && (
+                              <Badge variant="outline" className="text-xs px-1">
+                                {Object.keys(charge.properties).length} prop{Object.keys(charge.properties).length > 1 ? 's' : ''}
+                              </Badge>
+                            )}
+                            <ChargeModelBadge model={charge.charge_model} />
+                          </div>
                         </div>
                       ))}
                     </div>

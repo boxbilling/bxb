@@ -826,6 +826,35 @@ class TestUsageThresholdsAPI:
         assert data["recurring"] is False
         assert data["threshold_display_name"] is None
 
+    def test_list_plan_thresholds(self, client: TestClient):
+        """Test listing usage thresholds for a plan."""
+        plan = self._create_plan(client, "ut_list_plan_thresh")
+        client.post(
+            f"/v1/plans/{plan['code']}/usage_thresholds",
+            json={"amount_cents": 3000},
+        )
+        client.post(
+            f"/v1/plans/{plan['code']}/usage_thresholds",
+            json={"amount_cents": 7000, "recurring": True},
+        )
+        response = client.get(f"/v1/plans/{plan['code']}/usage_thresholds")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_plan_thresholds_empty(self, client: TestClient):
+        """Test listing thresholds for a plan with none."""
+        plan = self._create_plan(client, "ut_list_plan_empty")
+        response = client.get(f"/v1/plans/{plan['code']}/usage_thresholds")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_plan_thresholds_not_found(self, client: TestClient):
+        """Test listing thresholds for a non-existent plan."""
+        response = client.get("/v1/plans/nonexistent_plan/usage_thresholds")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
     def test_create_plan_threshold_plan_not_found(self, client: TestClient):
         """Test creating a threshold on a non-existent plan."""
         response = client.post(
