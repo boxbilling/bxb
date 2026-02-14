@@ -535,7 +535,7 @@ class TestDashboardActivity:
 class TestDashboardRepoDialect:
     def test_monthly_revenue_trend_postgresql_branch(self, db_session):
         """Cover the to_char branch for PostgreSQL dialect."""
-        from unittest.mock import MagicMock, patch
+        from unittest.mock import MagicMock
         from uuid import uuid4
 
         from app.repositories.dashboard_repository import DashboardRepository
@@ -545,9 +545,8 @@ class TestDashboardRepoDialect:
         # Create a mock bind that reports postgresql dialect
         mock_bind = MagicMock()
         mock_bind.dialect.name = "postgresql"
-        original_bind = db_session.bind
         repo.db = MagicMock(wraps=db_session)
         repo.db.bind = mock_bind
         # to_char won't work on SQLite, so the query will raise
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             repo.monthly_revenue_trend(org_id)

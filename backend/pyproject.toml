@@ -14,6 +14,7 @@ dependencies = [
     "stripe>=14.0.1",
     "alembic>=1.18.3",
     "clickhouse-connect>=0.8.0",
+    "weasyprint>=62.0",
 ]
 
 [build-system]

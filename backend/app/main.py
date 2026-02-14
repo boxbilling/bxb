@@ -78,7 +78,7 @@ app.add_middleware(
 
 
 @app.middleware("http")
-async def options_handler(request: Request, call_next):
+async def options_handler(request: Request, call_next):  # type: ignore[no-untyped-def]
     if request.method == "OPTIONS":
         origin = request.headers.get("origin", "*")
         return Response(

@@ -24,7 +24,9 @@ def get_current_organization(
         try:
             return UUID(org_id_header)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid X-Organization-Id header")
+            raise HTTPException(
+                status_code=400, detail="Invalid X-Organization-Id header"
+            ) from None
 
     auth_header = request.headers.get("Authorization")
     if not auth_header:
