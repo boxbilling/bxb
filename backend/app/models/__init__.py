@@ -40,6 +40,7 @@ from app.models.invoice_settlement import InvoiceSettlement, SettlementType
 from app.models.item import Item
 from app.models.organization import Organization
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
+from app.models.payment_method import PaymentMethod
 from app.models.payment_request import PaymentRequest
 from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.models.plan import Plan, PlanInterval
@@ -109,6 +110,7 @@ __all__ = [
     "Organization",
     "Payment",
     "PaymentProvider",
+    "PaymentMethod",
     "PaymentRequest",
     "PaymentRequestInvoice",
     "PaymentStatus",
