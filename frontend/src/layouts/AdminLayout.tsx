@@ -16,6 +16,7 @@ import {
   Gift,
   Megaphone,
   Plug,
+  Send,
   Settings,
   Moon,
   Sun,
@@ -51,6 +52,7 @@ const navigation = [
   { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
   { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Megaphone },
   { name: 'Integrations', href: '/admin/integrations', icon: Plug },
+  { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
 ]
 
 function NavItem({
