@@ -61,7 +61,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
     - Status indicators: green (succeeded), red (failed), yellow (pending)
   - **Note:** Implemented full WebhooksPage with: stat cards (total endpoints/active/recent webhooks/failed), tabbed interface (Endpoints + Recent Webhooks), endpoint list table with URL/signature algo/status/created columns, create/edit endpoint dialog with URL/signature algorithm/status fields, delete endpoint with confirmation, recent webhooks table with event type/status/HTTP status/retries/timestamp columns, webhook detail dialog with full payload JSON viewer/response body/retry button for failed webhooks, status color indicators (green=succeeded, red=failed, yellow=pending). Added route in App.tsx, sidebar nav item with Radio icon in Operations group, page export in index.ts. All 2592 backend tests pass with 100% coverage, frontend builds clean.
 
-- [ ] Build the Organization settings and API key management:
+- [x] Build the Organization settings and API key management:
   - Update `frontend/src/pages/admin/SettingsPage.tsx`:
     - Organization details section: name, email, legal name, address, timezone, default currency
     - API key management section:
@@ -72,6 +72,7 @@ This phase brings everything together with a comprehensive admin UI that exposes
       - List campaigns, create/edit with thresholds
     - Integration settings section:
       - List active integrations, add new, configure settings, test connection
+  - **Note:** Updated SettingsPage from 3 tabs to 5 tabs: Organization (existing), API Keys (existing), Webhooks (existing), Dunning Campaigns (new — list table with code/name/max attempts/days between/thresholds/status, create/edit dialog with all fields including threshold management with dynamic add/remove rows, BCC emails, delete with confirmation), and Integrations (new — list table with type/provider/status/last sync/error indicator, create dialog with type selector/provider input/status/JSON settings editor, edit/configure dialog with status/settings/error details display, test connection button with spinner, delete with confirmation). All existing tabs preserved unchanged. TypeScript and frontend build pass clean, all 2592 backend tests pass with 100% coverage.
 
 - [ ] Enhance the Dashboard with analytics:
   - Update `frontend/src/pages/admin/DashboardPage.tsx`:
