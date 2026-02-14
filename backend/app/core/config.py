@@ -40,6 +40,15 @@ class Settings(BaseSettings):
     adyen_environment: str = "test"  # "test" or "live"
     adyen_live_url_prefix: str = ""
 
+    # SMTP email settings
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "billing@example.com"
+    SMTP_FROM_NAME: str = "Billing"
+    SMTP_USE_TLS: bool = True
+
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
