@@ -37,6 +37,8 @@ WEBHOOK_EVENT_TYPES = [
     "customer.updated",
     "credit_note.created",
     "credit_note.finalized",
+    "credit_note.refund.succeeded",
+    "credit_note.refund.failed",
     "wallet.created",
     "wallet.terminated",
     "wallet.transaction.created",

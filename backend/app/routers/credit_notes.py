@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.database import get_db
-from app.models.credit_note import CreditNote, CreditNoteStatus
+from app.models.credit_note import CreditNote, CreditNoteStatus, CreditNoteType
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
@@ -19,6 +19,7 @@ from app.schemas.credit_note import (
 )
 from app.services.email_service import EmailService
 from app.services.pdf_service import PdfService
+from app.services.refund_service import RefundService
 
 router = APIRouter()
 
@@ -167,6 +168,14 @@ async def finalize_credit_note(
         raise HTTPException(status_code=400, detail="Only draft credit notes can be finalized")
 
     finalized = repo.finalize(credit_note_id)
+
+    # Process refund if this is a refund-type credit note
+    if finalized and finalized.credit_note_type == CreditNoteType.REFUND.value:
+        refund_service = RefundService(db)
+        refund_service.process_refund(credit_note_id)
+        # Reload to reflect updated refund_status
+        finalized = repo.get_by_id(credit_note_id, organization_id)
+
     return finalized  # type: ignore[return-value]
 
 
