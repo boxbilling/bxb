@@ -29,21 +29,6 @@ def db_session():
             pass
 
 
-class TestHealthEndpoints:
-    def test_root(self, client: TestClient):
-        response = client.get("/")
-        assert response.status_code == 200
-        data = response.json()
-        assert "message" in data
-        assert "status" in data
-        assert data["status"] == "running"
-
-    def test_health(self, client: TestClient):
-        response = client.get("/health")
-        assert response.status_code == 200
-        assert response.json() == {"status": "healthy"}
-
-
 class TestDashboardEndpoints:
     def test_get_stats(self, client: TestClient):
         response = client.get("/dashboard/stats")

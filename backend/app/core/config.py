@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -5,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     DEBUG: bool = False
+    APP_NAME: str = "bxb API"
     APP_DOMAIN: str = "example.com"
     APP_DATA_PATH: str = "/tmp"
     APP_DATABASE_DSN: str = "sqlite:////tmp/database.db"
@@ -45,6 +48,14 @@ class Settings(BaseSettings):
 
     # ClickHouse settings
     CLICKHOUSE_URL: str = ""  # e.g. clickhouse://user:pass@host:port/database
+
+    @property
+    def version(self) -> str:
+        for parent in Path(__file__).resolve().parents:
+            version_file = parent / "VERSION"
+            if version_file.is_file():
+                return version_file.read_text().strip()
+        return "0.0.0"
 
     @property
     def clickhouse_enabled(self) -> bool:

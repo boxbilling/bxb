@@ -54,8 +54,8 @@ OPENAPI_TAGS = [
 ]
 
 app = FastAPI(
-    title="BxB Billing API",
-    version="1.0.0",
+    title=settings.APP_NAME,
+    version=settings.version,
     description=(
         "A comprehensive usage-based billing platform API. "
         "Manage customers, plans, subscriptions, invoices, payments, wallets, "
@@ -137,11 +137,8 @@ app.include_router(
 @app.get("/")
 async def root() -> dict[str, str]:
     return {
-        "message": settings.APP_DOMAIN,
+        "app": settings.APP_NAME,
+        "version": settings.version,
+        "domain": settings.APP_DOMAIN,
         "status": "running",
     }
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "healthy"}
