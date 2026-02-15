@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3, Landmark, Star, Trash2, Plus, ExternalLink, Copy, Check } from 'lucide-react'
+import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3, Landmark, Star, Trash2, Plus, ExternalLink, Copy, Check, Pencil } from 'lucide-react'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { toast } from 'sonner'
 
@@ -64,8 +64,9 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, taxesApi, paymentMethodsApi, ApiError } from '@/lib/api'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, AppliedTax, CustomerCurrentUsageResponse, PaymentMethod } from '@/types/billing'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, AppliedTax, CustomerCurrentUsageResponse, PaymentMethod, CustomerUpdate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -975,11 +976,26 @@ function PortalLinkDialog({ externalId }: { externalId: string }) {
 
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const queryClient = useQueryClient()
+  const [editOpen, setEditOpen] = useState(false)
 
   const { data: customer, isLoading, error } = useQuery({
     queryKey: ['customer', id],
     queryFn: () => customersApi.get(id!),
     enabled: !!id,
+  })
+
+  const updateMutation = useMutation({
+    mutationFn: (data: CustomerUpdate) => customersApi.update(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer', id] })
+      setEditOpen(false)
+      toast.success('Customer updated successfully')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to update customer'
+      toast.error(message)
+    },
   })
 
   if (error) {
@@ -1035,8 +1051,12 @@ export default function CustomerDetailPage() {
 
           {/* Customer Information */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-sm font-medium">Customer Information</CardTitle>
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Edit
+              </Button>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 text-sm">
@@ -1148,6 +1168,15 @@ export default function CustomerDetailPage() {
               <CustomerUsageTab customerId={customer.id} externalId={customer.external_id} />
             </TabsContent>
           </Tabs>
+
+          {/* Edit Customer Dialog */}
+          <CustomerFormDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            customer={customer}
+            onSubmit={(data) => updateMutation.mutate(data as CustomerUpdate)}
+            isLoading={updateMutation.isPending}
+          />
         </>
       ) : null}
     </div>

@@ -183,7 +183,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Customer metadata is shown as raw JSON
 
 **Recommendations:**
-- [ ] Add **Edit** button on CustomerDetailPage info card → opens same modal as list page edit
+- [x] Add **Edit** button on CustomerDetailPage info card → opens same modal as list page edit
+  <!-- Completed: Extracted CustomerFormDialog into a shared component at src/components/CustomerFormDialog.tsx. Added Edit button with Pencil icon to the Customer Information card header on CustomerDetailPage. Clicking it opens the same form dialog used on the list page, pre-filled with customer data. Update mutation invalidates the customer query on success and shows toast feedback. CustomersPage updated to import from the shared component. TypeScript compiles clean, all 3300 backend tests pass with 100% coverage. -->
 - [ ] Reduce tabs to 5: **Overview** (merge subscriptions + usage), **Billing** (invoices + fees + credit notes), **Payments** (payments + payment methods + wallets), **Coupons**, **Activity** (audit trail)
 - [ ] Add "Create Subscription" button in Overview tab
 - [ ] Move portal link generation to a prominent button in header area
