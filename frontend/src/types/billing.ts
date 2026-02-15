@@ -160,6 +160,7 @@ export type CustomerCurrentUsageResponse = components['schemas']['app__schemas__
 export type Integration = components['schemas']['IntegrationResponse']
 export type IntegrationCreate = components['schemas']['IntegrationCreate']
 export type IntegrationUpdate = components['schemas']['IntegrationUpdate']
+export type { IntegrationCustomerResponse, IntegrationMappingResponse, IntegrationSyncHistoryResponse } from '@/lib/api'
 
 // --- Data Exports ---
 export type DataExport = components['schemas']['DataExportResponse']

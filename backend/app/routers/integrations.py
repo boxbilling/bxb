@@ -9,11 +9,33 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.integration import Integration
+from app.models.integration_customer import IntegrationCustomer
+from app.models.integration_mapping import IntegrationMapping
+from app.models.integration_sync_history import IntegrationSyncHistory
+from app.repositories.integration_customer_repository import IntegrationCustomerRepository
+from app.repositories.integration_mapping_repository import IntegrationMappingRepository
 from app.repositories.integration_repository import IntegrationRepository
+from app.repositories.integration_sync_history_repository import IntegrationSyncHistoryRepository
 from app.schemas.integration import IntegrationCreate, IntegrationResponse, IntegrationUpdate
+from app.schemas.integration_customer import IntegrationCustomerResponse
+from app.schemas.integration_mapping import IntegrationMappingResponse
+from app.schemas.integration_sync_history import IntegrationSyncHistoryResponse
 from app.services.integrations.base import get_integration_adapter
 
 router = APIRouter()
+
+
+def _get_integration_or_404(
+    integration_id: UUID,
+    organization_id: UUID,
+    db: Session,
+) -> Integration:
+    """Fetch an integration or raise 404."""
+    repo = IntegrationRepository(db)
+    integration = repo.get_by_id(integration_id, organization_id)
+    if not integration:
+        raise HTTPException(status_code=404, detail="Integration not found")
+    return integration
 
 
 @router.post(
@@ -77,11 +99,7 @@ async def get_integration(
     organization_id: UUID = Depends(get_current_organization),
 ) -> Integration:
     """Get an integration by ID."""
-    repo = IntegrationRepository(db)
-    integration = repo.get_by_id(integration_id, organization_id)
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
-    return integration
+    return _get_integration_or_404(integration_id, organization_id, db)
 
 
 @router.put(
@@ -100,7 +118,7 @@ async def update_integration(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> Integration:
-    """Update an integration\'s settings."""
+    """Update an integration's settings."""
     repo = IntegrationRepository(db)
     integration = repo.update(integration_id, data, organization_id)
     if not integration:
@@ -143,11 +161,8 @@ async def test_integration_connection(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> dict[str, Any]:
-    """Test an integration\'s connection credentials."""
-    repo = IntegrationRepository(db)
-    integration = repo.get_by_id(integration_id, organization_id)
-    if not integration:
-        raise HTTPException(status_code=404, detail="Integration not found")
+    """Test an integration's connection credentials."""
+    integration = _get_integration_or_404(integration_id, organization_id, db)
     try:
         adapter = get_integration_adapter(integration)
     except ValueError as exc:
@@ -158,3 +173,92 @@ async def test_integration_connection(
         "error": result.error,
         "details": result.details,
     }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sub-resource endpoints: Customer Mappings
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{integration_id}/customers",
+    response_model=list[IntegrationCustomerResponse],
+    summary="List integration customer mappings",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+    },
+)
+async def list_integration_customers(
+    integration_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[IntegrationCustomer]:
+    """List customer mappings for an integration."""
+    _get_integration_or_404(integration_id, organization_id, db)
+    repo = IntegrationCustomerRepository(db)
+    return repo.get_all(integration_id, skip=skip, limit=limit)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sub-resource endpoints: Field Mappings
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{integration_id}/mappings",
+    response_model=list[IntegrationMappingResponse],
+    summary="List integration field mappings",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+    },
+)
+async def list_integration_mappings(
+    integration_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[IntegrationMapping]:
+    """List field mappings for an integration."""
+    _get_integration_or_404(integration_id, organization_id, db)
+    repo = IntegrationMappingRepository(db)
+    return repo.get_all(integration_id, skip=skip, limit=limit)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sub-resource endpoints: Sync History
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{integration_id}/sync_history",
+    response_model=list[IntegrationSyncHistoryResponse],
+    summary="List integration sync history",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Integration not found"},
+    },
+)
+async def list_integration_sync_history(
+    integration_id: UUID,
+    status: str | None = Query(default=None),
+    resource_type: str | None = Query(default=None),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[IntegrationSyncHistory]:
+    """List sync history for an integration, with optional status/resource_type filters."""
+    _get_integration_or_404(integration_id, organization_id, db)
+    repo = IntegrationSyncHistoryRepository(db)
+    return repo.get_all(
+        integration_id,
+        status=status,
+        resource_type=resource_type,
+        skip=skip,
+        limit=limit,
+    )

@@ -1,4 +1,4 @@
-"""Tests for Integration framework: models, repositories, schemas, mappings, and API."""
+"""Tests for Integration framework: models, repositories, schemas, mappings, sync history, and API."""
 
 from uuid import uuid4
 
@@ -15,10 +15,12 @@ from app.models.integration import (
 )
 from app.models.integration_customer import IntegrationCustomer
 from app.models.integration_mapping import IntegrationMapping
+from app.models.integration_sync_history import IntegrationSyncHistory
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.integration_customer_repository import IntegrationCustomerRepository
 from app.repositories.integration_mapping_repository import IntegrationMappingRepository
 from app.repositories.integration_repository import IntegrationRepository
+from app.repositories.integration_sync_history_repository import IntegrationSyncHistoryRepository
 from app.schemas.customer import CustomerCreate
 from app.schemas.integration import IntegrationCreate, IntegrationResponse, IntegrationUpdate
 from app.schemas.integration_customer import (
@@ -30,6 +32,10 @@ from app.schemas.integration_mapping import (
     IntegrationMappingCreate,
     IntegrationMappingResponse,
     IntegrationMappingUpdate,
+)
+from app.schemas.integration_sync_history import (
+    IntegrationSyncHistoryCreate,
+    IntegrationSyncHistoryResponse,
 )
 from tests.conftest import DEFAULT_ORG_ID
 
@@ -1158,3 +1164,555 @@ class TestIntegrationAPI:
         response = client.post(f"/v1/integrations/{integration.id}/test")
         assert response.status_code == 422
         assert "No adapter registered" in response.json()["detail"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IntegrationSyncHistory Model Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestIntegrationSyncHistoryModel:
+    """Tests for the IntegrationSyncHistory model."""
+
+    def test_table_name(self):
+        assert IntegrationSyncHistory.__tablename__ == "integration_sync_history"
+
+    def test_creation(self, db_session, integration):
+        entry = IntegrationSyncHistory(
+            integration_id=integration.id,
+            resource_type="customer",
+            resource_id=uuid4(),
+            external_id="ext_cus_123",
+            action="sync_customer",
+            status="success",
+            details={"provider": "stripe"},
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        assert entry.id is not None
+        assert entry.integration_id == integration.id
+        assert entry.resource_type == "customer"
+        assert entry.action == "sync_customer"
+        assert entry.status == "success"
+        assert entry.error_message is None
+        assert entry.details == {"provider": "stripe"}
+        assert entry.started_at is not None
+        assert entry.completed_at is None
+        assert entry.created_at is not None
+
+    def test_creation_with_error(self, db_session, integration):
+        entry = IntegrationSyncHistory(
+            integration_id=integration.id,
+            resource_type="invoice",
+            action="sync_invoice",
+            status="error",
+            error_message="Connection timeout",
+        )
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        assert entry.status == "error"
+        assert entry.error_message == "Connection timeout"
+        assert entry.resource_id is None
+        assert entry.external_id is None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IntegrationSyncHistory Repository Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestIntegrationSyncHistoryRepository:
+    """Tests for IntegrationSyncHistoryRepository."""
+
+    def test_create(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        resource_id = uuid4()
+        entry = repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                resource_id=resource_id,
+                external_id="ext_1",
+                action="sync_customer",
+                status="success",
+                details={"provider": "stripe"},
+            ),
+        )
+        assert entry.id is not None
+        assert entry.integration_id == integration.id
+        assert entry.resource_type == "customer"
+        assert entry.resource_id == resource_id
+        assert entry.external_id == "ext_1"
+        assert entry.action == "sync_customer"
+        assert entry.status == "success"
+
+    def test_create_minimal(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        entry = repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_invoice",
+                status="error",
+                error_message="Timeout",
+            ),
+        )
+        assert entry.id is not None
+        assert entry.resource_id is None
+        assert entry.external_id is None
+        assert entry.error_message == "Timeout"
+        assert entry.details is None
+
+    def test_get_by_id(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        entry = repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_customer",
+                status="success",
+            ),
+        )
+        fetched = repo.get_by_id(entry.id)
+        assert fetched is not None
+        assert fetched.id == entry.id
+
+    def test_get_by_id_not_found(self, db_session):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        assert repo.get_by_id(uuid4()) is None
+
+    def test_get_all(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        for i in range(3):
+            repo.create(
+                IntegrationSyncHistoryCreate(
+                    integration_id=integration.id,
+                    resource_type="customer",
+                    action=f"sync_{i}",
+                    status="success",
+                ),
+            )
+        results = repo.get_all(integration.id)
+        assert len(results) == 3
+
+    def test_get_all_empty(self, db_session):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        results = repo.get_all(uuid4())
+        assert len(results) == 0
+
+    def test_get_all_filter_by_status(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_1",
+                status="success",
+            ),
+        )
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_2",
+                status="error",
+                error_message="Failed",
+            ),
+        )
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_3",
+                status="success",
+            ),
+        )
+
+        success = repo.get_all(integration.id, status="success")
+        assert len(success) == 2
+
+        errors = repo.get_all(integration.id, status="error")
+        assert len(errors) == 1
+        assert errors[0].error_message == "Failed"
+
+    def test_get_all_filter_by_resource_type(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_1",
+                status="success",
+            ),
+        )
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_2",
+                status="success",
+            ),
+        )
+
+        customers_only = repo.get_all(integration.id, resource_type="customer")
+        assert len(customers_only) == 1
+        assert customers_only[0].resource_type == "customer"
+
+    def test_get_all_pagination(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        for i in range(5):
+            repo.create(
+                IntegrationSyncHistoryCreate(
+                    integration_id=integration.id,
+                    resource_type="customer",
+                    action=f"sync_{i}",
+                    status="success",
+                ),
+            )
+        results = repo.get_all(integration.id, skip=2, limit=2)
+        assert len(results) == 2
+
+    def test_get_all_combined_filters(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_1",
+                status="success",
+            ),
+        )
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_2",
+                status="error",
+                error_message="Timeout",
+            ),
+        )
+        repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_3",
+                status="error",
+                error_message="Not found",
+            ),
+        )
+
+        results = repo.get_all(integration.id, status="error", resource_type="customer")
+        assert len(results) == 1
+        assert results[0].action == "sync_2"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IntegrationSyncHistory Schema Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestIntegrationSyncHistorySchemas:
+    """Tests for Pydantic sync history schemas."""
+
+    def test_create_all_fields(self):
+        iid = uuid4()
+        rid = uuid4()
+        schema = IntegrationSyncHistoryCreate(
+            integration_id=iid,
+            resource_type="customer",
+            resource_id=rid,
+            external_id="ext_1",
+            action="sync_customer",
+            status="success",
+            details={"key": "val"},
+        )
+        assert schema.integration_id == iid
+        assert schema.resource_type == "customer"
+        assert schema.resource_id == rid
+        assert schema.external_id == "ext_1"
+        assert schema.action == "sync_customer"
+        assert schema.status == "success"
+        assert schema.details == {"key": "val"}
+
+    def test_create_minimal(self):
+        schema = IntegrationSyncHistoryCreate(
+            integration_id=uuid4(),
+            resource_type="invoice",
+            action="sync_invoice",
+            status="error",
+            error_message="Timeout",
+        )
+        assert schema.resource_id is None
+        assert schema.external_id is None
+        assert schema.error_message == "Timeout"
+        assert schema.details is None
+        assert schema.completed_at is None
+
+    def test_response_from_model(self, db_session, integration):
+        repo = IntegrationSyncHistoryRepository(db_session)
+        entry = repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_customer",
+                status="success",
+            ),
+        )
+        response = IntegrationSyncHistoryResponse.model_validate(entry)
+        assert response.id == entry.id
+        assert response.integration_id == integration.id
+        assert response.resource_type == "customer"
+        assert response.action == "sync_customer"
+        assert response.status == "success"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Sub-resource API Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestIntegrationSubResourceAPI:
+    """Tests for integration sub-resource API endpoints."""
+
+    def test_list_integration_customers(self, client, db_session):
+        """Test GET /v1/integrations/{id}/customers."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        customer_repo = CustomerRepository(db_session)
+        cust = customer_repo.create(
+            CustomerCreate(
+                external_id=f"sub_test_cust_{uuid4()}",
+                name="Sub Test Customer",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        ic_repo = IntegrationCustomerRepository(db_session)
+        ic_repo.create(
+            IntegrationCustomerCreate(
+                integration_id=integration.id,
+                customer_id=cust.id,
+                external_customer_id="ext_cus_api",
+            ),
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}/customers")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["external_customer_id"] == "ext_cus_api"
+
+    def test_list_integration_customers_empty(self, client, db_session):
+        """Test GET /v1/integrations/{id}/customers when empty."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="crm",
+                provider_type="hubspot",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}/customers")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_integration_customers_not_found(self, client):
+        """Test GET /v1/integrations/{id}/customers with invalid integration."""
+        response = client.get(f"/v1/integrations/{uuid4()}/customers")
+        assert response.status_code == 404
+
+    def test_list_integration_mappings(self, client, db_session):
+        """Test GET /v1/integrations/{id}/mappings."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        mapping_repo = IntegrationMappingRepository(db_session)
+        mapping_repo.create(
+            IntegrationMappingCreate(
+                integration_id=integration.id,
+                mappable_type="customer",
+                mappable_id=uuid4(),
+                external_id="ext_map_1",
+            ),
+        )
+        mapping_repo.create(
+            IntegrationMappingCreate(
+                integration_id=integration.id,
+                mappable_type="invoice",
+                mappable_id=uuid4(),
+                external_id="ext_map_2",
+            ),
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}/mappings")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_integration_mappings_empty(self, client, db_session):
+        """Test GET /v1/integrations/{id}/mappings when empty."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="crm",
+                provider_type="hubspot",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}/mappings")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_integration_mappings_not_found(self, client):
+        """Test GET /v1/integrations/{id}/mappings with invalid integration."""
+        response = client.get(f"/v1/integrations/{uuid4()}/mappings")
+        assert response.status_code == 404
+
+    def test_list_sync_history(self, client, db_session):
+        """Test GET /v1/integrations/{id}/sync_history."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        sh_repo = IntegrationSyncHistoryRepository(db_session)
+        sh_repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_customer",
+                status="success",
+            ),
+        )
+        sh_repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_invoice",
+                status="error",
+                error_message="Timeout",
+            ),
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}/sync_history")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_list_sync_history_with_status_filter(self, client, db_session):
+        """Test GET /v1/integrations/{id}/sync_history?status=error."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="accounting",
+                provider_type="netsuite",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        sh_repo = IntegrationSyncHistoryRepository(db_session)
+        sh_repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_customer",
+                status="success",
+            ),
+        )
+        sh_repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_invoice",
+                status="error",
+                error_message="Timeout",
+            ),
+        )
+
+        response = client.get(
+            f"/v1/integrations/{integration.id}/sync_history?status=error"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["status"] == "error"
+
+    def test_list_sync_history_with_resource_type_filter(self, client, db_session):
+        """Test GET /v1/integrations/{id}/sync_history?resource_type=customer."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="crm",
+                provider_type="hubspot",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        sh_repo = IntegrationSyncHistoryRepository(db_session)
+        sh_repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="customer",
+                action="sync_customer",
+                status="success",
+            ),
+        )
+        sh_repo.create(
+            IntegrationSyncHistoryCreate(
+                integration_id=integration.id,
+                resource_type="invoice",
+                action="sync_invoice",
+                status="success",
+            ),
+        )
+
+        response = client.get(
+            f"/v1/integrations/{integration.id}/sync_history?resource_type=customer"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["resource_type"] == "customer"
+
+    def test_list_sync_history_empty(self, client, db_session):
+        """Test GET /v1/integrations/{id}/sync_history when empty."""
+        int_repo = IntegrationRepository(db_session)
+        integration = int_repo.create(
+            IntegrationCreate(
+                integration_type="crm",
+                provider_type="hubspot",
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.get(f"/v1/integrations/{integration.id}/sync_history")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_sync_history_not_found(self, client):
+        """Test GET /v1/integrations/{id}/sync_history with invalid integration."""
+        response = client.get(f"/v1/integrations/{uuid4()}/sync_history")
+        assert response.status_code == 404

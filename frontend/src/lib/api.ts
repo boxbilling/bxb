@@ -116,6 +116,42 @@ type CustomerCurrentUsageResponse = components['schemas']['app__schemas__usage__
 type IntegrationResponse = components['schemas']['IntegrationResponse']
 type IntegrationCreate = components['schemas']['IntegrationCreate']
 type IntegrationUpdate = components['schemas']['IntegrationUpdate']
+export type IntegrationCustomerResponse = {
+  id: string
+  integration_id: string
+  customer_id: string
+  external_customer_id: string
+  settings: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export type IntegrationMappingResponse = {
+  id: string
+  integration_id: string
+  mappable_type: string
+  mappable_id: string
+  external_id: string
+  external_data: Record<string, unknown> | null
+  last_synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type IntegrationSyncHistoryResponse = {
+  id: string
+  integration_id: string
+  resource_type: string
+  resource_id: string | null
+  external_id: string | null
+  action: string
+  status: string
+  error_message: string | null
+  details: Record<string, unknown> | null
+  started_at: string
+  completed_at: string | null
+  created_at: string
+}
 
 type DataExportResponse = components['schemas']['DataExportResponse']
 type DataExportCreate = components['schemas']['DataExportCreate']
@@ -953,6 +989,12 @@ export const integrationsApi = {
     request<{ success: boolean; error?: string; details?: string }>(`/v1/integrations/${id}/test`, {
       method: 'POST',
     }),
+  listCustomers: (id: string, params?: { skip?: number; limit?: number }) =>
+    request<IntegrationCustomerResponse[]>(`/v1/integrations/${id}/customers${buildQuery(params)}`),
+  listMappings: (id: string, params?: { skip?: number; limit?: number }) =>
+    request<IntegrationMappingResponse[]>(`/v1/integrations/${id}/mappings${buildQuery(params)}`),
+  listSyncHistory: (id: string, params?: { status?: string; resource_type?: string; skip?: number; limit?: number }) =>
+    request<IntegrationSyncHistoryResponse[]>(`/v1/integrations/${id}/sync_history${buildQuery(params)}`),
 }
 
 // Data Exports API

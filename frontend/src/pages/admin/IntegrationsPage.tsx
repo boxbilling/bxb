@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -200,6 +201,7 @@ function IntegrationFormDialog({
 }
 
 export default function IntegrationsPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
   const [editingIntegration, setEditingIntegration] = useState<Integration | null>(null)
@@ -346,7 +348,7 @@ export default function IntegrationsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {integrations.map((integration) => (
-            <Card key={integration.id}>
+            <Card key={integration.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/admin/integrations/${integration.id}`)}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div>
@@ -355,11 +357,11 @@ export default function IntegrationsPage() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenuItem onClick={() => handleEdit(integration)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit

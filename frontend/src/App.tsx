@@ -25,6 +25,7 @@ import {
   DunningCampaignsPage,
   DunningCampaignDetailPage,
   IntegrationsPage,
+  IntegrationDetailPage,
   PaymentRequestsPage,
   DataExportsPage,
   WebhooksPage,
@@ -74,6 +75,7 @@ function App() {
         <Route path="dunning-campaigns" element={<DunningCampaignsPage />} />
         <Route path="dunning-campaigns/:id" element={<DunningCampaignDetailPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
+        <Route path="integrations/:id" element={<IntegrationDetailPage />} />
         <Route path="payment-requests" element={<PaymentRequestsPage />} />
         <Route path="data-exports" element={<DataExportsPage />} />
         <Route path="payment-methods" element={<PaymentMethodsPage />} />
