@@ -228,6 +228,7 @@ export default function MetricsPage() {
   const [editingMetric, setEditingMetric] = useState<BillableMetric | null>(null)
   const [deleteMetric, setDeleteMetric] = useState<BillableMetric | null>(null)
   const [search, setSearch] = useState('')
+  const [aggregationFilter, setAggregationFilter] = useState<string>('all')
 
   // Fetch metrics from API
   const { data: metrics, isLoading, error } = useQuery({
@@ -248,13 +249,16 @@ export default function MetricsPage() {
   })
 
   const filteredMetrics = metrics?.filter((m) => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      m.name.toLowerCase().includes(q) ||
-      m.code.toLowerCase().includes(q) ||
-      m.description?.toLowerCase().includes(q)
-    )
+    const matchesSearch = !search || (() => {
+      const q = search.toLowerCase()
+      return (
+        m.name.toLowerCase().includes(q) ||
+        m.code.toLowerCase().includes(q) ||
+        m.description?.toLowerCase().includes(q)
+      )
+    })()
+    const matchesAggregation = aggregationFilter === 'all' || m.aggregation_type === aggregationFilter
+    return matchesSearch && matchesAggregation
   }) ?? []
 
   // Create mutation
@@ -377,7 +381,7 @@ export default function MetricsPage() {
         ))}
       </div>
 
-      {/* Search Filter */}
+      {/* Search & Filter */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -388,6 +392,19 @@ export default function MetricsPage() {
             className="pl-9"
           />
         </div>
+        <Select value={aggregationFilter} onValueChange={setAggregationFilter}>
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Aggregation type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {aggregationTypes.map((agg) => (
+              <SelectItem key={agg.value} value={agg.value}>
+                {agg.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Metrics Grid */}
@@ -410,14 +427,14 @@ export default function MetricsPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Code className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold">
-              {search ? 'No metrics match your search' : 'No billable metrics'}
+              {search || aggregationFilter !== 'all' ? 'No metrics match your filters' : 'No billable metrics'}
             </h3>
             <p className="text-muted-foreground text-center max-w-sm mt-1">
-              {search
-                ? 'Try adjusting your search terms'
+              {search || aggregationFilter !== 'all'
+                ? 'Try adjusting your search terms or filters'
                 : 'Create your first billable metric to start tracking usage'}
             </p>
-            {!search && (
+            {!search && aggregationFilter === 'all' && (
               <Button onClick={() => setFormOpen(true)} className="mt-4">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Metric
