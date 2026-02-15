@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import {
   Select,
   SelectContent,
@@ -46,7 +47,7 @@ function formatCurrency(amount: string | number, currency: string = 'USD') {
   }).format(value)
 }
 
-function FeeEstimatorDialog({
+function FeeEstimatorPanel({
   open,
   onOpenChange,
 }: {
@@ -103,13 +104,16 @@ function FeeEstimatorDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Fee Estimator</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={handleOpenChange} modal={false}>
+      <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Fee Estimator</SheetTitle>
+          <SheetDescription>
+            Estimate fees for an event while viewing the event stream
+          </SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 px-4 pb-4">
           <div className="space-y-2">
             <Label>Subscription</Label>
             <Select value={subscriptionId} onValueChange={setSubscriptionId}>
@@ -191,8 +195,8 @@ function FeeEstimatorDialog({
             </Card>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -772,8 +776,8 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* Fee Estimator Dialog */}
-      <FeeEstimatorDialog open={feeEstimatorOpen} onOpenChange={setFeeEstimatorOpen} />
+      {/* Fee Estimator Panel */}
+      <FeeEstimatorPanel open={feeEstimatorOpen} onOpenChange={setFeeEstimatorOpen} />
     </div>
   )
 }
