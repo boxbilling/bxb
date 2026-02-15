@@ -49,14 +49,7 @@ import {
 } from '@/components/ui/dialog'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { invoicesApi, feesApi, taxesApi, creditNotesApi, customersApi } from '@/lib/api'
-
-function formatCurrency(amount: string | number, currency: string = 'USD') {
-  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(value)
-}
+import { formatCurrency, formatCents } from '@/lib/utils'
 
 type StatusKey = 'draft' | 'finalized' | 'paid' | 'voided'
 
@@ -501,13 +494,13 @@ export default function InvoiceDetailPage() {
                         <TableCell className="text-right">{fee.units}</TableCell>
                         <TableCell className="text-right">{fee.events_count}</TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(fee.amount_cents, invoice.currency)}
+                          {formatCents(fee.amount_cents, invoice.currency)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(fee.taxes_amount_cents, invoice.currency)}
+                          {formatCents(fee.taxes_amount_cents, invoice.currency)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(fee.total_amount_cents, invoice.currency)}
+                          {formatCents(fee.total_amount_cents, invoice.currency)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -534,7 +527,7 @@ export default function InvoiceDetailPage() {
                 {couponDiscount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Coupon Discount</span>
-                    <span>-{formatCurrency(couponDiscount, invoice.currency)}</span>
+                    <span>-{formatCents(couponDiscount, invoice.currency)}</span>
                   </div>
                 )}
 
@@ -548,7 +541,7 @@ export default function InvoiceDetailPage() {
                     {appliedTaxes.map((at) => (
                       <div key={at.id} className="flex justify-between text-xs text-muted-foreground">
                         <span>Tax {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}</span>
-                        <span>{formatCurrency(Number(at.tax_amount_cents), invoice.currency)}</span>
+                        <span>{formatCents(Number(at.tax_amount_cents), invoice.currency)}</span>
                       </div>
                     ))}
                   </div>
@@ -564,7 +557,7 @@ export default function InvoiceDetailPage() {
                 {Number(invoice.progressive_billing_credit_amount_cents) > 0 && (
                   <div className="flex justify-between text-sm text-purple-600">
                     <span>Progressive Billing Credits</span>
-                    <span>-{formatCurrency(Number(invoice.progressive_billing_credit_amount_cents), invoice.currency)}</span>
+                    <span>-{formatCents(Number(invoice.progressive_billing_credit_amount_cents), invoice.currency)}</span>
                   </div>
                 )}
 
@@ -612,7 +605,7 @@ export default function InvoiceDetailPage() {
                           {format(new Date(s.created_at), 'MMM d, yyyy h:mm a')}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(Number(s.amount_cents), invoice.currency)}
+                          {formatCents(Number(s.amount_cents), invoice.currency)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -661,7 +654,7 @@ export default function InvoiceDetailPage() {
                           {format(new Date(cn.created_at), 'MMM d, yyyy')}
                         </TableCell>
                         <TableCell className="text-right font-medium text-red-600">
-                          -{formatCurrency(Number(cn.credit_amount_cents), invoice.currency)}
+                          -{formatCents(Number(cn.credit_amount_cents), invoice.currency)}
                         </TableCell>
                       </TableRow>
                     ))}

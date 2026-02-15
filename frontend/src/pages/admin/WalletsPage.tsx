@@ -66,19 +66,13 @@ import type {
   WalletUpdate,
   WalletTopUp,
 } from '@/types/billing'
+import { formatCents } from '@/lib/utils'
 
 function formatCredits(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value
   return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 })
 }
 
-function formatCurrency(cents: number | string, currency: string = 'USD'): string {
-  const num = typeof cents === 'string' ? parseFloat(cents) : cents
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(num / 100)
-}
 
 // --- Create/Edit Wallet Dialog ---
 function WalletFormDialog({

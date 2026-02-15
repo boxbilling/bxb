@@ -51,13 +51,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { feesApi, taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 const feeTypeBadge: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string }> = {
   charge: { variant: 'default', className: 'bg-blue-600' },
@@ -103,7 +97,7 @@ function AppliedTaxesSection({ feeId }: { feeId: string }) {
           <span className="text-muted-foreground">
             {at.tax_name || 'Tax'} {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}
           </span>
-          <span className="font-medium">{formatCurrency(parseInt(at.tax_amount_cents))}</span>
+          <span className="font-medium">{formatCents(parseInt(at.tax_amount_cents))}</span>
         </div>
       ))}
     </>
@@ -283,7 +277,7 @@ export default function FeesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(stats.totalAmount)}
+              {formatCents(stats.totalAmount)}
             </div>
           </CardContent>
         </Card>
@@ -407,9 +401,9 @@ export default function FeesPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell>{formatCurrency(parseInt(fee.amount_cents))}</TableCell>
-                    <TableCell>{formatCurrency(parseInt(fee.taxes_amount_cents))}</TableCell>
-                    <TableCell>{formatCurrency(parseInt(fee.total_amount_cents))}</TableCell>
+                    <TableCell>{formatCents(parseInt(fee.amount_cents))}</TableCell>
+                    <TableCell>{formatCents(parseInt(fee.taxes_amount_cents))}</TableCell>
+                    <TableCell>{formatCents(parseInt(fee.total_amount_cents))}</TableCell>
                     <TableCell>
                       <Badge variant={statusBadge.variant} className={statusBadge.className}>
                         {fee.payment_status}
@@ -551,16 +545,16 @@ export default function FeesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Amount</span>
-                <span className="font-medium">{formatCurrency(parseInt(viewingFee.amount_cents))}</span>
+                <span className="font-medium">{formatCents(parseInt(viewingFee.amount_cents))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tax</span>
-                <span className="font-medium">{formatCurrency(parseInt(viewingFee.taxes_amount_cents))}</span>
+                <span className="font-medium">{formatCents(parseInt(viewingFee.taxes_amount_cents))}</span>
               </div>
               <AppliedTaxesSection feeId={viewingFee.id} />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total</span>
-                <span className="font-medium">{formatCurrency(parseInt(viewingFee.total_amount_cents))}</span>
+                <span className="font-medium">{formatCents(parseInt(viewingFee.total_amount_cents))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Units</span>
@@ -572,7 +566,7 @@ export default function FeesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Unit Amount</span>
-                <span className="font-medium">{formatCurrency(parseInt(viewingFee.unit_amount_cents))}</span>
+                <span className="font-medium">{formatCents(parseInt(viewingFee.unit_amount_cents))}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Description</span>

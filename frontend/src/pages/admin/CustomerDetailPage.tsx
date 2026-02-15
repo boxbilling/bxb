@@ -73,10 +73,7 @@ import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, PaymentMethodCreate, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 function CustomerOutstandingBalance({ customerId, currency }: { customerId: string; currency: string }) {
   const { data: invoices } = useQuery({
@@ -100,7 +97,7 @@ function CustomerOutstandingBalance({ customerId, currency }: { customerId: stri
           <FileText className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-orange-600">{formatCurrency(outstanding, currency)}</div>
+          <div className="text-2xl font-bold text-orange-600">{formatCents(outstanding, currency)}</div>
           <p className="text-xs text-muted-foreground mt-1">
             {(invoices ?? []).filter((i) => i.status === 'finalized').length} unpaid invoice(s)
           </p>
@@ -113,7 +110,7 @@ function CustomerOutstandingBalance({ customerId, currency }: { customerId: stri
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${overdue > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-            {formatCurrency(overdue, currency)}
+            {formatCents(overdue, currency)}
           </div>
           <p className="text-xs text-muted-foreground mt-1">
             {(invoices ?? []).filter((i) => i.status === 'finalized' && i.due_date && new Date(i.due_date) < new Date()).length} overdue invoice(s)
@@ -226,7 +223,7 @@ function CustomerInvoicesTab({ customerId }: { customerId: string }) {
               <TableCell>
                 <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
               </TableCell>
-              <TableCell className="font-mono">{formatCurrency(Number(invoice.total), invoice.currency)}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(invoice.total), invoice.currency)}</TableCell>
               <TableCell>{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
             </TableRow>
           ))}
@@ -279,7 +276,7 @@ function CustomerPaymentsTab({ customerId }: { customerId: string }) {
         <TableBody>
           {payments.map((payment) => (
             <TableRow key={payment.id}>
-              <TableCell className="font-mono">{formatCurrency(Number(payment.amount), payment.currency)}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(payment.amount), payment.currency)}</TableCell>
               <TableCell>
                 <Badge variant={statusVariant[payment.status] ?? 'outline'}>{payment.status}</Badge>
               </TableCell>
@@ -340,7 +337,7 @@ function CustomerWalletsTab({ customerId }: { customerId: string }) {
               <TableCell>
                 <Badge variant={statusVariant[wallet.status] ?? 'outline'}>{wallet.status}</Badge>
               </TableCell>
-              <TableCell className="font-mono">{formatCurrency(Number(wallet.balance_cents), wallet.currency)}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(wallet.balance_cents), wallet.currency)}</TableCell>
               <TableCell>{wallet.credits_balance}</TableCell>
               <TableCell>{wallet.expiration_at ? format(new Date(wallet.expiration_at), 'MMM d, yyyy') : 'Never'}</TableCell>
             </TableRow>
@@ -400,7 +397,7 @@ function CustomerCouponsTab({ customerId }: { customerId: string }) {
               </TableCell>
               <TableCell className="font-mono">
                 {coupon.amount_cents
-                  ? formatCurrency(Number(coupon.amount_cents), coupon.amount_currency ?? 'USD')
+                  ? formatCents(Number(coupon.amount_cents), coupon.amount_currency ?? 'USD')
                   : `${coupon.percentage_rate}%`}
               </TableCell>
               <TableCell>{format(new Date(coupon.created_at), 'MMM d, yyyy')}</TableCell>
@@ -458,7 +455,7 @@ function CustomerCreditNotesTab({ customerId }: { customerId: string }) {
                 <Badge variant={statusVariant[cn.status] ?? 'outline'}>{cn.status}</Badge>
               </TableCell>
               <TableCell>{cn.reason || '\u2014'}</TableCell>
-              <TableCell className="font-mono">{formatCurrency(Number(cn.credit_amount_cents), cn.currency)}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(cn.credit_amount_cents), cn.currency)}</TableCell>
               <TableCell>{format(new Date(cn.created_at), 'MMM d, yyyy')}</TableCell>
             </TableRow>
           ))}
@@ -518,7 +515,7 @@ function CustomerFeesTab({ customerId }: { customerId: string }) {
               <TableCell>
                 <Badge variant={statusVariant[fee.payment_status] ?? 'outline'}>{fee.payment_status}</Badge>
               </TableCell>
-              <TableCell className="font-mono">{formatCurrency(Number(fee.total_amount_cents))}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(fee.total_amount_cents))}</TableCell>
               <TableCell>{format(new Date(fee.created_at), 'MMM d, yyyy')}</TableCell>
             </TableRow>
           ))}
@@ -741,7 +738,7 @@ function ChargeUsageTable({ charges, currency }: { charges: CustomerCurrentUsage
               <TableCell>
                 <Badge variant="outline">{charge.charge_model}</Badge>
               </TableCell>
-              <TableCell className="text-right font-mono">{formatCurrency(Number(charge.amount_cents), currency)}</TableCell>
+              <TableCell className="text-right font-mono">{formatCents(Number(charge.amount_cents), currency)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -848,7 +845,7 @@ function CustomerUsageTab({ customerId, externalId }: { customerId: string; exte
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-muted-foreground">Total:</span>
-                    <span className="text-lg font-semibold">{formatCurrency(Number(currentUsage.amount_cents), currentUsage.currency)}</span>
+                    <span className="text-lg font-semibold">{formatCents(Number(currentUsage.amount_cents), currentUsage.currency)}</span>
                   </div>
                   <ChargeUsageTable charges={currentUsage.charges} currency={currentUsage.currency} />
                 </div>
@@ -879,7 +876,7 @@ function CustomerUsageTab({ customerId, externalId }: { customerId: string; exte
                   </div>
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-muted-foreground">Projected Total:</span>
-                    <span className="text-lg font-semibold">{formatCurrency(Number(projectedUsage.amount_cents), projectedUsage.currency)}</span>
+                    <span className="text-lg font-semibold">{formatCents(Number(projectedUsage.amount_cents), projectedUsage.currency)}</span>
                   </div>
                   <ChargeUsageTable charges={projectedUsage.charges} currency={projectedUsage.currency} />
                 </div>
@@ -923,7 +920,7 @@ function CustomerUsageTab({ customerId, externalId }: { customerId: string; exte
                         content={
                           <ChartTooltipContent
                             formatter={(value) =>
-                              formatCurrency(Number(value) * 100, pastUsage[0]?.currency ?? 'USD')
+                              formatCents(Number(value) * 100, pastUsage[0]?.currency ?? 'USD')
                             }
                           />
                         }
@@ -942,7 +939,7 @@ function CustomerUsageTab({ customerId, externalId }: { customerId: string; exte
                               {format(new Date(period.from_datetime), 'MMM d, yyyy')} – {format(new Date(period.to_datetime), 'MMM d, yyyy')}
                             </span>
                             <span className="font-mono text-muted-foreground">
-                              {formatCurrency(Number(period.amount_cents), period.currency)}
+                              {formatCents(Number(period.amount_cents), period.currency)}
                             </span>
                           </div>
                         </AccordionTrigger>

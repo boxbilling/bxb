@@ -36,16 +36,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { eventsApi, subscriptionsApi, billableMetricsApi } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import type { EstimateFeesResponse } from '@/types/billing'
 import type { DateRange } from 'react-day-picker'
-
-function formatCurrency(amount: string | number, currency: string = 'USD') {
-  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(value)
-}
 
 function FeeEstimatorPanel({
   open,
@@ -175,7 +168,7 @@ function FeeEstimatorPanel({
                   <div>
                     <p className="text-muted-foreground">Estimated Amount</p>
                     <p className="text-lg font-bold">
-                      {formatCurrency(estimateResult.amount_cents)}
+                      {formatCents(estimateResult.amount_cents)}
                     </p>
                   </div>
                   <div>
@@ -184,7 +177,7 @@ function FeeEstimatorPanel({
                   </div>
                   <div>
                     <p className="text-muted-foreground">Unit Price</p>
-                    <p className="font-medium">{formatCurrency(estimateResult.unit_amount_cents)}</p>
+                    <p className="font-medium">{formatCents(estimateResult.unit_amount_cents)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Charge Model</p>

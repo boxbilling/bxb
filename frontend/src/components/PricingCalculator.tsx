@@ -18,13 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { plansApi, ApiError } from '@/lib/api'
 import type { BillableMetric, PlanSimulateResponse } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 export function PricingCalculator({
   planId,
@@ -119,7 +113,7 @@ export function PricingCalculator({
                     </TableCell>
                     <TableCell className="text-right">—</TableCell>
                     <TableCell className="text-right font-mono">
-                      {formatCurrency(result.base_amount_cents, currency)}
+                      {formatCents(result.base_amount_cents, currency)}
                     </TableCell>
                   </TableRow>
                   {result.charges.map((charge) => {
@@ -138,7 +132,7 @@ export function PricingCalculator({
                           {charge.units.toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {formatCurrency(charge.amount_cents, currency)}
+                          {formatCents(charge.amount_cents, currency)}
                         </TableCell>
                       </TableRow>
                     )
@@ -150,7 +144,7 @@ export function PricingCalculator({
             <div className="flex items-center justify-between px-2 py-2 bg-muted/50 rounded-md">
               <span className="text-sm font-medium">Total</span>
               <span className="text-lg font-semibold font-mono">
-                {formatCurrency(result.total_amount_cents, currency)}
+                {formatCents(result.total_amount_cents, currency)}
               </span>
             </div>
           </div>

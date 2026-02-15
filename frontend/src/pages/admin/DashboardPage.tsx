@@ -61,16 +61,10 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { dashboardApi } from '@/lib/api'
+import { formatCurrency } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
 import type { RecentActivity } from '@/types/billing'
 import type { DateRange } from 'react-day-picker'
-
-function formatCurrencyDollars(amount: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount)
-}
 
 function formatRelativeTime(timestamp: string) {
   const now = new Date()
@@ -484,7 +478,7 @@ export default function DashboardPage() {
           title="MRR"
           value={
             revenue
-              ? formatCurrencyDollars(revenue.mrr, revenue.currency)
+              ? formatCurrency(revenue.mrr, revenue.currency)
               : '-'
           }
           description={`recurring revenue (${periodLabel})`}
@@ -500,7 +494,7 @@ export default function DashboardPage() {
           title="Outstanding Invoices"
           value={
             revenue
-              ? formatCurrencyDollars(revenue.outstanding_invoices, revenue.currency)
+              ? formatCurrency(revenue.outstanding_invoices, revenue.currency)
               : '-'
           }
           description="awaiting payment"
@@ -513,7 +507,7 @@ export default function DashboardPage() {
           title="Overdue Amount"
           value={
             revenue
-              ? formatCurrencyDollars(revenue.overdue_amount, revenue.currency)
+              ? formatCurrency(revenue.overdue_amount, revenue.currency)
               : '-'
           }
           description="past due date"
@@ -636,7 +630,7 @@ export default function DashboardPage() {
                     content={
                       <ChartTooltipContent
                         formatter={(value) =>
-                          formatCurrencyDollars(Number(value), revenue.currency)
+                          formatCurrency(Number(value), revenue.currency)
                         }
                       />
                     }
@@ -761,7 +755,7 @@ export default function DashboardPage() {
                         <InvoiceStatusBadge status={inv.status} />
                       </TableCell>
                       <TableCell className="text-xs text-right py-2 font-mono">
-                        {formatCurrencyDollars(inv.total, inv.currency)}
+                        {formatCurrency(inv.total, inv.currency)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -859,7 +853,7 @@ export default function DashboardPage() {
                       <ChartTooltipContent
                         nameKey="plan_name"
                         formatter={(value) =>
-                          formatCurrencyDollars(Number(value), revenueByPlan.currency)
+                          formatCurrency(Number(value), revenueByPlan.currency)
                         }
                       />
                     }
@@ -886,7 +880,7 @@ export default function DashboardPage() {
                       <span className="text-muted-foreground truncate max-w-[120px]">{plan.plan_name}</span>
                     </div>
                     <span className="font-mono font-medium">
-                      {formatCurrencyDollars(plan.revenue, revenueByPlan.currency)}
+                      {formatCurrency(plan.revenue, revenueByPlan.currency)}
                     </span>
                   </div>
                 ))}

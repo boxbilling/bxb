@@ -53,13 +53,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { paymentRequestsApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { PaymentRequest, PaymentRequestCreate, PaymentAttemptEntry } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -188,7 +182,7 @@ function ViewDetailsDialog({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Amount</span>
               <span className="font-medium">
-                {formatCurrency(parseInt(paymentRequest.amount_cents as unknown as string))}{' '}
+                {formatCents(parseInt(paymentRequest.amount_cents as unknown as string))}{' '}
                 <Badge variant="outline" className="ml-1 text-xs">{paymentRequest.amount_currency}</Badge>
               </span>
             </div>
@@ -543,7 +537,7 @@ function CreatePaymentRequestDialog({
                             </Badge>
                           )}
                           <span className="text-sm text-muted-foreground">
-                            {formatCurrency(parseInt(inv.total as unknown as string), inv.currency)}
+                            {formatCents(parseInt(inv.total as unknown as string), inv.currency)}
                           </span>
                         </label>
                       )
@@ -725,7 +719,7 @@ export default function PaymentRequestsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.totalAmount)}
+              {formatCents(stats.totalAmount)}
             </div>
           </CardContent>
         </Card>
@@ -807,7 +801,7 @@ export default function PaymentRequestsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {formatCurrency(parseInt(pr.amount_cents as unknown as string))}
+                        {formatCents(parseInt(pr.amount_cents as unknown as string))}
                         <Badge variant="outline" className="ml-1 text-xs">
                           {pr.amount_currency}
                         </Badge>

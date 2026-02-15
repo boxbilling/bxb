@@ -52,10 +52,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, usageAlertsApi, billableMetricsApi, featuresApi, invoicesApi, ApiError } from '@/lib/api'
 import type { UsageThresholdCreateAPI, UsageAlertCreate, SubscriptionUpdate } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -482,7 +479,7 @@ export default function SubscriptionDetailPage() {
               ) : (
                 <div className="space-y-2">
                   <p className="text-3xl font-semibold font-mono">
-                    {formatCurrency(parseInt(usage.current_usage_amount_cents))}
+                    {formatCents(parseInt(usage.current_usage_amount_cents))}
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -618,7 +615,7 @@ export default function SubscriptionDetailPage() {
                           </TableCell>
                           <TableCell className="font-mono">{charge.units}</TableCell>
                           <TableCell className="font-mono">
-                            {formatCurrency(Number(charge.amount_cents), customerUsage.currency)}
+                            {formatCents(Number(charge.amount_cents), customerUsage.currency)}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">{charge.charge_model}</Badge>
@@ -692,7 +689,7 @@ export default function SubscriptionDetailPage() {
                             <TableCell>{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
                             <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
                             <TableCell className="text-right font-mono">
-                              {formatCurrency(Number(invoice.total), invoice.currency)}
+                              {formatCents(Number(invoice.total), invoice.currency)}
                             </TableCell>
                           </TableRow>
                         )
@@ -743,7 +740,7 @@ export default function SubscriptionDetailPage() {
                     {thresholds.map((t) => (
                       <TableRow key={t.id}>
                         <TableCell className="font-mono">
-                          {formatCurrency(parseInt(t.amount_cents), t.currency)}
+                          {formatCents(parseInt(t.amount_cents), t.currency)}
                         </TableCell>
                         <TableCell>
                           <Badge variant={t.recurring ? 'default' : 'secondary'}>

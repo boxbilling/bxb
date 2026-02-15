@@ -62,14 +62,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { creditNotesApi, customersApi, ApiError } from '@/lib/api'
 import type { CreditNote, Customer } from '@/types/billing'
-
-function formatCurrency(cents: number | string, currency: string = 'USD'): string {
-  const num = typeof cents === 'string' ? parseFloat(cents) : cents
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(num / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 const REASON_LABELS: Record<string, string> = {
   duplicated_charge: 'Duplicated Charge',
@@ -217,25 +210,25 @@ function CreditNoteDetailDialog({
             <h4 className="font-medium text-sm">Amounts</h4>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Credit Amount</span>
-              <span>{formatCurrency(creditNote.credit_amount_cents, creditNote.currency)}</span>
+              <span>{formatCents(creditNote.credit_amount_cents, creditNote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Refund Amount</span>
-              <span>{formatCurrency(creditNote.refund_amount_cents, creditNote.currency)}</span>
+              <span>{formatCents(creditNote.refund_amount_cents, creditNote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Taxes</span>
-              <span>{formatCurrency(creditNote.taxes_amount_cents, creditNote.currency)}</span>
+              <span>{formatCents(creditNote.taxes_amount_cents, creditNote.currency)}</span>
             </div>
             <Separator />
             <div className="flex justify-between font-medium">
               <span>Total</span>
-              <span>{formatCurrency(creditNote.total_amount_cents, creditNote.currency)}</span>
+              <span>{formatCents(creditNote.total_amount_cents, creditNote.currency)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Balance Remaining</span>
               <span className="font-medium text-blue-600">
-                {formatCurrency(creditNote.balance_amount_cents, creditNote.currency)}
+                {formatCents(creditNote.balance_amount_cents, creditNote.currency)}
               </span>
             </div>
           </div>
@@ -469,7 +462,7 @@ export default function CreditNotesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {formatCurrency(stats.totalAmount)}
+              {formatCents(stats.totalAmount)}
             </div>
           </CardContent>
         </Card>
@@ -563,7 +556,7 @@ export default function CreditNotesPage() {
                     <CreditStatusBadge status={cn.credit_status} />
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCurrency(cn.total_amount_cents, cn.currency)}
+                    {formatCents(cn.total_amount_cents, cn.currency)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

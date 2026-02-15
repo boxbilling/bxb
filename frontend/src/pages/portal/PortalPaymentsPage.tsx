@@ -12,6 +12,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { portalApi } from '@/lib/api'
+import { formatCurrency } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 
 const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -27,14 +28,6 @@ const providerLabels: Record<string, string> = {
   stripe: 'Stripe',
   ucp: 'UCP',
   manual: 'Manual',
-}
-
-function formatAmount(amount: string, currency: string = 'USD'): string {
-  const num = parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(num)
 }
 
 export default function PortalPaymentsPage() {
@@ -86,7 +79,7 @@ export default function PortalPaymentsPage() {
                     {format(new Date(payment.created_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {formatAmount(payment.amount, payment.currency)}
+                    {formatCurrency(payment.amount, payment.currency)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={statusColors[payment.status] || 'secondary'}>

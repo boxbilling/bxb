@@ -88,13 +88,7 @@ import type {
   Subscription,
   Customer,
 } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 function intervalLabel(interval: string) {
   return (
@@ -521,7 +515,7 @@ export default function PlanDetailPage() {
                 <div>
                   <span className="text-muted-foreground">Base Price</span>
                   <p className="text-lg font-semibold">
-                    {formatCurrency(plan.amount_cents, plan.currency)}
+                    {formatCents(plan.amount_cents, plan.currency)}
                     <span className="text-sm font-normal text-muted-foreground">
                       /{intervalLabel(plan.interval)}
                     </span>
@@ -833,7 +827,7 @@ export default function PlanDetailPage() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="font-mono">
-                                  {formatCurrency(
+                                  {formatCents(
                                     parseInt(c.amount_cents)
                                   )}
                                 </TableCell>
@@ -991,7 +985,7 @@ export default function PlanDetailPage() {
                           {thresholds.map((t: UsageThreshold) => (
                             <TableRow key={t.id}>
                               <TableCell className="font-mono">
-                                {formatCurrency(parseInt(t.amount_cents))}
+                                {formatCents(parseInt(t.amount_cents))}
                               </TableCell>
                               <TableCell>{t.currency}</TableCell>
                               <TableCell>

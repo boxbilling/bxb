@@ -54,6 +54,7 @@ import type {
   ExecutionHistoryEntry,
   CampaignPreviewInvoiceGroup,
 } from '@/types/billing'
+import { formatCents } from '@/lib/utils'
 
 function StatusBadge({ status }: { status: string }) {
   if (status === 'active') return <Badge className="bg-green-600">Active</Badge>
@@ -74,10 +75,6 @@ function PaymentStatusBadge({ status }: { status: string }) {
   }
 }
 
-function formatCurrency(amountCents: number | string, currency: string = 'USD') {
-  const amount = Number(amountCents) / 100
-  return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
 
 // --- Execution History Tab ---
 function ExecutionHistoryTab({ campaignId }: { campaignId: string }) {
@@ -132,7 +129,7 @@ function ExecutionHistoryTab({ campaignId }: { campaignId: string }) {
                 </Link>
               </TableCell>
               <TableCell className="font-medium">
-                {formatCurrency(entry.amount_cents, entry.amount_currency)}
+                {formatCents(entry.amount_cents, entry.amount_currency)}
               </TableCell>
               <TableCell>
                 <PaymentStatusBadge status={entry.payment_status} />
@@ -149,7 +146,7 @@ function ExecutionHistoryTab({ campaignId }: { campaignId: string }) {
                       <FileText className="h-3 w-3" />
                       {inv.invoice_number}
                       <span className="text-muted-foreground">
-                        ({formatCurrency(inv.amount_cents, inv.currency)})
+                        ({formatCents(inv.amount_cents, inv.currency)})
                       </span>
                     </Link>
                   ))}
@@ -237,7 +234,7 @@ function TimelineTab({ campaignId }: { campaignId: string }) {
                 <span>{format(new Date(event.timestamp), 'MMM d, yyyy HH:mm:ss')}</span>
                 {event.amount_cents != null && event.amount_currency && (
                   <span className="font-medium text-foreground">
-                    {formatCurrency(event.amount_cents, event.amount_currency)}
+                    {formatCents(event.amount_cents, event.amount_currency)}
                   </span>
                 )}
                 {event.attempt_number != null && event.attempt_number > 0 && (
@@ -321,7 +318,7 @@ function PreviewTab({ campaignId }: { campaignId: string }) {
               <CardContent>
                 <div className="text-2xl font-bold">{data.total_overdue_invoices}</div>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(data.total_overdue_amount_cents)} total
+                  {formatCents(data.total_overdue_amount_cents)} total
                 </p>
               </CardContent>
             </Card>
@@ -385,10 +382,10 @@ function PreviewTab({ campaignId }: { campaignId: string }) {
                       </div>
                       <div className="text-right">
                         <span className="font-bold text-lg">
-                          {formatCurrency(group.total_outstanding_cents, group.currency)}
+                          {formatCents(group.total_outstanding_cents, group.currency)}
                         </span>
                         <p className="text-xs text-muted-foreground">
-                          Threshold: {formatCurrency(group.matching_threshold_cents, group.currency)}
+                          Threshold: {formatCents(group.matching_threshold_cents, group.currency)}
                         </p>
                       </div>
                     </div>
@@ -407,7 +404,7 @@ function PreviewTab({ campaignId }: { campaignId: string }) {
                             </Badge>
                           </div>
                           <span className="font-medium">
-                            {formatCurrency(inv.amount_cents, inv.currency)}
+                            {formatCents(inv.amount_cents, inv.currency)}
                           </span>
                         </div>
                       ))}
@@ -563,7 +560,7 @@ export default function DunningCampaignDetailPage() {
             <div className="text-xs text-muted-foreground space-y-0.5">
               {(campaign.thresholds ?? []).map((t) => (
                 <div key={t.id}>
-                  {t.currency}: {formatCurrency(t.amount_cents, t.currency)}
+                  {t.currency}: {formatCents(t.amount_cents, t.currency)}
                 </div>
               ))}
               {(!campaign.thresholds || campaign.thresholds.length === 0) && (

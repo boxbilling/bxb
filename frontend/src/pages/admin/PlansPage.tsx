@@ -44,13 +44,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { plansApi, billableMetricsApi, commitmentsApi, usageThresholdsApi, ApiError } from '@/lib/api'
 import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThreshold, UsageThresholdCreateAPI } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 function intervalLabel(interval: PlanInterval) {
   return {
@@ -238,7 +232,7 @@ function PlanFormDialog({
                   required
                 />
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(formData.amount_cents, formData.currency)}
+                  {formatCents(formData.amount_cents, formData.currency)}
                 </p>
               </div>
               <div className="space-y-2">
@@ -674,7 +668,7 @@ function PlanManageDialog({
                             <td className="p-2">
                               <Badge variant="outline">{c.commitment_type}</Badge>
                             </td>
-                            <td className="p-2">{formatCurrency(parseInt(c.amount_cents))}</td>
+                            <td className="p-2">{formatCents(parseInt(c.amount_cents))}</td>
                             <td className="p-2 text-muted-foreground">{c.invoice_display_name || '\u2014'}</td>
                             <td className="p-2 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -807,7 +801,7 @@ function PlanManageDialog({
                     <tbody>
                       {thresholds.map((t) => (
                         <tr key={t.id} className="border-b last:border-b-0">
-                          <td className="p-2">{formatCurrency(parseInt(t.amount_cents))}</td>
+                          <td className="p-2">{formatCents(parseInt(t.amount_cents))}</td>
                           <td className="p-2">{t.currency}</td>
                           <td className="p-2">{t.recurring ? 'Yes' : 'No'}</td>
                           <td className="p-2 text-muted-foreground">{t.threshold_display_name || '\u2014'}</td>
@@ -1134,7 +1128,7 @@ export default function PlansPage() {
                 {/* Price */}
                 <div className="flex items-baseline gap-1">
                   <span className="text-3xl font-bold">
-                    {formatCurrency(plan.amount_cents, plan.currency)}
+                    {formatCents(plan.amount_cents, plan.currency)}
                   </span>
                   <span className="text-muted-foreground">
                     /{intervalLabel(plan.interval)}

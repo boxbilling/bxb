@@ -21,15 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { portalApi } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
-
-function formatCurrency(amount: string | number, currency: string = 'USD'): string {
-  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(value)
-}
 
 export default function PortalUsagePage() {
   const token = usePortalToken()
@@ -150,7 +143,7 @@ export default function PortalUsagePage() {
                         </TableCell>
                         <TableCell>{charge.units}</TableCell>
                         <TableCell>
-                          {formatCurrency(
+                          {formatCents(
                             Number(charge.amount_cents),
                             usage.currency
                           )}
@@ -170,7 +163,7 @@ export default function PortalUsagePage() {
               <div className="text-right">
                 <p className="text-sm text-muted-foreground">Total</p>
                 <p className="text-lg font-bold">
-                  {formatCurrency(Number(usage.amount_cents), usage.currency)}
+                  {formatCents(Number(usage.amount_cents), usage.currency)}
                 </p>
               </div>
             </div>

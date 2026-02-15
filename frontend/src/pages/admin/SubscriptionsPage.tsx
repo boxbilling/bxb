@@ -49,13 +49,7 @@ import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
 import type { Subscription, SubscriptionCreate, SubscriptionUpdate, SubscriptionStatus, Plan, TerminationAction, UsageThresholdCreateAPI, ChangePlanPreviewResponse } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 function StatusBadge({ status }: { status: SubscriptionStatus }) {
   const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
@@ -189,7 +183,7 @@ function ChangePlanDialog({
                   .filter(p => p.id !== subscription.plan_id)
                   .map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.name} — {formatCurrency(p.amount_cents, p.currency)}/{p.interval}
+                      {p.name} — {formatCents(p.amount_cents, p.currency)}/{p.interval}
                     </SelectItem>
                   ))}
               </SelectContent>
@@ -241,7 +235,7 @@ function ChangePlanDialog({
                   <p className="text-xs text-muted-foreground mb-1">Current</p>
                   <p className="font-semibold">{currentPlan.name}</p>
                   <p className="text-lg font-mono">
-                    {formatCurrency(currentPlan.amount_cents, currentPlan.currency)}
+                    {formatCents(currentPlan.amount_cents, currentPlan.currency)}
                   </p>
                   <p className="text-xs text-muted-foreground">/{currentPlan.interval}</p>
                 </div>
@@ -250,7 +244,7 @@ function ChangePlanDialog({
                   <p className="text-xs text-muted-foreground mb-1">New</p>
                   <p className="font-semibold">{newPlan.name}</p>
                   <p className="text-lg font-mono">
-                    {formatCurrency(newPlan.amount_cents, newPlan.currency)}
+                    {formatCents(newPlan.amount_cents, newPlan.currency)}
                   </p>
                   <p className="text-xs text-muted-foreground">/{newPlan.interval}</p>
                 </div>
@@ -267,7 +261,7 @@ function ChangePlanDialog({
                 return (
                   <div className={`flex items-center gap-1.5 text-sm ${diff > 0 ? 'text-orange-600' : 'text-green-600'}`}>
                     {diff > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                    {diff > 0 ? 'Upgrade' : 'Downgrade'}: {diff > 0 ? '+' : ''}{formatCurrency(diff, newPlan.currency)}/{newPlan.interval}
+                    {diff > 0 ? 'Upgrade' : 'Downgrade'}: {diff > 0 ? '+' : ''}{formatCents(diff, newPlan.currency)}/{newPlan.interval}
                   </div>
                 )
               })()}
@@ -294,17 +288,17 @@ function ChangePlanDialog({
                 </span>
                 <span className="text-muted-foreground">Credit for current plan</span>
                 <span className="text-right font-mono text-green-600">
-                  -{formatCurrency(preview.proration.current_plan_credit_cents, preview.current_plan.currency)}
+                  -{formatCents(preview.proration.current_plan_credit_cents, preview.current_plan.currency)}
                 </span>
                 <span className="text-muted-foreground">Charge for new plan</span>
                 <span className="text-right font-mono">
-                  +{formatCurrency(preview.proration.new_plan_charge_cents, preview.new_plan.currency)}
+                  +{formatCents(preview.proration.new_plan_charge_cents, preview.new_plan.currency)}
                 </span>
               </div>
               <div className="border-t pt-2 mt-2 flex justify-between text-sm font-medium">
                 <span>Net adjustment</span>
                 <span className={`font-mono ${preview.proration.net_amount_cents > 0 ? 'text-orange-600' : preview.proration.net_amount_cents < 0 ? 'text-green-600' : ''}`}>
-                  {preview.proration.net_amount_cents >= 0 ? '+' : ''}{formatCurrency(preview.proration.net_amount_cents, preview.current_plan.currency)}
+                  {preview.proration.net_amount_cents >= 0 ? '+' : ''}{formatCents(preview.proration.net_amount_cents, preview.current_plan.currency)}
                 </span>
               </div>
             </div>
@@ -459,7 +453,7 @@ function SubscriptionThresholdsDialog({
           {currentUsage && (
             <div className="p-3 border rounded-lg bg-muted/50">
               <p className="text-sm font-medium">Current Usage</p>
-              <p className="text-2xl font-bold">{formatCurrency(Number(currentUsage.current_usage_amount_cents))}</p>
+              <p className="text-2xl font-bold">{formatCents(Number(currentUsage.current_usage_amount_cents))}</p>
               <p className="text-xs text-muted-foreground">
                 Period: {format(new Date(currentUsage.billing_period_start), 'MMM d')} &ndash; {format(new Date(currentUsage.billing_period_end), 'MMM d, yyyy')}
               </p>
@@ -483,7 +477,7 @@ function SubscriptionThresholdsDialog({
                 <tbody>
                   {thresholds.map((t) => (
                     <tr key={t.id} className="border-b last:border-b-0">
-                      <td className="p-2">{formatCurrency(parseInt(t.amount_cents))}</td>
+                      <td className="p-2">{formatCents(parseInt(t.amount_cents))}</td>
                       <td className="p-2">{t.recurring ? 'Yes' : 'No'}</td>
                       <td className="p-2 text-muted-foreground">{t.threshold_display_name || '\u2014'}</td>
                       <td className="p-2 text-right">
@@ -796,7 +790,7 @@ export default function SubscriptionsPage() {
                       <div>
                         <div>{plan?.name ?? 'Unknown'}</div>
                         <div className="text-xs text-muted-foreground">
-                          {plan ? `${formatCurrency(plan.amount_cents, plan.currency)}/${plan.interval}` : '\u2014'}
+                          {plan ? `${formatCents(plan.amount_cents, plan.currency)}/${plan.interval}` : '\u2014'}
                         </div>
                       </div>
                     </TableCell>

@@ -6,15 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { portalApi } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
-
-function formatCurrency(amount: string | number, currency: string = 'USD'): string {
-  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(value)
-}
 
 export default function PortalWalletPage() {
   const token = usePortalToken()
@@ -59,7 +52,7 @@ export default function PortalWalletPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(Number(wallet.balance_cents), wallet.currency)}
+                {formatCents(Number(wallet.balance_cents), wallet.currency)}
               </div>
             </CardContent>
           </Card>
@@ -83,7 +76,7 @@ export default function PortalWalletPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(Number(wallet.consumed_amount_cents), wallet.currency)}
+                {formatCents(Number(wallet.consumed_amount_cents), wallet.currency)}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {wallet.consumed_credits} credits

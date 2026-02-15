@@ -36,15 +36,8 @@ import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { invoicesApi, customersApi, subscriptionsApi } from '@/lib/api'
+import { formatCurrency, formatCents } from '@/lib/utils'
 import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
-
-function formatCurrency(amount: string | number, currency: string = 'USD') {
-  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(value)
-}
 
 type StatusKey = 'draft' | 'finalized' | 'paid' | 'voided'
 
@@ -392,10 +385,10 @@ function InvoicePreviewDialog({
                             </TableCell>
                             <TableCell className="text-right">{fee.units}</TableCell>
                             <TableCell className="text-right">
-                              {formatCurrency(fee.unit_amount_cents, previewResult.currency)}
+                              {formatCents(fee.unit_amount_cents, previewResult.currency)}
                             </TableCell>
                             <TableCell className="text-right font-medium">
-                              {formatCurrency(fee.amount_cents, previewResult.currency)}
+                              {formatCents(fee.amount_cents, previewResult.currency)}
                             </TableCell>
                           </TableRow>
                         ))}

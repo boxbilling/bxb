@@ -75,14 +75,7 @@ import type {
   ApplyCouponRequest,
   AppliedCoupon,
 } from '@/types/billing'
-
-function formatCurrency(cents: number | string, currency: string = 'USD'): string {
-  const num = typeof cents === 'string' ? parseFloat(cents) : cents
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(num / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 // --- Create/Edit Coupon Dialog ---
 function CouponFormDialog({
@@ -170,12 +163,12 @@ function CouponFormDialog({
       if (rate > 0 && rate <= 100) {
         const exampleAmount = 10000 // $100.00
         const discount = exampleAmount * rate / 100
-        return `${rate}% off — e.g. on a $100 invoice, customer saves ${formatCurrency(discount, formData.amount_currency || 'USD')}`
+        return `${rate}% off — e.g. on a $100 invoice, customer saves ${formatCents(discount, formData.amount_currency || 'USD')}`
       }
     } else if (formData.coupon_type === 'fixed_amount' && formData.amount_cents) {
       const cents = parseFloat(formData.amount_cents)
       if (cents > 0) {
-        return `${formatCurrency(cents, formData.amount_currency || 'USD')} off per ${formData.frequency === 'once' ? 'use' : formData.frequency === 'recurring' ? `billing period (${formData.frequency_duration || '?'} times)` : 'billing period (forever)'}`
+        return `${formatCents(cents, formData.amount_currency || 'USD')} off per ${formData.frequency === 'once' ? 'use' : formData.frequency === 'recurring' ? `billing period (${formData.frequency_duration || '?'} times)` : 'billing period (forever)'}`
       }
     }
     return null
@@ -458,7 +451,7 @@ function ApplyCouponDialog({
         return `Customer will receive ${rate}% off on qualifying invoices`
       }
     } else if (amount > 0) {
-      return `Customer will receive ${formatCurrency(amount, coupon.amount_currency || 'USD')} off${amountOverride ? ' (overridden)' : ''}`
+      return `Customer will receive ${formatCents(amount, coupon.amount_currency || 'USD')} off${amountOverride ? ' (overridden)' : ''}`
     }
     return null
   })()
@@ -485,7 +478,7 @@ function ApplyCouponDialog({
                   <span className="font-medium">
                     {coupon.coupon_type === 'percentage'
                       ? `${coupon.percentage_rate}%`
-                      : formatCurrency(coupon.amount_cents || '0', coupon.amount_currency || 'USD')}
+                      : formatCents(coupon.amount_cents || '0', coupon.amount_currency || 'USD')}
                   </span>
                 </div>
               </div>
@@ -1005,7 +998,7 @@ export default function CouponsPage() {
                       <span className="font-medium">
                         {coupon.coupon_type === 'percentage'
                           ? `${coupon.percentage_rate}%`
-                          : formatCurrency(coupon.amount_cents || '0', coupon.amount_currency || 'USD')}
+                          : formatCents(coupon.amount_cents || '0', coupon.amount_currency || 'USD')}
                       </span>
                     </div>
                   </TableCell>
@@ -1159,7 +1152,7 @@ export default function CouponsPage() {
                   Total Discount Given
                 </div>
                 <p className="text-2xl font-bold">
-                  {formatCurrency(
+                  {formatCents(
                     analytics.total_discount_cents,
                     analyticsCoupon?.amount_currency || 'USD'
                   )}

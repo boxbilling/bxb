@@ -42,14 +42,7 @@ import type {
   Invoice,
   Fee,
 } from '@/types/billing'
-
-function formatCurrency(cents: number | string, currency: string = 'USD'): string {
-  const num = typeof cents === 'string' ? parseFloat(cents) : cents
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(num / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 const REASON_LABELS: Record<string, string> = {
   duplicated_charge: 'Duplicated Charge',
@@ -367,7 +360,7 @@ export default function CreditNoteFormPage() {
                     <SelectContent>
                       {invoices.map((inv: Invoice) => (
                         <SelectItem key={inv.id} value={inv.id}>
-                          {inv.invoice_number} — {formatCurrency(inv.total, inv.currency)}
+                          {inv.invoice_number} — {formatCents(inv.total, inv.currency)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -482,7 +475,7 @@ export default function CreditNoteFormPage() {
                     onChange={(e) => setForm({ ...form, credit_amount_cents: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(form.credit_amount_cents || '0', form.currency || 'USD')}
+                    {formatCents(form.credit_amount_cents || '0', form.currency || 'USD')}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -495,7 +488,7 @@ export default function CreditNoteFormPage() {
                     onChange={(e) => setForm({ ...form, refund_amount_cents: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(form.refund_amount_cents || '0', form.currency || 'USD')}
+                    {formatCents(form.refund_amount_cents || '0', form.currency || 'USD')}
                   </p>
                 </div>
               </div>
@@ -512,7 +505,7 @@ export default function CreditNoteFormPage() {
                     required
                   />
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(form.total_amount_cents || '0', form.currency || 'USD')}
+                    {formatCents(form.total_amount_cents || '0', form.currency || 'USD')}
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -525,7 +518,7 @@ export default function CreditNoteFormPage() {
                     onChange={(e) => setForm({ ...form, taxes_amount_cents: e.target.value })}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {formatCurrency(form.taxes_amount_cents || '0', form.currency || 'USD')}
+                    {formatCents(form.taxes_amount_cents || '0', form.currency || 'USD')}
                   </p>
                 </div>
               </div>
@@ -569,7 +562,7 @@ export default function CreditNoteFormPage() {
                               {fee.fee_type} — {fee.description || fee.id.slice(0, 8)}
                             </TableCell>
                             <TableCell className="text-right text-sm">
-                              {formatCurrency(fee.amount_cents, form.currency || 'USD')}
+                              {formatCents(fee.amount_cents, form.currency || 'USD')}
                             </TableCell>
                             <TableCell className="text-right">
                               {selected ? (

@@ -41,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { paymentsApi, customersApi, invoicesApi } from '@/lib/api'
+import { formatCurrency } from '@/lib/utils'
 import type { components } from '@/lib/schema'
 
 type PaymentResponse = components['schemas']['PaymentResponse']
@@ -60,14 +61,6 @@ const providerLabels: Record<string, string> = {
   stripe: 'Stripe',
   ucp: 'UCP',
   manual: 'Manual',
-}
-
-function formatAmount(amount: string, currency: string): string {
-  const num = parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(num)
 }
 
 export default function PaymentsPage() {
@@ -318,7 +311,7 @@ export default function PaymentsPage() {
                     <code className="text-xs">{getInvoiceNumber(payment.invoice_id)}</code>
                   </TableCell>
                   <TableCell>
-                    {formatAmount(payment.amount, payment.currency)}
+                    {formatCurrency(payment.amount, payment.currency)}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">
@@ -411,7 +404,7 @@ export default function PaymentsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Amount</p>
                   <p className="text-lg font-semibold">
-                    {formatAmount(selectedPayment.amount, selectedPayment.currency)}
+                    {formatCurrency(selectedPayment.amount, selectedPayment.currency)}
                   </p>
                 </div>
                 <div>
@@ -525,7 +518,7 @@ export default function PaymentsPage() {
               <div className="space-y-1">
                 <p className="text-sm">
                   <span className="text-muted-foreground">Amount:</span>{' '}
-                  {formatAmount(confirmAction.payment.amount, confirmAction.payment.currency)}
+                  {formatCurrency(confirmAction.payment.amount, confirmAction.payment.currency)}
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Customer:</span>{' '}
@@ -572,7 +565,7 @@ export default function PaymentsPage() {
                         max={confirmAction.payment.amount}
                         value={refundAmount}
                         onChange={(e) => setRefundAmount(e.target.value)}
-                        placeholder={`Max ${formatAmount(confirmAction.payment.amount, confirmAction.payment.currency)}`}
+                        placeholder={`Max ${formatCurrency(confirmAction.payment.amount, confirmAction.payment.currency)}`}
                       />
                     </div>
                   )}

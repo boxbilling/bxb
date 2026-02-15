@@ -20,13 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import type { SubscriptionCreate, Customer, Plan, BillingTime, TerminationAction } from '@/types/billing'
-
-function formatCurrency(cents: number, currency: string = 'USD') {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 export function SubscriptionFormDialog({
   open,
@@ -134,7 +128,7 @@ export function SubscriptionFormDialog({
                 <SelectContent>
                   {plans.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
-                      {p.name} — {formatCurrency(p.amount_cents, p.currency)}/{p.interval}
+                      {p.name} — {formatCents(p.amount_cents, p.currency)}/{p.interval}
                     </SelectItem>
                   ))}
                 </SelectContent>

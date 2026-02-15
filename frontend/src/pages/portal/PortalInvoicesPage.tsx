@@ -21,6 +21,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { portalApi } from '@/lib/api'
+import { formatCurrency } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import type { components } from '@/lib/schema'
 
@@ -33,14 +34,6 @@ const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
   paid: 'default',
   voided: 'outline',
   failed: 'destructive',
-}
-
-function formatAmount(amount: string, currency: string = 'USD'): string {
-  const num = parseFloat(amount)
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency,
-  }).format(num)
 }
 
 export default function PortalInvoicesPage() {
@@ -110,7 +103,7 @@ export default function PortalInvoicesPage() {
                     {format(new Date(invoice.created_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>
-                    {formatAmount(invoice.total, invoice.currency)}
+                    {formatCurrency(invoice.total, invoice.currency)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={statusColors[invoice.status] || 'secondary'}>
@@ -156,7 +149,7 @@ export default function PortalInvoicesPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Amount</p>
                   <p className="text-lg font-semibold">
-                    {formatAmount(selectedInvoice.total, selectedInvoice.currency)}
+                    {formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
                   </p>
                 </div>
                 <div>

@@ -17,6 +17,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { portalApi, ApiError } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import type { PortalSubscriptionResponse, PortalPlanResponse, PortalPlanSummary } from '@/lib/api'
 import { usePortalToken } from '@/layouts/PortalLayout'
 
@@ -26,13 +27,6 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   canceled: { label: 'Canceled', variant: 'destructive', icon: XCircle },
   terminated: { label: 'Terminated', variant: 'destructive', icon: XCircle },
   pending: { label: 'Pending', variant: 'outline', icon: Clock },
-}
-
-function formatCurrency(amountCents: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: currency.toUpperCase(),
-  }).format(amountCents / 100)
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -93,7 +87,7 @@ export default function PortalSubscriptionsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <div className="text-2xl font-bold">
-                      {formatCurrency(sub.plan.amount_cents, sub.plan.currency)}
+                      {formatCents(sub.plan.amount_cents, sub.plan.currency)}
                       <span className="text-sm font-normal text-muted-foreground ml-1">
                         / {sub.plan.interval}
                       </span>
@@ -202,20 +196,20 @@ function ChangePlanDialog({
                 <div className="flex justify-between text-sm">
                   <span>Credit for current plan</span>
                   <span className="text-green-600">
-                    -{formatCurrency(preview.proration.current_plan_credit_cents, preview.current_plan.currency)}
+                    -{formatCents(preview.proration.current_plan_credit_cents, preview.current_plan.currency)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Charge for new plan</span>
                   <span>
-                    {formatCurrency(preview.proration.new_plan_charge_cents, preview.new_plan.currency)}
+                    {formatCents(preview.proration.new_plan_charge_cents, preview.new_plan.currency)}
                   </span>
                 </div>
                 <div className="border-t pt-2 flex justify-between font-medium">
                   <span>Net amount</span>
                   <span className={preview.proration.net_amount_cents < 0 ? 'text-green-600' : ''}>
                     {preview.proration.net_amount_cents < 0 ? '-' : ''}
-                    {formatCurrency(Math.abs(preview.proration.net_amount_cents), preview.current_plan.currency)}
+                    {formatCents(Math.abs(preview.proration.net_amount_cents), preview.current_plan.currency)}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -246,7 +240,7 @@ function ChangePlanDialog({
         <DialogHeader>
           <DialogTitle>Change Plan</DialogTitle>
           <DialogDescription>
-            Currently on <strong>{subscription.plan.name}</strong> ({formatCurrency(subscription.plan.amount_cents, subscription.plan.currency)}/{subscription.plan.interval}).
+            Currently on <strong>{subscription.plan.name}</strong> ({formatCents(subscription.plan.amount_cents, subscription.plan.currency)}/{subscription.plan.interval}).
             Select a new plan below.
           </DialogDescription>
         </DialogHeader>
@@ -289,7 +283,7 @@ function ChangePlanDialog({
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">
-                        {formatCurrency(plan.amount_cents, plan.currency)}
+                        {formatCents(plan.amount_cents, plan.currency)}
                         <span className="text-xs font-normal text-muted-foreground">/{plan.interval}</span>
                       </span>
                       {isSelected && <Check className="h-4 w-4 text-primary" />}
@@ -323,7 +317,7 @@ function PlanComparisonCard({ label, plan }: { label: string; plan: PortalPlanSu
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="font-medium mt-1">{plan.name}</p>
       <p className="text-lg font-bold">
-        {formatCurrency(plan.amount_cents, plan.currency)}
+        {formatCents(plan.amount_cents, plan.currency)}
         <span className="text-xs font-normal text-muted-foreground">/{plan.interval}</span>
       </p>
     </div>

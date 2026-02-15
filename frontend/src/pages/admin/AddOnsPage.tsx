@@ -70,14 +70,7 @@ import type {
   ApplyAddOnRequest,
   AppliedAddOnDetail,
 } from '@/types/billing'
-
-function formatCurrency(cents: number | string, currency: string = 'USD'): string {
-  const num = typeof cents === 'string' ? parseFloat(cents) : cents
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(num / 100)
-}
+import { formatCents } from '@/lib/utils'
 
 // --- Create/Edit Add-on Dialog ---
 function AddOnFormDialog({
@@ -304,7 +297,7 @@ function ApplyAddOnDialog({
                 <div className="flex justify-between mt-1">
                   <span className="text-muted-foreground">Default Amount</span>
                   <span className="font-medium">
-                    {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
+                    {formatCents(addOn.amount_cents, addOn.amount_currency)}
                   </span>
                 </div>
               </div>
@@ -348,14 +341,14 @@ function ApplyAddOnDialog({
                 <div className="flex justify-between mt-1">
                   <span className="text-muted-foreground">Customer will be charged</span>
                   <span className="font-semibold text-primary">
-                    {effectiveAmount > 0 ? formatCurrency(effectiveAmount, effectiveCurrency) : '—'}
+                    {effectiveAmount > 0 ? formatCents(effectiveAmount, effectiveCurrency) : '—'}
                   </span>
                 </div>
                 {hasOverride && (
                   <div className="flex justify-between mt-1">
                     <span className="text-muted-foreground text-xs">Default was</span>
                     <span className="text-xs text-muted-foreground line-through">
-                      {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
+                      {formatCents(addOn.amount_cents, addOn.amount_currency)}
                     </span>
                   </div>
                 )}
@@ -446,7 +439,7 @@ function ApplicationHistoryDialog({
                       </Link>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(app.amount_cents, app.amount_currency)}
+                      {formatCents(app.amount_cents, app.amount_currency)}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{app.amount_currency}</Badge>
@@ -663,7 +656,7 @@ export default function AddOnsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(stats.avgAmount)}
+              {formatCents(stats.avgAmount)}
             </div>
           </CardContent>
         </Card>
@@ -738,7 +731,7 @@ export default function AddOnsPage() {
                       <div className="flex items-center gap-1">
                         <Gift className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="font-medium">
-                          {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
+                          {formatCents(addOn.amount_cents, addOn.amount_currency)}
                         </span>
                       </div>
                     </TableCell>

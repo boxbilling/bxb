@@ -84,6 +84,7 @@ import type {
   WalletTopUp,
   WalletTransaction,
 } from '@/types/billing'
+import { formatCents } from '@/lib/utils'
 
 function formatCredits(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value
@@ -93,16 +94,6 @@ function formatCredits(value: number | string): string {
   })
 }
 
-function formatCurrency(
-  cents: number | string,
-  currency: string = 'USD'
-): string {
-  const num = typeof cents === 'string' ? parseFloat(cents) : cents
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(num / 100)
-}
 
 export default function WalletDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -426,7 +417,7 @@ export default function WalletDetailPage() {
                     <Separator orientation="vertical" className="h-8" />
                     <div>
                       <div className="text-sm font-medium">
-                        {formatCurrency(
+                        {formatCents(
                           forecast.avg_daily_consumption,
                           wallet.currency
                         )}
@@ -470,7 +461,7 @@ export default function WalletDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {formatCurrency(wallet.balance_cents, wallet.currency)}
+              {formatCents(wallet.balance_cents, wallet.currency)}
             </div>
           </CardContent>
         </Card>
@@ -494,7 +485,7 @@ export default function WalletDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {formatCurrency(wallet.consumed_amount_cents, wallet.currency)}
+              {formatCents(wallet.consumed_amount_cents, wallet.currency)}
             </div>
           </CardContent>
         </Card>
@@ -627,12 +618,12 @@ export default function WalletDetailPage() {
                             }
                           >
                             {tx.transaction_type === 'inbound' ? '+' : '-'}
-                            {formatCurrency(tx.credit_amount, wallet.currency)}
+                            {formatCents(tx.credit_amount, wallet.currency)}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="font-mono text-sm">
-                            {formatCurrency(
+                            {formatCents(
                               tx.running_balance * 100,
                               wallet.currency
                             )}
@@ -716,7 +707,7 @@ export default function WalletDetailPage() {
                             borderRadius: '8px',
                           }}
                           formatter={(value: number) => [
-                            formatCurrency(value, wallet.currency),
+                            formatCents(value, wallet.currency),
                             'Balance',
                           ]}
                         />
@@ -764,7 +755,7 @@ export default function WalletDetailPage() {
                             borderRadius: '8px',
                           }}
                           formatter={(value: number, name: string) => [
-                            formatCurrency(value, wallet.currency),
+                            formatCents(value, wallet.currency),
                             name === 'inbound' ? 'Credits In' : 'Credits Out',
                           ]}
                         />
