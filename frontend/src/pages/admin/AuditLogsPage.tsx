@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight, CalendarIcon, ExternalLink, Download } from 'lucide-react'
+import { Search, ScrollText, X, Copy, ChevronRight, CalendarIcon, ExternalLink, Download } from 'lucide-react'
 import { format, subDays, subMonths } from 'date-fns'
 import { toast } from 'sonner'
 import type { DateRange } from 'react-day-picker'
@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import { ChangesDisplay } from '@/components/JsonDiffDisplay'
 import { auditLogsApi, dataExportsApi, ApiError } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
 
@@ -126,33 +127,6 @@ function CopyableId({ id }: { id: string }) {
         <TooltipContent>{id}</TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  )
-}
-
-function ChangesDisplay({ changes }: { changes: Record<string, unknown> }) {
-  const entries = Object.entries(changes)
-  if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground">No changes recorded</p>
-  }
-
-  return (
-    <div className="space-y-2">
-      {entries.map(([key, value]) => {
-        const change = value as { old?: unknown; new?: unknown } | undefined
-        return (
-          <div key={key} className="flex items-start gap-2 text-sm font-mono">
-            <span className="font-medium text-foreground min-w-[120px]">{key}:</span>
-            <span className="text-red-600 dark:text-red-400 line-through">
-              {change?.old !== undefined ? String(change.old) : 'null'}
-            </span>
-            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground mt-0.5" />
-            <span className="text-green-600 dark:text-green-400">
-              {change?.new !== undefined ? String(change.new) : 'null'}
-            </span>
-          </div>
-        )
-      })}
-    </div>
   )
 }
 

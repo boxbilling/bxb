@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { ArrowRight, ExternalLink, Loader2 } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
+import { ChangesSummary } from '@/components/JsonDiffDisplay'
 import { auditLogsApi } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
 
@@ -19,31 +20,6 @@ function ActionBadge({ action }: { action: string }) {
     <Badge variant="outline" className={`text-xs ${styles[action] ?? ''}`}>
       {action.replace(/_/g, ' ')}
     </Badge>
-  )
-}
-
-function ChangesSummary({ changes }: { changes: Record<string, unknown> }) {
-  const entries = Object.entries(changes)
-  if (entries.length === 0) return null
-
-  return (
-    <div className="mt-1 space-y-0.5">
-      {entries.map(([key, value]) => {
-        const change = value as { old?: unknown; new?: unknown } | undefined
-        return (
-          <div key={key} className="flex items-center gap-1 text-xs font-mono">
-            <span className="text-muted-foreground">{key}:</span>
-            <span className="text-red-600 dark:text-red-400 line-through">
-              {change?.old !== undefined ? String(change.old) : 'null'}
-            </span>
-            <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" />
-            <span className="text-green-600 dark:text-green-400">
-              {change?.new !== undefined ? String(change.new) : 'null'}
-            </span>
-          </div>
-        )
-      })}
-    </div>
   )
 }
 
