@@ -116,6 +116,7 @@ export type WebhookEndpoint = components['schemas']['WebhookEndpointResponse']
 export type WebhookEndpointCreate = components['schemas']['WebhookEndpointCreate']
 export type WebhookEndpointUpdate = components['schemas']['WebhookEndpointUpdate']
 export type Webhook = components['schemas']['WebhookResponse']
+export type EndpointDeliveryStats = components['schemas']['EndpointDeliveryStats']
 
 // --- Organizations ---
 export type Organization = components['schemas']['OrganizationResponse']

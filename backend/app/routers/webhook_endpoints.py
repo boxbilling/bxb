@@ -12,6 +12,7 @@ from app.models.webhook_endpoint import WebhookEndpoint
 from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
 from app.repositories.webhook_repository import WebhookRepository
 from app.schemas.webhook import (
+    EndpointDeliveryStats,
     WebhookEndpointCreate,
     WebhookEndpointResponse,
     WebhookEndpointUpdate,
@@ -59,6 +60,30 @@ async def list_webhook_endpoints(
     repo = WebhookEndpointRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
+
+
+@router.get(
+    "/delivery_stats",
+    response_model=list[EndpointDeliveryStats],
+    summary="Get delivery stats per endpoint",
+    responses={401: {"description": "Unauthorized"}},
+)
+async def get_delivery_stats(
+    db: Session = Depends(get_db),
+) -> list[EndpointDeliveryStats]:
+    """Get delivery success/failure stats grouped by webhook endpoint."""
+    repo = WebhookRepository(db)
+    raw_stats = repo.delivery_stats_by_endpoint()
+    return [
+        EndpointDeliveryStats(
+            endpoint_id=s["endpoint_id"],
+            total=s["total"],
+            succeeded=s["succeeded"],
+            failed=s["failed"],
+            success_rate=round(s["succeeded"] / s["total"] * 100, 1) if s["total"] > 0 else 0.0,
+        )
+        for s in raw_stats
+    ]
 
 
 @router.get(

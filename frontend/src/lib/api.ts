@@ -86,6 +86,7 @@ type WebhookEndpointResponse = components['schemas']['WebhookEndpointResponse']
 type WebhookEndpointCreate = components['schemas']['WebhookEndpointCreate']
 type WebhookEndpointUpdate = components['schemas']['WebhookEndpointUpdate']
 type WebhookResponse = components['schemas']['WebhookResponse']
+type EndpointDeliveryStats = components['schemas']['EndpointDeliveryStats']
 
 type OrganizationResponse = components['schemas']['OrganizationResponse']
 type OrganizationCreate = components['schemas']['OrganizationCreate']
@@ -825,6 +826,8 @@ export const webhookEndpointsApi = {
     request<WebhookResponse>(`/v1/webhook_endpoints/hooks/${webhookId}`),
   retryWebhook: (webhookId: string) =>
     request<WebhookResponse>(`/v1/webhook_endpoints/hooks/${webhookId}/retry`, { method: 'POST' }),
+  deliveryStats: () =>
+    request<EndpointDeliveryStats[]>('/v1/webhook_endpoints/delivery_stats'),
 }
 
 // Organizations API

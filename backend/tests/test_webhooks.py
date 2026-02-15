@@ -11,6 +11,7 @@ from app.models.webhook_endpoint import WebhookEndpoint
 from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
 from app.repositories.webhook_repository import WebhookRepository
 from app.schemas.webhook import (
+    EndpointDeliveryStats,
     WebhookEndpointCreate,
     WebhookEndpointResponse,
     WebhookEndpointUpdate,
@@ -527,6 +528,73 @@ class TestWebhookRepository:
         repo = WebhookRepository(db_session)
         assert repo.increment_retry(uuid4()) is None
 
+    def test_delivery_stats_by_endpoint_empty(self, db_session):
+        """Test delivery stats with no webhooks."""
+        repo = WebhookRepository(db_session)
+        assert repo.delivery_stats_by_endpoint() == []
+
+    def test_delivery_stats_by_endpoint(self, db_session, active_endpoint):
+        """Test delivery stats grouped by endpoint."""
+        repo = WebhookRepository(db_session)
+        wh1 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "1"},
+        )
+        wh2 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="payment.succeeded",
+            payload={"event": "2"},
+        )
+        wh3 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="customer.created",
+            payload={"event": "3"},
+        )
+        repo.mark_succeeded(wh1.id, 200)
+        repo.mark_succeeded(wh2.id, 200)
+        repo.mark_failed(wh3.id, http_status=500)
+
+        stats = repo.delivery_stats_by_endpoint()
+        assert len(stats) == 1
+        assert stats[0]["endpoint_id"] == str(active_endpoint.id)
+        assert stats[0]["total"] == 3
+        assert stats[0]["succeeded"] == 2
+        assert stats[0]["failed"] == 1
+
+    def test_delivery_stats_multiple_endpoints(self, db_session):
+        """Test delivery stats with multiple endpoints."""
+        ep_repo = WebhookEndpointRepository(db_session)
+        ep1 = ep_repo.create(
+            WebhookEndpointCreate(url="https://ep1.com/hook"),
+            DEFAULT_ORG_ID,
+        )
+        ep2 = ep_repo.create(
+            WebhookEndpointCreate(url="https://ep2.com/hook"),
+            DEFAULT_ORG_ID,
+        )
+        repo = WebhookRepository(db_session)
+        wh1 = repo.create(
+            webhook_endpoint_id=ep1.id,
+            webhook_type="invoice.created",
+            payload={"event": "1"},
+        )
+        repo.mark_succeeded(wh1.id, 200)
+        wh2 = repo.create(
+            webhook_endpoint_id=ep2.id,
+            webhook_type="invoice.created",
+            payload={"event": "2"},
+        )
+        repo.mark_failed(wh2.id, http_status=500)
+
+        stats = repo.delivery_stats_by_endpoint()
+        assert len(stats) == 2
+        stats_by_id = {s["endpoint_id"]: s for s in stats}
+        assert stats_by_id[str(ep1.id)]["succeeded"] == 1
+        assert stats_by_id[str(ep1.id)]["failed"] == 0
+        assert stats_by_id[str(ep2.id)]["succeeded"] == 0
+        assert stats_by_id[str(ep2.id)]["failed"] == 1
+
 
 class TestWebhookEndpointSchema:
     """Tests for WebhookEndpoint Pydantic schemas."""
@@ -659,3 +727,17 @@ class TestWebhookSchema:
                 object_type="x" * 51,
                 payload={"data": "test"},
             )
+
+    def test_endpoint_delivery_stats_schema(self):
+        """Test EndpointDeliveryStats schema."""
+        stats = EndpointDeliveryStats(
+            endpoint_id="abc-123",
+            total=10,
+            succeeded=8,
+            failed=2,
+            success_rate=80.0,
+        )
+        assert stats.total == 10
+        assert stats.succeeded == 8
+        assert stats.failed == 2
+        assert stats.success_rate == 80.0

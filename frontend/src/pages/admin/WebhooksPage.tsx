@@ -70,6 +70,7 @@ import type {
   WebhookEndpointCreate,
   WebhookEndpointUpdate,
   Webhook as WebhookType,
+  EndpointDeliveryStats,
 } from '@/types/billing'
 
 const WEBHOOK_EVENT_TYPE_CATEGORIES: Record<string, string[]> = {
@@ -433,6 +434,16 @@ export default function WebhooksPage() {
     queryFn: () => webhookEndpointsApi.listWebhooks({ limit: 100 }),
   })
 
+  // Fetch delivery stats per endpoint
+  const { data: deliveryStats = [] } = useQuery({
+    queryKey: ['webhook-delivery-stats'],
+    queryFn: () => webhookEndpointsApi.deliveryStats(),
+  })
+
+  const deliveryStatsMap = Object.fromEntries(
+    deliveryStats.map((s: EndpointDeliveryStats) => [s.endpoint_id, s])
+  )
+
   // Filter endpoints
   const filteredEndpoints = endpoints.filter((ep) => {
     const matchesSearch =
@@ -661,6 +672,7 @@ export default function WebhooksPage() {
                   <TableHead>URL</TableHead>
                   <TableHead>Signature Algorithm</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Delivery Rate</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -672,6 +684,7 @@ export default function WebhooksPage() {
                       <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                     </TableRow>
@@ -679,7 +692,7 @@ export default function WebhooksPage() {
                 ) : filteredEndpoints.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={6}
                       className="h-24 text-center text-muted-foreground"
                     >
                       <Radio className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -703,6 +716,49 @@ export default function WebhooksPage() {
                       </TableCell>
                       <TableCell>
                         {getEndpointStatusBadge(endpoint.status)}
+                      </TableCell>
+                      <TableCell>
+                        {(() => {
+                          const epStats = deliveryStatsMap[endpoint.id]
+                          if (!epStats || epStats.total === 0) {
+                            return (
+                              <span className="text-sm text-muted-foreground">
+                                No deliveries
+                              </span>
+                            )
+                          }
+                          const rate = epStats.success_rate
+                          const color =
+                            rate >= 95
+                              ? 'text-green-600'
+                              : rate >= 80
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                          return (
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 max-w-[80px]">
+                                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full ${
+                                      rate >= 95
+                                        ? 'bg-green-600'
+                                        : rate >= 80
+                                          ? 'bg-yellow-600'
+                                          : 'bg-red-600'
+                                    }`}
+                                    style={{ width: `${rate}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <span className={`text-sm font-medium ${color}`}>
+                                {rate}%
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                ({epStats.succeeded}/{epStats.total})
+                              </span>
+                            </div>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {format(new Date(endpoint.created_at), 'MMM d, yyyy')}

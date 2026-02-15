@@ -2280,6 +2280,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/webhook_endpoints/delivery_stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get delivery stats per endpoint
+         * @description Get delivery success/failure stats grouped by webhook endpoint.
+         */
+        get: operations["get_delivery_stats_v1_webhook_endpoints_delivery_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhook_endpoints/{endpoint_id}": {
         parameters: {
             query?: never;
@@ -4828,6 +4848,19 @@ export interface components {
             status?: string | null;
             /** Thresholds */
             thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][] | null;
+        };
+        /** EndpointDeliveryStats */
+        EndpointDeliveryStats: {
+            /** Endpoint Id */
+            endpoint_id: string;
+            /** Total */
+            total: number;
+            /** Succeeded */
+            succeeded: number;
+            /** Failed */
+            failed: number;
+            /** Success Rate */
+            success_rate: number;
         };
         /** EntitlementCopyRequest */
         EntitlementCopyRequest: {
@@ -13365,6 +13398,33 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_delivery_stats_v1_webhook_endpoints_delivery_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointDeliveryStats"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

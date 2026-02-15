@@ -220,6 +220,94 @@ class TestWebhookEndpointAPI:
         assert response.json()["detail"] == "Webhook endpoint not found"
 
 
+class TestDeliveryStatsAPI:
+    """Tests for webhook delivery stats API endpoint."""
+
+    def test_delivery_stats_empty(self, client: TestClient):
+        """Test delivery stats with no webhooks."""
+        response = client.get("/v1/webhook_endpoints/delivery_stats")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_delivery_stats_with_data(self, client: TestClient, db_session, active_endpoint):
+        """Test delivery stats with mixed webhook statuses."""
+        repo = WebhookRepository(db_session)
+        wh1 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "1"},
+        )
+        wh2 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="payment.succeeded",
+            payload={"event": "2"},
+        )
+        wh3 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="customer.created",
+            payload={"event": "3"},
+        )
+        wh4 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.finalized",
+            payload={"event": "4"},
+        )
+        repo.mark_succeeded(wh1.id, 200)
+        repo.mark_succeeded(wh2.id, 200)
+        repo.mark_succeeded(wh3.id, 200)
+        repo.mark_failed(wh4.id, http_status=500)
+
+        response = client.get("/v1/webhook_endpoints/delivery_stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        stats = data[0]
+        assert stats["endpoint_id"] == str(active_endpoint.id)
+        assert stats["total"] == 4
+        assert stats["succeeded"] == 3
+        assert stats["failed"] == 1
+        assert stats["success_rate"] == 75.0
+
+    def test_delivery_stats_all_succeeded(self, client: TestClient, db_session, active_endpoint):
+        """Test delivery stats when all webhooks succeeded."""
+        repo = WebhookRepository(db_session)
+        wh = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "1"},
+        )
+        repo.mark_succeeded(wh.id, 200)
+
+        response = client.get("/v1/webhook_endpoints/delivery_stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data[0]["success_rate"] == 100.0
+
+    def test_delivery_stats_pending_webhooks(self, client: TestClient, db_session, active_endpoint):
+        """Test delivery stats includes pending webhooks in total but not succeeded/failed."""
+        repo = WebhookRepository(db_session)
+        repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "1"},
+        )
+        wh2 = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="payment.succeeded",
+            payload={"event": "2"},
+        )
+        repo.mark_succeeded(wh2.id, 200)
+
+        response = client.get("/v1/webhook_endpoints/delivery_stats")
+        assert response.status_code == 200
+        data = response.json()
+        stats = data[0]
+        assert stats["total"] == 2
+        assert stats["succeeded"] == 1
+        assert stats["failed"] == 0
+        assert stats["success_rate"] == 50.0
+
+
 class TestWebhookListAPI:
     """Tests for webhook list/detail/retry API endpoints."""
 

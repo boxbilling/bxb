@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.models.webhook import Webhook
@@ -110,6 +110,32 @@ class WebhookRepository:
         self.db.commit()
         self.db.refresh(webhook)
         return webhook
+
+    def delivery_stats_by_endpoint(self) -> list[dict[str, Any]]:
+        """Get delivery stats (total, succeeded, failed) grouped by endpoint."""
+        rows = (
+            self.db.query(
+                Webhook.webhook_endpoint_id,
+                func.count(Webhook.id).label("total"),
+                func.sum(
+                    case((Webhook.status == "succeeded", 1), else_=0)
+                ).label("succeeded"),
+                func.sum(
+                    case((Webhook.status == "failed", 1), else_=0)
+                ).label("failed"),
+            )
+            .group_by(Webhook.webhook_endpoint_id)
+            .all()
+        )
+        return [
+            {
+                "endpoint_id": str(row.webhook_endpoint_id),
+                "total": row.total,
+                "succeeded": int(row.succeeded or 0),
+                "failed": int(row.failed or 0),
+            }
+            for row in rows
+        ]
 
     def increment_retry(self, webhook_id: UUID) -> Webhook | None:
         """Increment the retry count and update last_retried_at."""

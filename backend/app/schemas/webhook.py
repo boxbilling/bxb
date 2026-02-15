@@ -53,3 +53,11 @@ class WebhookEventPayload(BaseModel):
     object_type: str | None = Field(default=None, max_length=50)
     object_id: UUID | None = None
     payload: dict[str, Any]
+
+
+class EndpointDeliveryStats(BaseModel):
+    endpoint_id: str
+    total: int
+    succeeded: int
+    failed: int
+    success_rate: float
