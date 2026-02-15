@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Search, ArrowUpDown, Target, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -568,8 +569,9 @@ function SubscriptionThresholdsDialog({
 
 export default function SubscriptionsPage() {
   const queryClient = useQueryClient()
+  const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all')
   const [formOpen, setFormOpen] = useState(false)
   const [changePlanSub, setChangePlanSub] = useState<Subscription | null>(null)
   const [terminateSub, setTerminateSub] = useState<Subscription | null>(null)

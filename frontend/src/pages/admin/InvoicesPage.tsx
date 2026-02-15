@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2, ScrollText, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -545,8 +545,9 @@ function InvoicePreviewDialog({
 
 export default function InvoicesPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
 

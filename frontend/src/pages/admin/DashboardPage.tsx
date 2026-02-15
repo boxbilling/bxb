@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   Users,
   CreditCard,
@@ -109,6 +110,7 @@ function StatCard({
   loading,
   trend,
   invertTrendColor,
+  href,
 }: {
   title: string
   value: string | number
@@ -118,9 +120,10 @@ function StatCard({
   loading?: boolean
   trend?: { change_percent: number | null } | null
   invertTrendColor?: boolean
+  href?: string
 }) {
-  return (
-    <Card>
+  const card = (
+    <Card className={href ? 'transition-colors hover:border-primary/40 cursor-pointer' : undefined}>
       <CardContent className="pt-5 pb-4 px-5">
         {loading ? (
           <>
@@ -146,6 +149,16 @@ function StatCard({
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return (
+      <Link to={href} className="no-underline">
+        {card}
+      </Link>
+    )
+  }
+
+  return card
 }
 
 type PeriodPreset = '7d' | '30d' | '90d' | '12m' | 'custom'
@@ -356,6 +369,7 @@ export default function DashboardPage() {
           mono
           loading={revenueLoading}
           trend={revenue?.mrr_trend}
+          href="/admin/invoices?status=paid"
         />
         <StatCard
           title="Outstanding Invoices"
@@ -368,6 +382,7 @@ export default function DashboardPage() {
           icon={FileText}
           mono
           loading={revenueLoading}
+          href="/admin/invoices?status=finalized"
         />
         <StatCard
           title="Overdue Amount"
@@ -380,6 +395,7 @@ export default function DashboardPage() {
           icon={AlertTriangle}
           mono
           loading={revenueLoading}
+          href="/admin/invoices?status=finalized"
         />
         <StatCard
           title="Wallet Credits"
@@ -392,6 +408,7 @@ export default function DashboardPage() {
           icon={Wallet}
           mono
           loading={statsLoading}
+          href="/admin/wallets"
         />
       </div>
 
@@ -403,6 +420,7 @@ export default function DashboardPage() {
           description="total"
           icon={Users}
           loading={customersLoading}
+          href="/admin/customers"
         />
         <StatCard
           title="New Customers"
@@ -411,6 +429,7 @@ export default function DashboardPage() {
           icon={UserPlus}
           loading={customersLoading}
           trend={customerMetrics?.new_trend}
+          href="/admin/customers"
         />
         <StatCard
           title="Churned"
@@ -420,6 +439,7 @@ export default function DashboardPage() {
           loading={customersLoading}
           trend={customerMetrics?.churned_trend}
           invertTrendColor
+          href="/admin/customers"
         />
       </div>
 
@@ -431,6 +451,7 @@ export default function DashboardPage() {
           description="currently active"
           icon={CreditCard}
           loading={subscriptionsLoading}
+          href="/admin/subscriptions?status=active"
         />
         <StatCard
           title="New Subscriptions"
@@ -439,6 +460,7 @@ export default function DashboardPage() {
           icon={CreditCard}
           loading={subscriptionsLoading}
           trend={subscriptionMetrics?.new_trend}
+          href="/admin/subscriptions"
         />
         <StatCard
           title="Canceled"
@@ -448,6 +470,7 @@ export default function DashboardPage() {
           loading={subscriptionsLoading}
           trend={subscriptionMetrics?.canceled_trend}
           invertTrendColor
+          href="/admin/subscriptions?status=canceled"
         />
       </div>
 
