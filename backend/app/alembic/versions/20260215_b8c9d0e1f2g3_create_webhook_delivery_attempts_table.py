@@ -1,7 +1,7 @@
 """create webhook_delivery_attempts table
 
 Revision ID: b8c9d0e1f2g3
-Revises: a7b8c9d0e1f2
+Revises: f9898f4e89a3
 Create Date: 2026-02-15 23:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "b8c9d0e1f2g3"
-down_revision = "a7b8c9d0e1f2"
+down_revision = "f9898f4e89a3"
 branch_labels = None
 depends_on = None
 
