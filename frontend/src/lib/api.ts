@@ -30,6 +30,10 @@ type UsageTrendResponse = components['schemas']['UsageTrendResponse']
 type InvoiceResponse = components['schemas']['InvoiceResponse']
 type InvoiceUpdate = components['schemas']['InvoiceUpdate']
 type InvoiceStatus = components['schemas']['InvoiceStatus']
+type OneOffInvoiceCreate = components['schemas']['OneOffInvoiceCreate']
+type BulkFinalizeRequest = components['schemas']['BulkFinalizeRequest']
+type BulkFinalizeResponse = components['schemas']['BulkFinalizeResponse']
+type SendReminderResponse = components['schemas']['SendReminderResponse']
 
 type PaymentResponse = components['schemas']['PaymentResponse']
 type PaymentStatus = components['schemas']['PaymentStatus']
@@ -564,6 +568,20 @@ export const invoicesApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  createOneOff: (data: OneOffInvoiceCreate) =>
+    request<InvoiceResponse>('/v1/invoices/one_off', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  bulkFinalize: (data: BulkFinalizeRequest) =>
+    request<BulkFinalizeResponse>('/v1/invoices/bulk_finalize', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  sendReminder: (id: string) =>
+    request<SendReminderResponse>(`/v1/invoices/${id}/send_reminder`, { method: 'POST' }),
+  previewPdf: (id: string): Promise<Blob> =>
+    requestBlob(`/v1/invoices/${id}/pdf_preview`),
 }
 
 // Payments API

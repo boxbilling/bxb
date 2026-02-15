@@ -1848,3 +1848,421 @@ class TestSendInvoiceEmailAPI:
 
         assert response.status_code == 200
         assert response.json() == {"sent": False}
+
+
+class TestCreateOneOffInvoiceAPI:
+    """Tests for POST /v1/invoices/one_off endpoint."""
+
+    def test_create_one_off_invoice(self, client, db_session, customer):
+        """Test successful creation of a one-off invoice."""
+        response = client.post(
+            "/v1/invoices/one_off",
+            json={
+                "customer_id": str(customer.id),
+                "currency": "USD",
+                "line_items": [
+                    {
+                        "description": "Consulting fee",
+                        "quantity": "2",
+                        "unit_price": "150.00",
+                        "amount": "300.00",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "draft"
+        assert data["invoice_type"] == "one_off"
+        assert data["customer_id"] == str(customer.id)
+        assert data["subtotal"] == "300.0000"
+
+    def test_create_one_off_invoice_with_due_date(self, client, db_session, customer):
+        """Test one-off invoice creation with due date."""
+        due_date = (datetime.now(UTC) + timedelta(days=30)).isoformat()
+        response = client.post(
+            "/v1/invoices/one_off",
+            json={
+                "customer_id": str(customer.id),
+                "currency": "EUR",
+                "due_date": due_date,
+                "line_items": [
+                    {
+                        "description": "Service fee",
+                        "quantity": "1",
+                        "unit_price": "99.99",
+                        "amount": "99.99",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["currency"] == "EUR"
+        assert data["due_date"] is not None
+
+    def test_create_one_off_invoice_multiple_line_items(self, client, db_session, customer):
+        """Test one-off invoice with multiple line items."""
+        response = client.post(
+            "/v1/invoices/one_off",
+            json={
+                "customer_id": str(customer.id),
+                "line_items": [
+                    {
+                        "description": "Item A",
+                        "quantity": "1",
+                        "unit_price": "10.00",
+                        "amount": "10.00",
+                    },
+                    {
+                        "description": "Item B",
+                        "quantity": "3",
+                        "unit_price": "5.00",
+                        "amount": "15.00",
+                    },
+                ],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["subtotal"] == "25.0000"
+
+    def test_create_one_off_invoice_customer_not_found(self, client):
+        """Test one-off invoice creation with non-existent customer."""
+        response = client.post(
+            "/v1/invoices/one_off",
+            json={
+                "customer_id": str(uuid4()),
+                "line_items": [
+                    {
+                        "description": "Test",
+                        "quantity": "1",
+                        "unit_price": "10.00",
+                        "amount": "10.00",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 404
+        assert "Customer not found" in response.json()["detail"]
+
+    def test_create_one_off_invoice_no_line_items(self, client, db_session, customer):
+        """Test one-off invoice creation with empty line items fails validation."""
+        response = client.post(
+            "/v1/invoices/one_off",
+            json={
+                "customer_id": str(customer.id),
+                "line_items": [],
+            },
+        )
+        assert response.status_code == 422
+
+    def test_create_one_off_invoice_creates_audit_log(self, client, db_session, customer):
+        """Test that one-off invoice creation creates an audit log."""
+        response = client.post(
+            "/v1/invoices/one_off",
+            json={
+                "customer_id": str(customer.id),
+                "line_items": [
+                    {
+                        "description": "Audit test",
+                        "quantity": "1",
+                        "unit_price": "50.00",
+                        "amount": "50.00",
+                    }
+                ],
+            },
+        )
+        assert response.status_code == 200
+        invoice_id = response.json()["id"]
+
+        audit_repo = AuditLogRepository(db_session)
+        logs = audit_repo.get_by_resource("invoice", invoice_id)
+        assert len(logs) >= 1
+
+
+class TestBulkFinalizeAPI:
+    """Tests for POST /v1/invoices/bulk_finalize endpoint."""
+
+    def test_bulk_finalize_success(self, client, db_session, customer, subscription, sample_line_items):
+        """Test successful bulk finalization of multiple draft invoices."""
+        repo = InvoiceRepository(db_session)
+        invoices = []
+        for i in range(3):
+            data = InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC) + timedelta(days=i * 30),
+                billing_period_end=datetime.now(UTC) + timedelta(days=(i + 1) * 30),
+                line_items=sample_line_items,
+            )
+            invoices.append(repo.create(data, DEFAULT_ORG_ID))
+
+        response = client.post(
+            "/v1/invoices/bulk_finalize",
+            json={"invoice_ids": [str(inv.id) for inv in invoices]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["finalized_count"] == 3
+        assert data["failed_count"] == 0
+        assert len(data["results"]) == 3
+        assert all(r["success"] for r in data["results"])
+
+    def test_bulk_finalize_mixed_results(self, client, db_session, customer, subscription, sample_line_items):
+        """Test bulk finalize with mix of valid and already-finalized invoices."""
+        repo = InvoiceRepository(db_session)
+        draft = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+        already_finalized = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC) + timedelta(days=30),
+                billing_period_end=datetime.now(UTC) + timedelta(days=60),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(already_finalized.id)
+
+        response = client.post(
+            "/v1/invoices/bulk_finalize",
+            json={"invoice_ids": [str(draft.id), str(already_finalized.id)]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["finalized_count"] == 1
+        assert data["failed_count"] == 1
+
+    def test_bulk_finalize_not_found(self, client):
+        """Test bulk finalize with non-existent invoice IDs."""
+        response = client.post(
+            "/v1/invoices/bulk_finalize",
+            json={"invoice_ids": [str(uuid4())]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["finalized_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Invoice not found"
+
+    def test_bulk_finalize_empty_list(self, client):
+        """Test bulk finalize with empty list fails validation."""
+        response = client.post(
+            "/v1/invoices/bulk_finalize",
+            json={"invoice_ids": []},
+        )
+        assert response.status_code == 422
+
+    def test_bulk_finalize_repo_returns_none(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test bulk finalize when repo.finalize returns None (defensive branch)."""
+        repo = InvoiceRepository(db_session)
+        invoice = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        with patch.object(InvoiceRepository, "finalize", return_value=None):
+            response = client.post(
+                "/v1/invoices/bulk_finalize",
+                json={"invoice_ids": [str(invoice.id)]},
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["finalized_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Failed to finalize"
+
+
+class TestSendInvoiceReminderAPI:
+    """Tests for POST /v1/invoices/{invoice_id}/send_reminder endpoint."""
+
+    def test_send_reminder_finalized(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful reminder send for a finalized invoice."""
+        # Ensure customer has email
+        customer.email = "test@example.com"
+        db_session.commit()
+
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch(
+            "app.routers.invoices.EmailService.send_email",
+            new_callable=AsyncMock,
+            return_value=True,
+        ) as mock_send:
+            response = client.post(f"/v1/invoices/{invoice.id}/send_reminder")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["sent"] is True
+        assert data["invoice_id"] == str(invoice.id)
+        mock_send.assert_called_once()
+
+    def test_send_reminder_draft_returns_400(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that sending reminder for a draft invoice returns 400."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/send_reminder")
+        assert response.status_code == 400
+        assert "finalized" in response.json()["detail"]
+
+    def test_send_reminder_paid_returns_400(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that sending reminder for a paid invoice returns 400."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+        repo.mark_paid(invoice.id)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/send_reminder")
+        assert response.status_code == 400
+
+    def test_send_reminder_not_found(self, client):
+        """Test that sending reminder for a non-existent invoice returns 404."""
+        response = client.post(f"/v1/invoices/{uuid4()}/send_reminder")
+        assert response.status_code == 404
+
+    def test_send_reminder_no_customer_email(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test reminder when customer has no email returns 400."""
+        customer.email = None
+        db_session.commit()
+
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        response = client.post(f"/v1/invoices/{invoice.id}/send_reminder")
+        assert response.status_code == 400
+        assert "email" in response.json()["detail"]
+
+
+class TestPdfPreviewAPI:
+    """Tests for GET /v1/invoices/{invoice_id}/pdf_preview endpoint."""
+
+    def test_pdf_preview_finalized(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful PDF preview for a finalized invoice."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch(
+            "app.routers.invoices.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-preview-test",
+        ):
+            response = client.get(f"/v1/invoices/{invoice.id}/pdf_preview")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-preview-test"
+        assert response.headers["content-type"] == "application/pdf"
+        assert "inline" in response.headers["content-disposition"]
+
+    def test_pdf_preview_draft_returns_400(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test that PDF preview for a draft invoice returns 400."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+
+        response = client.get(f"/v1/invoices/{invoice.id}/pdf_preview")
+        assert response.status_code == 400
+
+    def test_pdf_preview_not_found(self, client):
+        """Test that PDF preview for a non-existent invoice returns 404."""
+        response = client.get(f"/v1/invoices/{uuid4()}/pdf_preview")
+        assert response.status_code == 404
+
+    def test_pdf_preview_paid(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test successful PDF preview for a paid invoice."""
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+        repo.mark_paid(invoice.id)
+
+        with patch(
+            "app.routers.invoices.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-paid",
+        ):
+            response = client.get(f"/v1/invoices/{invoice.id}/pdf_preview")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-paid"

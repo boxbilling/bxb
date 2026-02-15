@@ -37,6 +37,35 @@ class InvoiceUpdate(BaseModel):
     paid_at: datetime | None = None
 
 
+class OneOffInvoiceCreate(BaseModel):
+    customer_id: UUID
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    line_items: list[InvoiceLineItem] = Field(min_length=1)
+    due_date: datetime | None = None
+    billing_entity_id: UUID | None = None
+
+
+class BulkFinalizeRequest(BaseModel):
+    invoice_ids: list[UUID] = Field(min_length=1)
+
+
+class BulkFinalizeResult(BaseModel):
+    invoice_id: UUID
+    success: bool
+    error: str | None = None
+
+
+class BulkFinalizeResponse(BaseModel):
+    results: list[BulkFinalizeResult]
+    finalized_count: int
+    failed_count: int
+
+
+class SendReminderResponse(BaseModel):
+    sent: bool
+    invoice_id: UUID
+
+
 class InvoiceResponse(BaseModel):
     id: UUID
     invoice_number: str

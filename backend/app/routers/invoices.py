@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
-from app.models.invoice import Invoice, InvoiceStatus
+from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
 from app.models.invoice_settlement import InvoiceSettlement
 from app.models.payment import PaymentProvider
 from app.repositories.customer_repository import CustomerRepository
@@ -18,7 +18,15 @@ from app.repositories.invoice_settlement_repository import InvoiceSettlementRepo
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.payment_method_repository import PaymentMethodRepository
 from app.repositories.payment_repository import PaymentRepository
-from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
+from app.schemas.invoice import (
+    BulkFinalizeRequest,
+    BulkFinalizeResponse,
+    BulkFinalizeResult,
+    InvoiceResponse,
+    InvoiceUpdate,
+    OneOffInvoiceCreate,
+    SendReminderResponse,
+)
 from app.schemas.invoice_preview import InvoicePreviewRequest, InvoicePreviewResponse
 from app.schemas.invoice_settlement import InvoiceSettlementResponse
 from app.services.audit_service import AuditService
@@ -58,6 +66,121 @@ async def list_invoices(
         customer_id=customer_id,
         subscription_id=subscription_id,
         status=status,
+    )
+
+
+@router.post(
+    "/one_off",
+    response_model=InvoiceResponse,
+    summary="Create a one-off invoice",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+        422: {"description": "Validation error"},
+    },
+)
+async def create_one_off_invoice(
+    data: OneOffInvoiceCreate,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Invoice:
+    """Create a one-off invoice with custom line items (not tied to a subscription)."""
+    from datetime import datetime
+
+    from app.schemas.invoice import InvoiceCreate
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(data.customer_id)
+    if not customer or customer.organization_id != organization_id:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    now = datetime.now()
+    invoice_data = InvoiceCreate(
+        customer_id=data.customer_id,
+        billing_entity_id=data.billing_entity_id,
+        billing_period_start=now,
+        billing_period_end=now,
+        invoice_type=InvoiceType.ONE_OFF,
+        currency=data.currency,
+        line_items=data.line_items,
+        due_date=data.due_date,
+    )
+
+    repo = InvoiceRepository(db)
+    invoice = repo.create(invoice_data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="invoice",
+        resource_id=invoice.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        old_status="",
+        new_status="draft",
+        actor_type="api_key",
+    )
+
+    return invoice
+
+
+@router.post(
+    "/bulk_finalize",
+    response_model=BulkFinalizeResponse,
+    summary="Bulk finalize draft invoices",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
+async def bulk_finalize_invoices(
+    data: BulkFinalizeRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BulkFinalizeResponse:
+    """Finalize multiple draft invoices in one request."""
+    repo = InvoiceRepository(db)
+    audit_service = AuditService(db)
+    results: list[BulkFinalizeResult] = []
+    finalized_count = 0
+    failed_count = 0
+
+    for invoice_id in data.invoice_ids:
+        invoice = repo.get_by_id(invoice_id, organization_id)
+        if not invoice:
+            results.append(BulkFinalizeResult(
+                invoice_id=invoice_id, success=False, error="Invoice not found"
+            ))
+            failed_count += 1
+            continue
+
+        try:
+            finalized = repo.finalize(invoice_id)
+            if not finalized:
+                results.append(BulkFinalizeResult(
+                    invoice_id=invoice_id, success=False, error="Failed to finalize"
+                ))
+                failed_count += 1
+                continue
+
+            audit_service.log_status_change(
+                resource_type="invoice",
+                resource_id=invoice_id,
+                organization_id=organization_id,
+                old_status="draft",
+                new_status="finalized",
+                actor_type="api_key",
+            )
+
+            results.append(BulkFinalizeResult(invoice_id=invoice_id, success=True))
+            finalized_count += 1
+        except ValueError as e:
+            results.append(BulkFinalizeResult(
+                invoice_id=invoice_id, success=False, error=str(e)
+            ))
+            failed_count += 1
+
+    return BulkFinalizeResponse(
+        results=results,
+        finalized_count=finalized_count,
+        failed_count=failed_count,
     )
 
 
@@ -448,6 +571,72 @@ async def send_invoice_email(
     return {"sent": sent}
 
 
+@router.post(
+    "/{invoice_id}/send_reminder",
+    response_model=SendReminderResponse,
+    summary="Send payment reminder for overdue invoice",
+    responses={
+        400: {"description": "Invoice is not overdue or finalized"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def send_invoice_reminder(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> SendReminderResponse:
+    """Send a payment reminder email for an overdue or finalized invoice."""
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status != InvoiceStatus.FINALIZED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Reminders can only be sent for finalized invoices",
+        )
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(invoice.customer_id)  # type: ignore[arg-type]
+    if not customer or not customer.email:
+        raise HTTPException(status_code=400, detail="Customer has no email address")
+
+    org_repo = OrganizationRepository(db)
+    organization = org_repo.get_by_id(organization_id)
+
+    org_name = str(organization.name or "") if organization else ""
+
+    from app.services.email_service import _format_amount, _format_date
+
+    html_body = (
+        f"<h2>Payment Reminder</h2>"
+        f"<p>Dear {customer.name or 'Customer'},</p>"
+        f"<p>This is a friendly reminder that invoice "
+        f"<strong>{invoice.invoice_number}</strong> from {org_name} "
+        f"is awaiting payment.</p>"
+        f"<table>"
+        f"<tr><td><strong>Invoice #:</strong></td><td>{invoice.invoice_number}</td></tr>"
+        f"<tr><td><strong>Amount Due:</strong></td>"
+        f"<td>{_format_amount(invoice.total)} {invoice.currency}</td></tr>"
+        f"<tr><td><strong>Due Date:</strong></td>"
+        f"<td>{_format_date(invoice.due_date)}</td></tr>"
+        f"</table>"
+        f"<p>Please arrange payment at your earliest convenience.</p>"
+        f"<p>Thank you.</p>"
+    )
+
+    email_service = EmailService()
+    sent = await email_service.send_email(
+        to=str(customer.email),
+        subject=f"Payment Reminder: Invoice {invoice.invoice_number}",
+        html_body=html_body,
+    )
+
+    return SendReminderResponse(sent=sent, invoice_id=invoice_id)
+
+
 @router.delete(
     "/{invoice_id}",
     status_code=204,
@@ -470,6 +659,58 @@ async def delete_invoice(
             raise HTTPException(status_code=404, detail="Invoice not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+
+@router.get(
+    "/{invoice_id}/pdf_preview",
+    summary="Get invoice PDF for inline preview",
+    responses={
+        400: {"description": "Invoice must be finalized or paid to generate PDF"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def preview_invoice_pdf(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Response:
+    """Generate and return a PDF for inline preview (Content-Disposition: inline)."""
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status not in (InvoiceStatus.FINALIZED.value, InvoiceStatus.PAID.value):
+        raise HTTPException(
+            status_code=400,
+            detail="Invoice must be finalized or paid to generate PDF",
+        )
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(invoice.customer_id)  # type: ignore[arg-type]
+
+    org_repo = OrganizationRepository(db)
+    organization = org_repo.get_by_id(organization_id)
+
+    fee_repo = FeeRepository(db)
+    fees = fee_repo.get_by_invoice_id(invoice_id)
+
+    pdf_service = PdfService()
+    pdf_bytes = pdf_service.generate_invoice_pdf(
+        invoice=invoice,
+        fees=fees,
+        customer=customer,  # type: ignore[arg-type]
+        organization=organization,  # type: ignore[arg-type]
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="invoice_{invoice.invoice_number}.pdf"'
+        },
+    )
 
 
 @router.post(

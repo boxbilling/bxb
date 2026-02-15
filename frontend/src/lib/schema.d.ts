@@ -1094,6 +1094,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/one_off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a one-off invoice
+         * @description Create a one-off invoice with custom line items (not tied to a subscription).
+         */
+        post: operations["create_one_off_invoice_v1_invoices_one_off_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/bulk_finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk finalize draft invoices
+         * @description Finalize multiple draft invoices in one request.
+         */
+        post: operations["bulk_finalize_invoices_v1_invoices_bulk_finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/preview": {
         parameters: {
             query?: never;
@@ -1236,6 +1276,46 @@ export interface paths {
          * @description Send an invoice notification email to the customer.
          */
         post: operations["send_invoice_email_v1_invoices__invoice_id__send_email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{invoice_id}/send_reminder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send payment reminder for overdue invoice
+         * @description Send a payment reminder email for an overdue or finalized invoice.
+         */
+        post: operations["send_invoice_reminder_v1_invoices__invoice_id__send_reminder_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{invoice_id}/pdf_preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get invoice PDF for inline preview
+         * @description Generate and return a PDF for inline preview (Content-Disposition: inline).
+         */
+        get: operations["preview_invoice_pdf_v1_invoices__invoice_id__pdf_preview_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3579,6 +3659,32 @@ export interface components {
          * @enum {string}
          */
         BillingTime: "calendar" | "anniversary";
+        /** BulkFinalizeRequest */
+        BulkFinalizeRequest: {
+            /** Invoice Ids */
+            invoice_ids: string[];
+        };
+        /** BulkFinalizeResponse */
+        BulkFinalizeResponse: {
+            /** Results */
+            results: components["schemas"]["BulkFinalizeResult"][];
+            /** Finalized Count */
+            finalized_count: number;
+            /** Failed Count */
+            failed_count: number;
+        };
+        /** BulkFinalizeResult */
+        BulkFinalizeResult: {
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Success */
+            success: boolean;
+            /** Error */
+            error?: string | null;
+        };
         /**
          * ChangePlanPreviewRequest
          * @description Request body for plan change preview.
@@ -4801,6 +4907,21 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** InvoiceLineItem */
+        InvoiceLineItem: {
+            /** Description */
+            description: string;
+            /** Quantity */
+            quantity: number | string;
+            /** Unit Price */
+            unit_price: number | string;
+            /** Amount */
+            amount: number | string;
+            /** Charge Id */
+            charge_id?: string | null;
+            /** Metric Code */
+            metric_code?: string | null;
+        };
         /**
          * InvoicePreviewRequest
          * @description Request body for invoice preview.
@@ -5040,6 +5161,25 @@ export interface components {
             interval: string;
             /** Days Until Next Billing */
             days_until_next_billing: number;
+        };
+        /** OneOffInvoiceCreate */
+        OneOffInvoiceCreate: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /** Line Items */
+            line_items: components["schemas"]["InvoiceLineItem"][];
+            /** Due Date */
+            due_date?: string | null;
+            /** Billing Entity Id */
+            billing_entity_id?: string | null;
         };
         /** OrganizationCreate */
         OrganizationCreate: {
@@ -5675,6 +5815,16 @@ export interface components {
             /** Monthly Trend */
             monthly_trend: components["schemas"]["RevenueDataPoint"][];
             mrr_trend?: components["schemas"]["TrendIndicator"] | null;
+        };
+        /** SendReminderResponse */
+        SendReminderResponse: {
+            /** Sent */
+            sent: boolean;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
         };
         /** SetupSessionCreate */
         SetupSessionCreate: {
@@ -9321,6 +9471,91 @@ export interface operations {
             };
         };
     };
+    create_one_off_invoice_v1_invoices_one_off_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OneOffInvoiceCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    bulk_finalize_invoices_v1_invoices_bulk_finalize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkFinalizeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkFinalizeResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     preview_invoice_v1_invoices_preview_post: {
         parameters: {
             query?: never;
@@ -9734,6 +9969,110 @@ export interface operations {
                 };
             };
             /** @description Invoice must be finalized or paid to send email */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_invoice_reminder_v1_invoices__invoice_id__send_reminder_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendReminderResponse"];
+                };
+            };
+            /** @description Invoice is not overdue or finalized */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_invoice_pdf_v1_invoices__invoice_id__pdf_preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Invoice must be finalized or paid to generate PDF */
             400: {
                 headers: {
                     [name: string]: unknown;

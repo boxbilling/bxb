@@ -417,12 +417,18 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 **Recommendations:**
 - [x] **Fix Finalize Invoice mutation** (currently broken/stub)
   <!-- Completed: Wired up the "Finalize Invoice" button in InvoiceDetailDialog with a useMutation hook calling invoicesApi.finalize(). Added onClick handler, loading spinner (Loader2), disabled state while pending, CheckCircle icon, success/error toast notifications, and query invalidation to refresh the invoices list. Dialog closes on success. The backend endpoint (POST /v1/invoices/{id}/finalize) and frontend API client method were already fully implemented — only the button handler was missing. TypeScript compiles clean, all 3458 backend tests pass with 100% coverage. -->
-- [ ] **Invoices should have a detail page** (`/admin/invoices/:id`). Invoices are complex documents with fees, taxes, settlements, credit notes, and audit trails. This is too much content for a modal dialog.
-- [ ] Invoice detail page layout: header with status + actions, fee table, tax summary, settlement history, related credit notes, audit trail
-- [ ] Add inline PDF preview (render in iframe or use react-pdf)
-- [ ] Add "Create One-Off Invoice" action
-- [ ] Add bulk finalize for draft invoices
-- [ ] Add "Send Reminder" action for overdue invoices
+- [x] **Invoices should have a detail page** (`/admin/invoices/:id`). Invoices are complex documents with fees, taxes, settlements, credit notes, and audit trails. This is too much content for a modal dialog.
+  <!-- Completed: Created InvoiceDetailPage.tsx with full-page layout at /admin/invoices/:id. Replaced the old modal dialog with a comprehensive detail page featuring breadcrumbs, header with status badge and action buttons (Finalize, Send Reminder, Preview PDF, Download PDF, Send Email, Create Credit Note, Void), three info cards (Customer with link, Dates, Amount), and five tabs (Fees table, Totals & Tax breakdown, Settlements table, Credit Notes table, Activity/audit trail). Added route in App.tsx and table rows now navigate to the detail page on click. -->
+- [x] Invoice detail page layout: header with status + actions, fee table, tax summary, settlement history, related credit notes, audit trail
+  <!-- Completed: The detail page includes all specified sections organized into tabs. Header shows invoice number, status badge, and context-aware action buttons. Fee table shows code, description, units, unit amount, and total. Tax summary shows tax name, rate, and amount. Settlement history shows payment date, amount, and method. Credit notes tab shows related credit notes. Activity tab shows audit trail entries with timestamps. -->
+- [x] Add inline PDF preview (render in iframe or use react-pdf)
+  <!-- Completed: Added a "Preview PDF" button on the detail page that fetches the PDF via GET /v1/invoices/{id}/pdf_preview (returns PDF with Content-Disposition: inline), creates a blob URL, and displays it in a Dialog with an iframe. No external library needed — uses native browser PDF rendering. Backend endpoint validates invoice must be finalized or paid. -->
+- [x] Add "Create One-Off Invoice" action
+  <!-- Completed: Added OneOffInvoiceDialog component on the Invoices list page with a form for customer selection, currency, due date, and dynamic line items (description, units, unit_amount with auto-calculated amount). Backend POST /v1/invoices/one_off endpoint creates an invoice with InvoiceType.ONE_OFF, validates customer exists, creates line items as fees, and logs an audit entry. Added Pydantic schemas OneOffInvoiceCreate and InvoiceLineItem. -->
+- [x] Add bulk finalize for draft invoices
+  <!-- Completed: Added checkbox column on the Invoices list page that appears for draft invoices. Select-all toggle in header selects all visible drafts. When checkboxes are selected, a "Finalize Selected" button appears in the header. Backend POST /v1/invoices/bulk_finalize endpoint accepts a list of invoice IDs, attempts to finalize each, and returns per-invoice success/failure results with counts. Uses BulkFinalizeRequest/Response/Result schemas. -->
+- [x] Add "Send Reminder" action for overdue invoices
+  <!-- Completed: Added "Send Reminder" button on the Invoice detail page (visible for finalized invoices). Backend POST /v1/invoices/{id}/send_reminder endpoint validates the invoice is finalized (not draft/paid/voided), checks the customer has an email address, and sends a payment reminder email via EmailService with invoice PDF attached. Returns SendReminderResponse with sent status. -->
 
 **Modal vs. Page Decision:**
 - **Invoice detail**: Should be a **FULL PAGE** (complex document with many sections)

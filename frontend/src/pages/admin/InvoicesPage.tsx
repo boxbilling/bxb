@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2, ScrollText, ChevronDown, CheckCircle } from 'lucide-react'
+import { Search, Eye, FileText, Loader2, CheckCircle, Plus, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -18,6 +18,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -33,9 +34,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
-import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
-import { invoicesApi, feesApi, taxesApi, creditNotesApi, subscriptionsApi } from '@/lib/api'
+import { Checkbox } from '@/components/ui/checkbox'
+import { invoicesApi, customersApi, subscriptionsApi } from '@/lib/api'
 import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
 
 function formatCurrency(amount: string | number, currency: string = 'USD') {
@@ -65,328 +65,202 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function formatTaxRate(rate: string | number): string {
-  const num = typeof rate === 'string' ? parseFloat(rate) : rate
-  return `${(num * 100).toFixed(2)}%`
-}
-
-function InvoiceFeesBreakdown({ invoiceId, currency }: { invoiceId: string; currency: string }) {
-  const { data: fees = [], isLoading } = useQuery({
-    queryKey: ['invoice-fees', invoiceId],
-    queryFn: () => feesApi.list({ invoice_id: invoiceId }),
-  })
-
-  if (isLoading) return <Skeleton className="h-20 w-full" />
-  if (fees.length === 0) return null
-
-  return (
-    <div>
-      <h4 className="font-medium mb-3">Fees Breakdown</h4>
-      <div className="space-y-2">
-        {fees.map((fee) => (
-          <div key={fee.id} className="border rounded-lg p-3 text-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-medium">{fee.description || fee.fee_type}</span>
-                <Badge variant="outline" className="ml-2 text-xs">{fee.fee_type}</Badge>
-                {fee.metric_code && (
-                  <span className="ml-2 text-xs text-muted-foreground">({fee.metric_code})</span>
-                )}
-              </div>
-              <span className="font-medium">{formatCurrency(fee.amount_cents, currency)}</span>
-            </div>
-            <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-              <span>{fee.units} units</span>
-              <span>{fee.events_count} events</span>
-              <span>Tax: {formatCurrency(fee.taxes_amount_cents, currency)}</span>
-              <span className="font-medium text-foreground">Total: {formatCurrency(fee.total_amount_cents, currency)}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function AppliedTaxesBreakdown({ invoiceId }: { invoiceId: string }) {
-  const { data: appliedTaxes = [] } = useQuery({
-    queryKey: ['invoice-taxes', invoiceId],
-    queryFn: () => taxesApi.listApplied({ taxable_type: 'invoice', taxable_id: invoiceId }),
-  })
-
-  if (appliedTaxes.length === 0) return null
-
-  return (
-    <>
-      {appliedTaxes.map((at) => (
-        <div key={at.id} className="flex justify-between text-xs text-muted-foreground pl-4">
-          <span>Tax {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}</span>
-          <span>{formatCurrency(Number(at.tax_amount_cents))}</span>
-        </div>
-      ))}
-    </>
-  )
-}
-
-function InvoiceSettlementsSection({ invoiceId, currency }: { invoiceId: string; currency: string }) {
-  const { data: settlements = [] } = useQuery({
-    queryKey: ['invoice-settlements', invoiceId],
-    queryFn: () => invoicesApi.listSettlements(invoiceId),
-  })
-
-  if (settlements.length === 0) return null
-
-  return (
-    <div>
-      <h4 className="font-medium mb-2 text-sm">Settlements</h4>
-      <div className="space-y-1">
-        {settlements.map((s) => (
-          <div key={s.id} className="flex justify-between text-sm py-1 border-b last:border-0">
-            <span className="capitalize">{s.settlement_type.replace(/_/g, ' ')}</span>
-            <span className="font-medium">{formatCurrency(Number(s.amount_cents), currency)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function InvoiceCreditNotesSection({ invoiceId, currency }: { invoiceId: string; currency: string }) {
-  const { data: creditNotes = [] } = useQuery({
-    queryKey: ['invoice-credit-notes', invoiceId],
-    queryFn: () => creditNotesApi.list({ invoice_id: invoiceId }),
-  })
-
-  if (creditNotes.length === 0) return null
-
-  const cnStatusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-    draft: 'secondary',
-    finalized: 'outline',
-    voided: 'destructive',
-  }
-
-  return (
-    <div>
-      <h4 className="font-medium mb-2 text-sm">Credit Notes</h4>
-      <div className="space-y-1">
-        {creditNotes.map((cn) => (
-          <div key={cn.id} className="flex items-center justify-between text-sm py-1 border-b last:border-0">
-            <div className="flex items-center gap-2">
-              <span>{cn.number || cn.id.substring(0, 8)}</span>
-              <Badge variant={cnStatusVariant[cn.status] ?? 'outline'} className="text-xs">{cn.status}</Badge>
-            </div>
-            <span className="font-medium text-red-600">-{formatCurrency(Number(cn.credit_amount_cents), currency)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function InvoiceDetailDialog({
-  invoice,
+function OneOffInvoiceDialog({
   open,
   onOpenChange,
-  onCreateCreditNote,
 }: {
-  invoice: Invoice | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreateCreditNote?: (invoice: Invoice) => void
 }) {
   const queryClient = useQueryClient()
-  const canDownloadOrEmail = invoice?.status === 'finalized' || invoice?.status === 'paid'
+  const [customerId, setCustomerId] = useState('')
+  const [currency, setCurrency] = useState('USD')
+  const [dueDate, setDueDate] = useState('')
+  const [lineItems, setLineItems] = useState([
+    { description: '', quantity: '1', unit_price: '0', amount: '0' },
+  ])
 
-  const finalizeMutation = useMutation({
-    mutationFn: (id: string) => invoicesApi.finalize(id),
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customersApi.list(),
+    enabled: open,
+  })
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      invoicesApi.createOneOff({
+        customer_id: customerId,
+        currency,
+        due_date: dueDate || null,
+        line_items: lineItems.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          amount: item.amount,
+        })),
+      }),
     onSuccess: () => {
-      toast.success('Invoice finalized successfully')
+      toast.success('One-off invoice created')
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
-      onOpenChange(false)
+      handleClose()
     },
     onError: () => {
-      toast.error('Failed to finalize invoice')
+      toast.error('Failed to create invoice')
     },
   })
 
-  const downloadPdfMutation = useMutation({
-    mutationFn: (id: string) => invoicesApi.downloadPdf(id),
-    onSuccess: (blob) => {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `invoice-${invoice?.invoice_number ?? invoice?.id}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    },
-    onError: () => {
-      toast.error('Failed to download PDF')
-    },
-  })
+  const handleClose = () => {
+    setCustomerId('')
+    setCurrency('USD')
+    setDueDate('')
+    setLineItems([{ description: '', quantity: '1', unit_price: '0', amount: '0' }])
+    onOpenChange(false)
+  }
 
-  const sendEmailMutation = useMutation({
-    mutationFn: (id: string) => invoicesApi.sendEmail(id),
-    onSuccess: () => {
-      toast.success('Invoice email sent successfully')
-    },
-    onError: () => {
-      toast.error('Failed to send invoice email')
-    },
-  })
+  const updateLineItem = (index: number, field: string, value: string) => {
+    const updated = [...lineItems]
+    updated[index] = { ...updated[index], [field]: value }
+    // Auto-calculate amount
+    const qty = parseFloat(updated[index].quantity) || 0
+    const price = parseFloat(updated[index].unit_price) || 0
+    updated[index].amount = (qty * price).toFixed(2)
+    setLineItems(updated)
+  }
 
-  if (!invoice) return null
+  const addLineItem = () => {
+    setLineItems([...lineItems, { description: '', quantity: '1', unit_price: '0', amount: '0' }])
+  }
 
-  const walletCredit = Number(invoice.prepaid_credit_amount)
-  const couponDiscount = Number(invoice.coupons_amount_cents)
+  const removeLineItem = (index: number) => {
+    if (lineItems.length <= 1) return
+    setLineItems(lineItems.filter((_, i) => i !== index))
+  }
+
+  const total = lineItems.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0)
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen ? handleClose() : onOpenChange(nextOpen)}>
       <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>Invoice {invoice.invoice_number}</span>
-              <Badge variant="outline" className="capitalize text-xs">{invoice.invoice_type}</Badge>
-            </div>
-            <StatusBadge status={invoice.status} />
-          </DialogTitle>
+          <DialogTitle>Create One-Off Invoice</DialogTitle>
+          <DialogDescription>Create an invoice with custom line items, not tied to a subscription.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Header Info */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-muted-foreground">Customer ID</p>
-              <p className="font-medium">{invoice.customer_id}</p>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Customer</Label>
+              <Select value={customerId} onValueChange={setCustomerId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select customer" />
+                </SelectTrigger>
+                <SelectContent>
+                  {customers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name || c.external_id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="text-right">
-              <p className="text-muted-foreground">Issue Date</p>
-              <p className="font-medium">
-                {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}
-              </p>
-              <p className="text-muted-foreground mt-2">Due Date</p>
-              <p className="font-medium">
-                {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}
-              </p>
+            <div className="space-y-2">
+              <Label>Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="GBP">GBP</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <Separator />
-
-          {/* Fees Breakdown */}
-          <InvoiceFeesBreakdown invoiceId={invoice.id} currency={invoice.currency} />
-
-          <Separator />
-
-          {/* Totals */}
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Subtotal</span>
-              <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+            <Label>Due Date (optional)</Label>
+            <Input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label>Line Items</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addLineItem}>
+                <Plus className="mr-1 h-3 w-3" />
+                Add Item
+              </Button>
             </div>
 
-            {/* Coupon Discounts */}
-            {couponDiscount > 0 && (
-              <div className="flex justify-between text-sm text-green-600">
-                <span>Coupon Discount</span>
-                <span>-{formatCurrency(couponDiscount, invoice.currency)}</span>
+            {lineItems.map((item, index) => (
+              <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                <div className="col-span-5 space-y-1">
+                  {index === 0 && <Label className="text-xs">Description</Label>}
+                  <Input
+                    placeholder="Description"
+                    value={item.description}
+                    onChange={(e) => updateLineItem(index, 'description', e.target.value)}
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  {index === 0 && <Label className="text-xs">Qty</Label>}
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={item.quantity}
+                    onChange={(e) => updateLineItem(index, 'quantity', e.target.value)}
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  {index === 0 && <Label className="text-xs">Unit Price</Label>}
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={item.unit_price}
+                    onChange={(e) => updateLineItem(index, 'unit_price', e.target.value)}
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  {index === 0 && <Label className="text-xs">Amount</Label>}
+                  <Input
+                    readOnly
+                    value={item.amount}
+                    className="bg-muted"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={lineItems.length <= 1}
+                    onClick={() => removeLineItem(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            )}
+            ))}
 
-            <div className="flex justify-between text-sm">
-              <span>Tax</span>
-              <span>{formatCurrency(invoice.tax_amount, invoice.currency)}</span>
-            </div>
-            <AppliedTaxesBreakdown invoiceId={invoice.id} />
-
-            {/* Wallet Credits Applied */}
-            {walletCredit > 0 && (
-              <div className="flex justify-between text-sm text-blue-600">
-                <span>Wallet Credits Applied</span>
-                <span>-{formatCurrency(walletCredit, invoice.currency)}</span>
-              </div>
-            )}
-
-            <Separator />
-            <div className="flex justify-between font-medium text-lg">
-              <span>Total</span>
-              <span>{formatCurrency(invoice.total, invoice.currency)}</span>
+            <div className="flex justify-end text-sm font-medium pt-2 border-t">
+              <span>Total: {formatCurrency(total, currency)}</span>
             </div>
           </div>
 
-          {/* Settlements */}
-          <InvoiceSettlementsSection invoiceId={invoice.id} currency={invoice.currency} />
-
-          {/* Credit Notes */}
-          <InvoiceCreditNotesSection invoiceId={invoice.id} currency={invoice.currency} />
-
-          {/* Audit Trail */}
-          <Collapsible>
-            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors w-full group">
-              <ScrollText className="h-4 w-4" />
-              Audit Trail
-              <ChevronDown className="h-4 w-4 ml-auto transition-transform group-data-[state=open]:rotate-180" />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-3">
-              <AuditTrailTimeline resourceType="invoice" resourceId={invoice.id} />
-            </CollapsibleContent>
-          </Collapsible>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              disabled={!canDownloadOrEmail || downloadPdfMutation.isPending}
-              onClick={() => downloadPdfMutation.mutate(invoice.id)}
-            >
-              {downloadPdfMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              Download PDF
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              disabled={!canDownloadOrEmail || sendEmailMutation.isPending}
-              onClick={() => sendEmailMutation.mutate(invoice.id)}
-            >
-              {sendEmailMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Send Email
-            </Button>
-            {invoice.status === 'finalized' && onCreateCreditNote && (
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => onCreateCreditNote(invoice)}
-              >
-                <FileMinus className="mr-2 h-4 w-4" />
-                Create Credit Note
-              </Button>
-            )}
-            {invoice.status === 'draft' && (
-              <Button
-                className="flex-1"
-                disabled={finalizeMutation.isPending}
-                onClick={() => finalizeMutation.mutate(invoice.id)}
-              >
-                {finalizeMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                )}
-                Finalize Invoice
-              </Button>
-            )}
-          </div>
+          <Button
+            className="w-full"
+            disabled={!customerId || lineItems.every((i) => !i.description) || createMutation.isPending}
+            onClick={() => createMutation.mutate()}
+          >
+            {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Create Invoice
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -441,6 +315,7 @@ function InvoicePreviewDialog({
       <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Invoice Preview</DialogTitle>
+          <DialogDescription>Preview an invoice for a subscription billing period.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -496,7 +371,6 @@ function InvoicePreviewDialog({
                   <CardTitle className="text-sm">Invoice Preview</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Fees Table */}
                   {previewResult.fees.length > 0 && (
                     <Table>
                       <TableHeader>
@@ -529,7 +403,6 @@ function InvoicePreviewDialog({
                     </Table>
                   )}
 
-                  {/* Totals */}
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
@@ -569,11 +442,13 @@ function InvoicePreviewDialog({
 
 export default function InvoicesPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all')
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [oneOffOpen, setOneOffOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const { data: invoices, isLoading } = useQuery({
     queryKey: ['invoices', { statusFilter }],
@@ -581,6 +456,19 @@ export default function InvoicesPage() {
       invoicesApi.list({
         status: statusFilter !== 'all' ? (statusFilter as InvoiceStatus) : undefined,
       }),
+  })
+
+  const bulkFinalizeMutation = useMutation({
+    mutationFn: () =>
+      invoicesApi.bulkFinalize({ invoice_ids: Array.from(selectedIds) }),
+    onSuccess: (result) => {
+      toast.success(`Finalized ${result.finalized_count} invoice(s)${result.failed_count > 0 ? `, ${result.failed_count} failed` : ''}`)
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    onError: () => {
+      toast.error('Failed to bulk finalize invoices')
+    },
   })
 
   // Client-side search filtering on invoice number
@@ -604,6 +492,27 @@ export default function InvoicesPage() {
     { paid: 0, outstanding: 0, draft: 0 }
   )
 
+  const draftInvoices = data?.filter((i) => i.status === 'draft') ?? []
+  const allDraftsSelected = draftInvoices.length > 0 && draftInvoices.every((i) => selectedIds.has(i.id))
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    setSelectedIds(next)
+  }
+
+  const toggleSelectAllDrafts = () => {
+    if (allDraftsSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(draftInvoices.map((i) => i.id)))
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -613,10 +522,16 @@ export default function InvoicesPage() {
             View and manage customer invoices
           </p>
         </div>
-        <Button onClick={() => setPreviewOpen(true)}>
-          <Eye className="mr-2 h-4 w-4" />
-          Preview Invoice
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Eye className="mr-2 h-4 w-4" />
+            Preview Invoice
+          </Button>
+          <Button onClick={() => setOneOffOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create One-Off Invoice
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -659,7 +574,7 @@ export default function InvoicesPage() {
         </Card>
       </div>
 
-      {/* Filters */}
+      {/* Filters & Bulk Actions */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -682,6 +597,19 @@ export default function InvoicesPage() {
             <SelectItem value="voided">Voided</SelectItem>
           </SelectContent>
         </Select>
+        {selectedIds.size > 0 && (
+          <Button
+            disabled={bulkFinalizeMutation.isPending}
+            onClick={() => bulkFinalizeMutation.mutate()}
+          >
+            {bulkFinalizeMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCircle className="mr-2 h-4 w-4" />
+            )}
+            Finalize {selectedIds.size} Selected
+          </Button>
+        )}
       </div>
 
       {/* Table */}
@@ -689,26 +617,34 @@ export default function InvoicesPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                {draftInvoices.length > 0 && (
+                  <Checkbox
+                    checked={allDraftsSelected}
+                    onCheckedChange={toggleSelectAllDrafts}
+                    aria-label="Select all draft invoices"
+                  />
+                )}
+              </TableHead>
               <TableHead>Invoice</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Issue Date</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead className="w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
-                  <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                 </TableRow>
               ))
             ) : !data || data.length === 0 ? (
@@ -720,12 +656,25 @@ export default function InvoicesPage() {
               </TableRow>
             ) : (
               data.map((invoice) => (
-                <TableRow key={invoice.id}>
+                <TableRow
+                  key={invoice.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => navigate(`/admin/invoices/${invoice.id}`)}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {invoice.status === 'draft' && (
+                      <Checkbox
+                        checked={selectedIds.has(invoice.id)}
+                        onCheckedChange={() => toggleSelect(invoice.id)}
+                        aria-label={`Select invoice ${invoice.invoice_number}`}
+                      />
+                    )}
+                  </TableCell>
                   <TableCell>
                     <code className="text-sm font-medium">{invoice.invoice_number}</code>
                   </TableCell>
                   <TableCell>
-                    <span className="text-sm capitalize">{invoice.invoice_type}</span>
+                    <span className="text-sm capitalize">{invoice.invoice_type.replace(/_/g, ' ')}</span>
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={invoice.status} />
@@ -739,20 +688,6 @@ export default function InvoicesPage() {
                   <TableCell className="text-right font-medium">
                     {formatCurrency(invoice.total, invoice.currency)}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSelectedInvoice(invoice)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -760,21 +695,11 @@ export default function InvoicesPage() {
         </Table>
       </div>
 
-      {/* Invoice Detail Dialog */}
-      <InvoiceDetailDialog
-        invoice={selectedInvoice}
-        open={!!selectedInvoice}
-        onOpenChange={(open) => !open && setSelectedInvoice(null)}
-        onCreateCreditNote={(invoice) => {
-          setSelectedInvoice(null)
-          navigate('/admin/credit-notes', {
-            state: { invoiceId: invoice.id, customerId: invoice.customer_id },
-          })
-        }}
-      />
-
       {/* Invoice Preview Dialog */}
       <InvoicePreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} />
+
+      {/* Create One-Off Invoice Dialog */}
+      <OneOffInvoiceDialog open={oneOffOpen} onOpenChange={setOneOffOpen} />
     </div>
   )
 }

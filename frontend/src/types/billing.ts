@@ -45,6 +45,9 @@ export type ProrationDetail = components['schemas']['ProrationDetail']
 export type Invoice = components['schemas']['InvoiceResponse']
 export type InvoiceUpdate = components['schemas']['InvoiceUpdate']
 export type InvoiceStatus = components['schemas']['InvoiceStatus']
+export type OneOffInvoiceCreate = components['schemas']['OneOffInvoiceCreate']
+export type BulkFinalizeResponse = components['schemas']['BulkFinalizeResponse']
+export type SendReminderResponse = components['schemas']['SendReminderResponse']
 
 // --- Fees ---
 export type Fee = components['schemas']['FeeResponse']
