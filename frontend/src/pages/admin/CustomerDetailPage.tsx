@@ -964,9 +964,9 @@ function PortalLinkDialog({ externalId }: { externalId: string }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" onClick={handleOpen}>
+      <Button variant="default" size="sm" onClick={handleOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
-        Generate Portal Link
+        Portal Link
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
@@ -1082,7 +1082,13 @@ export default function CustomerDetailPage() {
                 {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
               </p>
             </div>
-            <PortalLinkDialog externalId={customer.external_id} />
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Pencil className="mr-2 h-3.5 w-3.5" />
+                Edit
+              </Button>
+              <PortalLinkDialog externalId={customer.external_id} />
+            </div>
           </div>
 
           {/* Outstanding Balance */}
@@ -1090,12 +1096,8 @@ export default function CustomerDetailPage() {
 
           {/* Customer Information */}
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium">Customer Information</CardTitle>
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="mr-2 h-3.5 w-3.5" />
-                Edit
-              </Button>
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 text-sm">
