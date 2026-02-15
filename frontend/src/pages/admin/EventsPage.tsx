@@ -1,10 +1,12 @@
 import { Fragment, useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search, Activity, Pause, Play, X } from 'lucide-react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { Search, Activity, Pause, Play, X, Calculator, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -13,15 +15,189 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { eventsApi } from '@/lib/api'
+import { eventsApi, subscriptionsApi, billableMetricsApi } from '@/lib/api'
+import type { EstimateFeesResponse } from '@/types/billing'
+
+function formatCurrency(amount: string | number, currency: string = 'USD') {
+  const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+  }).format(value)
+}
+
+function FeeEstimatorDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [subscriptionId, setSubscriptionId] = useState('')
+  const [metricCode, setMetricCode] = useState('')
+  const [propertiesJson, setPropertiesJson] = useState('{}')
+  const [estimateResult, setEstimateResult] = useState<EstimateFeesResponse | null>(null)
+
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: () => subscriptionsApi.list(),
+    enabled: open,
+  })
+
+  const { data: metrics = [] } = useQuery({
+    queryKey: ['billable-metrics'],
+    queryFn: () => billableMetricsApi.list(),
+    enabled: open,
+  })
+
+  const estimateMutation = useMutation({
+    mutationFn: () => {
+      let properties: Record<string, unknown> = {}
+      try {
+        properties = JSON.parse(propertiesJson)
+      } catch {
+        // use empty object if invalid JSON
+      }
+      return eventsApi.estimateFees({
+        subscription_id: subscriptionId,
+        code: metricCode,
+        properties,
+      })
+    },
+    onSuccess: (data) => {
+      setEstimateResult(data)
+    },
+    onError: () => {
+      toast.error('Failed to estimate fees')
+    },
+  })
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setSubscriptionId('')
+      setMetricCode('')
+      setPropertiesJson('{}')
+      setEstimateResult(null)
+    }
+    onOpenChange(nextOpen)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Fee Estimator</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Subscription</Label>
+            <Select value={subscriptionId} onValueChange={setSubscriptionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a subscription" />
+              </SelectTrigger>
+              <SelectContent>
+                {subscriptions.map((sub) => (
+                  <SelectItem key={sub.id} value={sub.id}>
+                    {sub.external_id} ({sub.status})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Metric Code</Label>
+            <Select value={metricCode} onValueChange={setMetricCode}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a metric" />
+              </SelectTrigger>
+              <SelectContent>
+                {metrics.map((metric) => (
+                  <SelectItem key={metric.id} value={metric.code}>
+                    {metric.name} ({metric.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Properties (JSON)</Label>
+            <Textarea
+              value={propertiesJson}
+              onChange={(e) => setPropertiesJson(e.target.value)}
+              placeholder='{"key": "value"}'
+              className="font-mono text-sm"
+            />
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={!subscriptionId || !metricCode || estimateMutation.isPending}
+            onClick={() => estimateMutation.mutate()}
+          >
+            {estimateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Estimate
+          </Button>
+
+          {estimateResult && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Estimation Result</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Estimated Amount</p>
+                    <p className="text-lg font-bold">
+                      {formatCurrency(estimateResult.amount_cents)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Units</p>
+                    <p className="text-lg font-bold">{estimateResult.units}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Unit Price</p>
+                    <p className="font-medium">{formatCurrency(estimateResult.unit_amount_cents)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Charge Model</p>
+                    <p className="font-medium capitalize">{estimateResult.charge_model ?? '—'}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const POLLING_INTERVAL = 5000
 
@@ -30,6 +206,7 @@ export default function EventsPage() {
   const [codeFilter, setCodeFilter] = useState('')
   const [isPolling, setIsPolling] = useState(true)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [feeEstimatorOpen, setFeeEstimatorOpen] = useState(false)
 
   // Debounce filter values
   const [debouncedCustomer, setDebouncedCustomer] = useState('')
@@ -75,6 +252,10 @@ export default function EventsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button onClick={() => setFeeEstimatorOpen(true)}>
+            <Calculator className="mr-2 h-4 w-4" />
+            Fee Estimator
+          </Button>
           {isPolling ? (
             <Badge variant="outline" className="gap-1.5">
               <span className="relative flex h-2 w-2">
@@ -241,6 +422,9 @@ export default function EventsPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Fee Estimator Dialog */}
+      <FeeEstimatorDialog open={feeEstimatorOpen} onOpenChange={setFeeEstimatorOpen} />
     </div>
   )
 }

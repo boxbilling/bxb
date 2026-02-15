@@ -32,8 +32,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { invoicesApi, feesApi, taxesApi, creditNotesApi } from '@/lib/api'
-import type { Invoice, InvoiceStatus } from '@/types/billing'
+import { Label } from '@/components/ui/label'
+import { invoicesApi, feesApi, taxesApi, creditNotesApi, subscriptionsApi } from '@/lib/api'
+import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
 
 function formatCurrency(amount: string | number, currency: string = 'USD') {
   const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
@@ -354,11 +355,186 @@ function InvoiceDetailDialog({
   )
 }
 
+function InvoicePreviewDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const [subscriptionId, setSubscriptionId] = useState('')
+  const [billingPeriodStart, setBillingPeriodStart] = useState('')
+  const [billingPeriodEnd, setBillingPeriodEnd] = useState('')
+  const [previewResult, setPreviewResult] = useState<InvoicePreviewResponse | null>(null)
+
+  const { data: subscriptions = [] } = useQuery({
+    queryKey: ['subscriptions'],
+    queryFn: () => subscriptionsApi.list(),
+    enabled: open,
+  })
+
+  const previewMutation = useMutation({
+    mutationFn: () =>
+      invoicesApi.preview({
+        subscription_id: subscriptionId,
+        billing_period_start: billingPeriodStart || null,
+        billing_period_end: billingPeriodEnd || null,
+      }),
+    onSuccess: (data) => {
+      setPreviewResult(data)
+    },
+    onError: () => {
+      toast.error('Failed to generate invoice preview')
+    },
+  })
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) {
+      setSubscriptionId('')
+      setBillingPeriodStart('')
+      setBillingPeriodEnd('')
+      setPreviewResult(null)
+    }
+    onOpenChange(nextOpen)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-[650px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Invoice Preview</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Subscription</Label>
+            <Select value={subscriptionId} onValueChange={setSubscriptionId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a subscription" />
+              </SelectTrigger>
+              <SelectContent>
+                {subscriptions.map((sub) => (
+                  <SelectItem key={sub.id} value={sub.id}>
+                    {sub.external_id} ({sub.status})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Billing Period Start</Label>
+              <Input
+                type="datetime-local"
+                value={billingPeriodStart}
+                onChange={(e) => setBillingPeriodStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Billing Period End</Label>
+              <Input
+                type="datetime-local"
+                value={billingPeriodEnd}
+                onChange={(e) => setBillingPeriodEnd(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <Button
+            className="w-full"
+            disabled={!subscriptionId || previewMutation.isPending}
+            onClick={() => previewMutation.mutate()}
+          >
+            {previewMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Generate Preview
+          </Button>
+
+          {previewResult && (
+            <>
+              <Separator />
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Invoice Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Fees Table */}
+                  {previewResult.fees.length > 0 && (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Units</TableHead>
+                          <TableHead className="text-right">Unit Price</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {previewResult.fees.map((fee, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell>
+                              <span className="text-sm">{fee.description}</span>
+                              {fee.metric_code && (
+                                <span className="ml-2 text-xs text-muted-foreground">({fee.metric_code})</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">{fee.units}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(fee.unit_amount_cents, previewResult.currency)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(fee.amount_cents, previewResult.currency)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+
+                  {/* Totals */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>{formatCurrency(previewResult.subtotal, previewResult.currency)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Tax</span>
+                      <span>{formatCurrency(previewResult.tax_amount, previewResult.currency)}</span>
+                    </div>
+                    {parseFloat(previewResult.coupons_amount) > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Coupon Discount</span>
+                        <span>-{formatCurrency(previewResult.coupons_amount, previewResult.currency)}</span>
+                      </div>
+                    )}
+                    {parseFloat(previewResult.prepaid_credit_amount) > 0 && (
+                      <div className="flex justify-between text-blue-600">
+                        <span>Prepaid Credits</span>
+                        <span>-{formatCurrency(previewResult.prepaid_credit_amount, previewResult.currency)}</span>
+                      </div>
+                    )}
+                    <Separator />
+                    <div className="flex justify-between font-medium text-lg">
+                      <span>Total</span>
+                      <span>{formatCurrency(previewResult.total, previewResult.currency)}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function InvoicesPage() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [previewOpen, setPreviewOpen] = useState(false)
 
   const { data: invoices, isLoading } = useQuery({
     queryKey: ['invoices', { statusFilter }],
@@ -391,11 +567,17 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Invoices</h2>
-        <p className="text-muted-foreground">
-          View and manage customer invoices
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Invoices</h2>
+          <p className="text-muted-foreground">
+            View and manage customer invoices
+          </p>
+        </div>
+        <Button onClick={() => setPreviewOpen(true)}>
+          <Eye className="mr-2 h-4 w-4" />
+          Preview Invoice
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -551,6 +733,9 @@ export default function InvoicesPage() {
           })
         }}
       />
+
+      {/* Invoice Preview Dialog */}
+      <InvoicePreviewDialog open={previewOpen} onOpenChange={setPreviewOpen} />
     </div>
   )
 }
