@@ -975,6 +975,12 @@ export const dashboardApi = {
       status: string
       created_at: string
     }[]>('/dashboard/recent_subscriptions'),
+  getSparklines: (params?: DashboardDateRange) =>
+    request<{
+      mrr: { date: string; value: number }[]
+      new_customers: { date: string; value: number }[]
+      new_subscriptions: { date: string; value: number }[]
+    }>(`/dashboard/sparklines${buildQuery(params)}`),
 }
 
 export { ApiError }

@@ -96,3 +96,14 @@ class RecentSubscriptionItem(BaseModel):
     plan_name: str
     status: str
     created_at: str
+
+
+class SparklinePoint(BaseModel):
+    date: str
+    value: float
+
+
+class SparklineData(BaseModel):
+    mrr: list[SparklinePoint]
+    new_customers: list[SparklinePoint]
+    new_subscriptions: list[SparklinePoint]

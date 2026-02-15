@@ -523,6 +523,114 @@ class DashboardRepository:
             for r in rows
         ]
 
+    # --- Sparkline daily breakdowns ---
+
+    @dataclass
+    class DailyPoint:
+        date: str
+        value: float
+
+    def daily_revenue(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list["DashboardRepository.DailyPoint"]:
+        """Daily revenue totals from finalized/paid invoices in the period."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            day_expr = sa_func.to_char(Invoice.issued_at, "YYYY-MM-DD")
+        else:
+            day_expr = sa_func.strftime("%Y-%m-%d", Invoice.issued_at)
+
+        rows = (
+            self.db.query(
+                day_expr.label("day"),
+                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("total"),
+            )
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status.in_(["finalized", "paid"]),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .group_by(day_expr)
+            .order_by(day_expr)
+            .all()
+        )
+        return [
+            DashboardRepository.DailyPoint(date=r.day, value=float(r.total))
+            for r in rows
+        ]
+
+    def daily_new_customers(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list["DashboardRepository.DailyPoint"]:
+        """Daily count of new customers created in the period."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            day_expr = sa_func.to_char(Customer.created_at, "YYYY-MM-DD")
+        else:
+            day_expr = sa_func.strftime("%Y-%m-%d", Customer.created_at)
+
+        rows = (
+            self.db.query(
+                day_expr.label("day"),
+                sa_func.count(Customer.id).label("cnt"),
+            )
+            .filter(
+                Customer.organization_id == organization_id,
+                Customer.created_at >= start_dt,
+                Customer.created_at <= end_dt,
+            )
+            .group_by(day_expr)
+            .order_by(day_expr)
+            .all()
+        )
+        return [
+            DashboardRepository.DailyPoint(date=r.day, value=float(r.cnt))
+            for r in rows
+        ]
+
+    def daily_new_subscriptions(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list["DashboardRepository.DailyPoint"]:
+        """Daily count of new subscriptions created in the period."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            day_expr = sa_func.to_char(Subscription.created_at, "YYYY-MM-DD")
+        else:
+            day_expr = sa_func.strftime("%Y-%m-%d", Subscription.created_at)
+
+        rows = (
+            self.db.query(
+                day_expr.label("day"),
+                sa_func.count(Subscription.id).label("cnt"),
+            )
+            .filter(
+                Subscription.organization_id == organization_id,
+                Subscription.created_at >= start_dt,
+                Subscription.created_at <= end_dt,
+            )
+            .group_by(day_expr)
+            .order_by(day_expr)
+            .all()
+        )
+        return [
+            DashboardRepository.DailyPoint(date=r.day, value=float(r.cnt))
+            for r in rows
+        ]
+
     # --- Wallet summary ---
 
     def total_wallet_credits(self, organization_id: UUID) -> float:

@@ -17,6 +17,8 @@ from app.schemas.dashboard import (
     RevenueByPlanResponse,
     RevenueDataPoint,
     RevenueResponse,
+    SparklineData,
+    SparklinePoint,
     SubscriptionMetricsResponse,
     SubscriptionPlanBreakdown,
     TrendIndicator,
@@ -369,3 +371,39 @@ async def get_recent_subscriptions(
         )
         for r in rows
     ]
+
+
+@router.get(
+    "/sparklines",
+    response_model=SparklineData,
+    summary="Get sparkline data for stat cards",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_sparklines(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
+) -> SparklineData:
+    """Get daily data points for sparkline charts in stat cards."""
+    repo = DashboardRepository(db)
+    return SparklineData(
+        mrr=[
+            SparklinePoint(date=p.date, value=p.value)
+            for p in repo.daily_revenue(
+                organization_id, start_date=start_date, end_date=end_date
+            )
+        ],
+        new_customers=[
+            SparklinePoint(date=p.date, value=p.value)
+            for p in repo.daily_new_customers(
+                organization_id, start_date=start_date, end_date=end_date
+            )
+        ],
+        new_subscriptions=[
+            SparklinePoint(date=p.date, value=p.value)
+            for p in repo.daily_new_subscriptions(
+                organization_id, start_date=start_date, end_date=end_date
+            )
+        ],
+    )

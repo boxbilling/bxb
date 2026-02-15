@@ -20,6 +20,8 @@ import {
 import {
   Line,
   LineChart,
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   PieChart,
@@ -28,6 +30,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
+  ResponsiveContainer,
 } from 'recharts'
 import { format, subDays, subMonths } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -114,6 +117,39 @@ function TrendBadge({
   )
 }
 
+function Sparkline({
+  data,
+  color = 'hsl(var(--primary))',
+}: {
+  data: { date: string; value: number }[]
+  color?: string
+}) {
+  if (data.length < 2) return null
+  return (
+    <div className="mt-2 -mx-1">
+      <ResponsiveContainer width="100%" height={32}>
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id={`sparkFill-${color.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area
+            type="monotone"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={1.5}
+            fill={`url(#sparkFill-${color.replace(/[^a-zA-Z0-9]/g, '')})`}
+            dot={false}
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  )
+}
+
 function StatCard({
   title,
   value,
@@ -124,6 +160,8 @@ function StatCard({
   trend,
   invertTrendColor,
   href,
+  sparklineData,
+  sparklineColor,
 }: {
   title: string
   value: string | number
@@ -134,6 +172,8 @@ function StatCard({
   trend?: { change_percent: number | null } | null
   invertTrendColor?: boolean
   href?: string
+  sparklineData?: { date: string; value: number }[]
+  sparklineColor?: string
 }) {
   const card = (
     <Card className={href ? 'transition-colors hover:border-primary/40 cursor-pointer' : undefined}>
@@ -157,6 +197,9 @@ function StatCard({
               {trend && <TrendBadge changePercent={trend.change_percent} invertColor={invertTrendColor} />}
             </div>
             <p className="text-xs text-muted-foreground mt-1">{description}</p>
+            {sparklineData && sparklineData.length >= 2 && (
+              <Sparkline data={sparklineData} color={sparklineColor} />
+            )}
           </>
         )}
       </CardContent>
@@ -404,6 +447,11 @@ export default function DashboardPage() {
     queryFn: () => dashboardApi.getRecentSubscriptions(),
   })
 
+  const { data: sparklines } = useQuery({
+    queryKey: ['dashboard-sparklines', dateParams],
+    queryFn: () => dashboardApi.getSparklines(dateParams),
+  })
+
   const { data: revenueByPlan, isLoading: revenueByPlanLoading } = useQuery({
     queryKey: ['dashboard-revenue-by-plan', dateParams],
     queryFn: () => dashboardApi.getRevenueByPlan(dateParams),
@@ -445,6 +493,8 @@ export default function DashboardPage() {
           loading={revenueLoading}
           trend={revenue?.mrr_trend}
           href="/admin/invoices?status=paid"
+          sparklineData={sparklines?.mrr}
+          sparklineColor="hsl(var(--primary))"
         />
         <StatCard
           title="Outstanding Invoices"
@@ -505,6 +555,8 @@ export default function DashboardPage() {
           loading={customersLoading}
           trend={customerMetrics?.new_trend}
           href="/admin/customers"
+          sparklineData={sparklines?.new_customers}
+          sparklineColor="hsl(160 60% 45%)"
         />
         <StatCard
           title="Churned"
@@ -536,6 +588,8 @@ export default function DashboardPage() {
           loading={subscriptionsLoading}
           trend={subscriptionMetrics?.new_trend}
           href="/admin/subscriptions"
+          sparklineData={sparklines?.new_subscriptions}
+          sparklineColor="hsl(200 70% 50%)"
         />
         <StatCard
           title="Canceled"

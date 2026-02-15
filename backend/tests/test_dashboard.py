@@ -884,6 +884,54 @@ class TestDashboardRepoDialect:
         with pytest.raises(Exception):  # noqa: B017
             repo.monthly_revenue_trend(org_id)
 
+    def test_daily_revenue_postgresql_branch(self, db_session):
+        """Cover the to_char branch for daily_revenue on PostgreSQL dialect."""
+        from unittest.mock import MagicMock
+        from uuid import uuid4
+
+        from app.repositories.dashboard_repository import DashboardRepository
+
+        repo = DashboardRepository(db_session)
+        org_id = uuid4()
+        mock_bind = MagicMock()
+        mock_bind.dialect.name = "postgresql"
+        repo.db = MagicMock(wraps=db_session)
+        repo.db.bind = mock_bind
+        with pytest.raises(Exception):  # noqa: B017
+            repo.daily_revenue(org_id)
+
+    def test_daily_new_customers_postgresql_branch(self, db_session):
+        """Cover the to_char branch for daily_new_customers on PostgreSQL dialect."""
+        from unittest.mock import MagicMock
+        from uuid import uuid4
+
+        from app.repositories.dashboard_repository import DashboardRepository
+
+        repo = DashboardRepository(db_session)
+        org_id = uuid4()
+        mock_bind = MagicMock()
+        mock_bind.dialect.name = "postgresql"
+        repo.db = MagicMock(wraps=db_session)
+        repo.db.bind = mock_bind
+        with pytest.raises(Exception):  # noqa: B017
+            repo.daily_new_customers(org_id)
+
+    def test_daily_new_subscriptions_postgresql_branch(self, db_session):
+        """Cover the to_char branch for daily_new_subscriptions on PostgreSQL dialect."""
+        from unittest.mock import MagicMock
+        from uuid import uuid4
+
+        from app.repositories.dashboard_repository import DashboardRepository
+
+        repo = DashboardRepository(db_session)
+        org_id = uuid4()
+        mock_bind = MagicMock()
+        mock_bind.dialect.name = "postgresql"
+        repo.db = MagicMock(wraps=db_session)
+        repo.db.bind = mock_bind
+        with pytest.raises(Exception):  # noqa: B017
+            repo.daily_new_subscriptions(org_id)
+
 
 class TestComputeTrend:
     """Tests for the _compute_trend helper."""
@@ -1264,6 +1312,89 @@ class TestDashboardRecentInvoices:
         response = client.get("/dashboard/recent_invoices")
         data = response.json()
         assert len(data) == 5
+
+
+class TestDashboardSparklines:
+    def test_sparklines_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/sparklines")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["mrr"] == []
+        assert data["new_customers"] == []
+        assert data["new_subscriptions"] == []
+
+    def test_sparklines_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/sparklines")
+        assert response.status_code == 200
+        data = response.json()
+        # Should have revenue data points (invoices issued within last 30 days)
+        assert len(data["mrr"]) >= 1
+        for point in data["mrr"]:
+            assert "date" in point
+            assert "value" in point
+        # Customers were created recently
+        assert len(data["new_customers"]) >= 1
+        # Subscriptions were created recently
+        assert len(data["new_subscriptions"]) >= 1
+
+    def test_sparklines_with_date_range(self, client: TestClient, seeded_data):
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/sparklines?start_date={week_ago}&end_date={today}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["mrr"]) >= 1
+
+    def test_sparklines_narrow_range_excludes_data(self, client: TestClient, seeded_data):
+        response = client.get(
+            "/dashboard/sparklines?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["mrr"] == []
+        assert data["new_customers"] == []
+        assert data["new_subscriptions"] == []
+
+    def test_sparklines_revenue_values(self, client: TestClient, seeded_data):
+        """Revenue sparkline returns correct daily totals."""
+        response = client.get("/dashboard/sparklines")
+        data = response.json()
+        total_revenue = sum(p["value"] for p in data["mrr"])
+        # Should be 162 total (108 + 54 from the two seeded invoices)
+        assert total_revenue == 162.0
+
+    def test_sparklines_points_are_sorted(self, client: TestClient, seeded_data):
+        """Sparkline points should be sorted by date ascending."""
+        response = client.get("/dashboard/sparklines")
+        data = response.json()
+        for key in ["mrr", "new_customers", "new_subscriptions"]:
+            dates = [p["date"] for p in data[key]]
+            assert dates == sorted(dates)
+
+    def test_sparklines_daily_new_customers_count(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Daily new customers shows correct daily counts."""
+        # Move one customer to a different day to get distinct data points
+        c = seeded_data["customers"][0]
+        c.created_at = datetime.now(UTC) - timedelta(days=3)
+        db_session.commit()
+
+        response = client.get("/dashboard/sparklines")
+        data = response.json()
+        total = sum(p["value"] for p in data["new_customers"])
+        assert total == 2  # Both customers still within 30-day window
+
+    def test_sparklines_daily_new_subscriptions_count(
+        self, client: TestClient, seeded_data
+    ):
+        """Daily new subscriptions shows correct counts."""
+        response = client.get("/dashboard/sparklines")
+        data = response.json()
+        total = sum(p["value"] for p in data["new_subscriptions"])
+        assert total == 2  # Two seeded subscriptions
 
 
 class TestDashboardRecentSubscriptions:
