@@ -155,6 +155,11 @@ export type SetupSessionResponse = components['schemas']['SetupSessionResponse']
 // --- Audit Logs ---
 export type AuditLog = components['schemas']['AuditLogResponse']
 
+// --- Billing Entities ---
+export type BillingEntity = components['schemas']['BillingEntityResponse']
+export type BillingEntityCreate = components['schemas']['BillingEntityCreate']
+export type BillingEntityUpdate = components['schemas']['BillingEntityUpdate']
+
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']

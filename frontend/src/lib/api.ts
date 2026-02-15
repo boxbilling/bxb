@@ -116,6 +116,10 @@ type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
 type AuditLogResponse = components['schemas']['AuditLogResponse']
 
+type BillingEntityResponse = components['schemas']['BillingEntityResponse']
+type BillingEntityCreate = components['schemas']['BillingEntityCreate']
+type BillingEntityUpdate = components['schemas']['BillingEntityUpdate']
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ORG_STORAGE_KEY = 'bxb_organization_id'
@@ -722,6 +726,25 @@ export const auditLogsApi = {
     request<AuditLogResponse[]>(`/v1/audit_logs/${buildQuery(params)}`),
   getForResource: (resourceType: string, resourceId: string) =>
     request<AuditLogResponse[]>(`/v1/audit_logs/${resourceType}/${resourceId}`),
+}
+
+// Billing Entities API
+export const billingEntitiesApi = {
+  list: () =>
+    request<BillingEntityResponse[]>('/v1/billing_entities/'),
+  get: (code: string) => request<BillingEntityResponse>(`/v1/billing_entities/${code}`),
+  create: (data: BillingEntityCreate) =>
+    request<BillingEntityResponse>('/v1/billing_entities/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (code: string, data: BillingEntityUpdate) =>
+    request<BillingEntityResponse>(`/v1/billing_entities/${code}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (code: string) =>
+    request<void>(`/v1/billing_entities/${code}`, { method: 'DELETE' }),
 }
 
 // Dashboard API

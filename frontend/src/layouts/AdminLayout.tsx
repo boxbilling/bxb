@@ -15,6 +15,7 @@ import {
   Wallet,
   Percent,
   Puzzle,
+  Building2,
   Bell,
   Plug,
   Radio,
@@ -52,6 +53,7 @@ const navigationGroups = [
     items: [
       { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
       { name: 'Customers', href: '/admin/customers', icon: Users },
+      { name: 'Billing Entities', href: '/admin/billing-entities', icon: Building2 },
     ],
   },
   {
