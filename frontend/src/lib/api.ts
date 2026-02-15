@@ -68,6 +68,7 @@ type AddOnCreate = components['schemas']['AddOnCreate']
 type AddOnUpdate = components['schemas']['AddOnUpdate']
 type ApplyAddOnRequest = components['schemas']['ApplyAddOnRequest']
 type AppliedAddOnResponse = components['schemas']['AppliedAddOnResponse']
+type AppliedAddOnDetailResponse = components['schemas']['AppliedAddOnDetailResponse']
 
 type CreditNoteResponse = components['schemas']['CreditNoteResponse']
 type CreditNoteCreate = components['schemas']['CreditNoteCreate']
@@ -736,6 +737,10 @@ export const addOnsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  applicationCounts: () =>
+    request<Record<string, number>>('/v1/add_ons/application_counts'),
+  applications: (code: string) =>
+    request<AppliedAddOnDetailResponse[]>(`/v1/add_ons/${code}/applications`),
 }
 
 // Credit Notes API

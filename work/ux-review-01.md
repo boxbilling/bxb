@@ -612,9 +612,12 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - "Apply to Customer" has amount override but no preview
 
 **Recommendations:**
-- [ ] Add "Applications" count column
-- [ ] Add application history view
-- [ ] Show amount preview when overriding default amount
+- [x] Add "Applications" count column
+  <!-- Completed: Added GET /v1/add_ons/application_counts backend endpoint that queries applied_add_ons table to count applications per add-on using GROUP BY on add_on_id. Added application_counts() and get_by_add_on_id() repository methods. Frontend fetches counts via addOnsApi.applicationCounts() and displays in an "Applications" table column with Users icon and correct singular/plural grammar. Clickable when count > 0 to open the application history dialog. Query invalidated on apply/delete mutations. 5 new repository tests + 3 API tests + 1 schema test added. 100% coverage maintained. -->
+- [x] Add application history view
+  <!-- Completed: Added GET /v1/add_ons/{code}/applications backend endpoint that fetches all applied add-ons for a given add-on code and joins customer names. New AppliedAddOnDetailResponse schema includes customer_name field. Frontend ApplicationHistoryDialog component shows a scrollable table with customer name (clickable link to customer detail page), amount, currency badge, and application date/time. Accessible via "View Applications" dropdown menu item and clickable application count in table. 4 new API tests covering: empty, with data, not found, multiple customers, overridden amounts. 100% coverage maintained. -->
+- [x] Show amount preview when overriding default amount
+  <!-- Completed: Enhanced ApplyAddOnDialog with a live charge preview card that appears when both customer and add-on are selected. Shows the effective charge amount in primary color. When an override amount is entered that differs from the default, shows an "overridden" badge, the new charge amount, and the default amount with strikethrough. Preview card styling changes (primary border + accent background) when override is active. No backend changes needed — pure frontend UX enhancement. -->
 
 **Modal vs. Page Decision:**
 - All MODAL - correct (add-ons are simple entities)

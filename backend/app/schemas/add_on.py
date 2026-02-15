@@ -54,3 +54,15 @@ class AppliedAddOnResponse(BaseModel):
     amount_cents: Decimal
     amount_currency: str
     created_at: datetime
+
+
+class AppliedAddOnDetailResponse(BaseModel):
+    """Applied add-on with customer name for display."""
+
+    id: UUID
+    add_on_id: UUID
+    customer_id: UUID
+    customer_name: str
+    amount_cents: Decimal
+    amount_currency: str
+    created_at: datetime

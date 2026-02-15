@@ -1,5 +1,6 @@
 """AddOn and AppliedAddOn API endpoints."""
 
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -16,6 +17,7 @@ from app.schemas.add_on import (
     AddOnCreate,
     AddOnResponse,
     AddOnUpdate,
+    AppliedAddOnDetailResponse,
     AppliedAddOnResponse,
     ApplyAddOnRequest,
 )
@@ -63,6 +65,60 @@ async def list_add_ons(
     repo = AddOnRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
+
+
+@router.get(
+    "/application_counts",
+    response_model=dict[str, int],
+    summary="Get application counts per add-on",
+    responses={401: {"description": "Unauthorized"}},
+)
+async def get_application_counts(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> dict[str, int]:
+    """Return a mapping of add_on_id to application count."""
+    repo = AppliedAddOnRepository(db)
+    return repo.application_counts()
+
+
+@router.get(
+    "/{code}/applications",
+    response_model=list[AppliedAddOnDetailResponse],
+    summary="Get application history for an add-on",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Add-on not found"},
+    },
+)
+async def get_add_on_applications(
+    code: str,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[dict[str, Any]]:
+    """Get all applications of an add-on with customer names."""
+    add_on_repo = AddOnRepository(db)
+    add_on = add_on_repo.get_by_code(code, organization_id)
+    if not add_on:
+        raise HTTPException(status_code=404, detail="Add-on not found")
+
+    applied_repo = AppliedAddOnRepository(db)
+    applications = applied_repo.get_by_add_on_id(add_on.id)  # type: ignore[arg-type]
+
+    customer_repo = CustomerRepository(db)
+    result = []
+    for app in applications:
+        customer = customer_repo.get_by_id(app.customer_id)  # type: ignore[arg-type]
+        result.append({
+            "id": app.id,
+            "add_on_id": app.add_on_id,
+            "customer_id": app.customer_id,
+            "customer_name": customer.name if customer else "Unknown",
+            "amount_cents": app.amount_cents,
+            "amount_currency": app.amount_currency,
+            "created_at": app.created_at,
+        })
+    return result
 
 
 @router.get(

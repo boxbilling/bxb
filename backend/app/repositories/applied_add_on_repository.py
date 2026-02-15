@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.applied_add_on import AppliedAddOn
@@ -39,6 +40,27 @@ class AppliedAddOnRepository:
             .order_by(AppliedAddOn.created_at.desc())
             .all()
         )
+
+    def get_by_add_on_id(self, add_on_id: UUID) -> list[AppliedAddOn]:
+        """Get all applied add-ons for an add-on."""
+        return (
+            self.db.query(AppliedAddOn)
+            .filter(AppliedAddOn.add_on_id == add_on_id)
+            .order_by(AppliedAddOn.created_at.desc())
+            .all()
+        )
+
+    def application_counts(self) -> dict[str, int]:
+        """Return a mapping of add_on_id -> application count."""
+        rows = (
+            self.db.query(
+                AppliedAddOn.add_on_id,
+                func.count(AppliedAddOn.id),
+            )
+            .group_by(AppliedAddOn.add_on_id)
+            .all()
+        )
+        return {str(add_on_id): cnt for add_on_id, cnt in rows}
 
     def create(
         self,

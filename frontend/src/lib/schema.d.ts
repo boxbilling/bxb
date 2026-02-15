@@ -1804,6 +1804,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/coupons/applied/{applied_coupon_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove applied coupon
+         * @description Remove (terminate) an applied coupon from a customer.
+         */
+        delete: operations["remove_applied_coupon_v1_coupons_applied__applied_coupon_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons/{code}/analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get coupon analytics
+         * @description Get usage analytics for a coupon.
+         */
+        get: operations["get_coupon_analytics_v1_coupons__code__analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/coupons/{code}/duplicate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Duplicate coupon
+         * @description Create a copy of an existing coupon with a new code.
+         */
+        post: operations["duplicate_coupon_v1_coupons__code__duplicate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/add_ons/": {
         parameters: {
             query?: never;
@@ -1822,6 +1882,46 @@ export interface paths {
          * @description Create a new add-on.
          */
         post: operations["create_add_on_v1_add_ons__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add_ons/application_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get application counts per add-on
+         * @description Return a mapping of add_on_id to application count.
+         */
+        get: operations["get_application_counts_v1_add_ons_application_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add_ons/{code}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get application history for an add-on
+         * @description Get all applications of an add-on with customer names.
+         */
+        get: operations["get_add_on_applications_v1_add_ons__code__applications_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3287,6 +3387,38 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * AppliedAddOnDetailResponse
+         * @description Applied add-on with customer name for display.
+         */
+        AppliedAddOnDetailResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Add On Id
+             * Format: uuid
+             */
+            add_on_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** AppliedAddOnResponse */
         AppliedAddOnResponse: {
             /**
@@ -3667,6 +3799,18 @@ export interface components {
              */
             next_invoice_number: number;
             /**
+             * Invoice Grace Period
+             * @default 0
+             */
+            invoice_grace_period: number;
+            /**
+             * Net Payment Term
+             * @default 30
+             */
+            net_payment_term: number;
+            /** Invoice Footer */
+            invoice_footer?: string | null;
+            /**
              * Is Default
              * @default false
              */
@@ -3711,6 +3855,12 @@ export interface components {
             invoice_prefix: string | null;
             /** Next Invoice Number */
             next_invoice_number: number;
+            /** Invoice Grace Period */
+            invoice_grace_period: number;
+            /** Net Payment Term */
+            net_payment_term: number;
+            /** Invoice Footer */
+            invoice_footer: string | null;
             /** Is Default */
             is_default: boolean;
             /**
@@ -3756,6 +3906,12 @@ export interface components {
             invoice_prefix?: string | null;
             /** Next Invoice Number */
             next_invoice_number?: number | null;
+            /** Invoice Grace Period */
+            invoice_grace_period?: number | null;
+            /** Net Payment Term */
+            net_payment_term?: number | null;
+            /** Invoice Footer */
+            invoice_footer?: string | null;
             /** Is Default */
             is_default?: boolean | null;
         };
@@ -4029,6 +4185,22 @@ export interface components {
             amount_cents?: number | string | null;
             /** Invoice Display Name */
             invoice_display_name?: string | null;
+        };
+        /**
+         * CouponAnalyticsResponse
+         * @description Analytics data for a coupon.
+         */
+        CouponAnalyticsResponse: {
+            /** Times Applied */
+            times_applied: number;
+            /** Active Applications */
+            active_applications: number;
+            /** Terminated Applications */
+            terminated_applications: number;
+            /** Total Discount Cents */
+            total_discount_cents: string;
+            /** Remaining Uses */
+            remaining_uses?: number | null;
         };
         /** CouponCreate */
         CouponCreate: {
@@ -11448,7 +11620,7 @@ export interface operations {
                     "application/json": components["schemas"]["WalletTransferResponse"];
                 };
             };
-            /** @description Invalid transfer (same wallet, insufficient credits, terminated wallet) */
+            /** @description Invalid transfer request */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -11754,6 +11926,146 @@ export interface operations {
             };
         };
     };
+    remove_applied_coupon_v1_coupons_applied__applied_coupon_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applied_coupon_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Applied coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_coupon_analytics_v1_coupons__code__analytics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponAnalyticsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    duplicate_coupon_v1_coupons__code__duplicate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CouponResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Duplicate code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_add_ons_v1_add_ons__get: {
         parameters: {
             query?: {
@@ -11835,6 +12147,80 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_application_counts_v1_add_ons_application_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_add_on_applications_v1_add_ons__code__applications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedAddOnDetailResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

@@ -8,9 +8,13 @@ import {
   Trash2,
   UserPlus,
   Gift,
+  Users,
+  History,
+  ArrowRight,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -44,6 +48,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -63,6 +68,7 @@ import type {
   AddOnCreate,
   AddOnUpdate,
   ApplyAddOnRequest,
+  AppliedAddOnDetail,
 } from '@/types/billing'
 
 function formatCurrency(cents: number | string, currency: string = 'USD'): string {
@@ -270,6 +276,14 @@ function ApplyAddOnDialog({
     onSubmit(data)
   }
 
+  const effectiveAmount = amountOverride
+    ? parseFloat(amountOverride)
+    : addOn ? (typeof addOn.amount_cents === 'string' ? parseFloat(addOn.amount_cents) : addOn.amount_cents) : 0
+  const effectiveCurrency = addOn?.amount_currency ?? 'USD'
+  const hasOverride = amountOverride !== '' && addOn
+    ? parseFloat(amountOverride) !== (typeof addOn.amount_cents === 'string' ? parseFloat(addOn.amount_cents) : addOn.amount_cents)
+    : false
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
@@ -277,7 +291,7 @@ function ApplyAddOnDialog({
           <DialogHeader>
             <DialogTitle>Apply Add-on</DialogTitle>
             <DialogDescription>
-              Apply "{addOn?.name}" to a customer
+              Apply &quot;{addOn?.name}&quot; to a customer
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -288,7 +302,7 @@ function ApplyAddOnDialog({
                   <span className="font-medium">{addOn.code}</span>
                 </div>
                 <div className="flex justify-between mt-1">
-                  <span className="text-muted-foreground">Amount</span>
+                  <span className="text-muted-foreground">Default Amount</span>
                   <span className="font-medium">
                     {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
                   </span>
@@ -321,6 +335,32 @@ function ApplyAddOnDialog({
                 placeholder="Leave empty to use default"
               />
             </div>
+            {/* Amount Preview */}
+            {addOn && customerId && (
+              <div className={`rounded-md border p-3 text-sm ${hasOverride ? 'border-primary bg-primary/5' : 'bg-muted/50'}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <ArrowRight className="h-3.5 w-3.5 text-primary" />
+                  <span className="font-medium">Charge Preview</span>
+                  {hasOverride && (
+                    <Badge variant="outline" className="text-xs">overridden</Badge>
+                  )}
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-muted-foreground">Customer will be charged</span>
+                  <span className="font-semibold text-primary">
+                    {effectiveAmount > 0 ? formatCurrency(effectiveAmount, effectiveCurrency) : '—'}
+                  </span>
+                </div>
+                {hasOverride && (
+                  <div className="flex justify-between mt-1">
+                    <span className="text-muted-foreground text-xs">Default was</span>
+                    <span className="text-xs text-muted-foreground line-through">
+                      {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -340,6 +380,96 @@ function ApplyAddOnDialog({
   )
 }
 
+// --- Application History Dialog ---
+function ApplicationHistoryDialog({
+  open,
+  onOpenChange,
+  addOn,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  addOn: AddOn | null
+}) {
+  const { data: applications = [], isLoading } = useQuery({
+    queryKey: ['add-on-applications', addOn?.code],
+    queryFn: () => addOnsApi.applications(addOn!.code),
+    enabled: open && !!addOn,
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Application History</DialogTitle>
+          <DialogDescription>
+            All applications of &quot;{addOn?.name}&quot; ({addOn?.code})
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[400px] overflow-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Customer</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Currency</TableHead>
+                <TableHead>Applied</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  </TableRow>
+                ))
+              ) : applications.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={4}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    No applications yet
+                  </TableCell>
+                </TableRow>
+              ) : (
+                applications.map((app: AppliedAddOnDetail) => (
+                  <TableRow key={app.id}>
+                    <TableCell>
+                      <Link
+                        to={`/admin/customers/${app.customer_id}`}
+                        className="text-blue-600 hover:underline font-medium"
+                      >
+                        {app.customer_name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatCurrency(app.amount_cents, app.amount_currency)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{app.amount_currency}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {format(new Date(app.created_at), 'MMM d, yyyy HH:mm')}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function AddOnsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -347,6 +477,7 @@ export default function AddOnsPage() {
   const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null)
   const [applyAddOn, setApplyAddOn] = useState<AddOn | null>(null)
   const [deleteAddOn, setDeleteAddOn] = useState<AddOn | null>(null)
+  const [historyAddOn, setHistoryAddOn] = useState<AddOn | null>(null)
 
   // Fetch add-ons
   const {
@@ -362,6 +493,12 @@ export default function AddOnsPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => customersApi.list(),
+  })
+
+  // Fetch application counts
+  const { data: applicationCounts = {} } = useQuery({
+    queryKey: ['add-on-application-counts'],
+    queryFn: () => addOnsApi.applicationCounts(),
   })
 
   // Filter add-ons
@@ -424,6 +561,7 @@ export default function AddOnsPage() {
     mutationFn: (code: string) => addOnsApi.delete(code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['add-ons'] })
+      queryClient.invalidateQueries({ queryKey: ['add-on-application-counts'] })
       setDeleteAddOn(null)
       toast.success('Add-on deleted successfully')
     },
@@ -438,6 +576,7 @@ export default function AddOnsPage() {
   const applyMutation = useMutation({
     mutationFn: (data: ApplyAddOnRequest) => addOnsApi.apply(data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['add-on-application-counts'] })
       setApplyAddOn(null)
       toast.success('Add-on applied successfully')
     },
@@ -553,6 +692,7 @@ export default function AddOnsPage() {
               <TableHead>Description</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Currency</TableHead>
+              <TableHead>Applications</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -566,6 +706,7 @@ export default function AddOnsPage() {
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
@@ -573,70 +714,89 @@ export default function AddOnsPage() {
             ) : filteredAddOns.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No add-ons found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAddOns.map((addOn) => (
-                <TableRow key={addOn.id}>
-                  <TableCell>
-                    <code className="text-sm bg-muted px-1.5 py-0.5 rounded font-medium">
-                      {addOn.code}
-                    </code>
-                  </TableCell>
-                  <TableCell className="font-medium">{addOn.name}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
-                    {addOn.description || '—'}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Gift className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium">
-                        {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{addOn.amount_currency}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(addOn.created_at), 'MMM d, yyyy')}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleEdit(addOn)}
-                        >
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setApplyAddOn(addOn)}
-                        >
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Apply to Customer
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteAddOn(addOn)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredAddOns.map((addOn) => {
+                const count = applicationCounts[addOn.id] ?? 0
+                return (
+                  <TableRow key={addOn.id}>
+                    <TableCell>
+                      <code className="text-sm bg-muted px-1.5 py-0.5 rounded font-medium">
+                        {addOn.code}
+                      </code>
+                    </TableCell>
+                    <TableCell className="font-medium">{addOn.name}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                      {addOn.description || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Gift className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium">
+                          {formatCurrency(addOn.amount_cents, addOn.amount_currency)}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{addOn.amount_currency}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => count > 0 && setHistoryAddOn(addOn)}
+                        className={`flex items-center gap-1.5 text-sm ${count > 0 ? 'text-blue-600 hover:underline cursor-pointer' : 'text-muted-foreground'}`}
+                      >
+                        <Users className="h-3.5 w-3.5" />
+                        {count} {count === 1 ? 'application' : 'applications'}
+                      </button>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-sm">
+                      {format(new Date(addOn.created_at), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => handleEdit(addOn)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setApplyAddOn(addOn)}
+                          >
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Apply to Customer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setHistoryAddOn(addOn)}
+                          >
+                            <History className="mr-2 h-4 w-4" />
+                            View Applications
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setDeleteAddOn(addOn)}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>
@@ -661,6 +821,13 @@ export default function AddOnsPage() {
         isLoading={applyMutation.isPending}
       />
 
+      {/* Application History Dialog */}
+      <ApplicationHistoryDialog
+        open={!!historyAddOn}
+        onOpenChange={(open) => !open && setHistoryAddOn(null)}
+        addOn={historyAddOn}
+      />
+
       {/* Delete Confirmation */}
       <AlertDialog
         open={!!deleteAddOn}
@@ -670,7 +837,7 @@ export default function AddOnsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Add-on</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteAddOn?.name}" (
+              Are you sure you want to delete &quot;{deleteAddOn?.name}&quot; (
               {deleteAddOn?.code})? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -91,6 +91,7 @@ export type AddOnCreate = components['schemas']['AddOnCreate']
 export type AddOnUpdate = components['schemas']['AddOnUpdate']
 export type ApplyAddOnRequest = components['schemas']['ApplyAddOnRequest']
 export type AppliedAddOn = components['schemas']['AppliedAddOnResponse']
+export type AppliedAddOnDetail = components['schemas']['AppliedAddOnDetailResponse']
 
 // --- Credit Notes ---
 export type CreditNote = components['schemas']['CreditNoteResponse']

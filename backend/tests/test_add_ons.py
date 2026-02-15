@@ -18,6 +18,7 @@ from app.schemas.add_on import (
     AddOnCreate,
     AddOnResponse,
     AddOnUpdate,
+    AppliedAddOnDetailResponse,
     AppliedAddOnResponse,
     ApplyAddOnRequest,
 )
@@ -511,6 +512,59 @@ class TestAppliedAddOnRepository:
         results = repo.get_by_customer_id(customer.id)
         assert len(results) == 2
 
+    def test_get_by_add_on_id(self, db_session, customer, customer2, basic_add_on):
+        """Test getting applied add-ons by add-on ID."""
+        repo = AppliedAddOnRepository(db_session)
+        repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer2.id,
+            amount_cents=Decimal("3000.0000"),
+            amount_currency="EUR",
+        )
+        results = repo.get_by_add_on_id(basic_add_on.id)
+        assert len(results) == 2
+
+    def test_get_by_add_on_id_empty(self, db_session, basic_add_on):
+        """Test getting applied add-ons by add-on ID with none."""
+        repo = AppliedAddOnRepository(db_session)
+        assert repo.get_by_add_on_id(basic_add_on.id) == []
+
+    def test_application_counts(self, db_session, customer, basic_add_on, premium_add_on):
+        """Test application_counts returns correct mapping."""
+        repo = AppliedAddOnRepository(db_session)
+        repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        repo.create(
+            add_on_id=premium_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("9999.0000"),
+            amount_currency="USD",
+        )
+        counts = repo.application_counts()
+        assert counts[str(basic_add_on.id)] == 2
+        assert counts[str(premium_add_on.id)] == 1
+
+    def test_application_counts_empty(self, db_session):
+        """Test application_counts with no applied add-ons."""
+        repo = AppliedAddOnRepository(db_session)
+        assert repo.application_counts() == {}
+
 
 class TestAddOnSchema:
     """Tests for AddOn Pydantic schemas."""
@@ -707,6 +761,24 @@ class TestAddOnSchema:
         assert response.customer_id == customer.id
         assert response.amount_cents == Decimal("5000.0000")
         assert response.amount_currency == "USD"
+
+    def test_applied_add_on_detail_response(self):
+        """Test AppliedAddOnDetailResponse schema."""
+        cid = uuid4()
+        aid = uuid4()
+        schema = AppliedAddOnDetailResponse(
+            id=uuid4(),
+            add_on_id=aid,
+            customer_id=cid,
+            customer_name="Test Customer",
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+            created_at="2026-01-01T00:00:00",
+        )
+        assert schema.customer_name == "Test Customer"
+        assert schema.add_on_id == aid
+        assert schema.customer_id == cid
+        assert schema.amount_cents == Decimal("5000.0000")
 
 
 class TestAddOnAPI:
@@ -921,3 +993,137 @@ class TestAddOnAPI:
             },
         )
         assert response2.status_code == 201
+
+    def test_application_counts_empty(self, client):
+        """Test GET /v1/add_ons/application_counts with no applications."""
+        response = client.get("/v1/add_ons/application_counts")
+        assert response.status_code == 200
+        assert response.json() == {}
+
+    def test_application_counts_with_data(self, client, db_session, basic_add_on, premium_add_on, customer):
+        """Test GET /v1/add_ons/application_counts returns correct counts."""
+        applied_repo = AppliedAddOnRepository(db_session)
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        applied_repo.create(
+            add_on_id=premium_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("9999.0000"),
+            amount_currency="USD",
+        )
+
+        response = client.get("/v1/add_ons/application_counts")
+        assert response.status_code == 200
+        data = response.json()
+        assert data[str(basic_add_on.id)] == 2
+        assert data[str(premium_add_on.id)] == 1
+
+    def test_application_counts_multiple_customers(
+        self, client, db_session, basic_add_on, customer, customer2
+    ):
+        """Test application_counts counts across multiple customers."""
+        applied_repo = AppliedAddOnRepository(db_session)
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer2.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+
+        response = client.get("/v1/add_ons/application_counts")
+        assert response.status_code == 200
+        data = response.json()
+        assert data[str(basic_add_on.id)] == 2
+
+    def test_get_applications_empty(self, client, db_session, basic_add_on):
+        """Test GET /v1/add_ons/{code}/applications with no applications."""
+        response = client.get("/v1/add_ons/SETUP_FEE/applications")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_applications_with_data(self, client, db_session, basic_add_on, customer):
+        """Test GET /v1/add_ons/{code}/applications returns applications with customer names."""
+        applied_repo = AppliedAddOnRepository(db_session)
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+
+        response = client.get("/v1/add_ons/SETUP_FEE/applications")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["customer_name"] == "AddOn Test Customer"
+        assert data[0]["customer_id"] == str(customer.id)
+        assert data[0]["add_on_id"] == str(basic_add_on.id)
+        assert data[0]["amount_cents"] == "5000.0000"
+        assert data[0]["amount_currency"] == "USD"
+
+    def test_get_applications_not_found(self, client):
+        """Test GET /v1/add_ons/{code}/applications returns 404 for unknown add-on."""
+        response = client.get("/v1/add_ons/NONEXISTENT/applications")
+        assert response.status_code == 404
+        assert "Add-on not found" in response.json()["detail"]
+
+    def test_get_applications_multiple_customers(
+        self, client, db_session, basic_add_on, customer, customer2
+    ):
+        """Test GET /v1/add_ons/{code}/applications with multiple customers."""
+        applied_repo = AppliedAddOnRepository(db_session)
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000.0000"),
+            amount_currency="USD",
+        )
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer2.id,
+            amount_cents=Decimal("3000.0000"),
+            amount_currency="EUR",
+        )
+
+        response = client.get("/v1/add_ons/SETUP_FEE/applications")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        customer_names = [d["customer_name"] for d in data]
+        assert "AddOn Test Customer" in customer_names
+        assert "AddOn Test Customer 2" in customer_names
+
+    def test_get_applications_with_override_amount(
+        self, client, db_session, basic_add_on, customer
+    ):
+        """Test applications show overridden amounts correctly."""
+        applied_repo = AppliedAddOnRepository(db_session)
+        applied_repo.create(
+            add_on_id=basic_add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("2500.0000"),
+            amount_currency="EUR",
+        )
+
+        response = client.get("/v1/add_ons/SETUP_FEE/applications")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["amount_cents"] == "2500.0000"
+        assert data[0]["amount_currency"] == "EUR"
