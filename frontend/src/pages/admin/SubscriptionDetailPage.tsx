@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText, Pause, Play, Clock } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText, Pause, Play, Clock, Activity } from 'lucide-react'
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
 import { toast } from 'sonner'
 
 import {
@@ -110,6 +111,12 @@ export default function SubscriptionDetailPage() {
     queryKey: ['customer-usage', customer?.external_id, subscription?.external_id],
     queryFn: () => customersApi.getCurrentUsage(customer!.external_id, subscription!.external_id),
     enabled: !!customer?.external_id && !!subscription?.external_id,
+  })
+
+  const { data: usageTrend, isLoading: usageTrendLoading } = useQuery({
+    queryKey: ['usage-trend', id],
+    queryFn: () => subscriptionsApi.getUsageTrend(id!),
+    enabled: !!id,
   })
 
   const { data: thresholds, isLoading: thresholdsLoading } = useQuery({
@@ -481,6 +488,84 @@ export default function SubscriptionDetailPage() {
                     <Calendar className="h-3 w-3" />
                     Billing Period: {format(new Date(usage.billing_period_start), 'MMM d, yyyy')} \u2014 {format(new Date(usage.billing_period_end), 'MMM d, yyyy')}
                   </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Usage Trend Chart */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Usage Trend
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {usageTrendLoading ? (
+                <div className="h-[200px] flex items-center justify-center">
+                  <Skeleton className="h-full w-full" />
+                </div>
+              ) : !usageTrend?.data_points?.length ? (
+                <div className="h-[200px] flex items-center justify-center text-muted-foreground">
+                  <p className="text-sm">No usage trend data available</p>
+                </div>
+              ) : (
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={usageTrend.data_points}>
+                      <defs>
+                        <linearGradient id="usageTrendFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(val: string) => {
+                          const d = new Date(val + 'T00:00:00')
+                          return format(d, 'MMM d')
+                        }}
+                        tick={{ fontSize: 11 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fontSize: 11 }}
+                        width={50}
+                        tickFormatter={(val: number) => val.toLocaleString()}
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null
+                          const point = payload[0].payload
+                          const d = new Date(point.date + 'T00:00:00')
+                          return (
+                            <div className="rounded-md border bg-background px-3 py-2 text-sm shadow-sm">
+                              <p className="font-medium">{format(d, 'MMM d, yyyy')}</p>
+                              <p className="text-muted-foreground">
+                                Usage: <span className="font-mono font-medium text-foreground">{Number(point.value).toLocaleString()}</span>
+                              </p>
+                              <p className="text-muted-foreground">
+                                Events: <span className="font-mono font-medium text-foreground">{point.events_count.toLocaleString()}</span>
+                              </p>
+                            </div>
+                          )
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        fill="url(#usageTrendFill)"
+                        dot={false}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               )}
             </CardContent>

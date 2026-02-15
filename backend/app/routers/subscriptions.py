@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -14,9 +14,11 @@ from app.models.invoice import Invoice
 from app.models.payment import Payment
 from app.models.subscription import Subscription, TerminationAction
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.daily_usage_repository import DailyUsageRepository
 from app.repositories.entitlement_repository import EntitlementRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.schemas.daily_usage import UsageTrendPoint, UsageTrendResponse
 from app.schemas.entitlement import EntitlementResponse
 from app.schemas.subscription import (
     ChangePlanPreviewRequest,
@@ -713,6 +715,54 @@ async def get_subscription_lifecycle(
     events.sort(key=lambda e: e.timestamp)
 
     return SubscriptionLifecycleResponse(events=events)
+
+
+@router.get(
+    "/{subscription_id}/usage_trend",
+    response_model=UsageTrendResponse,
+    summary="Get daily usage trend for a subscription",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_usage_trend(
+    subscription_id: UUID,
+    start_date: date | None = Query(default=None, description="Start date (inclusive)"),
+    end_date: date | None = Query(default=None, description="End date (inclusive)"),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> UsageTrendResponse:
+    """Get aggregated daily usage trend data for a subscription.
+
+    Returns daily data points with usage value and event count summed
+    across all metrics. Defaults to the last 30 days if no dates provided.
+    """
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    today = date.today()
+    if end_date is None:
+        end_date = today
+    if start_date is None:
+        start_date = end_date - timedelta(days=29)
+
+    daily_repo = DailyUsageRepository(db)
+    rows = daily_repo.get_trend_for_subscription(subscription_id, start_date, end_date)
+
+    data_points = [
+        UsageTrendPoint(date=row_date, value=row_value, events_count=row_events)
+        for row_date, row_value, row_events in rows
+    ]
+
+    return UsageTrendResponse(
+        subscription_id=subscription_id,
+        start_date=start_date,
+        end_date=end_date,
+        data_points=data_points,
+    )
 
 
 @router.get(

@@ -4,6 +4,7 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.models.daily_usage import DailyUsage
@@ -99,6 +100,34 @@ class DailyUsageRepository:
         self.db.commit()
         self.db.refresh(record)
         return record
+
+    def get_trend_for_subscription(
+        self,
+        subscription_id: UUID,
+        start_date: date,
+        end_date: date,
+    ) -> list[tuple[date, Decimal, int]]:
+        """Get aggregated daily usage trend for a subscription across all metrics.
+
+        Returns a list of (usage_date, total_value, total_events_count) tuples
+        sorted by date.
+        """
+        rows = (
+            self.db.query(
+                DailyUsage.usage_date,
+                sa_func.sum(DailyUsage.usage_value).label("total_value"),
+                sa_func.sum(DailyUsage.events_count).label("total_events"),
+            )
+            .filter(
+                DailyUsage.subscription_id == subscription_id,
+                DailyUsage.usage_date >= start_date,
+                DailyUsage.usage_date <= end_date,
+            )
+            .group_by(DailyUsage.usage_date)
+            .order_by(DailyUsage.usage_date)
+            .all()
+        )
+        return [(row[0], Decimal(str(row[1])), int(row[2])) for row in rows]
 
     def delete(self, daily_usage_id: UUID) -> bool:
         """Delete a daily usage record."""

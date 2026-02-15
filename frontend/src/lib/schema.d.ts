@@ -848,6 +848,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{subscription_id}/usage_trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get daily usage trend for a subscription
+         * @description Get aggregated daily usage trend data for a subscription.
+         *
+         *     Returns daily data points with usage value and event count summed
+         *     across all metrics. Defaults to the last 30 days if no dates provided.
+         */
+        get: operations["get_usage_trend_v1_subscriptions__subscription_id__usage_trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{external_id}/entitlements": {
         parameters: {
             query?: never;
@@ -5984,6 +6007,44 @@ export interface components {
              */
             updated_at: string;
         };
+        /**
+         * UsageTrendPoint
+         * @description A single data point in the usage trend.
+         */
+        UsageTrendPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Value */
+            value: string;
+            /** Events Count */
+            events_count: number;
+        };
+        /**
+         * UsageTrendResponse
+         * @description Response schema for subscription usage trend.
+         */
+        UsageTrendResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Data Points */
+            data_points: components["schemas"]["UsageTrendPoint"][];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -8585,6 +8646,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubscriptionLifecycleResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_usage_trend_v1_subscriptions__subscription_id__usage_trend_get: {
+        parameters: {
+            query?: {
+                /** @description Start date (inclusive) */
+                start_date?: string | null;
+                /** @description End date (inclusive) */
+                end_date?: string | null;
+            };
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageTrendResponse"];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */

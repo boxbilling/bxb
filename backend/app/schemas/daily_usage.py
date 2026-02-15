@@ -32,3 +32,20 @@ class DailyUsageResponse(BaseModel):
     events_count: int
     created_at: datetime
     updated_at: datetime
+
+
+class UsageTrendPoint(BaseModel):
+    """A single data point in the usage trend."""
+
+    date: date
+    value: Decimal
+    events_count: int
+
+
+class UsageTrendResponse(BaseModel):
+    """Response schema for subscription usage trend."""
+
+    subscription_id: UUID
+    start_date: date
+    end_date: date
+    data_points: list[UsageTrendPoint]

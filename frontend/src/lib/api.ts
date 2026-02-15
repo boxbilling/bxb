@@ -25,6 +25,7 @@ type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycl
 type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest']
 type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
 type NextBillingDateResponse = components['schemas']['NextBillingDateResponse']
+type UsageTrendResponse = components['schemas']['UsageTrendResponse']
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
 type InvoiceUpdate = components['schemas']['InvoiceUpdate']
@@ -445,6 +446,8 @@ export const subscriptionsApi = {
     }),
   getNextBillingDate: (id: string) =>
     request<NextBillingDateResponse>(`/v1/subscriptions/${id}/next_billing_date`),
+  getUsageTrend: (id: string, params?: { start_date?: string; end_date?: string }) =>
+    request<UsageTrendResponse>(`/v1/subscriptions/${id}/usage_trend${buildQuery(params)}`),
 }
 
 // Events API

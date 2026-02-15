@@ -1,7 +1,7 @@
 """Subscription API tests for bxb."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -9,7 +9,9 @@ from fastapi.testclient import TestClient
 from app.core.database import get_db
 from app.main import app
 from app.models.audit_log import AuditLog
+from app.models.billable_metric import BillableMetric
 from app.models.customer import Customer
+from app.models.daily_usage import DailyUsage
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.repositories.subscription_repository import SubscriptionRepository
@@ -1932,3 +1934,186 @@ class TestNextBillingDateAPI:
         data = response.json()
         assert data["interval"] == "monthly"
         assert data["days_until_next_billing"] >= 0
+
+    # ── Usage Trend Endpoint Tests ──────────────────────────────────
+
+    def test_usage_trend_empty(self, client: TestClient, db_session):
+        """Test usage trend returns empty data_points when no usage data exists."""
+        customer = create_test_customer(db_session, "cust_trend_empty")
+        plan = create_test_plan(db_session, "plan_trend_empty")
+        sub = Subscription(
+            external_id="sub_trend_empty",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.get(f"/v1/subscriptions/{sub.id}/usage_trend")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["subscription_id"] == str(sub.id)
+        assert data["data_points"] == []
+        assert "start_date" in data
+        assert "end_date" in data
+
+    def test_usage_trend_with_data(self, client: TestClient, db_session):
+        """Test usage trend returns aggregated daily data points."""
+        customer = create_test_customer(db_session, "cust_trend_data")
+        plan = create_test_plan(db_session, "plan_trend_data")
+        metric = BillableMetric(code="api_calls", name="API Calls", aggregation_type="count")
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        sub = Subscription(
+            external_id="sub_trend_data",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        today = date.today()
+        # Add usage data for the last 3 days
+        for i in range(3):
+            d = today - timedelta(days=i)
+            du = DailyUsage(
+                subscription_id=sub.id,
+                billable_metric_id=metric.id,
+                external_customer_id="cust_trend_data",
+                usage_date=d,
+                usage_value=100 + i * 50,
+                events_count=10 + i,
+            )
+            db_session.add(du)
+        db_session.commit()
+
+        response = client.get(f"/v1/subscriptions/{sub.id}/usage_trend")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data_points"]) == 3
+        # Points should be sorted by date ascending
+        dates = [p["date"] for p in data["data_points"]]
+        assert dates == sorted(dates)
+
+    def test_usage_trend_multiple_metrics_aggregated(self, client: TestClient, db_session):
+        """Test usage trend aggregates across multiple metrics per day."""
+        customer = create_test_customer(db_session, "cust_trend_multi")
+        plan = create_test_plan(db_session, "plan_trend_multi")
+        metric1 = BillableMetric(code="m1", name="Metric 1", aggregation_type="count")
+        metric2 = BillableMetric(code="m2", name="Metric 2", aggregation_type="sum")
+        db_session.add_all([metric1, metric2])
+        db_session.commit()
+        db_session.refresh(metric1)
+        db_session.refresh(metric2)
+
+        sub = Subscription(
+            external_id="sub_trend_multi",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        today = date.today()
+        # Two metrics on the same day
+        db_session.add(DailyUsage(
+            subscription_id=sub.id, billable_metric_id=metric1.id,
+            external_customer_id="cust_trend_multi", usage_date=today,
+            usage_value=100, events_count=5,
+        ))
+        db_session.add(DailyUsage(
+            subscription_id=sub.id, billable_metric_id=metric2.id,
+            external_customer_id="cust_trend_multi", usage_date=today,
+            usage_value=200, events_count=8,
+        ))
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/subscriptions/{sub.id}/usage_trend",
+            params={"start_date": today.isoformat(), "end_date": today.isoformat()},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data_points"]) == 1
+        point = data["data_points"][0]
+        assert float(point["value"]) == 300.0  # 100 + 200
+        assert point["events_count"] == 13  # 5 + 8
+
+    def test_usage_trend_custom_date_range(self, client: TestClient, db_session):
+        """Test usage trend respects custom start_date and end_date params."""
+        customer = create_test_customer(db_session, "cust_trend_range")
+        plan = create_test_plan(db_session, "plan_trend_range")
+        metric = BillableMetric(code="m_range", name="Range Metric", aggregation_type="count")
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        sub = Subscription(
+            external_id="sub_trend_range",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        today = date.today()
+        # Add data for 5 days
+        for i in range(5):
+            d = today - timedelta(days=i)
+            db_session.add(DailyUsage(
+                subscription_id=sub.id, billable_metric_id=metric.id,
+                external_customer_id="cust_trend_range", usage_date=d,
+                usage_value=10, events_count=1,
+            ))
+        db_session.commit()
+
+        # Request only last 2 days
+        start = (today - timedelta(days=1)).isoformat()
+        end = today.isoformat()
+        response = client.get(
+            f"/v1/subscriptions/{sub.id}/usage_trend",
+            params={"start_date": start, "end_date": end},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data_points"]) == 2
+        assert data["start_date"] == start
+        assert data["end_date"] == end
+
+    def test_usage_trend_not_found(self, client: TestClient):
+        """Test usage trend returns 404 for non-existent subscription."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(f"/v1/subscriptions/{fake_id}/usage_trend")
+        assert response.status_code == 404
+
+    def test_usage_trend_default_30_days(self, client: TestClient, db_session):
+        """Test usage trend defaults to 30-day window when no dates provided."""
+        customer = create_test_customer(db_session, "cust_trend_default")
+        plan = create_test_plan(db_session, "plan_trend_default")
+        sub = Subscription(
+            external_id="sub_trend_default",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.get(f"/v1/subscriptions/{sub.id}/usage_trend")
+        assert response.status_code == 200
+        data = response.json()
+        today = date.today()
+        expected_start = (today - timedelta(days=29)).isoformat()
+        assert data["start_date"] == expected_start
+        assert data["end_date"] == today.isoformat()

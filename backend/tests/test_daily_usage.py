@@ -22,7 +22,12 @@ from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.billable_metric import BillableMetricCreate
 from app.schemas.charge import ChargeCreate
 from app.schemas.customer import CustomerCreate
-from app.schemas.daily_usage import DailyUsageCreate, DailyUsageResponse
+from app.schemas.daily_usage import (
+    DailyUsageCreate,
+    DailyUsageResponse,
+    UsageTrendPoint,
+    UsageTrendResponse,
+)
 from app.schemas.event import EventCreate
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate, SubscriptionUpdate
@@ -285,6 +290,30 @@ class TestDailyUsageSchema:
         assert data.usage_value == Decimal("0")
         assert data.events_count == 0
 
+    def test_usage_trend_point_schema(self):
+        """Test UsageTrendPoint schema."""
+        point = UsageTrendPoint(
+            date=date.today(),
+            value=Decimal("42.5"),
+            events_count=10,
+        )
+        assert point.value == Decimal("42.5")
+        assert point.events_count == 10
+
+    def test_usage_trend_response_schema(self):
+        """Test UsageTrendResponse schema."""
+        today = date.today()
+        resp = UsageTrendResponse(
+            subscription_id=uuid4(),
+            start_date=today - timedelta(days=7),
+            end_date=today,
+            data_points=[
+                UsageTrendPoint(date=today, value=Decimal("100"), events_count=5),
+            ],
+        )
+        assert len(resp.data_points) == 1
+        assert resp.data_points[0].value == Decimal("100")
+
     def test_response_schema(self, db_session, active_subscription, billable_metric):
         """Test DailyUsageResponse schema with from_attributes."""
         record = DailyUsage()
@@ -530,6 +559,71 @@ class TestDailyUsageRepository:
         """Test deleting a non-existent record."""
         repo = DailyUsageRepository(db_session)
         assert repo.delete(uuid4()) is False
+
+    def test_get_trend_for_subscription_empty(self, db_session, active_subscription):
+        """Test trend returns empty list when no usage data exists."""
+        repo = DailyUsageRepository(db_session)
+        result = repo.get_trend_for_subscription(
+            active_subscription.id,
+            date.today() - timedelta(days=7),
+            date.today(),
+        )
+        assert result == []
+
+    def test_get_trend_for_subscription_single_metric(
+        self, db_session, active_subscription, billable_metric
+    ):
+        """Test trend with a single metric returns daily data points."""
+        repo = DailyUsageRepository(db_session)
+        base = date.today() - timedelta(days=2)
+        for i in range(3):
+            repo.upsert(DailyUsageCreate(
+                subscription_id=active_subscription.id,
+                billable_metric_id=billable_metric.id,
+                external_customer_id="trend_cust",
+                usage_date=base + timedelta(days=i),
+                usage_value=Decimal(str(10 * (i + 1))),
+                events_count=i + 1,
+            ))
+
+        result = repo.get_trend_for_subscription(active_subscription.id, base, date.today())
+        assert len(result) == 3
+        # Sorted by date ascending
+        assert result[0][0] == base
+        assert result[2][0] == base + timedelta(days=2)
+        # Values match
+        assert result[0][1] == Decimal("10")
+        assert result[1][1] == Decimal("20")
+        assert result[2][1] == Decimal("30")
+
+    def test_get_trend_for_subscription_multiple_metrics(
+        self, db_session, active_subscription, billable_metric, sum_metric
+    ):
+        """Test trend aggregates across multiple metrics per day."""
+        repo = DailyUsageRepository(db_session)
+        today = date.today()
+
+        repo.upsert(DailyUsageCreate(
+            subscription_id=active_subscription.id,
+            billable_metric_id=billable_metric.id,
+            external_customer_id="trend_multi",
+            usage_date=today,
+            usage_value=Decimal("50"),
+            events_count=3,
+        ))
+        repo.upsert(DailyUsageCreate(
+            subscription_id=active_subscription.id,
+            billable_metric_id=sum_metric.id,
+            external_customer_id="trend_multi",
+            usage_date=today,
+            usage_value=Decimal("75"),
+            events_count=5,
+        ))
+
+        result = repo.get_trend_for_subscription(active_subscription.id, today, today)
+        assert len(result) == 1
+        assert result[0][1] == Decimal("125")  # 50 + 75
+        assert result[0][2] == 8  # 3 + 5
 
 
 class TestDailyUsageService:
