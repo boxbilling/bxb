@@ -1,5 +1,6 @@
 """Audit log API endpoints."""
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -25,6 +26,8 @@ async def list_audit_logs(
     resource_type: str | None = None,
     resource_id: UUID | None = None,
     action: str | None = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> list[AuditLogResponse]:
@@ -41,6 +44,8 @@ async def list_audit_logs(
             limit=limit,
             resource_type=resource_type,
             action=action,
+            start_date=start_date,
+            end_date=end_date,
         )
     ]
 

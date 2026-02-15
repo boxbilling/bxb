@@ -1,5 +1,6 @@
 """Repository for AuditLog CRUD operations."""
 
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
@@ -67,6 +68,8 @@ class AuditLogRepository:
         limit: int = 100,
         resource_type: str | None = None,
         action: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
     ) -> list[AuditLog]:
         query = self.db.query(AuditLog).filter(
             AuditLog.organization_id == organization_id
@@ -75,4 +78,8 @@ class AuditLogRepository:
             query = query.filter(AuditLog.resource_type == resource_type)
         if action is not None:
             query = query.filter(AuditLog.action == action)
+        if start_date is not None:
+            query = query.filter(AuditLog.created_at >= start_date)
+        if end_date is not None:
+            query = query.filter(AuditLog.created_at <= end_date)
         return query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()

@@ -774,11 +774,11 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Test connection gives only success/fail - no diagnostics
 
 **Recommendations:**
-- [ ] **Integration detail page** (`/admin/integrations/:id`). Each integration needs: settings, customer mappings, field mappings, sync history, error log.
-- [ ] Provider-specific settings forms instead of raw JSON
-- [ ] Sync history with filtering
-- [ ] Customer mapping table on detail page
-- [ ] Real-time sync status indicator
+- [x] **Integration detail page** (`/admin/integrations/:id`). Each integration needs: settings, customer mappings, field mappings, sync history, error log. — Created `IntegrationDetailPage.tsx` with 5 tabs (Settings, Customer Mappings, Field Mappings, Sync History, Error Log). Added `IntegrationSyncHistory` model with migration, repository, schema, and 3 new sub-resource API endpoints (`GET .../customers`, `GET .../mappings`, `GET .../sync_history`). Integration cards on list page now link to detail page.
+- [x] Provider-specific settings forms instead of raw JSON — Added `PROVIDER_SETTINGS_FIELDS` config for all 9 providers (Stripe, GoCardless, Adyen, Netsuite, Xero, HubSpot, Salesforce, Anrok, Avalara) with typed form fields, password masking with show/hide toggle, and status selector. Unknown providers fall back to JSON editor.
+- [x] Sync history with filtering — Sync history tab shows a table of all sync operations with status and resource_type dropdown filters. Backend supports `?status=` and `?resource_type=` query parameters.
+- [x] Customer mapping table on detail page — Customer Mappings tab displays a table of all `IntegrationCustomer` records with customer ID, external customer ID, settings, and creation date.
+- [x] Real-time sync status indicator — `SyncStatusIndicator` component shows connection state with animated pulse dot (green/red/gray), last sync timestamp, and integration status badge.
 
 **Modal vs. Page Decision:**
 - **Create**: MODAL for initial setup (type + provider selection)
@@ -798,7 +798,7 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No way to navigate to the changed resource
 
 **Recommendations:**
-- [ ] Add date range filter (essential for audit logs)
+- [x] Add date range filter (essential for audit logs) — Added `start_date` and `end_date` query parameters to `GET /v1/audit_logs/` endpoint with repository-level filtering on `created_at`. Frontend `AuditLogsPage` now has a date preset selector (All time, 24h, 7d, 30d, 90d, Custom) with a dual-month calendar popover for custom ranges, following the same pattern as the Dashboard date picker.
 - [ ] Add "View Resource" link to navigate to the changed entity
 - [ ] Add export to CSV functionality
 - [ ] Add actor filter (by user/system)

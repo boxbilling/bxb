@@ -1,9 +1,10 @@
-import { Fragment, useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight } from 'lucide-react'
-import { format } from 'date-fns'
+import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight, CalendarIcon } from 'lucide-react'
+import { format, subDays, subMonths } from 'date-fns'
 import { toast } from 'sonner'
+import type { DateRange } from 'react-day-picker'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,8 +31,38 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import { auditLogsApi } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
+
+type DatePreset = 'all' | '24h' | '7d' | '30d' | '90d' | 'custom'
+
+const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+  all: 'All time',
+  '24h': 'Last 24 hours',
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  '90d': 'Last 90 days',
+  custom: 'Custom range',
+}
+
+function getPresetDates(preset: DatePreset): { start: Date; end: Date } | null {
+  if (preset === 'all') return null
+  const end = new Date()
+  switch (preset) {
+    case '24h':
+      return { start: subDays(end, 1), end }
+    case '7d':
+      return { start: subDays(end, 7), end }
+    case '30d':
+      return { start: subDays(end, 30), end }
+    case '90d':
+      return { start: subDays(end, 90), end }
+    default:
+      return null
+  }
+}
 
 function ActionBadge({ action }: { action: string }) {
   const styles: Record<string, string> = {
@@ -115,19 +146,38 @@ export default function AuditLogsPage() {
   const [resourceIdSearch, setResourceIdSearch] = useState(searchParams.get('resource_id') || '')
   const [debouncedResourceId, setDebouncedResourceId] = useState(resourceIdSearch)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [datePreset, setDatePreset] = useState<DatePreset>('all')
+  const [customRange, setCustomRange] = useState<DateRange | undefined>()
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedResourceId(resourceIdSearch), 300)
     return () => clearTimeout(timer)
   }, [resourceIdSearch])
 
+  const dateParams = useMemo(() => {
+    if (datePreset === 'custom' && customRange?.from) {
+      return {
+        start_date: customRange.from.toISOString(),
+        end_date: customRange.to ? customRange.to.toISOString() : new Date().toISOString(),
+      }
+    }
+    const dates = getPresetDates(datePreset)
+    if (!dates) return {}
+    return {
+      start_date: dates.start.toISOString(),
+      end_date: dates.end.toISOString(),
+    }
+  }, [datePreset, customRange])
+
   const { data: auditLogs, isLoading } = useQuery({
-    queryKey: ['audit-logs', { resourceTypeFilter, actionFilter, debouncedResourceId }],
+    queryKey: ['audit-logs', { resourceTypeFilter, actionFilter, debouncedResourceId, dateParams }],
     queryFn: () =>
       auditLogsApi.list({
         resource_type: resourceTypeFilter !== 'all' ? resourceTypeFilter : undefined,
         action: actionFilter !== 'all' ? actionFilter : undefined,
         resource_id: debouncedResourceId || undefined,
+        ...dateParams,
       }),
   })
 
@@ -187,6 +237,50 @@ export default function AuditLogsPage() {
             <SelectItem value="deleted">Deleted</SelectItem>
           </SelectContent>
         </Select>
+        <div className="flex items-center gap-2">
+          <Select
+            value={datePreset}
+            onValueChange={(v) => {
+              const p = v as DatePreset
+              setDatePreset(p)
+              if (p === 'custom') setCalendarOpen(true)
+            }}
+          >
+            <SelectTrigger className="w-44">
+              <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(DATE_PRESET_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {datePreset === 'custom' && (
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="font-normal">
+                  {customRange?.from
+                    ? customRange.to
+                      ? `${format(customRange.from, 'MMM d, yyyy')} - ${format(customRange.to, 'MMM d, yyyy')}`
+                      : format(customRange.from, 'MMM d, yyyy')
+                    : 'Pick dates'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={setCustomRange}
+                  numberOfMonths={2}
+                  disabled={{ after: new Date() }}
+                />
+              </PopoverContent>
+            </Popover>
+          )}
+        </div>
       </div>
 
       {/* Table */}
