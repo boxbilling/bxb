@@ -66,8 +66,9 @@ import {
 } from '@/components/ui/chart'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
-import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, ApiError } from '@/lib/api'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, CustomerUpdate } from '@/types/billing'
+import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, plansApi, ApiError } from '@/lib/api'
+import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -997,6 +998,7 @@ export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [editOpen, setEditOpen] = useState(false)
+  const [subscriptionFormOpen, setSubscriptionFormOpen] = useState(false)
 
   const { data: customer, isLoading, error } = useQuery({
     queryKey: ['customer', id],
@@ -1013,6 +1015,24 @@ export default function CustomerDetailPage() {
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to update customer'
+      toast.error(message)
+    },
+  })
+
+  const { data: plans } = useQuery({
+    queryKey: ['plans'],
+    queryFn: () => plansApi.list(),
+  })
+
+  const createSubscriptionMutation = useMutation({
+    mutationFn: (data: SubscriptionCreate) => subscriptionsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-subscriptions', id] })
+      setSubscriptionFormOpen(false)
+      toast.success('Subscription created successfully')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create subscription'
       toast.error(message)
     },
   })
@@ -1152,7 +1172,13 @@ export default function CustomerDetailPage() {
             <TabsContent value="overview">
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-sm font-medium mb-3">Subscriptions</h3>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium">Subscriptions</h3>
+                    <Button variant="outline" size="sm" onClick={() => setSubscriptionFormOpen(true)}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Subscription
+                    </Button>
+                  </div>
                   <CustomerSubscriptionsTab customerId={customer.id} />
                 </div>
                 <div>
@@ -1213,6 +1239,17 @@ export default function CustomerDetailPage() {
             customer={customer}
             onSubmit={(data) => updateMutation.mutate(data as CustomerUpdate)}
             isLoading={updateMutation.isPending}
+          />
+
+          {/* Create Subscription Dialog */}
+          <SubscriptionFormDialog
+            open={subscriptionFormOpen}
+            onOpenChange={setSubscriptionFormOpen}
+            customers={customer ? [customer] : []}
+            plans={plans ?? []}
+            onSubmit={(data) => createSubscriptionMutation.mutate(data)}
+            isLoading={createSubscriptionMutation.isPending}
+            defaultCustomerId={customer?.id}
           />
         </>
       ) : null}
