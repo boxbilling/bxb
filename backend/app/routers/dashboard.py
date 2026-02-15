@@ -1,6 +1,7 @@
+from datetime import date
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
@@ -30,13 +31,17 @@ router = APIRouter()
 async def get_stats(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
 ) -> DashboardStatsResponse:
     """Get dashboard statistics."""
     repo = DashboardRepository(db)
     return DashboardStatsResponse(
         total_customers=repo.count_customers(organization_id),
         active_subscriptions=repo.count_active_subscriptions(organization_id),
-        monthly_recurring_revenue=repo.sum_monthly_revenue(organization_id),
+        monthly_recurring_revenue=repo.sum_monthly_revenue(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
         total_invoiced=repo.sum_total_invoiced(organization_id),
         total_wallet_credits=repo.total_wallet_credits(organization_id),
         currency="USD",
@@ -110,13 +115,21 @@ async def get_recent_activity(
 async def get_revenue(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
 ) -> RevenueResponse:
     """Get revenue analytics: MRR, total this month, outstanding, overdue, and trend."""
     repo = DashboardRepository(db)
-    trend = repo.monthly_revenue_trend(organization_id)
+    trend = repo.monthly_revenue_trend(
+        organization_id, start_date=start_date, end_date=end_date
+    )
     return RevenueResponse(
-        mrr=repo.sum_monthly_revenue(organization_id),
-        total_revenue_this_month=repo.sum_monthly_revenue(organization_id),
+        mrr=repo.sum_monthly_revenue(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
+        total_revenue_this_month=repo.sum_monthly_revenue(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
         outstanding_invoices=repo.outstanding_invoices_total(organization_id),
         overdue_amount=repo.overdue_invoices_total(organization_id),
         currency="USD",
@@ -136,13 +149,19 @@ async def get_revenue(
 async def get_customer_metrics(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
 ) -> CustomerMetricsResponse:
     """Get customer metrics: total, new this month, churned this month."""
     repo = DashboardRepository(db)
     return CustomerMetricsResponse(
         total=repo.count_customers(organization_id),
-        new_this_month=repo.new_customers_this_month(organization_id),
-        churned_this_month=repo.churned_customers_this_month(organization_id),
+        new_this_month=repo.new_customers_this_month(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
+        churned_this_month=repo.churned_customers_this_month(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
     )
 
 
@@ -155,14 +174,20 @@ async def get_customer_metrics(
 async def get_subscription_metrics(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
 ) -> SubscriptionMetricsResponse:
     """Get subscription metrics: active, new, canceled, by-plan breakdown."""
     repo = DashboardRepository(db)
     by_plan = repo.subscriptions_by_plan(organization_id)
     return SubscriptionMetricsResponse(
         active=repo.count_active_subscriptions(organization_id),
-        new_this_month=repo.new_subscriptions_this_month(organization_id),
-        canceled_this_month=repo.canceled_subscriptions_this_month(organization_id),
+        new_this_month=repo.new_subscriptions_this_month(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
+        canceled_this_month=repo.canceled_subscriptions_this_month(
+            organization_id, start_date=start_date, end_date=end_date
+        ),
         by_plan=[
             SubscriptionPlanBreakdown(plan_name=p.plan_name, count=p.count)
             for p in by_plan
@@ -179,10 +204,14 @@ async def get_subscription_metrics(
 async def get_usage_metrics(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
 ) -> UsageMetricsResponse:
-    """Get top billable metrics by usage volume in the last 30 days."""
+    """Get top billable metrics by usage volume in the given period."""
     repo = DashboardRepository(db)
-    top = repo.top_metrics_by_usage(organization_id)
+    top = repo.top_metrics_by_usage(
+        organization_id, start_date=start_date, end_date=end_date
+    )
     return UsageMetricsResponse(
         top_metrics=[
             UsageMetricVolume(

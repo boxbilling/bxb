@@ -899,8 +899,10 @@ export const usageAlertsApi = {
 }
 
 // Dashboard API
+export type DashboardDateRange = { start_date?: string; end_date?: string }
+
 export const dashboardApi = {
-  getStats: () =>
+  getStats: (params?: DashboardDateRange) =>
     request<{
       total_customers: number
       active_subscriptions: number
@@ -908,7 +910,7 @@ export const dashboardApi = {
       total_invoiced: number
       total_wallet_credits: number
       currency: string
-    }>('/dashboard/stats'),
+    }>(`/dashboard/stats${buildQuery(params)}`),
   getRecentActivity: () =>
     request<
       {
@@ -918,7 +920,7 @@ export const dashboardApi = {
         timestamp: string
       }[]
     >('/dashboard/activity'),
-  getRevenue: () =>
+  getRevenue: (params?: DashboardDateRange) =>
     request<{
       mrr: number
       total_revenue_this_month: number
@@ -926,24 +928,24 @@ export const dashboardApi = {
       overdue_amount: number
       currency: string
       monthly_trend: { month: string; revenue: number }[]
-    }>('/dashboard/revenue'),
-  getCustomerMetrics: () =>
+    }>(`/dashboard/revenue${buildQuery(params)}`),
+  getCustomerMetrics: (params?: DashboardDateRange) =>
     request<{
       total: number
       new_this_month: number
       churned_this_month: number
-    }>('/dashboard/customers'),
-  getSubscriptionMetrics: () =>
+    }>(`/dashboard/customers${buildQuery(params)}`),
+  getSubscriptionMetrics: (params?: DashboardDateRange) =>
     request<{
       active: number
       new_this_month: number
       canceled_this_month: number
       by_plan: { plan_name: string; count: number }[]
-    }>('/dashboard/subscriptions'),
-  getUsageMetrics: () =>
+    }>(`/dashboard/subscriptions${buildQuery(params)}`),
+  getUsageMetrics: (params?: DashboardDateRange) =>
     request<{
       top_metrics: { metric_name: string; metric_code: string; event_count: number }[]
-    }>('/dashboard/usage'),
+    }>(`/dashboard/usage${buildQuery(params)}`),
 }
 
 export { ApiError }

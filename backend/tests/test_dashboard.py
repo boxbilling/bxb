@@ -532,6 +532,297 @@ class TestDashboardActivity:
         assert len(data) == 10
 
 
+class TestDashboardDateRangeFiltering:
+    """Tests for date range query parameters on dashboard endpoints."""
+
+    def test_stats_with_date_range(self, client: TestClient, seeded_data):
+        """Stats MRR respects start_date/end_date params."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(f"/dashboard/stats?start_date={week_ago}&end_date={today}")
+        assert response.status_code == 200
+        data = response.json()
+        # Invoices were created 2-5 days ago, so within 7 days
+        assert data["monthly_recurring_revenue"] == 162.0
+
+    def test_stats_narrow_date_range_excludes_data(self, client: TestClient, seeded_data):
+        """Stats with a narrow date range that excludes all invoices."""
+        far_past = "2020-01-01"
+        far_past_end = "2020-01-02"
+        response = client.get(
+            f"/dashboard/stats?start_date={far_past}&end_date={far_past_end}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["monthly_recurring_revenue"] == 0.0
+        # total_customers and total_invoiced are not date-filtered
+        assert data["total_customers"] == 2
+
+    def test_revenue_with_date_range(self, client: TestClient, seeded_data):
+        """Revenue endpoint respects date range."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        month_ago = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/revenue?start_date={month_ago}&end_date={today}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["mrr"] == 162.0
+        assert len(data["monthly_trend"]) >= 1
+
+    def test_revenue_future_date_range_empty(self, client: TestClient, seeded_data):
+        """Revenue with future dates returns empty trend."""
+        response = client.get(
+            "/dashboard/revenue?start_date=2099-01-01&end_date=2099-12-31"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["mrr"] == 0.0
+
+    def test_customers_with_date_range(self, client: TestClient, seeded_data):
+        """Customer metrics respect date range."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/customers?start_date={week_ago}&end_date={today}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["new_this_month"] == 2
+        assert data["churned_this_month"] == 0
+
+    def test_customers_narrow_range_excludes_new(self, client: TestClient, seeded_data):
+        """Customers created outside the range are excluded from new count."""
+        response = client.get(
+            "/dashboard/customers?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["new_this_month"] == 0
+        # total is still all-time
+        assert data["total"] == 2
+
+    def test_subscriptions_with_date_range(self, client: TestClient, seeded_data):
+        """Subscription metrics respect date range."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/subscriptions?start_date={week_ago}&end_date={today}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["new_this_month"] == 2
+        assert data["canceled_this_month"] == 0
+
+    def test_subscriptions_narrow_range(self, client: TestClient, seeded_data):
+        """Subscriptions created outside range excluded."""
+        response = client.get(
+            "/dashboard/subscriptions?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["new_this_month"] == 0
+
+    def test_subscriptions_canceled_in_range(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Canceled subscriptions filtered by date range."""
+        sub = seeded_data["subscriptions"][0]
+        sub.status = "canceled"
+        sub.canceled_at = datetime.now(UTC) - timedelta(days=2)
+        db_session.commit()
+
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/subscriptions?start_date={week_ago}&end_date={today}"
+        )
+        data = response.json()
+        assert data["canceled_this_month"] == 1
+
+        # Range that excludes the cancellation
+        response2 = client.get(
+            "/dashboard/subscriptions?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        data2 = response2.json()
+        assert data2["canceled_this_month"] == 0
+
+    def test_usage_with_date_range(self, client: TestClient, db_session):
+        """Usage metrics respect date range."""
+        from app.models.billable_metric import BillableMetric
+        from app.models.event import Event
+
+        metric = BillableMetric(
+            organization_id=DEFAULT_ORG_ID,
+            code="range_metric",
+            name="Range Metric",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.flush()
+
+        now = datetime.now(UTC)
+        # 2 recent events
+        for i in range(2):
+            db_session.add(
+                Event(
+                    organization_id=DEFAULT_ORG_ID,
+                    transaction_id=f"range_evt_{i}",
+                    external_customer_id="cust_1",
+                    code="range_metric",
+                    timestamp=now - timedelta(hours=i + 1),
+                    properties={},
+                )
+            )
+        # 1 old event
+        db_session.add(
+            Event(
+                organization_id=DEFAULT_ORG_ID,
+                transaction_id="range_evt_old",
+                external_customer_id="cust_1",
+                code="range_metric",
+                timestamp=now - timedelta(days=60),
+                properties={},
+            )
+        )
+        db_session.commit()
+
+        today = now.strftime("%Y-%m-%d")
+        week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/usage?start_date={week_ago}&end_date={today}"
+        )
+        data = response.json()
+        assert len(data["top_metrics"]) == 1
+        assert data["top_metrics"][0]["event_count"] == 2
+
+    def test_usage_date_range_excludes_all(self, client: TestClient, db_session):
+        """Usage with range that excludes all events returns empty."""
+        from app.models.billable_metric import BillableMetric
+        from app.models.event import Event
+
+        metric = BillableMetric(
+            organization_id=DEFAULT_ORG_ID,
+            code="empty_range",
+            name="Empty Range",
+            aggregation_type="count",
+        )
+        db_session.add(metric)
+        db_session.flush()
+
+        db_session.add(
+            Event(
+                organization_id=DEFAULT_ORG_ID,
+                transaction_id="empty_range_evt",
+                external_customer_id="cust_1",
+                code="empty_range",
+                timestamp=datetime.now(UTC),
+                properties={},
+            )
+        )
+        db_session.commit()
+
+        response = client.get(
+            "/dashboard/usage?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        data = response.json()
+        assert data["top_metrics"] == []
+
+    def test_stats_only_start_date(self, client: TestClient, seeded_data):
+        """Passing only start_date uses now as end_date."""
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(f"/dashboard/stats?start_date={week_ago}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["monthly_recurring_revenue"] == 162.0
+
+    def test_stats_only_end_date(self, client: TestClient, seeded_data):
+        """Passing only end_date uses default lookback from end_date."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        response = client.get(f"/dashboard/stats?end_date={today}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["monthly_recurring_revenue"] == 162.0
+
+    def test_customers_churn_in_date_range(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Churned customers respect date range."""
+        sub = seeded_data["subscriptions"][0]
+        sub.status = "canceled"
+        sub.canceled_at = datetime.now(UTC) - timedelta(days=3)
+        db_session.commit()
+
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/customers?start_date={week_ago}&end_date={today}"
+        )
+        data = response.json()
+        assert data["churned_this_month"] == 1
+
+        # Narrow range that misses the cancellation
+        response2 = client.get(
+            "/dashboard/customers?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        data2 = response2.json()
+        assert data2["churned_this_month"] == 0
+
+    def test_revenue_trend_with_date_range(self, client: TestClient, seeded_data):
+        """Revenue trend respects date range and produces correct number of months."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        three_months_ago = (datetime.now(UTC) - timedelta(days=90)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/revenue?start_date={three_months_ago}&end_date={today}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["monthly_trend"]) >= 3
+
+
+class TestDashboardResolvePeriod:
+    """Tests for the _resolve_period helper."""
+
+    def test_resolve_period_both_dates(self):
+        from datetime import date
+
+        from app.repositories.dashboard_repository import _resolve_period
+
+        start, end = _resolve_period(date(2024, 1, 1), date(2024, 1, 31))
+        assert start.year == 2024
+        assert start.month == 1
+        assert start.day == 1
+        assert end.day == 31
+        assert end.hour == 23
+
+    def test_resolve_period_no_dates(self):
+        from app.repositories.dashboard_repository import _resolve_period
+
+        start, end = _resolve_period(None, None, default_days=7)
+        assert (end - start).days == 7
+
+    def test_resolve_period_only_start(self):
+        from datetime import date
+
+        from app.repositories.dashboard_repository import _resolve_period
+
+        start, end = _resolve_period(date(2024, 6, 1), None)
+        assert start.year == 2024
+        assert start.month == 6
+        # end should be ~now
+        assert end.year >= 2024
+
+    def test_resolve_period_only_end(self):
+        from datetime import date
+
+        from app.repositories.dashboard_repository import _resolve_period
+
+        start, end = _resolve_period(None, date(2024, 6, 30), default_days=10)
+        assert end.month == 6
+        assert end.day == 30
+        assert (end - start).days == 10
+
+
 class TestDashboardRepoDialect:
     def test_monthly_revenue_trend_postgresql_branch(self, db_session):
         """Cover the to_char branch for PostgreSQL dialect."""

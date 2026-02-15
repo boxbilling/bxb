@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   Users,
@@ -10,6 +11,7 @@ import {
   UserPlus,
   UserMinus,
   BarChart3,
+  CalendarIcon,
 } from 'lucide-react'
 import {
   Line,
@@ -20,8 +22,19 @@ import {
   YAxis,
   CartesianGrid,
 } from 'recharts'
+import { format, subDays, subMonths } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
+import { Button } from '@/components/ui/button'
 import {
   ChartContainer,
   ChartTooltip,
@@ -29,7 +42,9 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { dashboardApi } from '@/lib/api'
+import type { DashboardDateRange } from '@/lib/api'
 import type { RecentActivity } from '@/types/billing'
+import type { DateRange } from 'react-day-picker'
 
 function formatCurrencyDollars(amount: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -93,6 +108,94 @@ function StatCard({
   )
 }
 
+type PeriodPreset = '7d' | '30d' | '90d' | '12m' | 'custom'
+
+const PERIOD_LABELS: Record<PeriodPreset, string> = {
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  '90d': 'Last 90 days',
+  '12m': 'Last 12 months',
+  custom: 'Custom range',
+}
+
+function getPresetDates(preset: PeriodPreset): { start: Date; end: Date } {
+  const end = new Date()
+  switch (preset) {
+    case '7d':
+      return { start: subDays(end, 7), end }
+    case '30d':
+      return { start: subDays(end, 30), end }
+    case '90d':
+      return { start: subDays(end, 90), end }
+    case '12m':
+      return { start: subMonths(end, 12), end }
+    default:
+      return { start: subDays(end, 30), end }
+  }
+}
+
+function PeriodSelector({
+  preset,
+  onPresetChange,
+  customRange,
+  onCustomRangeChange,
+}: {
+  preset: PeriodPreset
+  onPresetChange: (p: PeriodPreset) => void
+  customRange: DateRange | undefined
+  onCustomRangeChange: (r: DateRange | undefined) => void
+}) {
+  const [calendarOpen, setCalendarOpen] = useState(false)
+
+  return (
+    <div className="flex items-center gap-2">
+      <Select
+        value={preset}
+        onValueChange={(v) => {
+          const p = v as PeriodPreset
+          onPresetChange(p)
+          if (p === 'custom') setCalendarOpen(true)
+        }}
+      >
+        <SelectTrigger size="sm" className="w-[160px]">
+          <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {Object.entries(PERIOD_LABELS).map(([key, label]) => (
+            <SelectItem key={key} value={key}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {preset === 'custom' && (
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="font-normal">
+              {customRange?.from
+                ? customRange.to
+                  ? `${format(customRange.from, 'MMM d, yyyy')} - ${format(customRange.to, 'MMM d, yyyy')}`
+                  : format(customRange.from, 'MMM d, yyyy')
+                : 'Pick dates'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="range"
+              selected={customRange}
+              onSelect={onCustomRangeChange}
+              numberOfMonths={2}
+              disabled={{ after: new Date() }}
+            />
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  )
+}
+
 const activityColors: Record<string, string> = {
   customer_created: 'text-primary',
   subscription_created: 'text-primary',
@@ -129,29 +232,48 @@ const usageChartConfig = {
 } satisfies ChartConfig
 
 export default function DashboardPage() {
+  const [preset, setPreset] = useState<PeriodPreset>('30d')
+  const [customRange, setCustomRange] = useState<DateRange | undefined>()
+
+  const dateParams: DashboardDateRange = useMemo(() => {
+    if (preset === 'custom' && customRange?.from) {
+      return {
+        start_date: format(customRange.from, 'yyyy-MM-dd'),
+        end_date: customRange.to
+          ? format(customRange.to, 'yyyy-MM-dd')
+          : format(new Date(), 'yyyy-MM-dd'),
+      }
+    }
+    const { start, end } = getPresetDates(preset)
+    return {
+      start_date: format(start, 'yyyy-MM-dd'),
+      end_date: format(end, 'yyyy-MM-dd'),
+    }
+  }, [preset, customRange])
+
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
-    queryFn: () => dashboardApi.getStats(),
+    queryKey: ['dashboard-stats', dateParams],
+    queryFn: () => dashboardApi.getStats(dateParams),
   })
 
   const { data: revenue, isLoading: revenueLoading } = useQuery({
-    queryKey: ['dashboard-revenue'],
-    queryFn: () => dashboardApi.getRevenue(),
+    queryKey: ['dashboard-revenue', dateParams],
+    queryFn: () => dashboardApi.getRevenue(dateParams),
   })
 
   const { data: customerMetrics, isLoading: customersLoading } = useQuery({
-    queryKey: ['dashboard-customers'],
-    queryFn: () => dashboardApi.getCustomerMetrics(),
+    queryKey: ['dashboard-customers', dateParams],
+    queryFn: () => dashboardApi.getCustomerMetrics(dateParams),
   })
 
   const { data: subscriptionMetrics, isLoading: subscriptionsLoading } = useQuery({
-    queryKey: ['dashboard-subscriptions'],
-    queryFn: () => dashboardApi.getSubscriptionMetrics(),
+    queryKey: ['dashboard-subscriptions', dateParams],
+    queryFn: () => dashboardApi.getSubscriptionMetrics(dateParams),
   })
 
   const { data: usageMetrics, isLoading: usageLoading } = useQuery({
-    queryKey: ['dashboard-usage'],
-    queryFn: () => dashboardApi.getUsageMetrics(),
+    queryKey: ['dashboard-usage', dateParams],
+    queryFn: () => dashboardApi.getUsageMetrics(dateParams),
   })
 
   const { data: activity, isLoading: activityLoading } = useQuery({
@@ -159,13 +281,25 @@ export default function DashboardPage() {
     queryFn: () => dashboardApi.getRecentActivity(),
   })
 
+  const periodLabel = preset === 'custom'
+    ? (customRange?.from ? `${format(customRange.from, 'MMM d')} - ${format(customRange?.to ?? new Date(), 'MMM d')}` : 'custom period')
+    : PERIOD_LABELS[preset].toLowerCase()
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight">Dashboard</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Overview of your billing platform
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">Dashboard</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Overview of your billing platform
+          </p>
+        </div>
+        <PeriodSelector
+          preset={preset}
+          onPresetChange={setPreset}
+          customRange={customRange}
+          onCustomRangeChange={setCustomRange}
+        />
       </div>
 
       {/* Revenue Metrics Cards */}
@@ -177,7 +311,7 @@ export default function DashboardPage() {
               ? formatCurrencyDollars(revenue.mrr, revenue.currency)
               : '-'
           }
-          description="monthly recurring revenue"
+          description={`recurring revenue (${periodLabel})`}
           icon={TrendingUp}
           mono
           loading={revenueLoading}
@@ -232,14 +366,14 @@ export default function DashboardPage() {
         <StatCard
           title="New Customers"
           value={customerMetrics?.new_this_month.toLocaleString() ?? '-'}
-          description="this month"
+          description={periodLabel}
           icon={UserPlus}
           loading={customersLoading}
         />
         <StatCard
           title="Churned"
           value={customerMetrics?.churned_this_month.toLocaleString() ?? '-'}
-          description="this month"
+          description={periodLabel}
           icon={UserMinus}
           loading={customersLoading}
         />
@@ -257,14 +391,14 @@ export default function DashboardPage() {
         <StatCard
           title="New Subscriptions"
           value={subscriptionMetrics?.new_this_month.toLocaleString() ?? '-'}
-          description="this month"
+          description={periodLabel}
           icon={CreditCard}
           loading={subscriptionsLoading}
         />
         <StatCard
           title="Canceled"
           value={subscriptionMetrics?.canceled_this_month.toLocaleString() ?? '-'}
-          description="this month"
+          description={periodLabel}
           icon={CreditCard}
           loading={subscriptionsLoading}
         />
@@ -275,7 +409,7 @@ export default function DashboardPage() {
         {/* Revenue Trend Chart */}
         <Card className="col-span-4">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Revenue Trend (Last 12 Months)</CardTitle>
+            <CardTitle className="text-sm font-medium">Revenue Trend ({PERIOD_LABELS[preset]})</CardTitle>
           </CardHeader>
           <CardContent>
             {revenueLoading ? (
@@ -425,7 +559,7 @@ export default function DashboardPage() {
         {/* Top Billable Metrics by Usage */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Top Metrics by Usage (Last 30 Days)</CardTitle>
+            <CardTitle className="text-sm font-medium">Top Metrics by Usage ({PERIOD_LABELS[preset]})</CardTitle>
           </CardHeader>
           <CardContent>
             {usageLoading ? (

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func as sa_func
@@ -13,6 +13,23 @@ from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.wallet import Wallet, WalletStatus
+
+
+def _resolve_period(
+    start_date: date | None, end_date: date | None, default_days: int = 30
+) -> tuple[datetime, datetime]:
+    """Return (start_dt, end_dt) as UTC datetimes from optional date params."""
+    end_dt = (
+        datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59, tzinfo=UTC)
+        if end_date
+        else datetime.now(UTC)
+    )
+    start_dt = (
+        datetime(start_date.year, start_date.month, start_date.day, tzinfo=UTC)
+        if start_date
+        else end_dt - timedelta(days=default_days)
+    )
+    return start_dt, end_dt
 
 
 @dataclass
@@ -57,14 +74,20 @@ class DashboardRepository:
             or 0
         )
 
-    def sum_monthly_revenue(self, organization_id: UUID) -> float:
-        thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
+    def sum_monthly_revenue(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> float:
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
         result = (
             self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
             .filter(
                 Invoice.organization_id == organization_id,
                 Invoice.status.in_(["finalized", "paid"]),
-                Invoice.issued_at >= thirty_days_ago,
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
             )
             .scalar()
             or 0
@@ -151,11 +174,26 @@ class DashboardRepository:
         return float(result)
 
     def monthly_revenue_trend(
-        self, organization_id: UUID, months: int = 12
+        self,
+        organization_id: UUID,
+        months: int = 12,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[MonthlyRevenue]:
         """Revenue per month for the last N months, ordered oldest first."""
-        now = datetime.now(UTC)
-        cutoff = now - timedelta(days=months * 31)
+        if start_date or end_date:
+            start_dt, end_dt = _resolve_period(start_date, end_date, default_days=months * 31)
+            # Calculate months from the date range
+            months = max(
+                1,
+                (end_dt.year - start_dt.year) * 12 + end_dt.month - start_dt.month + 1,
+            )
+            now = end_dt
+            cutoff = start_dt
+        else:
+            now = datetime.now(UTC)
+            cutoff = now - timedelta(days=months * 31)
+
         # Build a year-month expression compatible with both SQLite and PostgreSQL
         dialect = self.db.bind.dialect.name if self.db.bind else ""
         if dialect == "postgresql":
@@ -173,6 +211,7 @@ class DashboardRepository:
                 Invoice.status.in_(["finalized", "paid"]),
                 Invoice.issued_at.isnot(None),
                 Invoice.issued_at >= cutoff,
+                Invoice.issued_at <= now,
             )
             .group_by(month_expr)
             .order_by(month_expr)
@@ -192,24 +231,43 @@ class DashboardRepository:
 
     # --- Customer analytics ---
 
-    def new_customers_this_month(self, organization_id: UUID) -> int:
-        """Count of customers created in the current calendar month."""
-        now = datetime.now(UTC)
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    def new_customers_this_month(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> int:
+        """Count of customers created in the period (default: current calendar month)."""
+        if start_date or end_date:
+            start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        else:
+            now = datetime.now(UTC)
+            start_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_dt = now
         return (
             self.db.query(sa_func.count(Customer.id))
             .filter(
                 Customer.organization_id == organization_id,
-                Customer.created_at >= month_start,
+                Customer.created_at >= start_dt,
+                Customer.created_at <= end_dt,
             )
             .scalar()
             or 0
         )
 
-    def churned_customers_this_month(self, organization_id: UUID) -> int:
-        """Count of customers whose subscriptions were all canceled/terminated this month."""
-        now = datetime.now(UTC)
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    def churned_customers_this_month(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> int:
+        """Count of customers whose subscriptions were all canceled/terminated in the period."""
+        if start_date or end_date:
+            start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        else:
+            now = datetime.now(UTC)
+            start_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_dt = now
         return (
             self.db.query(sa_func.count(sa_func.distinct(Subscription.customer_id)))
             .filter(
@@ -218,7 +276,8 @@ class DashboardRepository:
                     [SubscriptionStatus.CANCELED.value, SubscriptionStatus.TERMINATED.value]
                 ),
                 Subscription.canceled_at.isnot(None),
-                Subscription.canceled_at >= month_start,
+                Subscription.canceled_at >= start_dt,
+                Subscription.canceled_at <= end_dt,
             )
             .scalar()
             or 0
@@ -226,22 +285,41 @@ class DashboardRepository:
 
     # --- Subscription analytics ---
 
-    def new_subscriptions_this_month(self, organization_id: UUID) -> int:
-        now = datetime.now(UTC)
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    def new_subscriptions_this_month(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> int:
+        if start_date or end_date:
+            start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        else:
+            now = datetime.now(UTC)
+            start_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_dt = now
         return (
             self.db.query(sa_func.count(Subscription.id))
             .filter(
                 Subscription.organization_id == organization_id,
-                Subscription.created_at >= month_start,
+                Subscription.created_at >= start_dt,
+                Subscription.created_at <= end_dt,
             )
             .scalar()
             or 0
         )
 
-    def canceled_subscriptions_this_month(self, organization_id: UUID) -> int:
-        now = datetime.now(UTC)
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    def canceled_subscriptions_this_month(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> int:
+        if start_date or end_date:
+            start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        else:
+            now = datetime.now(UTC)
+            start_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            end_dt = now
         return (
             self.db.query(sa_func.count(Subscription.id))
             .filter(
@@ -250,7 +328,8 @@ class DashboardRepository:
                     [SubscriptionStatus.CANCELED.value, SubscriptionStatus.TERMINATED.value]
                 ),
                 Subscription.canceled_at.isnot(None),
-                Subscription.canceled_at >= month_start,
+                Subscription.canceled_at >= start_dt,
+                Subscription.canceled_at <= end_dt,
             )
             .scalar()
             or 0
@@ -282,10 +361,14 @@ class DashboardRepository:
     # --- Usage analytics ---
 
     def top_metrics_by_usage(
-        self, organization_id: UUID, limit: int = 5
+        self,
+        organization_id: UUID,
+        limit: int = 5,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[MetricUsage]:
-        """Top billable metrics by event count in the last 30 days."""
-        thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
+        """Top billable metrics by event count in the given period (default: last 30 days)."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
         rows = (
             self.db.query(
                 BillableMetric.name.label("metric_name"),
@@ -296,7 +379,8 @@ class DashboardRepository:
             .filter(
                 Event.organization_id == organization_id,
                 BillableMetric.organization_id == organization_id,
-                Event.timestamp >= thirty_days_ago,
+                Event.timestamp >= start_dt,
+                Event.timestamp <= end_dt,
             )
             .group_by(BillableMetric.name, BillableMetric.code)
             .order_by(sa_func.count(Event.id).desc())
