@@ -11,6 +11,7 @@ import {
   Calculator,
   CircleDollarSign,
   ArrowLeftRight,
+  CreditCard,
   Wallet,
   Percent,
   Puzzle,
@@ -68,6 +69,7 @@ const navigationGroups = [
       { name: 'Fees', href: '/admin/fees', icon: CircleDollarSign },
       { name: 'Payments', href: '/admin/payments', icon: ArrowLeftRight },
       { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
+      { name: 'Payment Methods', href: '/admin/payment-methods', icon: CreditCard },
     ],
   },
   {

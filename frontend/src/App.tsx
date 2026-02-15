@@ -22,6 +22,7 @@ import {
   PaymentRequestsPage,
   DataExportsPage,
   WebhooksPage,
+  PaymentMethodsPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 import ApiKeysPage from './pages/admin/ApiKeysPage'
@@ -51,6 +52,7 @@ function App() {
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="payment-requests" element={<PaymentRequestsPage />} />
         <Route path="data-exports" element={<DataExportsPage />} />
+        <Route path="payment-methods" element={<PaymentMethodsPage />} />
         <Route path="webhooks" element={<WebhooksPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />
