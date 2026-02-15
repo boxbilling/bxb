@@ -303,6 +303,86 @@ async def change_plan_preview(
     )
 
 
+@router.post(
+    "/{subscription_id}/pause",
+    response_model=SubscriptionResponse,
+    summary="Pause subscription",
+    responses={
+        400: {"description": "Subscription cannot be paused"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def pause_subscription(
+    subscription_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Subscription:
+    """Pause an active subscription."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    try:
+        lifecycle_service.pause_subscription(subscription_id)
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg) from e
+        raise HTTPException(status_code=400, detail=msg) from e
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="subscription",
+        resource_id=subscription_id,
+        organization_id=organization_id,
+        old_status="active",
+        new_status="paused",
+        actor_type="api_key",
+    )
+
+    repo = SubscriptionRepository(db)
+    subscription = repo.get_by_id(subscription_id, organization_id)
+    return subscription  # type: ignore[return-value]
+
+
+@router.post(
+    "/{subscription_id}/resume",
+    response_model=SubscriptionResponse,
+    summary="Resume subscription",
+    responses={
+        400: {"description": "Subscription cannot be resumed"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def resume_subscription(
+    subscription_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Subscription:
+    """Resume a paused subscription."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    try:
+        lifecycle_service.resume_subscription(subscription_id)
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg) from e
+        raise HTTPException(status_code=400, detail=msg) from e
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="subscription",
+        resource_id=subscription_id,
+        organization_id=organization_id,
+        old_status="paused",
+        new_status="active",
+        actor_type="api_key",
+    )
+
+    repo = SubscriptionRepository(db)
+    subscription = repo.get_by_id(subscription_id, organization_id)
+    return subscription  # type: ignore[return-value]
+
+
 @router.delete(
     "/{subscription_id}",
     status_code=204,
@@ -453,7 +533,29 @@ async def get_subscription_lifecycle(
             )
         )
 
-    # 5. Canceled
+    # 5. Paused
+    if subscription.paused_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.paused_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Subscription paused",
+                status="paused",
+            )
+        )
+
+    # 5b. Resumed
+    if subscription.resumed_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.resumed_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Subscription resumed",
+                status="active",
+            )
+        )
+
+    # 6. Canceled
     if subscription.canceled_at:
         events.append(
             LifecycleEvent(

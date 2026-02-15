@@ -429,6 +429,10 @@ export const subscriptionsApi = {
     }),
   terminate: (id: string, onTerminationAction?: string) =>
     request<void>(`/v1/subscriptions/${id}${buildQuery({ on_termination_action: onTerminationAction })}`, { method: 'DELETE' }),
+  pause: (id: string) =>
+    request<SubscriptionResponse>(`/v1/subscriptions/${id}/pause`, { method: 'POST' }),
+  resume: (id: string) =>
+    request<SubscriptionResponse>(`/v1/subscriptions/${id}/resume`, { method: 'POST' }),
   getEntitlements: (externalId: string) =>
     request<EntitlementResponse[]>(`/v1/subscriptions/${externalId}/entitlements`),
   getLifecycle: (id: string) =>

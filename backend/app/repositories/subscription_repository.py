@@ -140,6 +140,29 @@ class SubscriptionRepository:
         self.db.refresh(subscription)
         return subscription
 
+    def pause(self, subscription_id: UUID) -> Subscription | None:
+        """Pause a subscription."""
+        subscription = self.get_by_id(subscription_id)
+        if not subscription:
+            return None
+        subscription.status = SubscriptionStatus.PAUSED.value  # type: ignore[assignment]
+        subscription.paused_at = datetime.now(UTC)  # type: ignore[assignment]
+        self.db.commit()
+        self.db.refresh(subscription)
+        return subscription
+
+    def resume(self, subscription_id: UUID) -> Subscription | None:
+        """Resume a paused subscription."""
+        subscription = self.get_by_id(subscription_id)
+        if not subscription:
+            return None
+        subscription.status = SubscriptionStatus.ACTIVE.value  # type: ignore[assignment]
+        subscription.resumed_at = datetime.now(UTC)  # type: ignore[assignment]
+        subscription.paused_at = None  # type: ignore[assignment]
+        self.db.commit()
+        self.db.refresh(subscription)
+        return subscription
+
     def external_id_exists(self, external_id: str, organization_id: UUID) -> bool:
         """Check if a subscription with the given external_id already exists."""
         query = self.db.query(Subscription).filter(

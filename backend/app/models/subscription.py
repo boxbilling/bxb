@@ -10,6 +10,7 @@ from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
 class SubscriptionStatus(str, Enum):
     PENDING = "pending"
     ACTIVE = "active"
+    PAUSED = "paused"
     CANCELED = "canceled"
     TERMINATED = "terminated"
 
@@ -75,5 +76,7 @@ class Subscription(Base):
     started_at = Column(DateTime(timezone=True), nullable=True)
     ending_at = Column(DateTime(timezone=True), nullable=True)
     canceled_at = Column(DateTime(timezone=True), nullable=True)
+    paused_at = Column(DateTime(timezone=True), nullable=True)
+    resumed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, CalendarIcon, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
+import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, CalendarIcon, ArrowRight, TrendingUp, TrendingDown, Minus, Pause, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -58,9 +58,10 @@ function formatCurrency(cents: number, currency: string = 'USD') {
 }
 
 function StatusBadge({ status }: { status: SubscriptionStatus }) {
-  const variants: Record<SubscriptionStatus, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+  const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
     pending: { variant: 'secondary', label: 'Pending' },
     active: { variant: 'default', label: 'Active' },
+    paused: { variant: 'outline', label: 'Paused' },
     canceled: { variant: 'outline', label: 'Canceled' },
     terminated: { variant: 'destructive', label: 'Terminated' },
   }
@@ -645,6 +646,30 @@ export default function SubscriptionsPage() {
     },
   })
 
+  // Pause mutation
+  const pauseMutation = useMutation({
+    mutationFn: (id: string) => subscriptionsApi.pause(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      toast.success('Subscription paused')
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to pause subscription')
+    },
+  })
+
+  // Resume mutation
+  const resumeMutation = useMutation({
+    mutationFn: (id: string) => subscriptionsApi.resume(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      toast.success('Subscription resumed')
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to resume subscription')
+    },
+  })
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -687,6 +712,7 @@ export default function SubscriptionsPage() {
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="paused">Paused</SelectItem>
             <SelectItem value="canceled">Canceled</SelectItem>
             <SelectItem value="terminated">Terminated</SelectItem>
           </SelectContent>
@@ -775,7 +801,31 @@ export default function SubscriptionsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        {(sub.status === 'active' || sub.status === 'pending') && (
+                        {sub.status === 'active' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Pause subscription"
+                            onClick={() => pauseMutation.mutate(sub.id)}
+                            disabled={pauseMutation.isPending}
+                          >
+                            <Pause className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {sub.status === 'paused' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Resume subscription"
+                            onClick={() => resumeMutation.mutate(sub.id)}
+                            disabled={resumeMutation.isPending}
+                          >
+                            <Play className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        {(sub.status === 'active' || sub.status === 'pending' || sub.status === 'paused') && (
                           <>
                             <Button
                               variant="ghost"
@@ -786,15 +836,17 @@ export default function SubscriptionsPage() {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Change plan"
-                              onClick={() => setChangePlanSub(sub)}
-                            >
-                              <ArrowUpDown className="h-3.5 w-3.5" />
-                            </Button>
+                            {sub.status !== 'paused' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                title="Change plan"
+                                onClick={() => setChangePlanSub(sub)}
+                              >
+                                <ArrowUpDown className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"

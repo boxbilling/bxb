@@ -12,6 +12,7 @@ import {
   ArrowRightLeft,
   CheckCircle2,
   AlertCircle,
+  Pause,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -41,6 +42,7 @@ const STATUS_BADGE: Record<string, { variant: 'default' | 'secondary' | 'destruc
   succeeded: { variant: 'outline', className: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' },
   failed: { variant: 'destructive' },
   refunded: { variant: 'outline', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300' },
+  paused: { variant: 'outline', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' },
   canceled: { variant: 'outline', className: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300' },
   terminated: { variant: 'destructive' },
 }
@@ -52,6 +54,7 @@ function getEventIcon(event: LifecycleEvent) {
   // Use more specific icons for certain statuses
   if (event.status === 'terminated') return Square
   if (event.status === 'canceled') return XCircle
+  if (event.status === 'paused') return Pause
   if (event.status === 'succeeded' || event.status === 'paid') return CheckCircle2
   if (event.status === 'failed') return AlertCircle
 
@@ -61,6 +64,7 @@ function getEventIcon(event: LifecycleEvent) {
 function getDotColor(event: LifecycleEvent): string {
   if (event.status === 'terminated' || event.status === 'failed') return 'bg-red-500'
   if (event.status === 'canceled') return 'bg-orange-500'
+  if (event.status === 'paused') return 'bg-yellow-500'
   if (event.status === 'succeeded' || event.status === 'paid' || event.status === 'active') return 'bg-green-500'
   return EVENT_CONFIG[event.event_type]?.dotColor ?? 'bg-gray-400'
 }

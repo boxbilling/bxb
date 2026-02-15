@@ -31,6 +31,8 @@ WEBHOOK_EVENT_TYPES = [
     "subscription.terminated",
     "subscription.canceled",
     "subscription.started",
+    "subscription.paused",
+    "subscription.resumed",
     "subscription.plan_changed",
     "subscription.trial_ended",
     "customer.created",

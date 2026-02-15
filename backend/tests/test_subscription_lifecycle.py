@@ -908,7 +908,7 @@ class TestTerminateSubscription:
         db_session.refresh(sub)
 
         service = SubscriptionLifecycleService(db_session)
-        with pytest.raises(ValueError, match="active or pending"):
+        with pytest.raises(ValueError, match="active, pending, or paused"):
             service.terminate_subscription(sub.id, "skip")
 
     def test_terminate_pending_subscription(self, db_session):
@@ -1098,7 +1098,7 @@ class TestCancelSubscription:
         db_session.refresh(sub)
 
         service = SubscriptionLifecycleService(db_session)
-        with pytest.raises(ValueError, match="active or pending"):
+        with pytest.raises(ValueError, match="active, pending, or paused"):
             service.cancel_subscription(sub.id, "skip")
 
     def test_cancel_pending_subscription(self, db_session):
@@ -1688,11 +1688,169 @@ class TestTerminationActionsComprehensive:
         assert len(invoices) == 1
 
 
+class TestPauseSubscription:
+    def test_pause_active_subscription(self, db_session):
+        """Test pausing an active subscription."""
+        customer = _create_customer(db_session, "cust_pause")
+        plan = _create_plan(db_session, "plan_pause", 10000)
+        sub = _create_active_subscription(db_session, customer, plan, "sub_pause")
+
+        service = SubscriptionLifecycleService(db_session)
+        service.pause_subscription(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.PAUSED.value
+        assert sub.paused_at is not None
+
+    def test_pause_not_found(self, db_session):
+        """Test pausing non-existent subscription."""
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="not found"):
+            service.pause_subscription(uuid.uuid4())
+
+    def test_pause_not_active(self, db_session):
+        """Test pausing a non-active subscription raises error."""
+        customer = _create_customer(db_session, "cust_pause_pend")
+        plan = _create_plan(db_session, "plan_pause_pend")
+        sub = _create_pending_subscription(db_session, customer, plan, "sub_pause_pend")
+
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="active"):
+            service.pause_subscription(sub.id)
+
+    def test_pause_triggers_webhook(self, db_session):
+        """Test pausing triggers subscription.paused webhook."""
+        _create_webhook_endpoint(db_session)
+        customer = _create_customer(db_session, "cust_pause_wh")
+        plan = _create_plan(db_session, "plan_pause_wh")
+        sub = _create_active_subscription(db_session, customer, plan, "sub_pause_wh")
+
+        service = SubscriptionLifecycleService(db_session)
+        service.pause_subscription(sub.id)
+
+        from app.models.webhook import Webhook
+
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.paused")
+            .all()
+        )
+        assert len(webhooks) == 1
+        assert webhooks[0].payload["subscription_id"] == str(sub.id)
+
+    def test_pause_already_paused(self, db_session):
+        """Test pausing an already paused subscription raises error."""
+        customer = _create_customer(db_session, "cust_pause_dup")
+        plan = _create_plan(db_session, "plan_pause_dup")
+        sub = _create_active_subscription(db_session, customer, plan, "sub_pause_dup")
+        sub.status = SubscriptionStatus.PAUSED.value
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="active"):
+            service.pause_subscription(sub.id)
+
+
+class TestResumeSubscription:
+    def test_resume_paused_subscription(self, db_session):
+        """Test resuming a paused subscription."""
+        customer = _create_customer(db_session, "cust_resume")
+        plan = _create_plan(db_session, "plan_resume", 10000)
+        sub = _create_active_subscription(db_session, customer, plan, "sub_resume")
+
+        service = SubscriptionLifecycleService(db_session)
+        service.pause_subscription(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.PAUSED.value
+
+        service.resume_subscription(sub.id)
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.ACTIVE.value
+        assert sub.paused_at is None
+        assert sub.resumed_at is not None
+
+    def test_resume_not_found(self, db_session):
+        """Test resuming non-existent subscription."""
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="not found"):
+            service.resume_subscription(uuid.uuid4())
+
+    def test_resume_not_paused(self, db_session):
+        """Test resuming a non-paused subscription raises error."""
+        customer = _create_customer(db_session, "cust_resume_act")
+        plan = _create_plan(db_session, "plan_resume_act")
+        sub = _create_active_subscription(db_session, customer, plan, "sub_resume_act")
+
+        service = SubscriptionLifecycleService(db_session)
+        with pytest.raises(ValueError, match="paused"):
+            service.resume_subscription(sub.id)
+
+    def test_resume_triggers_webhook(self, db_session):
+        """Test resuming triggers subscription.resumed webhook."""
+        _create_webhook_endpoint(db_session)
+        customer = _create_customer(db_session, "cust_resume_wh")
+        plan = _create_plan(db_session, "plan_resume_wh")
+        sub = _create_active_subscription(db_session, customer, plan, "sub_resume_wh")
+
+        service = SubscriptionLifecycleService(db_session)
+        service.pause_subscription(sub.id)
+        service.resume_subscription(sub.id)
+
+        from app.models.webhook import Webhook
+
+        webhooks = (
+            db_session.query(Webhook)
+            .filter(Webhook.webhook_type == "subscription.resumed")
+            .all()
+        )
+        assert len(webhooks) == 1
+        assert webhooks[0].payload["subscription_id"] == str(sub.id)
+
+
+class TestTerminatePausedSubscription:
+    def test_terminate_paused_subscription(self, db_session):
+        """Test terminating a paused subscription."""
+        customer = _create_customer(db_session, "cust_term_paused")
+        plan = _create_plan(db_session, "plan_term_paused", 10000)
+        sub = _create_active_subscription(db_session, customer, plan, "sub_term_paused")
+        sub.status = SubscriptionStatus.PAUSED.value
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        service.terminate_subscription(sub.id, "skip")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.TERMINATED.value
+        assert sub.ending_at is not None
+
+    def test_cancel_paused_subscription(self, db_session):
+        """Test canceling a paused subscription."""
+        customer = _create_customer(db_session, "cust_can_paused")
+        plan = _create_plan(db_session, "plan_can_paused", 10000)
+        sub = _create_active_subscription(db_session, customer, plan, "sub_can_paused")
+        sub.status = SubscriptionStatus.PAUSED.value
+        db_session.commit()
+        db_session.refresh(sub)
+
+        service = SubscriptionLifecycleService(db_session)
+        service.cancel_subscription(sub.id, "skip")
+
+        db_session.refresh(sub)
+        assert sub.status == SubscriptionStatus.CANCELED.value
+        assert sub.canceled_at is not None
+
+
 class TestWebhookEventTypes:
     def test_new_event_types_in_list(self):
         """Test that new subscription lifecycle events are in WEBHOOK_EVENT_TYPES."""
         from app.services.webhook_service import WEBHOOK_EVENT_TYPES
 
         assert "subscription.started" in WEBHOOK_EVENT_TYPES
+        assert "subscription.paused" in WEBHOOK_EVENT_TYPES
+        assert "subscription.resumed" in WEBHOOK_EVENT_TYPES
         assert "subscription.plan_changed" in WEBHOOK_EVENT_TYPES
         assert "subscription.trial_ended" in WEBHOOK_EVENT_TYPES

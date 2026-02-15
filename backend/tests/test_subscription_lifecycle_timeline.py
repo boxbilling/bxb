@@ -69,6 +69,8 @@ def create_subscription(
     downgraded_at: datetime | None = None,
     canceled_at: datetime | None = None,
     ending_at: datetime | None = None,
+    paused_at: datetime | None = None,
+    resumed_at: datetime | None = None,
 ) -> Subscription:
     now = datetime.now(UTC)
     sub = Subscription(
@@ -82,6 +84,8 @@ def create_subscription(
         downgraded_at=downgraded_at,
         canceled_at=canceled_at,
         ending_at=ending_at,
+        paused_at=paused_at,
+        resumed_at=resumed_at,
         created_at=now,
     )
     db_session.add(sub)
@@ -503,3 +507,43 @@ class TestSubscriptionLifecycleAPI:
         invoice_events = [e for e in data["events"] if e["event_type"] == "invoice"]
         assert len(invoice_events) == 1
         assert "INV-OWN-001" in invoice_events[0]["title"]
+
+    def test_lifecycle_includes_paused_event(self, client: TestClient, db_session):
+        """Test that paused_at appears in lifecycle timeline."""
+        customer = create_customer(db_session, "cust_lc_paused")
+        plan = create_plan(db_session, "plan_lc_paused")
+        now = datetime.now(UTC)
+        sub = create_subscription(
+            db_session, customer, plan,
+            external_id="sub_lc_paused",
+            status=SubscriptionStatus.PAUSED.value,
+            started_at=now - timedelta(days=10),
+            paused_at=now - timedelta(days=2),
+        )
+
+        resp = client.get(f"/v1/subscriptions/{sub.id}/lifecycle")
+        assert resp.status_code == 200
+        data = resp.json()
+        paused_events = [e for e in data["events"] if "paused" in e.get("title", "").lower()]
+        assert len(paused_events) == 1
+        assert paused_events[0]["status"] == "paused"
+
+    def test_lifecycle_includes_resumed_event(self, client: TestClient, db_session):
+        """Test that resumed_at appears in lifecycle timeline."""
+        customer = create_customer(db_session, "cust_lc_resumed")
+        plan = create_plan(db_session, "plan_lc_resumed")
+        now = datetime.now(UTC)
+        sub = create_subscription(
+            db_session, customer, plan,
+            external_id="sub_lc_resumed",
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=now - timedelta(days=10),
+            resumed_at=now - timedelta(days=1),
+        )
+
+        resp = client.get(f"/v1/subscriptions/{sub.id}/lifecycle")
+        assert resp.status_code == 200
+        data = resp.json()
+        resumed_events = [e for e in data["events"] if "resumed" in e.get("title", "").lower()]
+        assert len(resumed_events) == 1
+        assert resumed_events[0]["status"] == "active"

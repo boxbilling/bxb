@@ -50,6 +50,8 @@ class SubscriptionResponse(BaseModel):
     started_at: datetime | None
     ending_at: datetime | None
     canceled_at: datetime | None
+    paused_at: datetime | None
+    resumed_at: datetime | None
     created_at: datetime
     updated_at: datetime
 

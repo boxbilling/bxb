@@ -295,12 +295,16 @@ class SubscriptionLifecycleService:
         if subscription.status not in (
             SubscriptionStatus.ACTIVE.value,
             SubscriptionStatus.PENDING.value,
+            SubscriptionStatus.PAUSED.value,
         ):
-            raise ValueError("Can only terminate active or pending subscriptions")
+            raise ValueError("Can only terminate active, pending, or paused subscriptions")
 
         now = datetime.now(UTC)
 
-        is_active = subscription.status == SubscriptionStatus.ACTIVE.value
+        is_active = subscription.status in (
+            SubscriptionStatus.ACTIVE.value,
+            SubscriptionStatus.PAUSED.value,
+        )
         if is_active and on_termination_action != "skip":
             plan = self.plan_repo.get_by_id(UUID(str(subscription.plan_id)))
             if plan and int(plan.amount_cents) > 0:
@@ -363,12 +367,16 @@ class SubscriptionLifecycleService:
         if subscription.status not in (
             SubscriptionStatus.ACTIVE.value,
             SubscriptionStatus.PENDING.value,
+            SubscriptionStatus.PAUSED.value,
         ):
-            raise ValueError("Can only cancel active or pending subscriptions")
+            raise ValueError("Can only cancel active, pending, or paused subscriptions")
 
         now = datetime.now(UTC)
 
-        is_active = subscription.status == SubscriptionStatus.ACTIVE.value
+        is_active = subscription.status in (
+            SubscriptionStatus.ACTIVE.value,
+            SubscriptionStatus.PAUSED.value,
+        )
         if is_active and on_termination_action != "skip":
             plan = self.plan_repo.get_by_id(UUID(str(subscription.plan_id)))
             if plan and int(plan.amount_cents) > 0:
@@ -411,6 +419,52 @@ class SubscriptionLifecycleService:
                 "subscription_id": str(subscription.id),
                 "on_termination_action": on_termination_action,
             },
+        )
+
+    def pause_subscription(self, subscription_id: UUID) -> None:
+        """Pause an active subscription.
+
+        1. Validate subscription is active
+        2. Set status=paused, paused_at=now
+        3. Trigger subscription.paused webhook
+        """
+        subscription = self.subscription_repo.get_by_id(subscription_id)
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
+
+        if subscription.status != SubscriptionStatus.ACTIVE.value:
+            raise ValueError("Can only pause active subscriptions")
+
+        self.subscription_repo.pause(subscription_id)
+
+        self.webhook_service.send_webhook(
+            webhook_type="subscription.paused",
+            object_type="subscription",
+            object_id=subscription.id,  # type: ignore[arg-type]
+            payload={"subscription_id": str(subscription.id)},
+        )
+
+    def resume_subscription(self, subscription_id: UUID) -> None:
+        """Resume a paused subscription.
+
+        1. Validate subscription is paused
+        2. Set status=active, resumed_at=now, paused_at=null
+        3. Trigger subscription.resumed webhook
+        """
+        subscription = self.subscription_repo.get_by_id(subscription_id)
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
+
+        if subscription.status != SubscriptionStatus.PAUSED.value:
+            raise ValueError("Can only resume paused subscriptions")
+
+        self.subscription_repo.resume(subscription_id)
+
+        self.webhook_service.send_webhook(
+            webhook_type="subscription.resumed",
+            object_type="subscription",
+            object_id=subscription.id,  # type: ignore[arg-type]
+            payload={"subscription_id": str(subscription.id)},
         )
 
     def _generate_termination_credit_note(

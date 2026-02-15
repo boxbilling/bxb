@@ -77,6 +77,11 @@ class TestSubscriptionStatus:
         assert SubscriptionStatus.CANCELED == "canceled"
         assert SubscriptionStatus.CANCELED.value == "canceled"
 
+    def test_paused(self):
+        """Test PAUSED status."""
+        assert SubscriptionStatus.PAUSED == "paused"
+        assert SubscriptionStatus.PAUSED.value == "paused"
+
     def test_terminated(self):
         """Test TERMINATED status."""
         assert SubscriptionStatus.TERMINATED == "terminated"
@@ -143,6 +148,8 @@ class TestSubscriptionModel:
         assert subscription.started_at is None
         assert subscription.ending_at is None
         assert subscription.canceled_at is None
+        assert subscription.paused_at is None
+        assert subscription.resumed_at is None
         assert subscription.created_at is not None
         assert subscription.updated_at is not None
 
@@ -467,6 +474,64 @@ class TestSubscriptionRepository:
         """Test canceling a non-existent subscription."""
         repo = SubscriptionRepository(db_session)
         result = repo.cancel(uuid.uuid4())
+        assert result is None
+
+    def test_pause(self, db_session):
+        """Test pausing a subscription."""
+        customer = create_test_customer(db_session, "cust_pause_repo")
+        plan = create_test_plan(db_session, "plan_pause_repo")
+        repo = SubscriptionRepository(db_session)
+
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_pause_repo",
+                customer_id=customer.id,
+                plan_id=plan.id,
+                started_at=datetime.now(UTC) - timedelta(days=5),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        paused = repo.pause(subscription.id)
+        assert paused is not None
+        assert paused.status == "paused"
+        assert paused.paused_at is not None
+
+    def test_pause_not_found(self, db_session):
+        """Test pausing a non-existent subscription."""
+        repo = SubscriptionRepository(db_session)
+        result = repo.pause(uuid.uuid4())
+        assert result is None
+
+    def test_resume(self, db_session):
+        """Test resuming a paused subscription."""
+        customer = create_test_customer(db_session, "cust_resume_repo")
+        plan = create_test_plan(db_session, "plan_resume_repo")
+        repo = SubscriptionRepository(db_session)
+
+        subscription = repo.create(
+            SubscriptionCreate(
+                external_id="sub_resume_repo",
+                customer_id=customer.id,
+                plan_id=plan.id,
+                started_at=datetime.now(UTC) - timedelta(days=5),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        # Pause first
+        repo.pause(subscription.id)
+        # Then resume
+        resumed = repo.resume(subscription.id)
+        assert resumed is not None
+        assert resumed.status == "active"
+        assert resumed.paused_at is None
+        assert resumed.resumed_at is not None
+
+    def test_resume_not_found(self, db_session):
+        """Test resuming a non-existent subscription."""
+        repo = SubscriptionRepository(db_session)
+        result = repo.resume(uuid.uuid4())
         assert result is None
 
     def test_create_with_lifecycle_fields(self, db_session):
@@ -994,6 +1059,142 @@ class TestSubscriptionsAPI:
         data = response.json()
         assert data["status"] == "canceled"
         assert data["canceled_at"] is not None
+
+    def test_pause_subscription(self, client: TestClient, db_session):
+        """Test pausing a subscription via API."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_pause_api", "name": "Pause Customer"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "pause_plan", "name": "Pause Plan", "interval": "monthly"},
+        ).json()
+        create_response = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_pause_api",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        )
+        subscription_id = create_response.json()["id"]
+
+        response = client.post(f"/v1/subscriptions/{subscription_id}/pause")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "paused"
+        assert data["paused_at"] is not None
+
+        # Verify audit log
+        sub_id = uuid.UUID(subscription_id)
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == sub_id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "paused" for log in logs)
+
+    def test_pause_subscription_not_found(self, client: TestClient):
+        """Test pausing a non-existent subscription."""
+        fake_id = str(uuid.uuid4())
+        response = client.post(f"/v1/subscriptions/{fake_id}/pause")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"]
+
+    def test_pause_subscription_not_active(self, client: TestClient):
+        """Test pausing a non-active subscription returns 400."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_pause_pend", "name": "Pause Pending"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "pause_pend_plan", "name": "Plan", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_pause_pend",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        response = client.post(f"/v1/subscriptions/{sub['id']}/pause")
+        assert response.status_code == 400
+        assert "active" in response.json()["detail"].lower()
+
+    def test_resume_subscription(self, client: TestClient, db_session):
+        """Test resuming a paused subscription via API."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_resume_api", "name": "Resume Customer"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "resume_plan", "name": "Resume Plan", "interval": "monthly"},
+        ).json()
+        create_response = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_resume_api",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        )
+        subscription_id = create_response.json()["id"]
+
+        # Pause first
+        client.post(f"/v1/subscriptions/{subscription_id}/pause")
+
+        # Resume
+        response = client.post(f"/v1/subscriptions/{subscription_id}/resume")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "active"
+        assert data["resumed_at"] is not None
+        assert data["paused_at"] is None
+
+        # Verify audit log
+        sub_id = uuid.UUID(subscription_id)
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == sub_id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "active" for log in logs)
+
+    def test_resume_subscription_not_found(self, client: TestClient):
+        """Test resuming a non-existent subscription."""
+        fake_id = str(uuid.uuid4())
+        response = client.post(f"/v1/subscriptions/{fake_id}/resume")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"]
+
+    def test_resume_subscription_not_paused(self, client: TestClient):
+        """Test resuming a non-paused subscription returns 400."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_resume_act", "name": "Resume Active"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "resume_act_plan", "name": "Plan", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_resume_act",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        ).json()
+
+        response = client.post(f"/v1/subscriptions/{sub['id']}/resume")
+        assert response.status_code == 400
+        assert "paused" in response.json()["detail"].lower()
 
     def test_list_subscriptions_pagination(self, client: TestClient):
         """Test listing subscriptions with pagination."""

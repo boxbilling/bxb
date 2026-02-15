@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText, Pause, Play } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -159,6 +159,32 @@ export default function SubscriptionDetailPage() {
     },
   })
 
+  const pauseMutation = useMutation({
+    mutationFn: () => subscriptionsApi.pause(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      toast.success('Subscription paused')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to pause subscription'
+      toast.error(message)
+    },
+  })
+
+  const resumeMutation = useMutation({
+    mutationFn: () => subscriptionsApi.resume(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      toast.success('Subscription resumed')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to resume subscription'
+      toast.error(message)
+    },
+  })
+
   const createAlertMutation = useMutation({
     mutationFn: (data: UsageAlertCreate) => usageAlertsApi.create(data),
     onSuccess: () => {
@@ -285,12 +311,36 @@ export default function SubscriptionDetailPage() {
                 {customerName} \u2014 {planName}
               </p>
             </div>
-            {(subscription.status === 'active' || subscription.status === 'pending') && (
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-                <Pencil className="mr-1 h-3.5 w-3.5" />
-                Edit
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {subscription.status === 'active' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => pauseMutation.mutate()}
+                  disabled={pauseMutation.isPending}
+                >
+                  <Pause className="mr-1 h-3.5 w-3.5" />
+                  {pauseMutation.isPending ? 'Pausing...' : 'Pause'}
+                </Button>
+              )}
+              {subscription.status === 'paused' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => resumeMutation.mutate()}
+                  disabled={resumeMutation.isPending}
+                >
+                  <Play className="mr-1 h-3.5 w-3.5" />
+                  {resumeMutation.isPending ? 'Resuming...' : 'Resume'}
+                </Button>
+              )}
+              {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                  <Pencil className="mr-1 h-3.5 w-3.5" />
+                  Edit
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Subscription Info */}
@@ -306,7 +356,7 @@ export default function SubscriptionDetailPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Status</span>
-                  <Badge variant={subscription.status === 'active' ? 'default' : subscription.status === 'terminated' ? 'destructive' : 'secondary'}>
+                  <Badge variant={subscription.status === 'active' ? 'default' : subscription.status === 'terminated' ? 'destructive' : subscription.status === 'paused' ? 'outline' : 'secondary'}>
                     {subscription.status}
                   </Badge>
                 </div>
@@ -342,6 +392,18 @@ export default function SubscriptionDetailPage() {
                   <span className="text-muted-foreground">Started At</span>
                   <span>{subscription.started_at ? format(new Date(subscription.started_at), 'MMM d, yyyy HH:mm') : '\u2014'}</span>
                 </div>
+                {subscription.paused_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Paused At</span>
+                    <span>{format(new Date(subscription.paused_at), 'MMM d, yyyy HH:mm')}</span>
+                  </div>
+                )}
+                {subscription.resumed_at && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Last Resumed</span>
+                    <span>{format(new Date(subscription.resumed_at), 'MMM d, yyyy HH:mm')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Created</span>
                   <span>{format(new Date(subscription.created_at), 'MMM d, yyyy HH:mm')}</span>
