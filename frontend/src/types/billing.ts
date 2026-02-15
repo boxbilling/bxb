@@ -152,6 +152,9 @@ export type PaymentMethodCreate = components['schemas']['PaymentMethodCreate']
 export type SetupSessionCreate = components['schemas']['SetupSessionCreate']
 export type SetupSessionResponse = components['schemas']['SetupSessionResponse']
 
+// --- Audit Logs ---
+export type AuditLog = components['schemas']['AuditLogResponse']
+
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']

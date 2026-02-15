@@ -23,6 +23,7 @@ import {
   DataExportsPage,
   WebhooksPage,
   PaymentMethodsPage,
+  AuditLogsPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 import ApiKeysPage from './pages/admin/ApiKeysPage'
@@ -54,6 +55,7 @@ function App() {
         <Route path="data-exports" element={<DataExportsPage />} />
         <Route path="payment-methods" element={<PaymentMethodsPage />} />
         <Route path="webhooks" element={<WebhooksPage />} />
+        <Route path="audit-logs" element={<AuditLogsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />
       </Route>

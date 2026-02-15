@@ -114,6 +114,8 @@ type SetupSessionResponse = components['schemas']['SetupSessionResponse']
 type PaymentRequestResponse = components['schemas']['PaymentRequestResponse']
 type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
+type AuditLogResponse = components['schemas']['AuditLogResponse']
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ORG_STORAGE_KEY = 'bxb_organization_id'
@@ -712,6 +714,14 @@ export const paymentRequestsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+}
+
+// Audit Logs API
+export const auditLogsApi = {
+  list: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number }) =>
+    request<AuditLogResponse[]>(`/v1/audit_logs/${buildQuery(params)}`),
+  getForResource: (resourceType: string, resourceId: string) =>
+    request<AuditLogResponse[]>(`/v1/audit_logs/${resourceType}/${resourceId}`),
 }
 
 // Dashboard API

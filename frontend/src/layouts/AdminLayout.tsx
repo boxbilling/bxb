@@ -20,6 +20,7 @@ import {
   Radio,
   Send,
   FileDown,
+  ScrollText,
   Settings,
   Key,
   Moon,
@@ -89,6 +90,7 @@ const navigationGroups = [
       { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
       { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
       { name: 'Integrations', href: '/admin/integrations', icon: Plug },
+      { name: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
     ],
   },
 ]
