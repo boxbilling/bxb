@@ -415,7 +415,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No batch finalize action
 
 **Recommendations:**
-- [ ] **Fix Finalize Invoice mutation** (currently broken/stub)
+- [x] **Fix Finalize Invoice mutation** (currently broken/stub)
+  <!-- Completed: Wired up the "Finalize Invoice" button in InvoiceDetailDialog with a useMutation hook calling invoicesApi.finalize(). Added onClick handler, loading spinner (Loader2), disabled state while pending, CheckCircle icon, success/error toast notifications, and query invalidation to refresh the invoices list. Dialog closes on success. The backend endpoint (POST /v1/invoices/{id}/finalize) and frontend API client method were already fully implemented — only the button handler was missing. TypeScript compiles clean, all 3458 backend tests pass with 100% coverage. -->
 - [ ] **Invoices should have a detail page** (`/admin/invoices/:id`). Invoices are complex documents with fees, taxes, settlements, credit notes, and audit trails. This is too much content for a modal dialog.
 - [ ] Invoice detail page layout: header with status + actions, fee table, tax summary, settlement history, related credit notes, audit trail
 - [ ] Add inline PDF preview (render in iframe or use react-pdf)

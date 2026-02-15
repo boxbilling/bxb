@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2, ScrollText, ChevronDown } from 'lucide-react'
+import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2, ScrollText, ChevronDown, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -194,7 +194,20 @@ function InvoiceDetailDialog({
   onOpenChange: (open: boolean) => void
   onCreateCreditNote?: (invoice: Invoice) => void
 }) {
+  const queryClient = useQueryClient()
   const canDownloadOrEmail = invoice?.status === 'finalized' || invoice?.status === 'paid'
+
+  const finalizeMutation = useMutation({
+    mutationFn: (id: string) => invoicesApi.finalize(id),
+    onSuccess: () => {
+      toast.success('Invoice finalized successfully')
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      onOpenChange(false)
+    },
+    onError: () => {
+      toast.error('Failed to finalize invoice')
+    },
+  })
 
   const downloadPdfMutation = useMutation({
     mutationFn: (id: string) => invoicesApi.downloadPdf(id),
@@ -360,7 +373,18 @@ function InvoiceDetailDialog({
               </Button>
             )}
             {invoice.status === 'draft' && (
-              <Button className="flex-1">Finalize Invoice</Button>
+              <Button
+                className="flex-1"
+                disabled={finalizeMutation.isPending}
+                onClick={() => finalizeMutation.mutate(invoice.id)}
+              >
+                {finalizeMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                )}
+                Finalize Invoice
+              </Button>
             )}
           </div>
         </div>
