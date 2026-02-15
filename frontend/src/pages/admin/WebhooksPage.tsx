@@ -572,8 +572,12 @@ export default function WebhooksPage() {
       {/* Tabs for Endpoints and Recent Webhooks */}
       <Tabs defaultValue="endpoints">
         <TabsList>
-          <TabsTrigger value="endpoints">Endpoints</TabsTrigger>
-          <TabsTrigger value="webhooks">Recent Webhooks</TabsTrigger>
+          <TabsTrigger value="endpoints">
+            Endpoints{!endpointsLoading && ` (${endpoints.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="webhooks">
+            Recent Webhooks{!webhooksLoading && ` (${webhooks.length})`}
+          </TabsTrigger>
         </TabsList>
 
         {/* Endpoints Tab */}

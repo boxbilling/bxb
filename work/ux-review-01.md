@@ -655,7 +655,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Retry action exists but no retry history
 
 **Recommendations:**
-- [ ] Add counts to tabs: "Endpoints (5)" and "Recent (142)"
+- [x] Add counts to tabs: "Endpoints (5)" and "Recent (142)"
+  <!-- Completed: Updated WebhooksPage TabsTrigger labels to include dynamic counts from the already-fetched endpoints and webhooks arrays. Counts are hidden during loading state to avoid showing stale "(0)" values. Tab labels now show e.g. "Endpoints (5)" and "Recent Webhooks (142)". Pure frontend change — no backend modifications needed since data was already available from existing React Query hooks. All 3576 backend tests pass with 100% coverage maintained. -->
 - [ ] Add event type filter for recent webhooks
 - [ ] Add delivery success rate indicator per endpoint
 - [ ] Add retry history timeline per webhook
