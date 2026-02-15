@@ -101,6 +101,11 @@ type EventCreate = components['schemas']['EventCreate']
 type EventBatchCreate = components['schemas']['EventBatchCreate']
 type EventBatchResponse = components['schemas']['EventBatchResponse']
 
+type InvoicePreviewRequest = components['schemas']['InvoicePreviewRequest']
+type InvoicePreviewResponse = components['schemas']['InvoicePreviewResponse']
+type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
+type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
+
 type PaymentRequestResponse = components['schemas']['PaymentRequestResponse']
 type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
@@ -319,6 +324,11 @@ export const eventsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  estimateFees: (data: EstimateFeesRequest) =>
+    request<EstimateFeesResponse>('/v1/events/estimate_fees', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Fees API
@@ -362,6 +372,11 @@ export const invoicesApi = {
     requestBlob(`/v1/invoices/${id}/download_pdf`, { method: 'POST' }),
   sendEmail: (id: string) =>
     request<{ sent: boolean }>(`/v1/invoices/${id}/send_email`, { method: 'POST' }),
+  preview: (data: InvoicePreviewRequest) =>
+    request<InvoicePreviewResponse>('/v1/invoices/preview', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Payments API

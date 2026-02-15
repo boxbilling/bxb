@@ -150,6 +150,15 @@ export type EventBatchResponse = components['schemas']['EventBatchResponse']
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
+// --- Invoice Preview ---
+export type FeePreview = components['schemas']['FeePreview']
+export type InvoicePreviewResponse = components['schemas']['InvoicePreviewResponse']
+export type InvoicePreviewRequest = components['schemas']['InvoicePreviewRequest']
+
+// --- Fee Estimation ---
+export type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
+export type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
+
 // --- Dashboard types ---
 export interface DashboardStats {
   total_customers: number
