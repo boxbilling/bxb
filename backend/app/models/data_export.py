@@ -54,6 +54,7 @@ class DataExport(Base):
     filters = Column(JSON, nullable=True)
     file_path = Column(String(2048), nullable=True)
     record_count = Column(Integer, nullable=True)
+    progress = Column(Integer, nullable=True)
     error_message = Column(Text, nullable=True)
 
     started_at = Column(DateTime(timezone=True), nullable=True)

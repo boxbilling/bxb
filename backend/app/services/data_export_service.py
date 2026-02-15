@@ -71,6 +71,7 @@ class DataExportService:
             export_id,
             status=ExportStatus.PROCESSING.value,
             started_at=datetime.now(UTC),
+            progress=0,
         )
 
         try:
@@ -82,6 +83,7 @@ class DataExportService:
                 str(export_type),
                 org_id,  # type: ignore[arg-type]
                 filters,
+                export_id=export_id,
             )
 
             # Write CSV to file
@@ -98,6 +100,7 @@ class DataExportService:
                 file_path=file_path,
                 record_count=record_count,
                 completed_at=datetime.now(UTC),
+                progress=100,
             )
             return result  # type: ignore[return-value]
 
@@ -111,11 +114,17 @@ class DataExportService:
             )
             return result  # type: ignore[return-value]
 
+    def _update_progress(self, export_id: UUID | None, progress: int) -> None:
+        """Update export progress percentage."""
+        if export_id is not None:
+            self.repo.update_status(export_id, progress=progress)
+
     def _generate_csv(
         self,
         export_type: str,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV content based on export type."""
         generators = {
@@ -129,12 +138,13 @@ class DataExportService:
         generator = generators.get(export_type)
         if not generator:
             raise ValueError(f"Unknown export type: {export_type}")
-        return generator(organization_id, filters)
+        return generator(organization_id, filters, export_id=export_id)
 
     def _generate_csv_invoices(
         self,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV for invoices."""
         query = self.db.query(Invoice).filter(Invoice.organization_id == organization_id)
@@ -144,6 +154,7 @@ class DataExportService:
             query = query.filter(Invoice.customer_id == filters["customer_id"])
 
         invoices = query.order_by(Invoice.created_at.desc()).all()
+        total = len(invoices)
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -161,7 +172,7 @@ class DataExportService:
                 "paid_at",
             ]
         )
-        for inv in invoices:
+        for i, inv in enumerate(invoices):
             writer.writerow(
                 [
                     inv.invoice_number,
@@ -176,17 +187,20 @@ class DataExportService:
                     _fmt_dt(inv.paid_at),  # type: ignore[arg-type]
                 ]
             )
-        return output.getvalue(), len(invoices)
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
 
     def _generate_csv_customers(
         self,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV for customers."""
         query = self.db.query(Customer).filter(Customer.organization_id == organization_id)
 
         customers = query.order_by(Customer.created_at.desc()).all()
+        total = len(customers)
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -200,7 +214,7 @@ class DataExportService:
                 "created_at",
             ]
         )
-        for cust in customers:
+        for i, cust in enumerate(customers):
             writer.writerow(
                 [
                     cust.external_id,
@@ -211,12 +225,14 @@ class DataExportService:
                     _fmt_dt(cust.created_at),  # type: ignore[arg-type]
                 ]
             )
-        return output.getvalue(), len(customers)
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
 
     def _generate_csv_subscriptions(
         self,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV for subscriptions."""
         query = self.db.query(Subscription).filter(Subscription.organization_id == organization_id)
@@ -226,6 +242,7 @@ class DataExportService:
             query = query.filter(Subscription.customer_id == filters["customer_id"])
 
         subscriptions = query.order_by(Subscription.created_at.desc()).all()
+        total = len(subscriptions)
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -241,7 +258,7 @@ class DataExportService:
                 "created_at",
             ]
         )
-        for sub in subscriptions:
+        for i, sub in enumerate(subscriptions):
             writer.writerow(
                 [
                     sub.external_id,
@@ -254,12 +271,14 @@ class DataExportService:
                     _fmt_dt(sub.created_at),  # type: ignore[arg-type]
                 ]
             )
-        return output.getvalue(), len(subscriptions)
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
 
     def _generate_csv_events(
         self,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV for events."""
         query = self.db.query(Event).filter(Event.organization_id == organization_id)
@@ -269,6 +288,7 @@ class DataExportService:
             query = query.filter(Event.code == filters["code"])
 
         events = query.order_by(Event.timestamp.desc()).all()
+        total = len(events)
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -281,7 +301,7 @@ class DataExportService:
                 "created_at",
             ]
         )
-        for evt in events:
+        for i, evt in enumerate(events):
             writer.writerow(
                 [
                     evt.transaction_id,
@@ -291,12 +311,14 @@ class DataExportService:
                     _fmt_dt(evt.created_at),  # type: ignore[arg-type]
                 ]
             )
-        return output.getvalue(), len(events)
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
 
     def _generate_csv_fees(
         self,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV for fees."""
         query = self.db.query(Fee).filter(Fee.organization_id == organization_id)
@@ -306,6 +328,7 @@ class DataExportService:
             query = query.filter(Fee.invoice_id == filters["invoice_id"])
 
         fees = query.order_by(Fee.created_at.desc()).all()
+        total = len(fees)
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -321,7 +344,7 @@ class DataExportService:
                 "created_at",
             ]
         )
-        for fee in fees:
+        for i, fee in enumerate(fees):
             writer.writerow(
                 [
                     str(fee.id),
@@ -334,12 +357,14 @@ class DataExportService:
                     _fmt_dt(fee.created_at),  # type: ignore[arg-type]
                 ]
             )
-        return output.getvalue(), len(fees)
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
 
     def _generate_csv_credit_notes(
         self,
         organization_id: UUID,
         filters: dict[str, Any],
+        export_id: UUID | None = None,
     ) -> tuple[str, int]:
         """Generate CSV for credit notes."""
         query = self.db.query(CreditNote).filter(CreditNote.organization_id == organization_id)
@@ -347,6 +372,7 @@ class DataExportService:
             query = query.filter(CreditNote.status == filters["status"])
 
         credit_notes = query.order_by(CreditNote.created_at.desc()).all()
+        total = len(credit_notes)
 
         output = io.StringIO()
         writer = csv.writer(output)
@@ -363,7 +389,7 @@ class DataExportService:
                 "created_at",
             ]
         )
-        for cn in credit_notes:
+        for i, cn in enumerate(credit_notes):
             writer.writerow(
                 [
                     cn.number,
@@ -377,7 +403,8 @@ class DataExportService:
                     _fmt_dt(cn.created_at),  # type: ignore[arg-type]
                 ]
             )
-        return output.getvalue(), len(credit_notes)
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
 
     # --- Count methods for size estimation ---
 

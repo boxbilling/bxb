@@ -46,6 +46,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Progress } from '@/components/ui/progress'
 import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
 import type { DataExport, DataExportEstimate, ExportType } from '@/types/billing'
 
@@ -139,16 +140,21 @@ function capitalize(s: string): string {
     .join(' ')
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, progress }: { status: string; progress?: number | null }) {
   switch (status) {
     case 'pending':
       return <Badge variant="secondary">Pending</Badge>
     case 'processing':
       return (
-        <Badge variant="outline" className="text-blue-600">
-          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-          Processing
-        </Badge>
+        <div className="space-y-1">
+          <Badge variant="outline" className="text-blue-600">
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            Processing{progress != null ? ` ${progress}%` : ''}
+          </Badge>
+          {progress != null && (
+            <Progress value={progress} className="h-1.5 w-24" />
+          )}
+        </div>
       )
     case 'completed':
       return <Badge className="bg-green-600">Completed</Badge>
@@ -195,8 +201,17 @@ function ViewDetailsDialog({
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Status</span>
-            <StatusBadge status={exportItem.status} />
+            <StatusBadge status={exportItem.status} progress={exportItem.progress} />
           </div>
+          {exportItem.progress != null && (
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Progress</span>
+              <div className="flex items-center gap-2">
+                <Progress value={exportItem.progress} className="h-1.5 w-24" />
+                <span className="text-sm font-medium">{exportItem.progress}%</span>
+              </div>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Record Count</span>
             <span>{exportItem.record_count ?? '—'}</span>
@@ -667,7 +682,7 @@ export default function DataExportsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <StatusBadge status={exportItem.status} />
+                    <StatusBadge status={exportItem.status} progress={exportItem.progress} />
                   </TableCell>
                   <TableCell>
                     {exportItem.record_count != null

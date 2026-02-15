@@ -35,6 +35,7 @@ class DataExportResponse(BaseModel):
     filters: dict[str, Any] | None = None
     file_path: str | None = None
     record_count: int | None = None
+    progress: int | None = None
     error_message: str | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None

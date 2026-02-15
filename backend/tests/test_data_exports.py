@@ -212,6 +212,7 @@ class TestDataExportModel:
         assert export.created_at is not None
         assert export.file_path is None
         assert export.record_count is None
+        assert export.progress is None
         assert export.error_message is None
 
     def test_model_with_filters(self, db_session):
@@ -266,6 +267,7 @@ class TestDataExportSchema:
         export.filters = None
         export.file_path = "/tmp/test.csv"
         export.record_count = 10
+        export.progress = 100
         export.error_message = None
         export.started_at = datetime.now(UTC)
         export.completed_at = datetime.now(UTC)
@@ -275,6 +277,7 @@ class TestDataExportSchema:
         assert response.export_type == "invoices"
         assert response.status == "completed"
         assert response.record_count == 10
+        assert response.progress == 100
         assert response.file_path == "/tmp/test.csv"
 
 
@@ -356,12 +359,14 @@ class TestDataExportRepository:
             status=ExportStatus.COMPLETED.value,
             file_path="/tmp/test.csv",
             record_count=42,
+            progress=100,
         )
 
         assert updated is not None
         assert updated.status == "completed"
         assert updated.file_path == "/tmp/test.csv"
         assert updated.record_count == 42
+        assert updated.progress == 100
 
     def test_update_status_not_found(self, db_session):
         """Test updating non-existent data export."""
@@ -396,6 +401,7 @@ class TestDataExportService:
 
         assert result.status == ExportStatus.COMPLETED.value
         assert result.record_count == 1
+        assert result.progress == 100
         assert result.file_path is not None
         assert result.started_at is not None
         assert result.completed_at is not None
@@ -677,6 +683,51 @@ class TestDataExportService:
         assert result.status == ExportStatus.COMPLETED.value
         assert result.record_count == 0
 
+    def test_process_export_progress_tracking(self, db_session, customer):
+        """Test that process_export sets progress to 100 on completion."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.CUSTOMERS,
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.progress == 100
+
+    def test_process_export_progress_zero_records(self, db_session):
+        """Test that progress stays at 0 when no records exist."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.INVOICES,
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 0
+        assert result.progress == 100
+
+    def test_update_progress(self, db_session):
+        """Test _update_progress updates export progress."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.INVOICES,
+        )
+        service._update_progress(export.id, 50)
+
+        repo = DataExportRepository(db_session)
+        updated = repo.get_by_id(export.id)
+        assert updated is not None
+        assert updated.progress == 50
+
+    def test_update_progress_none_export_id(self, db_session):
+        """Test _update_progress is a no-op when export_id is None."""
+        service = DataExportService(db_session)
+        # Should not raise
+        service._update_progress(None, 50)
+
     def test_fmt_dt_with_value(self):
         """Test _fmt_dt with a datetime value."""
         dt = datetime(2026, 1, 15, 10, 30, 0)
@@ -827,6 +878,7 @@ class TestDataExportAPI:
         assert data["export_type"] == "customers"
         assert data["status"] == "completed"
         assert data["record_count"] == 1
+        assert data["progress"] == 100
 
     def test_create_export_with_filters(self, client, invoice):
         """Test POST /v1/data_exports with filters."""
@@ -1031,10 +1083,11 @@ class TestDataExportServiceErrorHandling:
         export = service.create_export(DEFAULT_ORG_ID, ExportType.INVOICES)
         result = service.process_export(export.id)
 
-        # Should end as completed
+        # Should end as completed with progress at 100
         assert result.status == ExportStatus.COMPLETED.value
         assert result.started_at is not None
         assert result.completed_at is not None
+        assert result.progress == 100
 
     def test_process_export_handles_generation_error(self, db_session, monkeypatch):
         """Test that process_export handles errors during CSV generation gracefully."""

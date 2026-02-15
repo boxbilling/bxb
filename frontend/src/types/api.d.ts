@@ -4554,6 +4554,8 @@ export interface components {
             file_path?: string | null;
             /** Record Count */
             record_count?: number | null;
+            /** Progress */
+            progress?: number | null;
             /** Error Message */
             error_message?: string | null;
             /** Started At */
