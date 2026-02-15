@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/table'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
+import { SubscriptionLifecycleTimeline } from '@/components/SubscriptionLifecycleTimeline'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -340,6 +341,19 @@ export default function SubscriptionDetailPage() {
                   <span>{format(new Date(subscription.created_at), 'MMM d, yyyy HH:mm')}</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Lifecycle Timeline */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <GitBranch className="h-4 w-4" />
+                Lifecycle Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <SubscriptionLifecycleTimeline subscriptionId={id!} />
             </CardContent>
           </Card>
 

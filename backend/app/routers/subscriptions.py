@@ -1,3 +1,4 @@
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -8,6 +9,8 @@ from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.entitlement import Entitlement
+from app.models.invoice import Invoice
+from app.models.payment import Payment
 from app.models.subscription import Subscription, TerminationAction
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.entitlement_repository import EntitlementRepository
@@ -15,6 +18,7 @@ from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.entitlement import EntitlementResponse
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.schemas.subscription_lifecycle import LifecycleEvent, SubscriptionLifecycleResponse
 from app.services.audit_service import AuditService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.webhook_service import WebhookService
@@ -263,6 +267,169 @@ async def cancel_subscription(
     repo = SubscriptionRepository(db)
     subscription = repo.get_by_id(subscription_id, organization_id)
     return subscription  # type: ignore[return-value]
+
+
+def _format_currency(amount: Decimal | float | int, currency: str = "USD") -> str:
+    """Format a decimal amount as currency string."""
+    val = float(amount) / 100
+    return f"{currency} {val:,.2f}"
+
+
+@router.get(
+    "/{subscription_id}/lifecycle",
+    response_model=SubscriptionLifecycleResponse,
+    summary="Get subscription lifecycle timeline",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_subscription_lifecycle(
+    subscription_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> SubscriptionLifecycleResponse:
+    """Get the full lifecycle timeline for a subscription."""
+    repo = SubscriptionRepository(db)
+    subscription = repo.get_by_id(subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    events: list[LifecycleEvent] = []
+
+    # 1. Subscription creation
+    events.append(
+        LifecycleEvent(
+            timestamp=subscription.created_at,  # type: ignore[arg-type]
+            event_type="subscription",
+            title="Subscription created",
+            description=f"External ID: {subscription.external_id}",
+            status="created",
+        )
+    )
+
+    # 2. Subscription started (if different from created)
+    if subscription.started_at and subscription.started_at != subscription.created_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.started_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Subscription activated",
+                status="active",
+            )
+        )
+
+    # 3. Trial ended
+    if subscription.trial_ended_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.trial_ended_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Trial period ended",
+                description=f"Trial lasted {subscription.trial_period_days} days",
+                status="active",
+            )
+        )
+
+    # 4. Plan change (downgrade)
+    if subscription.downgraded_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.downgraded_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Plan changed",
+                description="Subscription plan was changed",
+                status="changed",
+            )
+        )
+
+    # 5. Canceled
+    if subscription.canceled_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.canceled_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Subscription canceled",
+                status="canceled",
+            )
+        )
+
+    # 6. Terminated
+    if subscription.ending_at:
+        events.append(
+            LifecycleEvent(
+                timestamp=subscription.ending_at,  # type: ignore[arg-type]
+                event_type="status_change",
+                title="Subscription terminated",
+                status="terminated",
+            )
+        )
+
+    # 7. Invoices for this subscription
+    invoices = (
+        db.query(Invoice)
+        .filter(
+            Invoice.subscription_id == subscription_id,
+            Invoice.organization_id == organization_id,
+        )
+        .order_by(Invoice.created_at.asc())
+        .all()
+    )
+    for inv in invoices:
+        total_str = _format_currency(
+            float(inv.total),
+            str(inv.currency),
+        )
+        events.append(
+            LifecycleEvent(
+                timestamp=inv.created_at,  # type: ignore[arg-type]
+                event_type="invoice",
+                title=f"Invoice {inv.invoice_number}",
+                description=f"Total: {total_str}",
+                status=str(inv.status),
+                resource_id=str(inv.id),
+                resource_type="invoice",
+                metadata={"invoice_number": str(inv.invoice_number)},
+            )
+        )
+
+    # 8. Payments related to this subscription's invoices
+    invoice_ids = [inv.id for inv in invoices]
+    if invoice_ids:
+        payments = (
+            db.query(Payment)
+            .filter(
+                Payment.invoice_id.in_(invoice_ids),
+                Payment.organization_id == organization_id,
+            )
+            .order_by(Payment.created_at.asc())
+            .all()
+        )
+        # Build invoice number lookup
+        inv_number_map = {str(inv.id): str(inv.invoice_number) for inv in invoices}
+        for pmt in payments:
+            amount_str = _format_currency(
+                float(pmt.amount),
+                str(pmt.currency),
+            )
+            inv_num = inv_number_map.get(str(pmt.invoice_id), "")
+            events.append(
+                LifecycleEvent(
+                    timestamp=pmt.created_at,  # type: ignore[arg-type]
+                    event_type="payment",
+                    title=f"Payment {pmt.status}",
+                    description=f"Amount: {amount_str}" + (f" for {inv_num}" if inv_num else ""),
+                    status=str(pmt.status),
+                    resource_id=str(pmt.id),
+                    resource_type="payment",
+                    metadata={"provider": str(pmt.provider)},
+                )
+            )
+
+    # Sort by timestamp ascending (chronological order)
+    events.sort(key=lambda e: e.timestamp)
+
+    return SubscriptionLifecycleResponse(events=events)
 
 
 @router.get(

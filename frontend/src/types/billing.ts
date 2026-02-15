@@ -178,6 +178,10 @@ export type UsageAlert = components['schemas']['UsageAlertResponse']
 export type UsageAlertCreate = components['schemas']['UsageAlertCreate']
 export type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
 
+// --- Subscription Lifecycle ---
+export type LifecycleEvent = components['schemas']['LifecycleEvent']
+export type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']
+
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']

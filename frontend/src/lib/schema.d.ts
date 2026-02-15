@@ -748,6 +748,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{subscription_id}/lifecycle": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get subscription lifecycle timeline
+         * @description Get the full lifecycle timeline for a subscription.
+         */
+        get: operations["get_subscription_lifecycle_v1_subscriptions__subscription_id__lifecycle_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{external_id}/entitlements": {
         parameters: {
             query?: never;
@@ -4773,6 +4793,33 @@ export interface components {
             /** Quantity */
             quantity?: number | null;
         };
+        /**
+         * LifecycleEvent
+         * @description A single event in the subscription lifecycle timeline.
+         */
+        LifecycleEvent: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Event Type */
+            event_type: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description?: string | null;
+            /** Status */
+            status?: string | null;
+            /** Resource Id */
+            resource_id?: string | null;
+            /** Resource Type */
+            resource_type?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: string;
+            } | null;
+        };
         /** OrganizationCreate */
         OrganizationCreate: {
             /** Name */
@@ -5453,6 +5500,14 @@ export interface components {
             pay_in_advance: boolean;
             /** @default generate_invoice */
             on_termination_action: components["schemas"]["TerminationAction"];
+        };
+        /**
+         * SubscriptionLifecycleResponse
+         * @description Full lifecycle timeline for a subscription.
+         */
+        SubscriptionLifecycleResponse: {
+            /** Events */
+            events: components["schemas"]["LifecycleEvent"][];
         };
         /** SubscriptionMetricsResponse */
         SubscriptionMetricsResponse: {
@@ -8100,6 +8155,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_subscription_lifecycle_v1_subscriptions__subscription_id__lifecycle_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionLifecycleResponse"];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */

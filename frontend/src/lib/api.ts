@@ -21,6 +21,7 @@ type PlanSimulateResponse = components['schemas']['PlanSimulateResponse']
 type SubscriptionResponse = components['schemas']['SubscriptionResponse']
 type SubscriptionCreate = components['schemas']['SubscriptionCreate']
 type SubscriptionUpdate = components['schemas']['SubscriptionUpdate']
+type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
 type InvoiceUpdate = components['schemas']['InvoiceUpdate']
@@ -428,6 +429,8 @@ export const subscriptionsApi = {
     request<void>(`/v1/subscriptions/${id}${buildQuery({ on_termination_action: onTerminationAction })}`, { method: 'DELETE' }),
   getEntitlements: (externalId: string) =>
     request<EntitlementResponse[]>(`/v1/subscriptions/${externalId}/entitlements`),
+  getLifecycle: (id: string) =>
+    request<SubscriptionLifecycleResponse>(`/v1/subscriptions/${id}/lifecycle`),
 }
 
 // Events API
