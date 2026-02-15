@@ -12,6 +12,7 @@ from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.schemas.billable_metric import (
     BillableMetricCreate,
     BillableMetricResponse,
+    BillableMetricStats,
     BillableMetricUpdate,
 )
 from app.schemas.billable_metric_filter import (
@@ -39,6 +40,23 @@ async def list_billable_metrics(
     repo = BillableMetricRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
     return repo.get_all(organization_id, skip=skip, limit=limit)
+
+
+@router.get(
+    "/stats",
+    response_model=BillableMetricStats,
+    summary="Get billable metrics statistics",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_billable_metrics_stats(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BillableMetricStats:
+    """Get aggregate statistics for billable metrics."""
+    repo = BillableMetricRepository(db)
+    total = repo.count(organization_id)
+    by_aggregation_type = repo.counts_by_aggregation_type(organization_id)
+    return BillableMetricStats(total=total, by_aggregation_type=by_aggregation_type)
 
 
 @router.get(

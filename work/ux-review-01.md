@@ -245,7 +245,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No way to see associated usage data
 
 **Recommendations:**
-- [ ] Add stat cards: Total Metrics, By Aggregation Type breakdown
+- [x] Add stat cards: Total Metrics, By Aggregation Type breakdown
+  <!-- Completed: Added GET /v1/billable_metrics/stats backend endpoint returning total metric count and breakdown by aggregation type (count, sum, max, unique_count, etc.). Added counts_by_aggregation_type() repository method using GROUP BY query. Frontend MetricsPage now displays 5 stat cards in a responsive grid: Total Metrics (with BarChart3 icon) plus one card per aggregation type (Count, Sum, Max, Unique Count) with matching icons and descriptions. Stats query invalidated on create/update/delete mutations. BillableMetricStats schema added. 8 new backend tests added (3 repository + 2 schema + 3 API). 100% coverage maintained. -->
 - [ ] Add search filter
 - [ ] Show "Used in X plans" count on each card
 - [ ] Add aggregation type filter (count/sum/max/unique_count)

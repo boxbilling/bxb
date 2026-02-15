@@ -63,6 +63,11 @@ class BillableMetricCreate(BaseModel):
         return self
 
 
+class BillableMetricStats(BaseModel):
+    total: int
+    by_aggregation_type: dict[str, int]
+
+
 class BillableMetricUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None

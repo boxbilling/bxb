@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, BarChart3 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -234,11 +234,18 @@ export default function MetricsPage() {
     queryFn: () => billableMetricsApi.list(),
   })
 
+  // Fetch stats
+  const { data: stats } = useQuery({
+    queryKey: ['billable-metrics-stats'],
+    queryFn: () => billableMetricsApi.stats(),
+  })
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: BillableMetricCreate) => billableMetricsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
+      queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
       setFormOpen(false)
       toast.success('Billable metric created successfully')
     },
@@ -254,6 +261,7 @@ export default function MetricsPage() {
       billableMetricsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
+      queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
       setEditingMetric(null)
       setFormOpen(false)
       toast.success('Billable metric updated successfully')
@@ -269,6 +277,7 @@ export default function MetricsPage() {
     mutationFn: (id: string) => billableMetricsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
+      queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
       setDeleteMetric(null)
       toast.success('Billable metric deleted successfully')
     },
@@ -319,6 +328,33 @@ export default function MetricsPage() {
           <Plus className="mr-2 h-4 w-4" />
           Add Metric
         </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Metrics</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.total ?? 0}</div>
+          </CardContent>
+        </Card>
+        {aggregationTypes.map((agg) => (
+          <Card key={agg.value}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{agg.label}</CardTitle>
+              <agg.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {stats?.by_aggregation_type[agg.value] ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground">{agg.description}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Metrics Grid */}

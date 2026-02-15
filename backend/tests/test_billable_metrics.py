@@ -9,7 +9,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.repositories.billable_metric_repository import BillableMetricRepository
-from app.schemas.billable_metric import BillableMetricCreate
+from app.schemas.billable_metric import BillableMetricCreate, BillableMetricStats
 from tests.conftest import DEFAULT_ORG_ID
 
 
@@ -204,6 +204,63 @@ class TestBillableMetricRepository:
         metric = repo.create(data, DEFAULT_ORG_ID)
 
         assert metric.expression == "sum(amount)"
+
+
+class TestBillableMetricRepositoryCountsByAggregationType:
+    def test_counts_empty(self, db_session):
+        """Test aggregation type counts with no metrics."""
+        repo = BillableMetricRepository(db_session)
+        result = repo.counts_by_aggregation_type(DEFAULT_ORG_ID)
+        assert result == {}
+
+    def test_counts_single_type(self, db_session):
+        """Test aggregation type counts with one type."""
+        repo = BillableMetricRepository(db_session)
+        for i in range(3):
+            repo.create(
+                BillableMetricCreate(
+                    code=f"cnt_{i}", name=f"Cnt {i}", aggregation_type=AggregationType.COUNT
+                ),
+                DEFAULT_ORG_ID,
+            )
+        result = repo.counts_by_aggregation_type(DEFAULT_ORG_ID)
+        assert result == {"count": 3}
+
+    def test_counts_multiple_types(self, db_session):
+        """Test aggregation type counts with multiple types."""
+        repo = BillableMetricRepository(db_session)
+        repo.create(
+            BillableMetricCreate(code="c1", name="C1", aggregation_type=AggregationType.COUNT),
+            DEFAULT_ORG_ID,
+        )
+        repo.create(
+            BillableMetricCreate(code="s1", name="S1", aggregation_type=AggregationType.SUM, field_name="v"),
+            DEFAULT_ORG_ID,
+        )
+        repo.create(
+            BillableMetricCreate(code="s2", name="S2", aggregation_type=AggregationType.SUM, field_name="v"),
+            DEFAULT_ORG_ID,
+        )
+        repo.create(
+            BillableMetricCreate(code="m1", name="M1", aggregation_type=AggregationType.MAX, field_name="v"),
+            DEFAULT_ORG_ID,
+        )
+        result = repo.counts_by_aggregation_type(DEFAULT_ORG_ID)
+        assert result == {"count": 1, "sum": 2, "max": 1}
+
+
+class TestBillableMetricStatsSchema:
+    def test_stats_schema(self):
+        """Test BillableMetricStats schema construction."""
+        stats = BillableMetricStats(total=5, by_aggregation_type={"count": 3, "sum": 2})
+        assert stats.total == 5
+        assert stats.by_aggregation_type == {"count": 3, "sum": 2}
+
+    def test_stats_schema_empty(self):
+        """Test BillableMetricStats schema with empty breakdown."""
+        stats = BillableMetricStats(total=0, by_aggregation_type={})
+        assert stats.total == 0
+        assert stats.by_aggregation_type == {}
 
 
 class TestBillableMetricSchemaValidation:
@@ -859,3 +916,68 @@ class TestBillableMetricsAPI:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
+
+
+class TestBillableMetricsStatsAPI:
+    def test_stats_empty(self, client: TestClient):
+        """Test stats with no metrics."""
+        response = client.get("/v1/billable_metrics/stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 0
+        assert data["by_aggregation_type"] == {}
+
+    def test_stats_with_metrics(self, client: TestClient):
+        """Test stats with multiple metrics of different types."""
+        client.post(
+            "/v1/billable_metrics/",
+            json={"code": "stat_c1", "name": "Count 1", "aggregation_type": "count"},
+        )
+        client.post(
+            "/v1/billable_metrics/",
+            json={"code": "stat_c2", "name": "Count 2", "aggregation_type": "count"},
+        )
+        client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "stat_s1",
+                "name": "Sum 1",
+                "aggregation_type": "sum",
+                "field_name": "amount",
+            },
+        )
+        client.post(
+            "/v1/billable_metrics/",
+            json={
+                "code": "stat_m1",
+                "name": "Max 1",
+                "aggregation_type": "max",
+                "field_name": "val",
+            },
+        )
+
+        response = client.get("/v1/billable_metrics/stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 4
+        assert data["by_aggregation_type"]["count"] == 2
+        assert data["by_aggregation_type"]["sum"] == 1
+        assert data["by_aggregation_type"]["max"] == 1
+
+    def test_stats_single_type(self, client: TestClient):
+        """Test stats when all metrics are the same type."""
+        for i in range(3):
+            client.post(
+                "/v1/billable_metrics/",
+                json={
+                    "code": f"stat_only_{i}",
+                    "name": f"Only {i}",
+                    "aggregation_type": "count",
+                },
+            )
+
+        response = client.get("/v1/billable_metrics/stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 3
+        assert data["by_aggregation_type"] == {"count": 3}

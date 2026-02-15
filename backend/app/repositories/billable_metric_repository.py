@@ -86,6 +86,18 @@ class BillableMetricRepository:
         self.db.commit()
         return True
 
+    def counts_by_aggregation_type(self, organization_id: UUID) -> dict[str, int]:
+        """Return counts of metrics grouped by aggregation_type."""
+        rows = (
+            self.db.query(
+                BillableMetric.aggregation_type, func.count(BillableMetric.id)
+            )
+            .filter(BillableMetric.organization_id == organization_id)
+            .group_by(BillableMetric.aggregation_type)
+            .all()
+        )
+        return {str(agg_type): int(cnt) for agg_type, cnt in rows}
+
     def code_exists(self, code: str, organization_id: UUID) -> bool:
         """Check if a billable metric with the given code already exists."""
         query = self.db.query(BillableMetric).filter(

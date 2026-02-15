@@ -362,6 +362,8 @@ export const billableMetricsApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/billable_metrics/${id}`, { method: 'DELETE' }),
+  stats: () =>
+    request<{ total: number; by_aggregation_type: Record<string, number> }>('/v1/billable_metrics/stats'),
   createFilter: (code: string, data: BillableMetricFilterCreate) =>
     request<BillableMetricFilterResponse>(`/v1/billable_metrics/${code}/filters`, {
       method: 'POST',
