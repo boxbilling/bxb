@@ -51,6 +51,27 @@ class MetricUsage:
     event_count: int
 
 
+@dataclass
+class RecentInvoiceRow:
+    id: str
+    invoice_number: str
+    customer_name: str
+    status: str
+    total: float
+    currency: str
+    created_at: str
+
+
+@dataclass
+class RecentSubscriptionRow:
+    id: str
+    external_id: str
+    customer_name: str
+    plan_name: str
+    status: str
+    created_at: str
+
+
 class DashboardRepository:
     def __init__(self, db: Session):
         self.db = db
@@ -394,6 +415,73 @@ class DashboardRepository:
                 event_count=row.event_count,
             )
             for row in rows
+        ]
+
+    # --- Recent items with joined names ---
+
+    def recent_invoices_with_customer(
+        self, organization_id: UUID, limit: int = 5
+    ) -> list[RecentInvoiceRow]:
+        """Return recent invoices joined with customer name."""
+        rows = (
+            self.db.query(
+                Invoice.id,
+                Invoice.invoice_number,
+                Customer.name.label("customer_name"),
+                Invoice.status,
+                Invoice.total,
+                Invoice.currency,
+                Invoice.created_at,
+            )
+            .join(Customer, Invoice.customer_id == Customer.id)
+            .filter(Invoice.organization_id == organization_id)
+            .order_by(Invoice.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            RecentInvoiceRow(
+                id=str(r.id),
+                invoice_number=r.invoice_number,
+                customer_name=r.customer_name,
+                status=r.status,
+                total=float(r.total),
+                currency=r.currency,
+                created_at=r.created_at.isoformat() if r.created_at else "",
+            )
+            for r in rows
+        ]
+
+    def recent_subscriptions_with_details(
+        self, organization_id: UUID, limit: int = 5
+    ) -> list[RecentSubscriptionRow]:
+        """Return recent subscriptions joined with customer and plan names."""
+        rows = (
+            self.db.query(
+                Subscription.id,
+                Subscription.external_id,
+                Customer.name.label("customer_name"),
+                Plan.name.label("plan_name"),
+                Subscription.status,
+                Subscription.created_at,
+            )
+            .join(Customer, Subscription.customer_id == Customer.id)
+            .join(Plan, Subscription.plan_id == Plan.id)
+            .filter(Subscription.organization_id == organization_id)
+            .order_by(Subscription.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            RecentSubscriptionRow(
+                id=str(r.id),
+                external_id=r.external_id,
+                customer_name=r.customer_name,
+                plan_name=r.plan_name,
+                status=r.status,
+                created_at=r.created_at.isoformat() if r.created_at else "",
+            )
+            for r in rows
         ]
 
     # --- Wallet summary ---

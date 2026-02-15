@@ -113,9 +113,49 @@ export interface paths {
         };
         /**
          * Get top usage metrics
-         * @description Get top billable metrics by usage volume in the last 30 days.
+         * @description Get top billable metrics by usage volume in the given period.
          */
         get: operations["get_usage_metrics_dashboard_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/recent_invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get recent invoices for dashboard
+         * @description Get the 5 most recent invoices with customer names.
+         */
+        get: operations["get_recent_invoices_dashboard_recent_invoices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/recent_subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get recent subscriptions for dashboard
+         * @description Get the 5 most recent subscriptions with customer and plan names.
+         */
+        get: operations["get_recent_subscriptions_dashboard_recent_subscriptions_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3640,6 +3680,8 @@ export interface components {
             new_this_month: number;
             /** Churned This Month */
             churned_this_month: number;
+            new_trend?: components["schemas"]["TrendIndicator"] | null;
+            churned_trend?: components["schemas"]["TrendIndicator"] | null;
         };
         /** CustomerResponse */
         CustomerResponse: {
@@ -4957,6 +4999,38 @@ export interface components {
             /** Timestamp */
             timestamp: string;
         };
+        /** RecentInvoiceItem */
+        RecentInvoiceItem: {
+            /** Id */
+            id: string;
+            /** Invoice Number */
+            invoice_number: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Status */
+            status: string;
+            /** Total */
+            total: number;
+            /** Currency */
+            currency: string;
+            /** Created At */
+            created_at: string;
+        };
+        /** RecentSubscriptionItem */
+        RecentSubscriptionItem: {
+            /** Id */
+            id: string;
+            /** External Id */
+            external_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Status */
+            status: string;
+            /** Created At */
+            created_at: string;
+        };
         /**
          * RefundStatus
          * @enum {string}
@@ -4983,6 +5057,7 @@ export interface components {
             currency: string;
             /** Monthly Trend */
             monthly_trend: components["schemas"]["RevenueDataPoint"][];
+            mrr_trend?: components["schemas"]["TrendIndicator"] | null;
         };
         /** SetupSessionCreate */
         SetupSessionCreate: {
@@ -5061,6 +5136,8 @@ export interface components {
             canceled_this_month: number;
             /** By Plan */
             by_plan: components["schemas"]["SubscriptionPlanBreakdown"][];
+            new_trend?: components["schemas"]["TrendIndicator"] | null;
+            canceled_trend?: components["schemas"]["TrendIndicator"] | null;
         };
         /** SubscriptionPlanBreakdown */
         SubscriptionPlanBreakdown: {
@@ -5209,6 +5286,13 @@ export interface components {
          * @enum {string}
          */
         TerminationAction: "generate_invoice" | "generate_credit_note" | "skip";
+        /** TrendIndicator */
+        TrendIndicator: {
+            /** Previous Value */
+            previous_value: number;
+            /** Change Percent */
+            change_percent: number | null;
+        };
         /** UsageAlertCreate */
         UsageAlertCreate: {
             /**
@@ -5637,7 +5721,12 @@ export type $defs = Record<string, never>;
 export interface operations {
     get_stats_dashboard_stats_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5659,6 +5748,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -5691,7 +5789,12 @@ export interface operations {
     };
     get_revenue_dashboard_revenue_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5714,11 +5817,25 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_customer_metrics_dashboard_customers_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5741,11 +5858,25 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_subscription_metrics_dashboard_subscriptions_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5768,9 +5899,59 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
     get_usage_metrics_dashboard_usage_get: {
+        parameters: {
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageMetricsResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_recent_invoices_dashboard_recent_invoices_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -5785,7 +5966,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["UsageMetricsResponse"];
+                    "application/json": components["schemas"]["RecentInvoiceItem"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_recent_subscriptions_dashboard_recent_subscriptions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecentSubscriptionItem"][];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */

@@ -11,6 +11,8 @@ from app.schemas.dashboard import (
     CustomerMetricsResponse,
     DashboardStatsResponse,
     RecentActivityResponse,
+    RecentInvoiceItem,
+    RecentSubscriptionItem,
     RevenueDataPoint,
     RevenueResponse,
     SubscriptionMetricsResponse,
@@ -270,3 +272,56 @@ async def get_usage_metrics(
             for m in top
         ],
     )
+
+
+@router.get(
+    "/recent_invoices",
+    response_model=list[RecentInvoiceItem],
+    summary="Get recent invoices for dashboard",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_recent_invoices(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[RecentInvoiceItem]:
+    """Get the 5 most recent invoices with customer names."""
+    repo = DashboardRepository(db)
+    rows = repo.recent_invoices_with_customer(organization_id)
+    return [
+        RecentInvoiceItem(
+            id=r.id,
+            invoice_number=r.invoice_number,
+            customer_name=r.customer_name,
+            status=r.status,
+            total=r.total,
+            currency=r.currency,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]
+
+
+@router.get(
+    "/recent_subscriptions",
+    response_model=list[RecentSubscriptionItem],
+    summary="Get recent subscriptions for dashboard",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_recent_subscriptions(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[RecentSubscriptionItem]:
+    """Get the 5 most recent subscriptions with customer and plan names."""
+    repo = DashboardRepository(db)
+    rows = repo.recent_subscriptions_with_details(organization_id)
+    return [
+        RecentSubscriptionItem(
+            id=r.id,
+            external_id=r.external_id,
+            customer_name=r.customer_name,
+            plan_name=r.plan_name,
+            status=r.status,
+            created_at=r.created_at,
+        )
+        for r in rows
+    ]

@@ -951,6 +951,25 @@ export const dashboardApi = {
     request<{
       top_metrics: { metric_name: string; metric_code: string; event_count: number }[]
     }>(`/dashboard/usage${buildQuery(params)}`),
+  getRecentInvoices: () =>
+    request<{
+      id: string
+      invoice_number: string
+      customer_name: string
+      status: string
+      total: number
+      currency: string
+      created_at: string
+    }[]>('/dashboard/recent_invoices'),
+  getRecentSubscriptions: () =>
+    request<{
+      id: string
+      external_id: string
+      customer_name: string
+      plan_name: string
+      status: string
+      created_at: string
+    }[]>('/dashboard/recent_subscriptions'),
 }
 
 export { ApiError }

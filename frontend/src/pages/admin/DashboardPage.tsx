@@ -15,6 +15,7 @@ import {
   BarChart3,
   CalendarIcon,
   Minus,
+  ArrowRight,
 } from 'lucide-react'
 import {
   Line,
@@ -44,6 +45,15 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import { dashboardApi } from '@/lib/api'
 import type { DashboardDateRange } from '@/lib/api'
 import type { RecentActivity } from '@/types/billing'
@@ -277,6 +287,30 @@ const planChartConfig = {
   },
 } satisfies ChartConfig
 
+function InvoiceStatusBadge({ status }: { status: string }) {
+  const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; className?: string }> = {
+    draft: { variant: 'secondary', label: 'Draft' },
+    finalized: { variant: 'outline', label: 'Finalized', className: 'border-orange-500 text-orange-600' },
+    paid: { variant: 'default', label: 'Paid', className: 'bg-green-600' },
+    voided: { variant: 'destructive', label: 'Voided' },
+  }
+  const config = variants[status]
+  if (!config) return <Badge variant="outline">{status}</Badge>
+  return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>
+}
+
+function SubStatusBadge({ status }: { status: string }) {
+  const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
+    pending: { variant: 'secondary', label: 'Pending' },
+    active: { variant: 'default', label: 'Active' },
+    canceled: { variant: 'outline', label: 'Canceled' },
+    terminated: { variant: 'destructive', label: 'Terminated' },
+  }
+  const config = variants[status]
+  if (!config) return <Badge variant="outline">{status}</Badge>
+  return <Badge variant={config.variant}>{config.label}</Badge>
+}
+
 const usageChartConfig = {
   event_count: {
     label: 'Events',
@@ -332,6 +366,16 @@ export default function DashboardPage() {
   const { data: activity, isLoading: activityLoading } = useQuery({
     queryKey: ['dashboard-activity'],
     queryFn: () => dashboardApi.getRecentActivity(),
+  })
+
+  const { data: recentInvoices, isLoading: recentInvoicesLoading } = useQuery({
+    queryKey: ['dashboard-recent-invoices'],
+    queryFn: () => dashboardApi.getRecentInvoices(),
+  })
+
+  const { data: recentSubscriptions, isLoading: recentSubscriptionsLoading } = useQuery({
+    queryKey: ['dashboard-recent-subscriptions'],
+    queryFn: () => dashboardApi.getRecentSubscriptions(),
   })
 
   const periodLabel = preset === 'custom'
@@ -573,6 +617,103 @@ export default function DashboardPage() {
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
                 No recent activity
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Invoices & Recent Subscriptions Tables */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Recent Invoices */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-medium">Recent Invoices</CardTitle>
+            <Link to="/admin/invoices" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentInvoicesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : recentInvoices && recentInvoices.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Invoice</TableHead>
+                    <TableHead className="text-xs">Customer</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs text-right">Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentInvoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell className="text-xs font-mono py-2">{inv.invoice_number}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[120px]">{inv.customer_name}</TableCell>
+                      <TableCell className="py-2">
+                        <InvoiceStatusBadge status={inv.status} />
+                      </TableCell>
+                      <TableCell className="text-xs text-right py-2 font-mono">
+                        {formatCurrencyDollars(inv.total, inv.currency)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No invoices yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Subscriptions */}
+        <Card>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-medium">Recent Subscriptions</CardTitle>
+            <Link to="/admin/subscriptions" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {recentSubscriptionsLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
+              </div>
+            ) : recentSubscriptions && recentSubscriptions.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">ID</TableHead>
+                    <TableHead className="text-xs">Customer</TableHead>
+                    <TableHead className="text-xs">Plan</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentSubscriptions.map((sub) => (
+                    <TableRow key={sub.id}>
+                      <TableCell className="text-xs font-mono py-2">{sub.external_id}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[120px]">{sub.customer_name}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[100px]">{sub.plan_name}</TableCell>
+                      <TableCell className="py-2">
+                        <SubStatusBadge status={sub.status} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No subscriptions yet
               </p>
             )}
           </CardContent>

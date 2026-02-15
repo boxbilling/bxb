@@ -1015,3 +1015,124 @@ class TestTrendIndicatorsInResponses:
         assert data["new_this_month"] == 1
         assert data["new_trend"]["previous_value"] == 1.0
         assert data["new_trend"]["change_percent"] == 0.0
+
+
+class TestDashboardRecentInvoices:
+    def test_recent_invoices_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/recent_invoices")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_recent_invoices_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/recent_invoices")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+        # Verify sorted by created_at descending (most recent first)
+        for item in data:
+            assert "id" in item
+            assert "invoice_number" in item
+            assert "customer_name" in item
+            assert "status" in item
+            assert "total" in item
+            assert "currency" in item
+            assert "created_at" in item
+
+    def test_recent_invoices_fields(self, client: TestClient, seeded_data):
+        """Verify correct fields in recent invoices."""
+        response = client.get("/dashboard/recent_invoices")
+        data = response.json()
+        # Find the paid invoice
+        paid = [i for i in data if i["status"] == "paid"]
+        assert len(paid) == 1
+        assert paid[0]["customer_name"] == "Acme Corp"
+        assert paid[0]["total"] == 108.0
+        assert paid[0]["currency"] == "USD"
+        assert paid[0]["invoice_number"] == "DASH-INV-001"
+
+    def test_recent_invoices_limit(self, client: TestClient, db_session, seeded_data):
+        """Only up to 5 invoices are returned."""
+        now = datetime.now(UTC)
+        for i in range(6):
+            inv = Invoice(
+                organization_id=DEFAULT_ORG_ID,
+                invoice_number=f"DASH-EXTRA-{i:03d}",
+                customer_id=seeded_data["customers"][0].id,
+                subscription_id=seeded_data["subscriptions"][0].id,
+                status=InvoiceStatus.DRAFT.value,
+                billing_period_start=now - timedelta(days=30),
+                billing_period_end=now,
+                subtotal=Decimal("10.00"),
+                tax_amount=Decimal("0.00"),
+                total=Decimal("10.00"),
+                currency="USD",
+                issued_at=now,
+                line_items=[],
+            )
+            db_session.add(inv)
+        db_session.commit()
+
+        response = client.get("/dashboard/recent_invoices")
+        data = response.json()
+        assert len(data) == 5
+
+
+class TestDashboardRecentSubscriptions:
+    def test_recent_subscriptions_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/recent_subscriptions")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_recent_subscriptions_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/recent_subscriptions")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+        for item in data:
+            assert "id" in item
+            assert "external_id" in item
+            assert "customer_name" in item
+            assert "plan_name" in item
+            assert "status" in item
+            assert "created_at" in item
+
+    def test_recent_subscriptions_fields(self, client: TestClient, seeded_data):
+        """Verify correct fields in recent subscriptions."""
+        response = client.get("/dashboard/recent_subscriptions")
+        data = response.json()
+        # Both subscriptions should reference Dashboard Plan
+        for item in data:
+            assert item["plan_name"] == "Dashboard Plan"
+
+        # Verify customer names are present
+        customer_names = {item["customer_name"] for item in data}
+        assert customer_names == {"Acme Corp", "TechStart Inc"}
+
+    def test_recent_subscriptions_limit(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Only up to 5 subscriptions are returned."""
+        sub_repo = SubscriptionRepository(db_session)
+        customer_repo = CustomerRepository(db_session)
+        for i in range(6):
+            c = customer_repo.create(
+                CustomerCreate(
+                    external_id=f"recent_sub_cust_{i}",
+                    name=f"Limit Customer {i}",
+                ),
+                DEFAULT_ORG_ID,
+            )
+            sub_repo.create(
+                SubscriptionCreate(
+                    external_id=f"recent_sub_{i}",
+                    customer_id=c.id,
+                    plan_id=seeded_data["plan"].id,
+                ),
+                DEFAULT_ORG_ID,
+            )
+
+        response = client.get("/dashboard/recent_subscriptions")
+        data = response.json()
+        assert len(data) == 5

@@ -67,3 +67,22 @@ class UsageMetricVolume(BaseModel):
 
 class UsageMetricsResponse(BaseModel):
     top_metrics: list[UsageMetricVolume]
+
+
+class RecentInvoiceItem(BaseModel):
+    id: str
+    invoice_number: str
+    customer_name: str
+    status: str
+    total: float
+    currency: str
+    created_at: str
+
+
+class RecentSubscriptionItem(BaseModel):
+    id: str
+    external_id: str
+    customer_name: str
+    plan_name: str
+    status: str
+    created_at: str
