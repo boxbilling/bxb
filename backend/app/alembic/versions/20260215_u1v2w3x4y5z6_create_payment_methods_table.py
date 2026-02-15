@@ -37,7 +37,7 @@ def upgrade() -> None:
         sa.Column("provider", sa.String(50), nullable=False),
         sa.Column("provider_payment_method_id", sa.String(255), nullable=False),
         sa.Column("type", sa.String(50), nullable=False),
-        sa.Column("is_default", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("is_default", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("details", sa.JSON(), nullable=False),
         sa.Column(
             "created_at",

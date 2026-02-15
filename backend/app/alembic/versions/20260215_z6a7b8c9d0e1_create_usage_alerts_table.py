@@ -24,7 +24,7 @@ def upgrade() -> None:
         sa.Column("subscription_id", sa.String(length=36), nullable=False),
         sa.Column("billable_metric_id", sa.String(length=36), nullable=False),
         sa.Column("threshold_value", sa.Numeric(precision=12, scale=4), nullable=False),
-        sa.Column("recurring", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+        sa.Column("recurring", sa.Boolean(), nullable=False, server_default="false"),
         sa.Column("name", sa.String(length=255), nullable=True),
         sa.Column("times_triggered", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("triggered_at", sa.DateTime(timezone=True), nullable=True),
