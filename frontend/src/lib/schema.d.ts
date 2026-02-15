@@ -220,6 +220,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{external_id}/current_usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get customer current usage
+         * @description Get current usage for a customer's subscription.
+         */
+        get: operations["get_current_usage_v1_customers__external_id__current_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/projected_usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get customer projected usage
+         * @description Get projected usage for a customer's subscription.
+         */
+        get: operations["get_projected_usage_v1_customers__external_id__projected_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/past_usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get customer past usage
+         * @description Get past usage for completed billing periods.
+         */
+        get: operations["get_past_usage_v1_customers__external_id__past_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{external_id}/portal_url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generate customer portal URL
+         * @description Generate a portal URL for a customer to access their self-service portal.
+         */
+        get: operations["generate_portal_url_v1_customers__external_id__portal_url_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{customer_id}": {
         parameters: {
             query?: never;
@@ -488,6 +568,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{external_id}/entitlements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get subscription entitlements
+         * @description Return all entitlements for the subscription's plan.
+         */
+        get: operations["get_subscription_entitlements_v1_subscriptions__external_id__entitlements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/events/estimate_fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Estimate fees for a hypothetical event
+         * @description Estimate fees from a hypothetical event.
+         *
+         *     Aggregates current-period usage for the given metric, adds the hypothetical
+         *     event's contribution, and applies the charge model to return the estimated
+         *     fee amount.
+         */
+        post: operations["estimate_fees_v1_events_estimate_fees_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/": {
         parameters: {
             query?: never;
@@ -506,7 +630,8 @@ export interface paths {
          * @description Ingest a single event.
          *
          *     If an event with the same transaction_id already exists, returns the existing event.
-         *     This provides idempotent event ingestion.
+         *     This provides idempotent event ingestion.  The ``Idempotency-Key`` header adds an
+         *     additional layer of deduplication on top of the existing ``transaction_id`` check.
          */
         post: operations["create_event_v1_events__post"];
         delete?: never;
@@ -622,6 +747,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/invoices/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview invoice
+         * @description Preview an invoice for a subscription without persisting anything.
+         */
+        post: operations["preview_invoice_v1_invoices_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/invoices/{invoice_id}": {
         parameters: {
             query?: never;
@@ -724,6 +869,46 @@ export interface paths {
         get: operations["list_invoice_settlements_v1_invoices__invoice_id__settlements_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{invoice_id}/send_email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send invoice email
+         * @description Send an invoice notification email to the customer.
+         */
+        post: operations["send_invoice_email_v1_invoices__invoice_id__send_email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/{invoice_id}/download_pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download invoice PDF
+         * @description Generate and download a PDF for a finalized or paid invoice.
+         */
+        post: operations["download_invoice_pdf_v1_invoices__invoice_id__download_pdf_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -854,6 +1039,94 @@ export interface paths {
          * @description Refund a succeeded payment.
          */
         post: operations["refund_payment_v1_payments__payment_id__refund_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_methods/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List payment methods
+         * @description List payment methods with optional customer filter.
+         */
+        get: operations["list_payment_methods_v1_payment_methods__get"];
+        put?: never;
+        /**
+         * Create payment method
+         * @description Create a new payment method.
+         */
+        post: operations["create_payment_method_v1_payment_methods__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_methods/{payment_method_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get payment method
+         * @description Get a payment method by ID.
+         */
+        get: operations["get_payment_method_v1_payment_methods__payment_method_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete payment method
+         * @description Delete a payment method. Returns 400 if it is the default.
+         */
+        delete: operations["delete_payment_method_v1_payment_methods__payment_method_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_methods/{payment_method_id}/set_default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set default payment method
+         * @description Set a payment method as the default for its customer.
+         */
+        post: operations["set_default_payment_method_v1_payment_methods__payment_method_id__set_default_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_methods/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create setup session
+         * @description Create a setup session for saving payment details.
+         */
+        post: operations["create_setup_session_v1_payment_methods_setup_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1184,6 +1457,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/credit_notes/{credit_note_id}/send_email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send credit note email
+         * @description Send a credit note notification email to the customer.
+         */
+        post: operations["send_credit_note_email_v1_credit_notes__credit_note_id__send_email_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/credit_notes/{credit_note_id}/download_pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download credit note PDF
+         * @description Generate and download a PDF for a finalized credit note.
+         */
+        post: operations["download_credit_note_pdf_v1_credit_notes__credit_note_id__download_pdf_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/taxes/": {
         parameters: {
             query?: never;
@@ -1415,7 +1728,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /**
+         * List organizations
+         * @description List all organizations.
+         */
+        get: operations["list_organizations_v1_organizations__get"];
         put?: never;
         /**
          * Create organization
@@ -1864,6 +2181,390 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/audit_logs/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List audit logs
+         * @description List audit logs with optional filters.
+         */
+        get: operations["list_audit_logs_v1_audit_logs__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audit_logs/{resource_type}/{resource_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get audit trail for a resource
+         * @description Get the audit trail for a specific resource.
+         */
+        get: operations["get_resource_audit_trail_v1_audit_logs__resource_type___resource_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing_entities/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List billing entities
+         * @description List all billing entities with pagination.
+         */
+        get: operations["list_billing_entities_v1_billing_entities__get"];
+        put?: never;
+        /**
+         * Create billing entity
+         * @description Create a new billing entity.
+         */
+        post: operations["create_billing_entity_v1_billing_entities__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billing_entities/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get billing entity by code
+         * @description Get a billing entity by its code.
+         */
+        get: operations["get_billing_entity_v1_billing_entities__code__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete billing entity
+         * @description Delete a billing entity. Returns 400 if it has invoices.
+         */
+        delete: operations["delete_billing_entity_v1_billing_entities__code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update billing entity
+         * @description Update a billing entity by code.
+         */
+        patch: operations["update_billing_entity_v1_billing_entities__code__patch"];
+        trace?: never;
+    };
+    "/v1/features/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List features
+         * @description List all features with pagination.
+         */
+        get: operations["list_features_v1_features__get"];
+        put?: never;
+        /**
+         * Create feature
+         * @description Create a new feature.
+         */
+        post: operations["create_feature_v1_features__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/features/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get feature by code
+         * @description Get a feature by its code.
+         */
+        get: operations["get_feature_v1_features__code__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete feature
+         * @description Delete a feature. Returns 400 if it has entitlements.
+         */
+        delete: operations["delete_feature_v1_features__code__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update feature
+         * @description Update a feature by code.
+         */
+        patch: operations["update_feature_v1_features__code__patch"];
+        trace?: never;
+    };
+    "/v1/entitlements/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List entitlements
+         * @description List all entitlements with pagination. Optionally filter by plan_id.
+         */
+        get: operations["list_entitlements_v1_entitlements__get"];
+        put?: never;
+        /**
+         * Create entitlement
+         * @description Create an entitlement linking a feature to a plan with a value.
+         */
+        post: operations["create_entitlement_v1_entitlements__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/entitlements/{entitlement_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete entitlement
+         * @description Delete an entitlement.
+         */
+        delete: operations["delete_entitlement_v1_entitlements__entitlement_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update entitlement
+         * @description Update an entitlement's value.
+         */
+        patch: operations["update_entitlement_v1_entitlements__entitlement_id__patch"];
+        trace?: never;
+    };
+    "/v1/usage_alerts/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List usage alerts
+         * @description List usage alerts with optional subscription filter.
+         */
+        get: operations["list_usage_alerts_v1_usage_alerts__get"];
+        put?: never;
+        /**
+         * Create usage alert
+         * @description Create a new usage alert for a subscription and metric.
+         */
+        post: operations["create_usage_alert_v1_usage_alerts__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage_alerts/{alert_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage alert
+         * @description Get a usage alert by ID.
+         */
+        get: operations["get_usage_alert_v1_usage_alerts__alert_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete usage alert
+         * @description Delete a usage alert.
+         */
+        delete: operations["delete_usage_alert_v1_usage_alerts__alert_id__delete"];
+        options?: never;
+        head?: never;
+        /**
+         * Update usage alert
+         * @description Update a usage alert's threshold, name, or recurring flag.
+         */
+        patch: operations["update_usage_alert_v1_usage_alerts__alert_id__patch"];
+        trace?: never;
+    };
+    "/portal/customer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get customer profile
+         * @description Get the authenticated customer's profile information.
+         */
+        get: operations["get_portal_customer_profile_portal_customer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/invoices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List customer invoices
+         * @description List invoices for the authenticated customer.
+         */
+        get: operations["list_portal_invoices_portal_invoices_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/invoices/{invoice_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get invoice detail
+         * @description Get a specific invoice for the authenticated customer.
+         */
+        get: operations["get_portal_invoice_portal_invoices__invoice_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/invoices/{invoice_id}/download_pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Download invoice PDF
+         * @description Download a PDF for a finalized or paid invoice.
+         */
+        get: operations["download_portal_invoice_pdf_portal_invoices__invoice_id__download_pdf_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/current_usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get current usage
+         * @description Get current usage for the authenticated customer's subscription.
+         */
+        get: operations["get_portal_current_usage_portal_current_usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List customer payments
+         * @description List payments for the authenticated customer.
+         */
+        get: operations["list_portal_payments_portal_payments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get wallet balance and transactions
+         * @description Get wallet balance and recent transactions for the authenticated customer.
+         */
+        get: operations["get_portal_wallet_portal_wallet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -1873,23 +2574,6 @@ export interface paths {
         };
         /** Root */
         get: operations["root__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/health": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Health */
-        get: operations["health_health_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2178,6 +2862,45 @@ export interface components {
              */
             taxable_id: string;
         };
+        /** AuditLogResponse */
+        AuditLogResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /** Resource Type */
+            resource_type: string;
+            /**
+             * Resource Id
+             * Format: uuid
+             */
+            resource_id: string;
+            /** Action */
+            action: string;
+            /** Changes */
+            changes: {
+                [key: string]: unknown;
+            };
+            /** Actor Type */
+            actor_type: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Metadata */
+            metadata_: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** BillableMetricCreate */
         BillableMetricCreate: {
             /** Code */
@@ -2287,6 +3010,154 @@ export interface components {
             /** Expression */
             expression?: string | null;
         };
+        /** BillableMetricUsage */
+        BillableMetricUsage: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Aggregation Type */
+            aggregation_type: string;
+        };
+        /** BillingEntityCreate */
+        BillingEntityCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Address Line1 */
+            address_line1?: string | null;
+            /** Address Line2 */
+            address_line2?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Zip Code */
+            zip_code?: string | null;
+            /** Tax Id */
+            tax_id?: string | null;
+            /** Email */
+            email?: string | null;
+            /**
+             * Currency
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Timezone
+             * @default UTC
+             */
+            timezone: string;
+            /**
+             * Document Locale
+             * @default en
+             */
+            document_locale: string;
+            /** Invoice Prefix */
+            invoice_prefix?: string | null;
+            /**
+             * Next Invoice Number
+             * @default 1
+             */
+            next_invoice_number: number;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+        };
+        /** BillingEntityResponse */
+        BillingEntityResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Legal Name */
+            legal_name: string | null;
+            /** Address Line1 */
+            address_line1: string | null;
+            /** Address Line2 */
+            address_line2: string | null;
+            /** City */
+            city: string | null;
+            /** State */
+            state: string | null;
+            /** Country */
+            country: string | null;
+            /** Zip Code */
+            zip_code: string | null;
+            /** Tax Id */
+            tax_id: string | null;
+            /** Email */
+            email: string | null;
+            /** Currency */
+            currency: string;
+            /** Timezone */
+            timezone: string;
+            /** Document Locale */
+            document_locale: string;
+            /** Invoice Prefix */
+            invoice_prefix: string | null;
+            /** Next Invoice Number */
+            next_invoice_number: number;
+            /** Is Default */
+            is_default: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** BillingEntityUpdate */
+        BillingEntityUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Legal Name */
+            legal_name?: string | null;
+            /** Address Line1 */
+            address_line1?: string | null;
+            /** Address Line2 */
+            address_line2?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Zip Code */
+            zip_code?: string | null;
+            /** Tax Id */
+            tax_id?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Document Locale */
+            document_locale?: string | null;
+            /** Invoice Prefix */
+            invoice_prefix?: string | null;
+            /** Next Invoice Number */
+            next_invoice_number?: number | null;
+            /** Is Default */
+            is_default?: boolean | null;
+        };
         /**
          * BillingTime
          * @enum {string}
@@ -2369,6 +3240,20 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** ChargeUsage */
+        ChargeUsage: {
+            billable_metric: components["schemas"]["BillableMetricUsage"];
+            /** Units */
+            units: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Charge Model */
+            charge_model: string;
+            /** Filters */
+            filters: {
+                [key: string]: string;
+            };
         };
         /**
          * CheckoutSessionCreate
@@ -2714,26 +3599,6 @@ export interface components {
          * @enum {string}
          */
         CreditStatus: "available" | "consumed" | "voided";
-        /** CurrentUsageResponse */
-        CurrentUsageResponse: {
-            /**
-             * Subscription Id
-             * Format: uuid
-             */
-            subscription_id: string;
-            /** Current Usage Amount Cents */
-            current_usage_amount_cents: string;
-            /**
-             * Billing Period Start
-             * Format: date-time
-             */
-            billing_period_start: string;
-            /**
-             * Billing Period End
-             * Format: date-time
-             */
-            billing_period_end: string;
-        };
         /** CustomerCreate */
         CustomerCreate: {
             /** External Id */
@@ -3031,6 +3896,92 @@ export interface components {
             /** Thresholds */
             thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][] | null;
         };
+        /** EntitlementCreate */
+        EntitlementCreate: {
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Feature Id
+             * Format: uuid
+             */
+            feature_id: string;
+            /** Value */
+            value: string;
+        };
+        /** EntitlementResponse */
+        EntitlementResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /**
+             * Feature Id
+             * Format: uuid
+             */
+            feature_id: string;
+            /** Value */
+            value: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** EntitlementUpdate */
+        EntitlementUpdate: {
+            /** Value */
+            value?: string | null;
+        };
+        /**
+         * EstimateFeesRequest
+         * @description Request body for fee estimation from a hypothetical event.
+         */
+        EstimateFeesRequest: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Code */
+            code: string;
+            /**
+             * Properties
+             * @default {}
+             */
+            properties: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * EstimateFeesResponse
+         * @description Response for fee estimation.
+         */
+        EstimateFeesResponse: {
+            /** Charge Model */
+            charge_model?: string | null;
+            /** Metric Code */
+            metric_code: string;
+            /** Units */
+            units: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Unit Amount Cents */
+            unit_amount_cents: string;
+        };
         /** EventBatchCreate */
         EventBatchCreate: {
             /** Events */
@@ -3097,12 +4048,78 @@ export interface components {
          * @enum {string}
          */
         ExportType: "invoices" | "customers" | "subscriptions" | "events" | "fees" | "credit_notes";
+        /** FeatureCreate */
+        FeatureCreate: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            feature_type: components["schemas"]["FeatureType"];
+        };
+        /** FeatureResponse */
+        FeatureResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Feature Type */
+            feature_type: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * FeatureType
+         * @enum {string}
+         */
+        FeatureType: "boolean" | "quantity" | "custom";
+        /** FeatureUpdate */
+        FeatureUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Description */
+            description?: string | null;
+        };
         /**
          * FeePaymentStatus
          * @description Fee payment status enum.
          * @enum {string}
          */
         FeePaymentStatus: "pending" | "succeeded" | "failed" | "refunded";
+        /**
+         * FeePreview
+         * @description Preview of a single fee/line item.
+         */
+        FeePreview: {
+            /** Description */
+            description: string;
+            /** Units */
+            units: string;
+            /** Unit Amount Cents */
+            unit_amount_cents: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Charge Model */
+            charge_model?: string | null;
+            /** Metric Code */
+            metric_code?: string | null;
+        };
         /**
          * FeeResponse
          * @description Schema for fee response.
@@ -3252,6 +4269,41 @@ export interface components {
             error_details?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * InvoicePreviewRequest
+         * @description Request body for invoice preview.
+         */
+        InvoicePreviewRequest: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Billing Period Start */
+            billing_period_start?: string | null;
+            /** Billing Period End */
+            billing_period_end?: string | null;
+        };
+        /**
+         * InvoicePreviewResponse
+         * @description Response for an invoice preview.
+         */
+        InvoicePreviewResponse: {
+            /** Subtotal */
+            subtotal: string;
+            /** Tax Amount */
+            tax_amount: string;
+            /** Coupons Amount */
+            coupons_amount: string;
+            /** Prepaid Credit Amount */
+            prepaid_credit_amount: string;
+            /** Total */
+            total: string;
+            /** Currency */
+            currency: string;
+            /** Fees */
+            fees: components["schemas"]["FeePreview"][];
         };
         /** InvoiceResponse */
         InvoiceResponse: {
@@ -3597,6 +4649,69 @@ export interface components {
             /** Country */
             country?: string | null;
         };
+        /** PaymentMethodCreate */
+        PaymentMethodCreate: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Provider */
+            provider: string;
+            /** Provider Payment Method Id */
+            provider_payment_method_id: string;
+            /** Type */
+            type: string;
+            /**
+             * Is Default
+             * @default false
+             */
+            is_default: boolean;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+        };
+        /** PaymentMethodResponse */
+        PaymentMethodResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Provider */
+            provider: string;
+            /** Provider Payment Method Id */
+            provider_payment_method_id: string;
+            /** Type */
+            type: string;
+            /** Is Default */
+            is_default: boolean;
+            /** Details */
+            details: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /**
          * PaymentProvider
          * @description Supported payment providers.
@@ -3826,6 +4941,11 @@ export interface components {
             /** Charges */
             charges?: components["schemas"]["ChargeInput"][] | null;
         };
+        /** PortalUrlResponse */
+        PortalUrlResponse: {
+            /** Portal Url */
+            portal_url: string;
+        };
         /** RecentActivityResponse */
         RecentActivityResponse: {
             /** Id */
@@ -3863,6 +4983,40 @@ export interface components {
             currency: string;
             /** Monthly Trend */
             monthly_trend: components["schemas"]["RevenueDataPoint"][];
+        };
+        /** SetupSessionCreate */
+        SetupSessionCreate: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /**
+             * Success Url
+             * @description URL to redirect after successful setup
+             */
+            success_url: string;
+            /**
+             * Cancel Url
+             * @description URL to redirect if setup is canceled
+             */
+            cancel_url: string;
+            /**
+             * @description Payment provider to use
+             * @default stripe
+             */
+            provider: components["schemas"]["PaymentProvider"];
+        };
+        /** SetupSessionResponse */
+        SetupSessionResponse: {
+            /** Setup Id */
+            setup_id: string;
+            /** Setup Url */
+            setup_url: string;
+            /** Provider */
+            provider: string;
+            /** Expires At */
+            expires_at?: string | null;
         };
         /** SubscriptionCreate */
         SubscriptionCreate: {
@@ -4055,6 +5209,80 @@ export interface components {
          * @enum {string}
          */
         TerminationAction: "generate_invoice" | "generate_credit_note" | "skip";
+        /** UsageAlertCreate */
+        UsageAlertCreate: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Billable Metric Id
+             * Format: uuid
+             */
+            billable_metric_id: string;
+            /** Threshold Value */
+            threshold_value: number | string;
+            /**
+             * Recurring
+             * @default false
+             */
+            recurring: boolean;
+            /** Name */
+            name?: string | null;
+        };
+        /** UsageAlertResponse */
+        UsageAlertResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Organization Id
+             * Format: uuid
+             */
+            organization_id: string;
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Billable Metric Id
+             * Format: uuid
+             */
+            billable_metric_id: string;
+            /** Threshold Value */
+            threshold_value: string;
+            /** Recurring */
+            recurring: boolean;
+            /** Name */
+            name?: string | null;
+            /** Times Triggered */
+            times_triggered: number;
+            /** Triggered At */
+            triggered_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** UsageAlertUpdate */
+        UsageAlertUpdate: {
+            /** Threshold Value */
+            threshold_value?: number | string | null;
+            /** Name */
+            name?: string | null;
+            /** Recurring */
+            recurring?: boolean | null;
+        };
         /** UsageMetricVolume */
         UsageMetricVolume: {
             /** Metric Name */
@@ -4358,6 +5586,45 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** CurrentUsageResponse */
+        app__schemas__usage__CurrentUsageResponse: {
+            /**
+             * From Datetime
+             * Format: date-time
+             */
+            from_datetime: string;
+            /**
+             * To Datetime
+             * Format: date-time
+             */
+            to_datetime: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Currency */
+            currency: string;
+            /** Charges */
+            charges: components["schemas"]["ChargeUsage"][];
+        };
+        /** CurrentUsageResponse */
+        app__schemas__usage_threshold__CurrentUsageResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Current Usage Amount Cents */
+            current_usage_amount_cents: string;
+            /**
+             * Billing Period Start
+             * Format: date-time
+             */
+            billing_period_start: string;
+            /**
+             * Billing Period End
+             * Format: date-time
+             */
+            billing_period_end: string;
         };
     };
     responses: never;
@@ -4812,6 +6079,193 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_current_usage_v1_customers__external_id__current_usage_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+            };
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__schemas__usage__CurrentUsageResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer or subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_projected_usage_v1_customers__external_id__projected_usage_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+            };
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__schemas__usage__CurrentUsageResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer or subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_past_usage_v1_customers__external_id__past_usage_get: {
+        parameters: {
+            query: {
+                external_subscription_id: string;
+                periods_count?: number;
+            };
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__schemas__usage__CurrentUsageResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer or subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_portal_url_v1_customers__external_id__portal_url_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalUrlResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -5864,6 +7318,96 @@ export interface operations {
             };
         };
     };
+    get_subscription_entitlements_v1_subscriptions__external_id__entitlements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estimate_fees_v1_events_estimate_fees_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateFeesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstimateFeesResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription or charge not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billable metric code does not exist */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     list_events_v1_events__get: {
         parameters: {
             query?: {
@@ -5938,6 +7482,13 @@ export interface operations {
             };
             /** @description Billable metric code does not exist */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6021,6 +7572,13 @@ export interface operations {
             };
             /** @description Billable metric code does not exist */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -6187,6 +7745,53 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_invoice_v1_invoices_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvoicePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoicePreviewResponse"];
+                };
+            };
+            /** @description Subscription not found or not active */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unauthorized – invalid or missing API key */
             401: {
@@ -6523,6 +8128,112 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["InvoiceSettlementResponse"][];
                 };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_invoice_email_v1_invoices__invoice_id__send_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Invoice must be finalized or paid to send email */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_invoice_pdf_v1_invoices__invoice_id__download_pdf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Invoice must be finalized or paid to generate PDF */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Unauthorized – invalid or missing API key */
             401: {
@@ -6907,6 +8618,285 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    list_payment_methods_v1_payment_methods__get: {
+        parameters: {
+            query?: {
+                customer_id?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_payment_method_v1_payment_methods__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentMethodCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_payment_method_v1_payment_methods__payment_method_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_payment_method_v1_payment_methods__payment_method_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cannot delete default payment method */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_default_payment_method_v1_payment_methods__payment_method_id__set_default_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_setup_session_v1_payment_methods_setup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetupSessionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupSessionResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Provider does not support setup sessions */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment provider not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -8072,6 +10062,112 @@ export interface operations {
             };
         };
     };
+    send_credit_note_email_v1_credit_notes__credit_note_id__send_email_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Credit note must be finalized to send email */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_credit_note_pdf_v1_credit_notes__credit_note_id__download_pdf_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credit_note_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Credit note must be finalized to generate PDF */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Credit note not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_taxes_v1_taxes__get: {
         parameters: {
             query?: {
@@ -8744,6 +10840,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_organizations_v1_organizations__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationResponse"][];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -9722,7 +11850,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["CurrentUsageResponse"];
+                    "application/json": components["schemas"]["app__schemas__usage_threshold__CurrentUsageResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -10231,9 +12359,15 @@ export interface operations {
             };
         };
     };
-    root__get: {
+    list_audit_logs_v1_audit_logs__get: {
         parameters: {
-            query?: never;
+            query?: {
+                skip?: number;
+                limit?: number;
+                resource_type?: string | null;
+                resource_id?: string | null;
+                action?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -10246,14 +12380,1234 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
+                    "application/json": components["schemas"]["AuditLogResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
     };
-    health_health_get: {
+    get_resource_audit_trail_v1_audit_logs__resource_type___resource_id__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                resource_type: string;
+                resource_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_billing_entities_v1_billing_entities__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingEntityResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_billing_entity_v1_billing_entities__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingEntityCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingEntityResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billing entity with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_billing_entity_v1_billing_entities__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingEntityResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billing entity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_billing_entity_v1_billing_entities__code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cannot delete billing entity with invoices */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billing entity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_billing_entity_v1_billing_entities__code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BillingEntityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillingEntityResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Billing entity not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_features_v1_features__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_feature_v1_features__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeatureCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Feature with this code already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_feature_v1_features__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Feature not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_feature_v1_features__code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cannot delete feature with entitlements */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Feature not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_feature_v1_features__code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FeatureUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Feature not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_entitlements_v1_entitlements__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                plan_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_entitlement_v1_entitlements__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Invalid plan or feature reference */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entitlement for this plan/feature already exists */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    delete_entitlement_v1_entitlements__entitlement_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entitlement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entitlement not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_entitlement_v1_entitlements__entitlement_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entitlement_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Entitlement not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_usage_alerts_v1_usage_alerts__get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+                subscription_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_usage_alert_v1_usage_alerts__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageAlertCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription or billable metric not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_usage_alert_v1_usage_alerts__alert_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_usage_alert_v1_usage_alerts__alert_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_usage_alert_v1_usage_alerts__alert_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UsageAlertUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_portal_customer_profile_portal_customer_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_invoices_portal_invoices_get: {
+        parameters: {
+            query: {
+                skip?: number;
+                limit?: number;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_invoice_portal_invoices__invoice_id__get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvoiceResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    download_portal_invoice_pdf_portal_invoices__invoice_id__download_pdf_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Invoice must be finalized or paid to generate PDF */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_current_usage_portal_current_usage_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["app__schemas__usage__CurrentUsageResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_payments_portal_payments_get: {
+        parameters: {
+            query: {
+                skip?: number;
+                limit?: number;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_wallet_portal_wallet_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    root__get: {
         parameters: {
             query?: never;
             header?: never;

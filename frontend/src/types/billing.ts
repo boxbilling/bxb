@@ -123,7 +123,12 @@ export type CommitmentUpdate = components['schemas']['CommitmentUpdate']
 // --- Usage Thresholds ---
 export type UsageThreshold = components['schemas']['UsageThresholdResponse']
 export type UsageThresholdCreateAPI = components['schemas']['UsageThresholdCreateAPI']
-export type CurrentUsage = components['schemas']['CurrentUsageResponse']
+export type CurrentUsage = components['schemas']['app__schemas__usage_threshold__CurrentUsageResponse']
+
+// --- Customer Usage ---
+export type BillableMetricUsage = components['schemas']['BillableMetricUsage']
+export type ChargeUsage = components['schemas']['ChargeUsage']
+export type CustomerCurrentUsageResponse = components['schemas']['app__schemas__usage__CurrentUsageResponse']
 
 // --- Integrations ---
 export type Integration = components['schemas']['IntegrationResponse']

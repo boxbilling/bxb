@@ -86,7 +86,8 @@ type CommitmentUpdate = components['schemas']['CommitmentUpdate']
 
 type UsageThresholdResponse = components['schemas']['UsageThresholdResponse']
 type UsageThresholdCreateAPI = components['schemas']['UsageThresholdCreateAPI']
-type CurrentUsageResponse = components['schemas']['CurrentUsageResponse']
+type CurrentUsageResponse = components['schemas']['app__schemas__usage_threshold__CurrentUsageResponse']
+type CustomerCurrentUsageResponse = components['schemas']['app__schemas__usage__CurrentUsageResponse']
 
 type IntegrationResponse = components['schemas']['IntegrationResponse']
 type IntegrationCreate = components['schemas']['IntegrationCreate']
@@ -225,6 +226,12 @@ export const customersApi = {
     request<void>(`/v1/customers/${id}`, { method: 'DELETE' }),
   getAppliedCoupons: (customerId: string) =>
     request<AppliedCouponResponse[]>(`/v1/customers/${customerId}/applied_coupons`),
+  getCurrentUsage: (externalId: string, subscriptionId: string) =>
+    request<CustomerCurrentUsageResponse>(`/v1/customers/${externalId}/current_usage${buildQuery({ subscription_id: subscriptionId })}`),
+  getProjectedUsage: (externalId: string, subscriptionId: string) =>
+    request<CustomerCurrentUsageResponse>(`/v1/customers/${externalId}/projected_usage${buildQuery({ subscription_id: subscriptionId })}`),
+  getPastUsage: (externalId: string, externalSubscriptionId: string, periodsCount?: number) =>
+    request<CustomerCurrentUsageResponse[]>(`/v1/customers/${externalId}/past_usage${buildQuery({ external_subscription_id: externalSubscriptionId, periods_count: periodsCount })}`),
 }
 
 // Billable Metrics API
