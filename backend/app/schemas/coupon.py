@@ -87,3 +87,26 @@ class CouponAnalyticsResponse(BaseModel):
     terminated_applications: int
     total_discount_cents: Decimal
     remaining_uses: int | None = None
+
+
+class PortalRedeemCouponRequest(BaseModel):
+    """Request body for portal coupon code redemption."""
+
+    coupon_code: str = Field(max_length=255)
+
+
+class PortalAppliedCouponResponse(BaseModel):
+    """Response for a portal-applied coupon with user-friendly details."""
+
+    id: UUID
+    coupon_code: str
+    coupon_name: str
+    coupon_type: str
+    amount_cents: Decimal | None = None
+    amount_currency: str | None = None
+    percentage_rate: Decimal | None = None
+    frequency: str
+    frequency_duration: int | None = None
+    frequency_duration_remaining: int | None = None
+    status: str
+    created_at: datetime

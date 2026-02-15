@@ -16,6 +16,8 @@ from app.models.subscription import Subscription
 from app.models.wallet import Wallet
 from app.repositories.add_on_repository import AddOnRepository
 from app.repositories.applied_add_on_repository import AppliedAddOnRepository
+from app.repositories.applied_coupon_repository import AppliedCouponRepository
+from app.repositories.coupon_repository import CouponRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
@@ -29,6 +31,10 @@ from app.schemas.add_on import (
     PortalAddOnResponse,
     PortalPurchaseAddOnResponse,
     PortalPurchasedAddOnResponse,
+)
+from app.schemas.coupon import (
+    PortalAppliedCouponResponse,
+    PortalRedeemCouponRequest,
 )
 from app.schemas.customer import CustomerResponse, PortalProfileUpdate
 from app.schemas.invoice import InvoiceResponse
@@ -47,6 +53,7 @@ from app.schemas.subscription import (
 from app.schemas.usage import CurrentUsageResponse
 from app.schemas.wallet import WalletResponse
 from app.services.add_on_service import AddOnService
+from app.services.coupon_service import CouponApplicationService
 from app.services.pdf_service import PdfService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.usage_query_service import UsageQueryService
@@ -765,4 +772,93 @@ async def portal_purchase_add_on(
         add_on_name=str(add_on.name),
         amount_cents=add_on.amount_cents,  # type: ignore[arg-type]
         amount_currency=str(add_on.amount_currency),
+    )
+
+
+# ── Coupons ──────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/coupons",
+    response_model=list[PortalAppliedCouponResponse],
+    summary="List applied coupons",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def list_portal_coupons(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[PortalAppliedCouponResponse]:
+    """List all coupons applied to the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    applied_repo = AppliedCouponRepository(db)
+    coupon_repo = CouponRepository(db)
+    applied_coupons = applied_repo.get_active_by_customer_id(customer_id)
+    result: list[PortalAppliedCouponResponse] = []
+    for ac in applied_coupons:
+        coupon = coupon_repo.get_by_id(UUID(str(ac.coupon_id)))
+        result.append(
+            PortalAppliedCouponResponse(
+                id=ac.id,  # type: ignore[arg-type]
+                coupon_code=str(coupon.code) if coupon else "unknown",
+                coupon_name=str(coupon.name) if coupon else "Unknown",
+                coupon_type=str(coupon.coupon_type) if coupon else "unknown",
+                amount_cents=ac.amount_cents,  # type: ignore[arg-type]
+                amount_currency=ac.amount_currency,  # type: ignore[arg-type]
+                percentage_rate=ac.percentage_rate,  # type: ignore[arg-type]
+                frequency=str(ac.frequency),
+                frequency_duration=ac.frequency_duration,  # type: ignore[arg-type]
+                frequency_duration_remaining=ac.frequency_duration_remaining,  # type: ignore[arg-type]
+                status=str(ac.status),
+                created_at=ac.created_at,  # type: ignore[arg-type]
+            )
+        )
+    return result
+
+
+@router.post(
+    "/coupons/redeem",
+    response_model=PortalAppliedCouponResponse,
+    status_code=201,
+    summary="Redeem a coupon code",
+    responses={
+        400: {"description": "Coupon is not active, expired, or already applied"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Coupon not found"},
+    },
+)
+async def portal_redeem_coupon(
+    data: PortalRedeemCouponRequest,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalAppliedCouponResponse:
+    """Redeem a coupon code for the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    service = CouponApplicationService(db)
+    try:
+        applied = service.apply_coupon_to_customer(
+            coupon_code=data.coupon_code,
+            customer_id=customer_id,
+            organization_id=organization_id,
+        )
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg.lower():
+            raise HTTPException(status_code=404, detail=msg) from None
+        raise HTTPException(status_code=400, detail=msg) from None
+
+    coupon_repo = CouponRepository(db)
+    coupon = coupon_repo.get_by_id(UUID(str(applied.coupon_id)))
+    return PortalAppliedCouponResponse(
+        id=applied.id,  # type: ignore[arg-type]
+        coupon_code=str(coupon.code) if coupon else "unknown",
+        coupon_name=str(coupon.name) if coupon else "Unknown",
+        coupon_type=str(coupon.coupon_type) if coupon else "unknown",
+        amount_cents=applied.amount_cents,  # type: ignore[arg-type]
+        amount_currency=applied.amount_currency,  # type: ignore[arg-type]
+        percentage_rate=applied.percentage_rate,  # type: ignore[arg-type]
+        frequency=str(applied.frequency),
+        frequency_duration=applied.frequency_duration,  # type: ignore[arg-type]
+        frequency_duration_remaining=applied.frequency_duration_remaining,  # type: ignore[arg-type]
+        status=str(applied.status),
+        created_at=applied.created_at,  # type: ignore[arg-type]
     )

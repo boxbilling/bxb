@@ -95,6 +95,7 @@ export type AppliedAddOnDetail = components['schemas']['AppliedAddOnDetailRespon
 export type PortalAddOn = components['schemas']['PortalAddOnResponse']
 export type PortalPurchasedAddOn = components['schemas']['PortalPurchasedAddOnResponse']
 export type PortalPurchaseAddOnResult = components['schemas']['PortalPurchaseAddOnResponse']
+export type PortalAppliedCoupon = components['schemas']['PortalAppliedCouponResponse']
 
 // --- Credit Notes ---
 export type CreditNote = components['schemas']['CreditNoteResponse']

@@ -3859,6 +3859,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List applied coupons
+         * @description List all coupons applied to the authenticated customer.
+         */
+        get: operations["list_portal_coupons_portal_coupons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/coupons/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a coupon code
+         * @description Redeem a coupon code for the authenticated customer.
+         */
+        post: operations["portal_redeem_coupon_portal_coupons_redeem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -7057,6 +7097,42 @@ export interface components {
             /** Amount Currency */
             amount_currency: string;
         };
+        /**
+         * PortalAppliedCouponResponse
+         * @description Response for a portal-applied coupon with user-friendly details.
+         */
+        PortalAppliedCouponResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Coupon Code */
+            coupon_code: string;
+            /** Coupon Name */
+            coupon_name: string;
+            /** Coupon Type */
+            coupon_type: string;
+            /** Amount Cents */
+            amount_cents?: string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Percentage Rate */
+            percentage_rate?: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Frequency Duration */
+            frequency_duration?: number | null;
+            /** Frequency Duration Remaining */
+            frequency_duration_remaining?: number | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** PortalBrandingResponse */
         PortalBrandingResponse: {
             /** Name */
@@ -7161,6 +7237,14 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * PortalRedeemCouponRequest
+         * @description Request body for portal coupon code redemption.
+         */
+        PortalRedeemCouponRequest: {
+            /** Coupon Code */
+            coupon_code: string;
         };
         /**
          * PortalSubscriptionResponse
@@ -18992,6 +19076,100 @@ export interface operations {
                 content?: never;
             };
             /** @description Add-on not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_coupons_portal_coupons_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalAppliedCouponResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_redeem_coupon_portal_coupons_redeem_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalRedeemCouponRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalAppliedCouponResponse"];
+                };
+            };
+            /** @description Coupon is not active, expired, or already applied */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
             404: {
                 headers: {
                     [name: string]: unknown;

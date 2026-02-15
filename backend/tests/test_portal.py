@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.add_on import AddOn
 from app.models.applied_add_on import AppliedAddOn
+from app.models.coupon import Coupon
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.organization import Organization
@@ -1487,3 +1488,265 @@ class TestPortalAddOns:
             f"/portal/add_ons/not-a-uuid/purchase?token={token}"
         )
         assert response.status_code == 422
+
+
+class TestPortalCoupons:
+    """Tests for portal coupon endpoints."""
+
+    @pytest.fixture
+    def coupon_fixed(self, db_session):
+        c = Coupon(
+            code=f"SAVE10_{uuid.uuid4().hex[:8]}",
+            name="Save $10",
+            description="$10 off your next billing period",
+            coupon_type="fixed_amount",
+            amount_cents=1000,
+            amount_currency="USD",
+            frequency="once",
+            reusable=True,
+            expiration="no_expiration",
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def coupon_percentage(self, db_session):
+        c = Coupon(
+            code=f"PCT20_{uuid.uuid4().hex[:8]}",
+            name="20% Off",
+            description="20% off for 3 billing periods",
+            coupon_type="percentage",
+            percentage_rate=20,
+            frequency="recurring",
+            frequency_duration=3,
+            reusable=True,
+            expiration="no_expiration",
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def terminated_coupon(self, db_session):
+        c = Coupon(
+            code=f"DEAD_{uuid.uuid4().hex[:8]}",
+            name="Terminated Coupon",
+            coupon_type="fixed_amount",
+            amount_cents=500,
+            amount_currency="USD",
+            frequency="once",
+            reusable=True,
+            expiration="no_expiration",
+            status="terminated",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def non_reusable_coupon(self, db_session):
+        c = Coupon(
+            code=f"ONCE_{uuid.uuid4().hex[:8]}",
+            name="One-time Only",
+            coupon_type="fixed_amount",
+            amount_cents=500,
+            amount_currency="USD",
+            frequency="once",
+            reusable=False,
+            expiration="no_expiration",
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def expired_coupon(self, db_session):
+        c = Coupon(
+            code=f"EXP_{uuid.uuid4().hex[:8]}",
+            name="Expired Coupon",
+            coupon_type="fixed_amount",
+            amount_cents=500,
+            amount_currency="USD",
+            frequency="once",
+            reusable=True,
+            expiration="time_limit",
+            expiration_at=datetime(2020, 1, 1, tzinfo=UTC),
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+        return c
+
+    @pytest.fixture
+    def applied_coupon(self, db_session, customer, coupon_fixed):
+        from app.models.applied_coupon import AppliedCoupon
+
+        ac = AppliedCoupon(
+            coupon_id=coupon_fixed.id,
+            customer_id=customer.id,
+            amount_cents=1000,
+            amount_currency="USD",
+            frequency="once",
+            status="active",
+        )
+        db_session.add(ac)
+        db_session.commit()
+        db_session.refresh(ac)
+        return ac
+
+    # ── List active coupons ──
+
+    def test_list_coupons_empty(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/coupons?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_coupons_with_applied(self, client, customer, coupon_fixed, applied_coupon):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/coupons?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        item = data[0]
+        assert item["coupon_code"] == coupon_fixed.code
+        assert item["coupon_name"] == "Save $10"
+        assert item["coupon_type"] == "fixed_amount"
+        assert float(item["amount_cents"]) == 1000.0
+        assert item["amount_currency"] == "USD"
+        assert item["frequency"] == "once"
+        assert item["status"] == "active"
+
+    def test_list_coupons_excludes_other_customer(
+        self, client, customer, other_customer, coupon_fixed, db_session
+    ):
+        from app.models.applied_coupon import AppliedCoupon
+
+        # Apply coupon to other customer only
+        ac = AppliedCoupon(
+            coupon_id=coupon_fixed.id,
+            customer_id=other_customer.id,
+            amount_cents=1000,
+            amount_currency="USD",
+            frequency="once",
+            status="active",
+        )
+        db_session.add(ac)
+        db_session.commit()
+        # Our customer should see nothing
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/coupons?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    # ── Redeem coupon ──
+
+    def test_redeem_coupon_fixed(self, client, customer, coupon_fixed):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": coupon_fixed.code},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["coupon_code"] == coupon_fixed.code
+        assert data["coupon_name"] == "Save $10"
+        assert data["coupon_type"] == "fixed_amount"
+        assert float(data["amount_cents"]) == 1000.0
+        assert data["amount_currency"] == "USD"
+        assert data["frequency"] == "once"
+        assert data["status"] == "active"
+
+    def test_redeem_coupon_percentage(self, client, customer, coupon_percentage):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": coupon_percentage.code},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["coupon_code"] == coupon_percentage.code
+        assert data["coupon_name"] == "20% Off"
+        assert data["coupon_type"] == "percentage"
+        assert float(data["percentage_rate"]) == 20.0
+        assert data["frequency"] == "recurring"
+        assert data["frequency_duration"] == 3
+        assert data["frequency_duration_remaining"] == 3
+
+    def test_redeem_coupon_appears_in_list(self, client, customer, coupon_fixed):
+        token = _make_portal_token(customer.id)
+        # Redeem first
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": coupon_fixed.code},
+        )
+        assert response.status_code == 201
+        # Verify it shows up in the list
+        response = client.get(f"/portal/coupons?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["coupon_name"] == "Save $10"
+
+    def test_redeem_coupon_not_found(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": "NONEXISTENT_CODE"},
+        )
+        assert response.status_code == 404
+
+    def test_redeem_terminated_coupon(self, client, customer, terminated_coupon):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": terminated_coupon.code},
+        )
+        assert response.status_code == 400
+        assert "not active" in response.json()["detail"].lower()
+
+    def test_redeem_expired_coupon(self, client, customer, expired_coupon):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": expired_coupon.code},
+        )
+        assert response.status_code == 400
+        assert "expired" in response.json()["detail"].lower()
+
+    def test_redeem_non_reusable_twice(self, client, customer, non_reusable_coupon):
+        token = _make_portal_token(customer.id)
+        # First application should succeed
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": non_reusable_coupon.code},
+        )
+        assert response.status_code == 201
+        # Second application should fail
+        response = client.post(
+            f"/portal/coupons/redeem?token={token}",
+            json={"coupon_code": non_reusable_coupon.code},
+        )
+        assert response.status_code == 400
+        assert "already applied" in response.json()["detail"].lower()
+
+    def test_redeem_coupon_invalid_token(self, client, customer, coupon_fixed):
+        response = client.post(
+            "/portal/coupons/redeem?token=invalid_token",
+            json={"coupon_code": coupon_fixed.code},
+        )
+        assert response.status_code == 401
