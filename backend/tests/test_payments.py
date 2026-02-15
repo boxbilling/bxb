@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.payment import PaymentProvider, PaymentStatus, generate_uuid, utc_now
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository
@@ -885,7 +886,7 @@ class TestPaymentsAPI:
         assert "finalized" in response.json()["detail"].lower()
 
     @patch("app.routers.payments.get_payment_provider")
-    def test_create_checkout_success(self, mock_get_provider, client, finalized_invoice):
+    def test_create_checkout_success(self, mock_get_provider, client, finalized_invoice, db_session):
         """Test creating checkout session successfully."""
         from app.services.payment_provider import CheckoutSession
 
@@ -910,6 +911,16 @@ class TestPaymentsAPI:
         assert data["checkout_url"] == "https://checkout.example.com/cs_mock_123"
         assert data["provider"] == "stripe"
         assert "payment_id" in data
+
+        # Verify audit log was created for payment creation
+        from uuid import UUID
+
+        payment_id = UUID(data["payment_id"])
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == payment_id,
+            AuditLog.action == "created",
+        ).all()
+        assert len(logs) == 1
 
     @patch("app.repositories.customer_repository.CustomerRepository.get_by_id")
     @patch("app.routers.payments.get_payment_provider")
@@ -1201,6 +1212,13 @@ class TestPaymentsAPI:
         )
         assert response.status_code == 200
         assert response.json()["status"] == "processed"
+
+        # Verify audit log for payment status change
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == payment.id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "succeeded" for log in logs)
 
     @patch("app.services.payment_provider.StripeProvider.verify_webhook_signature")
     def test_webhook_payment_failed(self, mock_verify, client, payment, db_session):

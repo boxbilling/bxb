@@ -17,6 +17,7 @@ from app.schemas.credit_note import (
     CreditNoteResponse,
     CreditNoteUpdate,
 )
+from app.services.audit_service import AuditService
 from app.services.email_service import EmailService
 from app.services.pdf_service import PdfService
 from app.services.refund_service import RefundService
@@ -58,6 +59,15 @@ async def create_credit_note(
             for item in data.items
         ]
         item_repo.create_bulk(items_data)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="credit_note",
+        resource_id=credit_note.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={"number": data.number, "invoice_id": str(data.invoice_id)},
+    )
 
     return credit_note
 
@@ -176,6 +186,16 @@ async def finalize_credit_note(
         # Reload to reflect updated refund_status
         finalized = repo.get_by_id(credit_note_id, organization_id)
 
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="credit_note",
+        resource_id=credit_note_id,
+        organization_id=organization_id,
+        old_status="draft",
+        new_status="finalized",
+        actor_type="api_key",
+    )
+
     return finalized  # type: ignore[return-value]
 
 
@@ -204,6 +224,17 @@ async def void_credit_note(
         raise HTTPException(status_code=400, detail="Only finalized credit notes can be voided")
 
     voided = repo.void(credit_note_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="credit_note",
+        resource_id=credit_note_id,
+        organization_id=organization_id,
+        old_status="finalized",
+        new_status="voided",
+        actor_type="api_key",
+    )
+
     return voided  # type: ignore[return-value]
 
 

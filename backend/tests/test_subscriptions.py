@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.customer import Customer
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
@@ -615,7 +616,7 @@ class TestSubscriptionsAPI:
         assert response.status_code == 200
         assert response.json() == []
 
-    def test_create_subscription(self, client: TestClient):
+    def test_create_subscription(self, client: TestClient, db_session):
         """Test creating a subscription."""
         # Create customer
         customer = client.post(
@@ -654,6 +655,11 @@ class TestSubscriptionsAPI:
         assert data["on_termination_action"] == "generate_invoice"
         assert "id" in data
         assert "created_at" in data
+
+        # Verify audit log was created
+        sub_id = uuid.UUID(data["id"])
+        logs = db_session.query(AuditLog).filter(AuditLog.resource_id == sub_id).all()
+        assert any(log.action == "created" for log in logs)
 
     def test_create_subscription_with_lifecycle_fields(self, client: TestClient):
         """Test creating a subscription with advanced lifecycle fields."""
@@ -858,7 +864,7 @@ class TestSubscriptionsAPI:
         assert response.status_code == 404
         assert response.json()["detail"] == "Subscription not found"
 
-    def test_terminate_subscription(self, client: TestClient):
+    def test_terminate_subscription(self, client: TestClient, db_session):
         """Test terminating a subscription via DELETE."""
         customer = client.post(
             "/v1/customers/",
@@ -883,6 +889,14 @@ class TestSubscriptionsAPI:
         assert get_response.json()["status"] == "terminated"
         assert get_response.json()["ending_at"] is not None
 
+        # Verify audit log for termination
+        sub_id = uuid.UUID(subscription_id)
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == sub_id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "terminated" for log in logs)
+
     def test_terminate_subscription_not_found(self, client: TestClient):
         """Test terminating a non-existent subscription."""
         fake_id = str(uuid.uuid4())
@@ -890,7 +904,7 @@ class TestSubscriptionsAPI:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"]
 
-    def test_cancel_subscription(self, client: TestClient):
+    def test_cancel_subscription(self, client: TestClient, db_session):
         """Test canceling a subscription."""
         customer = client.post(
             "/v1/customers/",
@@ -915,6 +929,14 @@ class TestSubscriptionsAPI:
         data = response.json()
         assert data["status"] == "canceled"
         assert data["canceled_at"] is not None
+
+        # Verify audit log for cancellation
+        sub_id = uuid.UUID(subscription_id)
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == sub_id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "canceled" for log in logs)
 
     def test_cancel_subscription_not_found(self, client: TestClient):
         """Test canceling a non-existent subscription."""

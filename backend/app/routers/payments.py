@@ -20,6 +20,7 @@ from app.schemas.payment import (
     CheckoutSessionResponse,
     PaymentResponse,
 )
+from app.services.audit_service import AuditService
 from app.services.payment_provider import get_payment_provider
 from app.services.webhook_service import WebhookService
 
@@ -212,6 +213,15 @@ async def create_checkout_session(
         provider_checkout_url=session.checkout_url,
     )
 
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="payment",
+        resource_id=payment.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={"invoice_id": str(data.invoice_id), "provider": data.provider.value},
+    )
+
     return CheckoutSessionResponse(
         payment_id=payment.id,  # type: ignore[arg-type]
         checkout_url=session.checkout_url,
@@ -290,9 +300,20 @@ async def handle_webhook(
         )
 
     # Update payment status
+    audit_service = AuditService(db)
     webhook_service = WebhookService(db)
+    old_status = str(payment.status)
     if result.status == "succeeded":
         payment_repo.mark_succeeded(payment.id)  # type: ignore[arg-type]
+
+        audit_service.log_status_change(
+            resource_type="payment",
+            resource_id=payment.id,  # type: ignore[arg-type]
+            organization_id=payment.organization_id,  # type: ignore[arg-type]
+            old_status=old_status,
+            new_status="succeeded",
+            actor_type="webhook",
+        )
 
         # Record settlement and auto-mark invoice as paid if fully settled
         _record_settlement_and_maybe_mark_paid(
@@ -313,6 +334,15 @@ async def handle_webhook(
     elif result.status == "failed":
         payment_repo.mark_failed(payment.id, result.failure_reason)  # type: ignore[arg-type]
 
+        audit_service.log_status_change(
+            resource_type="payment",
+            resource_id=payment.id,  # type: ignore[arg-type]
+            organization_id=payment.organization_id,  # type: ignore[arg-type]
+            old_status=old_status,
+            new_status="failed",
+            actor_type="webhook",
+        )
+
         webhook_service.send_webhook(
             webhook_type="payment.failed",
             object_type="payment",
@@ -322,6 +352,15 @@ async def handle_webhook(
 
     elif result.status == "canceled":
         payment_repo.mark_canceled(payment.id)  # type: ignore[arg-type]
+
+        audit_service.log_status_change(
+            resource_type="payment",
+            resource_id=payment.id,  # type: ignore[arg-type]
+            organization_id=payment.organization_id,  # type: ignore[arg-type]
+            old_status=old_status,
+            new_status="canceled",
+            actor_type="webhook",
+        )
 
     return {"status": "processed", "event_type": result.event_type}
 

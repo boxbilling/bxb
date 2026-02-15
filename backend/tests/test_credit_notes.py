@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from app.core.database import get_db
 from app.main import app
+from app.models.audit_log import AuditLog
 from app.models.credit_note import (
     CreditNote,
     CreditNoteReason,
@@ -1135,6 +1136,16 @@ class TestCreditNoteAPI:
         assert data["status"] == "draft"
         assert data["reason"] == "duplicated_charge"
 
+        # Verify audit log was created
+        from uuid import UUID
+
+        cn_id = UUID(data["id"])
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == cn_id,
+            AuditLog.action == "created",
+        ).all()
+        assert len(logs) == 1
+
     def test_create_credit_note_with_items(self, client, db_session, customer, invoice, fee):
         """Test POST /v1/credit_notes/ with items."""
         response = client.post(
@@ -1305,6 +1316,13 @@ class TestCreditNoteAPI:
         assert data["credit_status"] == "available"
         assert data["issued_at"] is not None
 
+        # Verify audit log for finalization
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == credit_note.id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "finalized" for log in logs)
+
     def test_finalize_credit_note_not_found(self, client):
         """Test POST /v1/credit_notes/{id}/finalize returns 404."""
         response = client.post(f"/v1/credit_notes/{uuid4()}/finalize")
@@ -1329,6 +1347,13 @@ class TestCreditNoteAPI:
         data = response.json()
         assert data["credit_status"] == "voided"
         assert data["voided_at"] is not None
+
+        # Verify audit log for voiding
+        logs = db_session.query(AuditLog).filter(
+            AuditLog.resource_id == credit_note.id,
+            AuditLog.action == "status_changed",
+        ).all()
+        assert any(log.changes.get("status", {}).get("new") == "voided" for log in logs)
 
     def test_void_credit_note_not_found(self, client):
         """Test POST /v1/credit_notes/{id}/void returns 404."""

@@ -17,6 +17,7 @@ from app.models.invoice import InvoiceStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.payment_method_repository import PaymentMethodRepository
@@ -591,6 +592,11 @@ class TestInvoicesAPI:
         assert response.status_code == 200
         assert response.json()["status"] == "finalized"
 
+        # Verify audit log was created
+        audit_repo = AuditLogRepository(db_session)
+        logs = audit_repo.get_by_resource("invoice", invoice.id)
+        assert any(log.action == "status_changed" for log in logs)
+
     def test_finalize_invoice_not_found(self, client):
         response = client.post(f"/v1/invoices/{uuid4()}/finalize")
         assert response.status_code == 404
@@ -628,6 +634,14 @@ class TestInvoicesAPI:
         assert response.status_code == 200
         assert response.json()["status"] == "paid"
 
+        # Verify audit log was created
+        audit_repo = AuditLogRepository(db_session)
+        logs = audit_repo.get_by_resource("invoice", invoice.id)
+        status_logs = [log for log in logs if log.action == "status_changed"]
+        assert any(
+            log.changes.get("status", {}).get("new") == "paid" for log in status_logs
+        )
+
     def test_pay_invoice_not_found(self, client):
         response = client.post(f"/v1/invoices/{uuid4()}/pay")
         assert response.status_code == 404
@@ -660,6 +674,14 @@ class TestInvoicesAPI:
         response = client.post(f"/v1/invoices/{invoice.id}/void")
         assert response.status_code == 200
         assert response.json()["status"] == "voided"
+
+        # Verify audit log was created
+        audit_repo = AuditLogRepository(db_session)
+        logs = audit_repo.get_by_resource("invoice", invoice.id)
+        status_logs = [log for log in logs if log.action == "status_changed"]
+        assert any(
+            log.changes.get("status", {}).get("new") == "voided" for log in status_logs
+        )
 
     def test_void_invoice_not_found(self, client):
         response = client.post(f"/v1/invoices/{uuid4()}/void")

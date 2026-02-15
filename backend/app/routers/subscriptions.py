@@ -10,6 +10,7 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.services.audit_service import AuditService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.webhook_service import WebhookService
 
@@ -98,6 +99,19 @@ async def create_subscription(
 
     subscription = repo.create(data, organization_id)
 
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="subscription",
+        resource_id=subscription.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "customer_id": str(data.customer_id),
+            "plan_id": str(data.plan_id),
+            "external_id": data.external_id,
+        },
+    )
+
     webhook_service = WebhookService(db)
     webhook_service.send_webhook(
         webhook_type="subscription.created",
@@ -127,9 +141,37 @@ async def update_subscription(
 ) -> Subscription:
     """Update a subscription."""
     repo = SubscriptionRepository(db)
-    subscription = repo.update(subscription_id, data, organization_id)
-    if not subscription:
+    old_subscription = repo.get_by_id(subscription_id, organization_id)
+    if not old_subscription:
         raise HTTPException(status_code=404, detail="Subscription not found")
+
+    old_data = {
+        k: str(v) if v is not None else None
+        for k, v in data.model_dump(exclude_unset=True).items()
+        if hasattr(old_subscription, k)
+    }
+    old_data = {k: str(getattr(old_subscription, k)) for k in old_data}
+
+    subscription = repo.update(subscription_id, data, organization_id)
+    if not subscription:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    new_data = {
+        k: str(getattr(subscription, k)) if getattr(subscription, k) is not None else None
+        for k in data.model_dump(exclude_unset=True)
+        if hasattr(subscription, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="subscription",
+        resource_id=subscription_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return subscription
 
 
@@ -158,6 +200,16 @@ async def terminate_subscription(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
 
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="subscription",
+        resource_id=subscription_id,
+        organization_id=organization_id,
+        old_status="active",
+        new_status="terminated",
+        actor_type="api_key",
+    )
+
 
 @router.post(
     "/{subscription_id}/cancel",
@@ -183,6 +235,16 @@ async def cancel_subscription(
         lifecycle_service.cancel_subscription(subscription_id, on_termination_action.value)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="subscription",
+        resource_id=subscription_id,
+        organization_id=organization_id,
+        old_status="active",
+        new_status="canceled",
+        actor_type="api_key",
+    )
 
     repo = SubscriptionRepository(db)
     subscription = repo.get_by_id(subscription_id, organization_id)

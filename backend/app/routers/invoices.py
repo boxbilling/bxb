@@ -19,6 +19,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.schemas.invoice import InvoiceResponse, InvoiceUpdate
 from app.schemas.invoice_preview import InvoicePreviewRequest, InvoicePreviewResponse
 from app.schemas.invoice_settlement import InvoiceSettlementResponse
+from app.services.audit_service import AuditService
 from app.services.email_service import EmailService
 from app.services.invoice_preview_service import InvoicePreviewService
 from app.services.payment_provider import get_payment_provider
@@ -241,6 +242,16 @@ async def finalize_invoice(
                             reason=charge_result.failure_reason,
                         )
 
+        audit_service = AuditService(db)
+        audit_service.log_status_change(
+            resource_type="invoice",
+            resource_id=invoice.id,  # type: ignore[arg-type]
+            organization_id=organization_id,
+            old_status="draft",
+            new_status=str(invoice.status),
+            actor_type="api_key",
+        )
+
         webhook_service = WebhookService(db)
         webhook_service.send_webhook(
             webhook_type="invoice.finalized",
@@ -279,6 +290,16 @@ async def mark_invoice_paid(
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
 
+        audit_service = AuditService(db)
+        audit_service.log_status_change(
+            resource_type="invoice",
+            resource_id=invoice.id,  # type: ignore[arg-type]
+            organization_id=organization_id,
+            old_status="finalized",
+            new_status="paid",
+            actor_type="api_key",
+        )
+
         webhook_service = WebhookService(db)
         webhook_service.send_webhook(
             webhook_type="invoice.paid",
@@ -316,6 +337,16 @@ async def void_invoice(
         invoice = repo.void(invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found")
+
+        audit_service = AuditService(db)
+        audit_service.log_status_change(
+            resource_type="invoice",
+            resource_id=invoice.id,  # type: ignore[arg-type]
+            organization_id=organization_id,
+            old_status="finalized",
+            new_status="voided",
+            actor_type="api_key",
+        )
 
         webhook_service = WebhookService(db)
         webhook_service.send_webhook(

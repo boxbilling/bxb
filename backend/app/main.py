@@ -5,6 +5,7 @@ from starlette.responses import Response
 from app.core.config import settings
 from app.routers import (
     add_ons,
+    audit_logs,
     billable_metrics,
     commitments,
     coupons,
@@ -54,6 +55,7 @@ OPENAPI_TAGS = [
     {"name": "Data Exports", "description": "Export billing data as CSV files."},
     {"name": "Integrations", "description": "Connect and manage external system integrations."},
     {"name": "Items", "description": "Internal item management."},
+    {"name": "Audit Logs", "description": "Query the audit trail for billing entities."},
 ]
 
 app = FastAPI(
@@ -157,6 +159,11 @@ app.include_router(
     integrations.router,
     prefix="/v1/integrations",
     tags=["Integrations"],
+)
+app.include_router(
+    audit_logs.router,
+    prefix="/v1/audit_logs",
+    tags=["Audit Logs"],
 )
 
 
