@@ -35,6 +35,21 @@ async def list_features(
 
 
 @router.get(
+    "/plan_counts",
+    response_model=dict[str, int],
+    summary="Get plan counts per feature",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_feature_plan_counts(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> dict[str, int]:
+    """Get the number of distinct plans with entitlements for each feature."""
+    repo = FeatureRepository(db)
+    return repo.plan_counts(organization_id)
+
+
+@router.get(
     "/{code}",
     response_model=FeatureResponse,
     summary="Get feature by code",

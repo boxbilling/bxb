@@ -3,6 +3,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.models.entitlement import Entitlement
 from app.models.feature import Feature
 from app.schemas.feature import FeatureCreate, FeatureUpdate
 
@@ -91,3 +92,16 @@ class FeatureRepository:
 
     def code_exists(self, code: str, organization_id: UUID) -> bool:
         return self.get_by_code(code, organization_id) is not None
+
+    def plan_counts(self, organization_id: UUID) -> dict[str, int]:
+        """Return a mapping of feature_id -> count of distinct plans with entitlements."""
+        rows = (
+            self.db.query(
+                Entitlement.feature_id,
+                func.count(func.distinct(Entitlement.plan_id)),
+            )
+            .filter(Entitlement.organization_id == organization_id)
+            .group_by(Entitlement.feature_id)
+            .all()
+        )
+        return {str(feature_id): int(cnt) for feature_id, cnt in rows}

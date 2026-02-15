@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Pencil, Trash2, ToggleLeft } from 'lucide-react'
+import { Plus, Pencil, Trash2, ToggleLeft, ChevronDown, ChevronRight, Layers, Copy } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -95,6 +97,14 @@ export default function FeaturesPage() {
   const [entitlementForm, setEntitlementForm] = useState<EntitlementFormState>(emptyEntitlementForm)
   const [selectedPlanId, setSelectedPlanId] = useState<string>('')
 
+  // Copy entitlements dialog state
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false)
+  const [copySourcePlanId, setCopySourcePlanId] = useState<string>('')
+  const [copyTargetPlanId, setCopyTargetPlanId] = useState<string>('')
+
+  // Expandable rows state
+  const [expandedFeatureIds, setExpandedFeatureIds] = useState<Set<string>>(new Set())
+
   // Queries
   const { data: features, isLoading: featuresLoading } = useQuery({
     queryKey: ['features'],
@@ -106,9 +116,20 @@ export default function FeaturesPage() {
     queryFn: () => plansApi.list(),
   })
 
+  const { data: planCounts } = useQuery({
+    queryKey: ['features', 'plan_counts'],
+    queryFn: () => featuresApi.planCounts(),
+  })
+
   const { data: entitlements, isLoading: entitlementsLoading } = useQuery({
     queryKey: ['entitlements', selectedPlanId || undefined],
     queryFn: () => entitlementsApi.list(selectedPlanId ? { plan_id: selectedPlanId } : undefined),
+  })
+
+  // Fetch all entitlements (unfiltered) for expandable rows
+  const { data: allEntitlements } = useQuery({
+    queryKey: ['entitlements', 'all'],
+    queryFn: () => entitlementsApi.list(),
   })
 
   // Feature mutations
@@ -146,6 +167,7 @@ export default function FeaturesPage() {
     mutationFn: (code: string) => featuresApi.delete(code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['features'] })
+      queryClient.invalidateQueries({ queryKey: ['entitlements'] })
       toast.success('Feature deleted')
       setDeleteFeature(null)
     },
@@ -161,6 +183,7 @@ export default function FeaturesPage() {
       entitlementsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entitlements'] })
+      queryClient.invalidateQueries({ queryKey: ['features', 'plan_counts'] })
       toast.success('Entitlement created')
       setEntitlementDialogOpen(false)
       setEntitlementForm(emptyEntitlementForm)
@@ -175,6 +198,7 @@ export default function FeaturesPage() {
     mutationFn: (id: string) => entitlementsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['entitlements'] })
+      queryClient.invalidateQueries({ queryKey: ['features', 'plan_counts'] })
       toast.success('Entitlement removed')
     },
     onError: (error) => {
@@ -183,14 +207,49 @@ export default function FeaturesPage() {
     },
   })
 
+  const copyEntitlementsMutation = useMutation({
+    mutationFn: (data: { source_plan_id: string; target_plan_id: string }) =>
+      entitlementsApi.copy(data),
+    onSuccess: (created) => {
+      queryClient.invalidateQueries({ queryKey: ['entitlements'] })
+      queryClient.invalidateQueries({ queryKey: ['features', 'plan_counts'] })
+      toast.success(`Copied ${created.length} entitlement${created.length !== 1 ? 's' : ''}`)
+      setCopyDialogOpen(false)
+      setCopySourcePlanId('')
+      setCopyTargetPlanId('')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to copy entitlements'
+      toast.error(message)
+    },
+  })
+
+  // Plan map for name lookups
+  const planMap = new Map(plans?.map((p) => [p.id, p]) ?? [])
+
   // Feature helpers
   const featureMap = new Map(features?.map((f) => [f.id, f]) ?? [])
 
-  const entitlementCountsMap = new Map<string, number>()
-  if (entitlements) {
-    for (const e of entitlements) {
-      entitlementCountsMap.set(e.feature_id, (entitlementCountsMap.get(e.feature_id) ?? 0) + 1)
+  // Build a map of feature_id -> list of entitlements (from all entitlements)
+  const featureEntitlementsMap = new Map<string, Entitlement[]>()
+  if (allEntitlements) {
+    for (const e of allEntitlements) {
+      const list = featureEntitlementsMap.get(e.feature_id) ?? []
+      list.push(e)
+      featureEntitlementsMap.set(e.feature_id, list)
     }
+  }
+
+  const toggleExpandFeature = (featureId: string) => {
+    setExpandedFeatureIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(featureId)) {
+        next.delete(featureId)
+      } else {
+        next.add(featureId)
+      }
+      return next
+    })
   }
 
   const openCreateFeature = () => {
@@ -247,6 +306,14 @@ export default function FeaturesPage() {
     })
   }
 
+  const handleCopySubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    copyEntitlementsMutation.mutate({
+      source_plan_id: copySourcePlanId,
+      target_plan_id: copyTargetPlanId,
+    })
+  }
+
   // Find feature type for selected feature in entitlement form
   const selectedEntitlementFeature = features?.find((f) => f.id === entitlementForm.feature_id)
 
@@ -271,175 +338,181 @@ export default function FeaturesPage() {
         </Button>
       </div>
 
-      {/* Features Table */}
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Entitlements</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {featuresLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                </TableRow>
-              ))
-            ) : !features?.length ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No features defined yet. Create one to get started.
-                </TableCell>
-              </TableRow>
-            ) : (
-              features.map((feature) => (
-                <TableRow key={feature.id}>
-                  <TableCell>
-                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{feature.code}</code>
-                  </TableCell>
-                  <TableCell className="font-medium">{feature.name}</TableCell>
-                  <TableCell>
-                    <Badge variant={featureTypeBadgeVariant(feature.feature_type)}>
-                      {feature.feature_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground max-w-[200px] truncate">
-                    {feature.description ?? '\u2014'}
-                  </TableCell>
-                  <TableCell>{entitlementCountsMap.get(feature.id) ?? 0}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => openEditFeature(feature)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteFeature(feature)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Tabbed Layout */}
+      <Tabs defaultValue="features">
+        <TabsList>
+          <TabsTrigger value="features">Features</TabsTrigger>
+          <TabsTrigger value="entitlements">Plan Entitlements</TabsTrigger>
+        </TabsList>
 
-      {/* Entitlements Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">Entitlements</h3>
-          <div className="flex items-center gap-2">
-            <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-              <SelectTrigger className="w-[240px]">
-                <SelectValue placeholder="Select a plan..." />
-              </SelectTrigger>
-              <SelectContent>
-                {plans?.map((plan) => (
-                  <SelectItem key={plan.id} value={plan.id}>
-                    {plan.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" onClick={openAddEntitlement} disabled={!selectedPlanId}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Entitlement
-            </Button>
-          </div>
-        </div>
-
-        {!selectedPlanId ? (
-          <p className="text-sm text-muted-foreground">Select a plan to view and manage its entitlements.</p>
-        ) : (
+        {/* Features Tab */}
+        <TabsContent value="features">
           <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Feature</TableHead>
+                  <TableHead className="w-[40px]"></TableHead>
                   <TableHead>Code</TableHead>
+                  <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead className="w-[60px]">Actions</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>Plans</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entitlementsLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
+                {featuresLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     </TableRow>
                   ))
-                ) : !entitlements?.filter((e) => e.plan_id === selectedPlanId).length ? (
+                ) : !features?.length ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                      No entitlements for this plan.
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                      No features defined yet. Create one to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  entitlements
-                    .filter((e) => e.plan_id === selectedPlanId)
-                    .map((entitlement) => {
-                      const feature = featureMap.get(entitlement.feature_id)
-                      return (
-                        <TableRow key={entitlement.id}>
-                          <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
-                          <TableCell>
-                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                              {feature?.code ?? entitlement.feature_id}
-                            </code>
-                          </TableCell>
-                          <TableCell>
-                            {feature ? (
-                              <Badge variant={featureTypeBadgeVariant(feature.feature_type)}>
-                                {feature.feature_type}
-                              </Badge>
-                            ) : (
-                              '\u2014'
-                            )}
-                          </TableCell>
-                          <TableCell>{formatEntitlementValue(entitlement.value, feature?.feature_type)}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteEntitlementMutation.mutate(entitlement.id)}
-                              disabled={deleteEntitlementMutation.isPending}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })
+                  features.map((feature) => {
+                    const isExpanded = expandedFeatureIds.has(feature.id)
+                    const featureEntitlements = featureEntitlementsMap.get(feature.id) ?? []
+                    const featurePlanCount = planCounts?.[feature.id] ?? 0
+
+                    return (
+                      <ExpandableFeatureRow
+                        key={feature.id}
+                        feature={feature}
+                        isExpanded={isExpanded}
+                        onToggle={() => toggleExpandFeature(feature.id)}
+                        planCount={featurePlanCount}
+                        entitlements={featureEntitlements}
+                        planMap={planMap}
+                        featureMap={featureMap}
+                        onEdit={() => openEditFeature(feature)}
+                        onDelete={() => setDeleteFeature(feature)}
+                        onDeleteEntitlement={(id) => deleteEntitlementMutation.mutate(id)}
+                        deleteEntitlementPending={deleteEntitlementMutation.isPending}
+                      />
+                    )
+                  })
                 )}
               </TableBody>
             </Table>
           </div>
-        )}
-      </div>
+        </TabsContent>
+
+        {/* Entitlements Tab */}
+        <TabsContent value="entitlements">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
+                  <SelectTrigger className="w-[240px]">
+                    <SelectValue placeholder="Select a plan..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans?.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={() => setCopyDialogOpen(true)}>
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy from Plan
+                </Button>
+                <Button variant="outline" onClick={openAddEntitlement} disabled={!selectedPlanId}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Entitlement
+                </Button>
+              </div>
+            </div>
+
+            {!selectedPlanId ? (
+              <p className="text-sm text-muted-foreground">Select a plan to view and manage its entitlements.</p>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Feature</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead className="w-[60px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {entitlementsLoading ? (
+                      Array.from({ length: 3 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : !entitlements?.filter((e) => e.plan_id === selectedPlanId).length ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          No entitlements for this plan.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      entitlements
+                        .filter((e) => e.plan_id === selectedPlanId)
+                        .map((entitlement) => {
+                          const feature = featureMap.get(entitlement.feature_id)
+                          return (
+                            <TableRow key={entitlement.id}>
+                              <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
+                              <TableCell>
+                                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                  {feature?.code ?? entitlement.feature_id}
+                                </code>
+                              </TableCell>
+                              <TableCell>
+                                {feature ? (
+                                  <Badge variant={featureTypeBadgeVariant(feature.feature_type)}>
+                                    {feature.feature_type}
+                                  </Badge>
+                                ) : (
+                                  '\u2014'
+                                )}
+                              </TableCell>
+                              <TableCell>{formatEntitlementValue(entitlement.value, feature?.feature_type)}</TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteEntitlementMutation.mutate(entitlement.id)}
+                                  disabled={deleteEntitlementMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Create/Edit Feature Dialog */}
       <Dialog open={featureDialogOpen} onOpenChange={setFeatureDialogOpen}>
@@ -520,7 +593,7 @@ export default function FeaturesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Feature</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteFeature?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{deleteFeature?.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -591,35 +664,11 @@ export default function FeaturesPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="entitlement_value">Value *</Label>
-                {selectedEntitlementFeature?.feature_type === 'boolean' ? (
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      id="entitlement_value"
-                      checked={entitlementForm.value === 'true'}
-                      onCheckedChange={(checked) =>
-                        setEntitlementForm({ ...entitlementForm, value: checked ? 'true' : 'false' })
-                      }
-                    />
-                    <span className="text-sm">{entitlementForm.value === 'true' ? 'Enabled' : 'Disabled'}</span>
-                  </div>
-                ) : selectedEntitlementFeature?.feature_type === 'quantity' ? (
-                  <Input
-                    id="entitlement_value"
-                    type="number"
-                    value={entitlementForm.value}
-                    onChange={(e) => setEntitlementForm({ ...entitlementForm, value: e.target.value })}
-                    placeholder="e.g., 100"
-                    required
-                  />
-                ) : (
-                  <Input
-                    id="entitlement_value"
-                    value={entitlementForm.value}
-                    onChange={(e) => setEntitlementForm({ ...entitlementForm, value: e.target.value })}
-                    placeholder="Enter value"
-                    required
-                  />
-                )}
+                <EntitlementValueInput
+                  featureType={selectedEntitlementFeature?.feature_type}
+                  value={entitlementForm.value}
+                  onChange={(value) => setEntitlementForm({ ...entitlementForm, value })}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -633,7 +682,255 @@ export default function FeaturesPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Copy Entitlements Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={setCopyDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Copy Entitlements from Plan</DialogTitle>
+            <DialogDescription>
+              Copy all feature entitlements from one plan to another. Existing entitlements on the target plan will not be overwritten.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCopySubmit}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="copy_source">Source Plan *</Label>
+                <Select value={copySourcePlanId} onValueChange={setCopySourcePlanId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Copy from..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans?.map((plan) => (
+                      <SelectItem key={plan.id} value={plan.id}>
+                        {plan.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="copy_target">Target Plan *</Label>
+                <Select value={copyTargetPlanId} onValueChange={setCopyTargetPlanId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Copy to..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans
+                      ?.filter((p) => p.id !== copySourcePlanId)
+                      .map((plan) => (
+                        <SelectItem key={plan.id} value={plan.id}>
+                          {plan.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCopyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!copySourcePlanId || !copyTargetPlanId || copyEntitlementsMutation.isPending}
+              >
+                {copyEntitlementsMutation.isPending ? 'Copying...' : 'Copy Entitlements'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
+  )
+}
+
+function EntitlementValueInput({
+  featureType,
+  value,
+  onChange,
+}: {
+  featureType?: string
+  value: string
+  onChange: (value: string) => void
+}) {
+  if (featureType === 'boolean') {
+    return (
+      <div className="flex items-center gap-2">
+        <Switch
+          id="entitlement_value"
+          checked={value === 'true'}
+          onCheckedChange={(checked) => onChange(checked ? 'true' : 'false')}
+        />
+        <span className="text-sm">{value === 'true' ? 'Enabled' : 'Disabled'}</span>
+      </div>
+    )
+  }
+
+  if (featureType === 'quantity') {
+    const numValue = parseInt(value, 10)
+    const isValidNumber = !isNaN(numValue) && numValue >= 0
+    return (
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Slider
+            min={0}
+            max={1000}
+            step={1}
+            value={isValidNumber ? [numValue] : [0]}
+            onValueChange={([v]) => onChange(String(v))}
+            className="flex-1"
+          />
+          <Input
+            id="entitlement_value"
+            type="number"
+            min={0}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-24"
+            placeholder="0"
+            required
+          />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Set the quantity limit for this feature
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <Input
+      id="entitlement_value"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Enter value"
+      required
+    />
+  )
+}
+
+interface ExpandableFeatureRowProps {
+  feature: Feature
+  isExpanded: boolean
+  onToggle: () => void
+  planCount: number
+  entitlements: Entitlement[]
+  planMap: Map<string, { id: string; name: string }>
+  featureMap: Map<string, Feature>
+  onEdit: () => void
+  onDelete: () => void
+  onDeleteEntitlement: (id: string) => void
+  deleteEntitlementPending: boolean
+}
+
+function ExpandableFeatureRow({
+  feature,
+  isExpanded,
+  onToggle,
+  planCount,
+  entitlements,
+  planMap,
+  onEdit,
+  onDelete,
+  onDeleteEntitlement,
+  deleteEntitlementPending,
+}: ExpandableFeatureRowProps) {
+  return (
+    <>
+      <TableRow
+        className="cursor-pointer hover:bg-muted/50"
+        onClick={onToggle}
+      >
+        <TableCell>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); onToggle() }}>
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </Button>
+        </TableCell>
+        <TableCell>
+          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{feature.code}</code>
+        </TableCell>
+        <TableCell className="font-medium">{feature.name}</TableCell>
+        <TableCell>
+          <Badge variant={featureTypeBadgeVariant(feature.feature_type)}>
+            {feature.feature_type}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-muted-foreground max-w-[200px] truncate">
+          {feature.description ?? '\u2014'}
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <Layers className="h-3.5 w-3.5" />
+            <span className="text-sm">{planCount} {planCount === 1 ? 'plan' : 'plans'}</span>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onEdit}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDelete}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+      {isExpanded && (
+        <TableRow>
+          <TableCell colSpan={7} className="bg-muted/30 p-0">
+            <div className="px-8 py-3">
+              {entitlements.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">No plan entitlements for this feature.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Value</TableHead>
+                      <TableHead className="w-[60px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {entitlements.map((ent) => {
+                      const plan = planMap.get(ent.plan_id)
+                      return (
+                        <TableRow key={ent.id}>
+                          <TableCell className="font-medium">{plan?.name ?? ent.plan_id}</TableCell>
+                          <TableCell>{formatEntitlementValue(ent.value, feature.feature_type)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDeleteEntitlement(ent.id)}
+                              disabled={deleteEntitlementPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
   )
 }
 

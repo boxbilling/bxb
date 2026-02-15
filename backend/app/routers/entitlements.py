@@ -11,7 +11,12 @@ from app.models.entitlement import Entitlement
 from app.repositories.entitlement_repository import EntitlementRepository
 from app.repositories.feature_repository import FeatureRepository
 from app.repositories.plan_repository import PlanRepository
-from app.schemas.entitlement import EntitlementCreate, EntitlementResponse, EntitlementUpdate
+from app.schemas.entitlement import (
+    EntitlementCopyRequest,
+    EntitlementCreate,
+    EntitlementResponse,
+    EntitlementUpdate,
+)
 
 router = APIRouter()
 
@@ -94,6 +99,62 @@ async def create_entitlement(
         record_idempotency_response(db, organization_id, idempotency.key, 201, body)
 
     return entitlement
+
+
+@router.post(
+    "/copy",
+    response_model=list[EntitlementResponse],
+    status_code=201,
+    summary="Copy entitlements from one plan to another",
+    responses={
+        400: {"description": "Source or target plan not found, or same plan"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        422: {"description": "Validation error"},
+    },
+)
+async def copy_entitlements(
+    data: EntitlementCopyRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[Entitlement]:
+    """Copy all entitlements from one plan to another, skipping duplicates."""
+    if data.source_plan_id == data.target_plan_id:
+        raise HTTPException(
+            status_code=400, detail="Source and target plan must be different"
+        )
+
+    plan_repo = PlanRepository(db)
+    if not plan_repo.get_by_id(data.source_plan_id, organization_id):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Source plan {data.source_plan_id} not found",
+        )
+    if not plan_repo.get_by_id(data.target_plan_id, organization_id):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target plan {data.target_plan_id} not found",
+        )
+
+    repo = EntitlementRepository(db)
+    source_entitlements = repo.get_by_plan_id(data.source_plan_id, organization_id)
+    existing_target = repo.get_by_plan_id(data.target_plan_id, organization_id)
+    existing_feature_ids = {e.feature_id for e in existing_target}
+
+    created = []
+    for ent in source_entitlements:
+        if ent.feature_id in existing_feature_ids:
+            continue
+        new_ent = repo.create(
+            EntitlementCreate(
+                plan_id=data.target_plan_id,
+                feature_id=UUID(str(ent.feature_id)),
+                value=str(ent.value),
+            ),
+            organization_id,
+        )
+        created.append(new_ent)
+
+    return created
 
 
 @router.patch(

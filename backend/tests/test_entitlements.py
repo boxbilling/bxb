@@ -589,3 +589,109 @@ class TestEntitlementService:
         result = service.check_entitlement(subscription.id, "svc-multi-f2")
         assert result.has_access is True
         assert result.value == "200"
+
+
+class TestCopyEntitlementsAPI:
+    """Tests for the copy entitlements endpoint."""
+
+    def test_copy_entitlements_success(self, client, db_session):
+        """Test copying entitlements from one plan to another."""
+        source_plan = _create_plan(db_session, code="copy-src")
+        target_plan = _create_plan(db_session, code="copy-tgt")
+        f1 = _create_feature(db_session, code="copy-f1")
+        f2 = _create_feature(db_session, code="copy-f2")
+        _create_entitlement(db_session, source_plan.id, f1.id, value="true")
+        _create_entitlement(db_session, source_plan.id, f2.id, value="100")
+
+        resp = client.post(
+            "/v1/entitlements/copy",
+            json={
+                "source_plan_id": str(source_plan.id),
+                "target_plan_id": str(target_plan.id),
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert len(data) == 2
+        values = {d["value"] for d in data}
+        assert values == {"true", "100"}
+
+    def test_copy_entitlements_skips_existing(self, client, db_session):
+        """Test copy skips features that already exist on the target plan."""
+        source_plan = _create_plan(db_session, code="copy-skip-src")
+        target_plan = _create_plan(db_session, code="copy-skip-tgt")
+        f1 = _create_feature(db_session, code="copy-skip-f1")
+        f2 = _create_feature(db_session, code="copy-skip-f2")
+        _create_entitlement(db_session, source_plan.id, f1.id, value="true")
+        _create_entitlement(db_session, source_plan.id, f2.id, value="50")
+        # Target already has f1
+        _create_entitlement(db_session, target_plan.id, f1.id, value="false")
+
+        resp = client.post(
+            "/v1/entitlements/copy",
+            json={
+                "source_plan_id": str(source_plan.id),
+                "target_plan_id": str(target_plan.id),
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert len(data) == 1
+        assert data[0]["value"] == "50"
+
+    def test_copy_entitlements_empty_source(self, client, db_session):
+        """Test copy with no entitlements on source plan returns empty list."""
+        source_plan = _create_plan(db_session, code="copy-empty-src")
+        target_plan = _create_plan(db_session, code="copy-empty-tgt")
+
+        resp = client.post(
+            "/v1/entitlements/copy",
+            json={
+                "source_plan_id": str(source_plan.id),
+                "target_plan_id": str(target_plan.id),
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json() == []
+
+    def test_copy_entitlements_same_plan(self, client, db_session):
+        """Test copy to same plan returns 400."""
+        plan = _create_plan(db_session, code="copy-same")
+
+        resp = client.post(
+            "/v1/entitlements/copy",
+            json={
+                "source_plan_id": str(plan.id),
+                "target_plan_id": str(plan.id),
+            },
+        )
+        assert resp.status_code == 400
+        assert "different" in resp.json()["detail"]
+
+    def test_copy_entitlements_source_not_found(self, client, db_session):
+        """Test copy with invalid source plan returns 400."""
+        target_plan = _create_plan(db_session, code="copy-notfound-tgt")
+
+        resp = client.post(
+            "/v1/entitlements/copy",
+            json={
+                "source_plan_id": str(generate_uuid()),
+                "target_plan_id": str(target_plan.id),
+            },
+        )
+        assert resp.status_code == 400
+        assert "Source plan" in resp.json()["detail"]
+
+    def test_copy_entitlements_target_not_found(self, client, db_session):
+        """Test copy with invalid target plan returns 400."""
+        source_plan = _create_plan(db_session, code="copy-notfound-src")
+
+        resp = client.post(
+            "/v1/entitlements/copy",
+            json={
+                "source_plan_id": str(source_plan.id),
+                "target_plan_id": str(generate_uuid()),
+            },
+        )
+        assert resp.status_code == 400
+        assert "Target plan" in resp.json()["detail"]

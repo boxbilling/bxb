@@ -14,6 +14,11 @@ class EntitlementUpdate(BaseModel):
     value: str | None = Field(default=None, min_length=1)
 
 
+class EntitlementCopyRequest(BaseModel):
+    source_plan_id: UUID
+    target_plan_id: UUID
+
+
 class EntitlementResponse(BaseModel):
     id: UUID
     plan_id: UUID

@@ -876,6 +876,8 @@ export const featuresApi = {
     }),
   delete: (code: string) =>
     request<void>(`/v1/features/${code}`, { method: 'DELETE' }),
+  planCounts: () =>
+    request<Record<string, number>>('/v1/features/plan_counts'),
 }
 
 // Entitlements API
@@ -894,6 +896,11 @@ export const entitlementsApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/entitlements/${id}`, { method: 'DELETE' }),
+  copy: (data: { source_plan_id: string; target_plan_id: string }) =>
+    request<EntitlementResponse[]>('/v1/entitlements/copy', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Usage Alerts API

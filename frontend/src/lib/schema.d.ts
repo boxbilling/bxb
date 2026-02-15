@@ -2497,6 +2497,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/features/plan_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get plan counts per feature
+         * @description Get the number of distinct plans with entitlements for each feature.
+         */
+        get: operations["get_feature_plan_counts_v1_features_plan_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/features/{code}": {
         parameters: {
             query?: never;
@@ -2543,6 +2563,26 @@ export interface paths {
          * @description Create an entitlement linking a feature to a plan with a value.
          */
         post: operations["create_entitlement_v1_entitlements__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/entitlements/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy entitlements from one plan to another
+         * @description Copy all entitlements from one plan to another, skipping duplicates.
+         */
+        post: operations["copy_entitlements_v1_entitlements_copy_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4152,6 +4192,19 @@ export interface components {
             status?: string | null;
             /** Thresholds */
             thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][] | null;
+        };
+        /** EntitlementCopyRequest */
+        EntitlementCopyRequest: {
+            /**
+             * Source Plan Id
+             * Format: uuid
+             */
+            source_plan_id: string;
+            /**
+             * Target Plan Id
+             * Format: uuid
+             */
+            target_plan_id: string;
         };
         /** EntitlementCreate */
         EntitlementCreate: {
@@ -13538,6 +13591,35 @@ export interface operations {
             };
         };
     };
+    get_feature_plan_counts_v1_features_plan_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_feature_v1_features__code__get: {
         parameters: {
             query?: never;
@@ -13758,6 +13840,51 @@ export interface operations {
             };
             /** @description Entitlement for this plan/feature already exists */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    copy_entitlements_v1_entitlements_copy_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EntitlementCopyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EntitlementResponse"][];
+                };
+            };
+            /** @description Source or target plan not found, or same plan */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

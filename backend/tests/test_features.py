@@ -193,6 +193,76 @@ class TestFeatureRepository:
         feature = repo.create(data, DEFAULT_ORG_ID)
         assert feature.feature_type == "custom"
 
+    def test_plan_counts_empty(self, db_session):
+        """Plan counts returns empty dict when no entitlements exist."""
+        repo = FeatureRepository(db_session)
+        _create_feature(db_session, code="pc-empty")
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result == {}
+
+    def test_plan_counts_single_plan(self, db_session):
+        """Plan counts returns correct count for a single plan entitlement."""
+        repo = FeatureRepository(db_session)
+        feature = _create_feature(db_session, code="pc-single")
+        plan = _create_plan(db_session, code="pc-plan-1")
+        Entitlement(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="true",
+        )
+        entitlement = Entitlement(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="true",
+        )
+        db_session.add(entitlement)
+        db_session.commit()
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result[str(feature.id)] == 1
+
+    def test_plan_counts_multiple_plans(self, db_session):
+        """Plan counts returns correct count across multiple plans."""
+        repo = FeatureRepository(db_session)
+        feature = _create_feature(db_session, code="pc-multi")
+        plan_a = _create_plan(db_session, code="pc-plan-a")
+        plan_b = _create_plan(db_session, code="pc-plan-b")
+        for plan in [plan_a, plan_b]:
+            ent = Entitlement(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                plan_id=plan.id,
+                feature_id=feature.id,
+                value="true",
+            )
+            db_session.add(ent)
+        db_session.commit()
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result[str(feature.id)] == 2
+
+    def test_plan_counts_multiple_features(self, db_session):
+        """Plan counts returns correct counts for multiple features."""
+        repo = FeatureRepository(db_session)
+        f1 = _create_feature(db_session, code="pc-f1")
+        f2 = _create_feature(db_session, code="pc-f2")
+        plan = _create_plan(db_session, code="pc-plan-mf")
+        for feature in [f1, f2]:
+            ent = Entitlement(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                plan_id=plan.id,
+                feature_id=feature.id,
+                value="true",
+            )
+            db_session.add(ent)
+        db_session.commit()
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result[str(f1.id)] == 1
+        assert result[str(f2.id)] == 1
+
 
 class TestFeaturesAPI:
     """Tests for feature CRUD endpoints."""
@@ -366,6 +436,31 @@ class TestFeaturesAPI:
         resp = client.delete("/v1/features/del-ent")
         assert resp.status_code == 400
         assert "existing entitlements" in resp.json()["detail"]
+
+    def test_plan_counts_endpoint_empty(self, client):
+        """Test plan counts endpoint with no entitlements."""
+        resp = client.get("/v1/features/plan_counts")
+        assert resp.status_code == 200
+        assert resp.json() == {}
+
+    def test_plan_counts_endpoint_with_data(self, client, db_session):
+        """Test plan counts endpoint returns correct data."""
+        feature = _create_feature(db_session, code="pc-api")
+        plan = _create_plan(db_session, code="pc-api-plan")
+        ent = Entitlement(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="true",
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        resp = client.get("/v1/features/plan_counts")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data[str(feature.id)] == 1
 
     def test_create_idempotency(self, client):
         """Test idempotent creation with Idempotency-Key header."""
