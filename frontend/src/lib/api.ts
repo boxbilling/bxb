@@ -165,6 +165,37 @@ async function request<T>(
   return response.json()
 }
 
+async function requestBlob(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<Blob> {
+  const url = `${API_BASE_URL}${endpoint}`
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const orgId = getActiveOrganizationId()
+  if (orgId) {
+    headers['X-Organization-Id'] = orgId
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new ApiError(response.status, error.message || error.detail || 'Request failed', error)
+  }
+
+  return response.blob()
+}
+
 function buildQuery(params?: Record<string, string | number | undefined>): string {
   if (!params) return ''
   const searchParams = new URLSearchParams()
@@ -320,6 +351,10 @@ export const invoicesApi = {
     request<{ id: string; invoice_id: string; settlement_type: string; source_id: string; amount_cents: string; created_at: string }[]>(
       `/v1/invoices/${invoiceId}/settlements`
     ),
+  downloadPdf: (id: string): Promise<Blob> =>
+    requestBlob(`/v1/invoices/${id}/download_pdf`, { method: 'POST' }),
+  sendEmail: (id: string) =>
+    request<{ sent: boolean }>(`/v1/invoices/${id}/send_email`, { method: 'POST' }),
 }
 
 // Payments API
@@ -438,6 +473,10 @@ export const creditNotesApi = {
     request<CreditNoteResponse>(`/v1/credit_notes/${id}/finalize`, { method: 'POST' }),
   void: (id: string) =>
     request<CreditNoteResponse>(`/v1/credit_notes/${id}/void`, { method: 'POST' }),
+  downloadPdf: (id: string): Promise<Blob> =>
+    requestBlob(`/v1/credit_notes/${id}/download_pdf`, { method: 'POST' }),
+  sendEmail: (id: string) =>
+    request<{ sent: boolean }>(`/v1/credit_notes/${id}/send_email`, { method: 'POST' }),
 }
 
 // Taxes API

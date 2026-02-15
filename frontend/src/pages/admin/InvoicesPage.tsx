@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Search, Download, Eye, FileText, FileMinus } from 'lucide-react'
+import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -190,6 +191,35 @@ function InvoiceDetailDialog({
   onOpenChange: (open: boolean) => void
   onCreateCreditNote?: (invoice: Invoice) => void
 }) {
+  const canDownloadOrEmail = invoice?.status === 'finalized' || invoice?.status === 'paid'
+
+  const downloadPdfMutation = useMutation({
+    mutationFn: (id: string) => invoicesApi.downloadPdf(id),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `invoice-${invoice?.invoice_number ?? invoice?.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    onError: () => {
+      toast.error('Failed to download PDF')
+    },
+  })
+
+  const sendEmailMutation = useMutation({
+    mutationFn: (id: string) => invoicesApi.sendEmail(id),
+    onSuccess: () => {
+      toast.success('Invoice email sent successfully')
+    },
+    onError: () => {
+      toast.error('Failed to send invoice email')
+    },
+  })
+
   if (!invoice) return null
 
   const walletCredit = Number(invoice.prepaid_credit_amount)
@@ -278,9 +308,31 @@ function InvoiceDetailDialog({
 
           {/* Actions */}
           <div className="flex gap-2">
-            <Button variant="outline" className="flex-1">
-              <Download className="mr-2 h-4 w-4" />
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={!canDownloadOrEmail || downloadPdfMutation.isPending}
+              onClick={() => downloadPdfMutation.mutate(invoice.id)}
+            >
+              {downloadPdfMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
               Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={!canDownloadOrEmail || sendEmailMutation.isPending}
+              onClick={() => sendEmailMutation.mutate(invoice.id)}
+            >
+              {sendEmailMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="mr-2 h-4 w-4" />
+              )}
+              Send Email
             </Button>
             {invoice.status === 'finalized' && onCreateCreditNote && (
               <Button

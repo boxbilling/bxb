@@ -9,6 +9,9 @@ import {
   CheckCircle,
   XCircle,
   FileText,
+  Download,
+  Mail,
+  Loader2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -500,6 +503,35 @@ function CreditNoteDetailDialog({
   onOpenChange: (open: boolean) => void
   customers: Customer[]
 }) {
+  const canDownloadOrEmail = creditNote?.status === 'finalized'
+
+  const downloadPdfMutation = useMutation({
+    mutationFn: (id: string) => creditNotesApi.downloadPdf(id),
+    onSuccess: (blob) => {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `credit-note-${creditNote?.number ?? creditNote?.id}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    },
+    onError: () => {
+      toast.error('Failed to download PDF')
+    },
+  })
+
+  const sendEmailMutation = useMutation({
+    mutationFn: (id: string) => creditNotesApi.sendEmail(id),
+    onSuccess: () => {
+      toast.success('Credit note email sent successfully')
+    },
+    onError: () => {
+      toast.error('Failed to send credit note email')
+    },
+  })
+
   if (!creditNote) return null
 
   const customer = customers.find((c) => c.id === creditNote.customer_id)
@@ -622,6 +654,36 @@ function CreditNoteDetailDialog({
 
           <div className="text-sm text-muted-foreground">
             Created {format(new Date(creditNote.created_at), 'MMM d, yyyy HH:mm')}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={!canDownloadOrEmail || downloadPdfMutation.isPending}
+              onClick={() => downloadPdfMutation.mutate(creditNote.id)}
+            >
+              {downloadPdfMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Download PDF
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              disabled={!canDownloadOrEmail || sendEmailMutation.isPending}
+              onClick={() => sendEmailMutation.mutate(creditNote.id)}
+            >
+              {sendEmailMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Mail className="mr-2 h-4 w-4" />
+              )}
+              Send Email
+            </Button>
           </div>
         </div>
       </DialogContent>
