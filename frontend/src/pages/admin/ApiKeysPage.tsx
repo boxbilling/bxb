@@ -6,6 +6,7 @@ import {
   MoreHorizontal,
   Trash2,
   Copy,
+  RefreshCw,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -63,6 +64,7 @@ export default function ApiKeysPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [rawKeyDialog, setRawKeyDialog] = useState<string | null>(null)
   const [revokeKey, setRevokeKey] = useState<ApiKey | null>(null)
+  const [rotateKey, setRotateKey] = useState<ApiKey | null>(null)
   const [createForm, setCreateForm] = useState<ApiKeyCreate>({})
 
   const { data: apiKeys = [], isLoading } = useQuery({
@@ -95,6 +97,21 @@ export default function ApiKeysPage() {
     onError: (error) => {
       const message =
         error instanceof ApiError ? error.message : 'Failed to revoke API key'
+      toast.error(message)
+    },
+  })
+
+  const rotateMutation = useMutation({
+    mutationFn: (id: string) => organizationsApi.rotateApiKey(id),
+    onSuccess: (response: ApiKeyCreateResponse) => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys'] })
+      setRotateKey(null)
+      setRawKeyDialog(response.raw_key)
+      toast.success('API key rotated')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to rotate API key'
       toast.error(message)
     },
   })
@@ -189,6 +206,14 @@ export default function ApiKeysPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {key.status === 'active' && (
+                          <DropdownMenuItem
+                            onClick={() => setRotateKey(key)}
+                          >
+                            <RefreshCw className="mr-2 h-4 w-4" />
+                            Rotate
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={() => setRevokeKey(key)}
                           className="text-destructive"
@@ -286,6 +311,33 @@ export default function ApiKeysPage() {
             >
               <Copy className="mr-2 h-4 w-4" />
               Copy & Close
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Rotate Confirmation */}
+      <AlertDialog
+        open={!!rotateKey}
+        onOpenChange={(open) => !open && setRotateKey(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rotate API Key</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revoke &quot;{rotateKey?.name || 'Unnamed'}&quot; and
+              create a new key with the same configuration. The old key will
+              immediately stop working.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                rotateKey && rotateMutation.mutate(rotateKey.id)
+              }
+            >
+              {rotateMutation.isPending ? 'Rotating...' : 'Rotate'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -503,6 +503,109 @@ class TestRevokeApiKey:
         assert verify_after.status_code == 401
 
 
+class TestRotateApiKey:
+    def test_rotate_api_key(self, authed_client):
+        """Test rotating an API key returns a new key."""
+        # Create a key to rotate
+        create_response = authed_client.post(
+            "/v1/organizations/current/api_keys",
+            json={"name": "Rotate Me", "expires_at": "2030-12-31T23:59:59Z"},
+        )
+        assert create_response.status_code == 201
+        old_key = create_response.json()
+        api_key_id = old_key["id"]
+
+        # Rotate it
+        response = authed_client.post(
+            f"/v1/organizations/current/api_keys/{api_key_id}/rotate",
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Rotate Me"
+        assert data["expires_at"] is not None
+        assert data["status"] == "active"
+        assert "raw_key" in data
+        assert data["raw_key"].startswith("bxb_")
+        assert data["id"] != api_key_id
+
+    def test_rotate_api_key_not_found(self, authed_client):
+        """Test rotating a non-existent API key returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = authed_client.post(
+            f"/v1/organizations/current/api_keys/{fake_id}/rotate",
+        )
+        assert response.status_code == 404
+
+    def test_rotate_already_revoked(self, authed_client):
+        """Test rotating an already-revoked key returns 404."""
+        create_response = authed_client.post(
+            "/v1/organizations/current/api_keys",
+            json={"name": "Revoke Then Rotate"},
+        )
+        api_key_id = create_response.json()["id"]
+
+        # Revoke
+        authed_client.delete(f"/v1/organizations/current/api_keys/{api_key_id}")
+
+        # Try to rotate
+        response = authed_client.post(
+            f"/v1/organizations/current/api_keys/{api_key_id}/rotate",
+        )
+        assert response.status_code == 404
+
+    def test_rotate_wrong_org(self, authed_client, second_org_client):
+        """Test rotating a key from another org returns 404."""
+        create_response = authed_client.post(
+            "/v1/organizations/current/api_keys",
+            json={"name": "Cross Org Rotate"},
+        )
+        api_key_id = create_response.json()["id"]
+
+        response = second_org_client.post(
+            f"/v1/organizations/current/api_keys/{api_key_id}/rotate",
+        )
+        assert response.status_code == 404
+
+    def test_rotated_key_is_usable(self, authed_client, client):
+        """Test that the new key from rotation can be used for auth."""
+        create_response = authed_client.post(
+            "/v1/organizations/current/api_keys",
+            json={"name": "Usable Rotated Key"},
+        )
+        api_key_id = create_response.json()["id"]
+
+        rotate_response = authed_client.post(
+            f"/v1/organizations/current/api_keys/{api_key_id}/rotate",
+        )
+        new_raw_key = rotate_response.json()["raw_key"]
+
+        current = client.get(
+            "/v1/organizations/current",
+            headers={"Authorization": f"Bearer {new_raw_key}"},
+        )
+        assert current.status_code == 200
+        assert current.json()["id"] == str(DEFAULT_ORG_ID)
+
+    def test_old_key_stops_working_after_rotation(self, authed_client, client):
+        """Test that the old key is revoked after rotation."""
+        create_response = authed_client.post(
+            "/v1/organizations/current/api_keys",
+            json={"name": "Old Key Revoked"},
+        )
+        old_raw_key = create_response.json()["raw_key"]
+        api_key_id = create_response.json()["id"]
+
+        authed_client.post(
+            f"/v1/organizations/current/api_keys/{api_key_id}/rotate",
+        )
+
+        verify = client.get(
+            "/v1/organizations/current",
+            headers={"Authorization": f"Bearer {old_raw_key}"},
+        )
+        assert verify.status_code == 401
+
+
 class TestXOrganizationIdHeader:
     def test_switch_org_via_header(self, client, second_org):
         """Test that X-Organization-Id header overrides the default org."""

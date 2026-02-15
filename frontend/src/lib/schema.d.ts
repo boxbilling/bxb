@@ -2480,6 +2480,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/organizations/current/api_keys/{api_key_id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate API key
+         * @description Rotate an API key: revoke the old key and create a new one with the same config.
+         */
+        post: operations["rotate_api_key_v1_organizations_current_api_keys__api_key_id__rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/organizations/current/api_keys/{api_key_id}": {
         parameters: {
             query?: never;
@@ -2876,6 +2896,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/data_exports/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Estimate export size
+         * @description Estimate the number of records for a data export without creating it.
+         */
+        post: operations["estimate_data_export_v1_data_exports_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/data_exports/{export_id}": {
         parameters: {
             query?: never;
@@ -2982,6 +3022,66 @@ export interface paths {
          * @description Test an integration's connection credentials.
          */
         post: operations["test_integration_connection_v1_integrations__integration_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration customer mappings
+         * @description List customer mappings for an integration.
+         */
+        get: operations["list_integration_customers_v1_integrations__integration_id__customers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration field mappings
+         * @description List field mappings for an integration.
+         */
+        get: operations["list_integration_mappings_v1_integrations__integration_id__mappings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/sync_history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration sync history
+         * @description List sync history for an integration, with optional status/resource_type filters.
+         */
+        get: operations["list_integration_sync_history_v1_integrations__integration_id__sync_history_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4985,6 +5085,16 @@ export interface components {
             } | null;
         };
         /**
+         * DataExportEstimate
+         * @description Schema for data export size estimate response.
+         */
+        DataExportEstimate: {
+            /** Export Type */
+            export_type: string;
+            /** Record Count */
+            record_count: number;
+        };
+        /**
          * DataExportResponse
          * @description Schema for data export response.
          */
@@ -5011,6 +5121,8 @@ export interface components {
             file_path?: string | null;
             /** Record Count */
             record_count?: number | null;
+            /** Progress */
+            progress?: number | null;
             /** Error Message */
             error_message?: string | null;
             /** Started At */
@@ -5458,7 +5570,7 @@ export interface components {
          * @description Types of data that can be exported.
          * @enum {string}
          */
-        ExportType: "invoices" | "customers" | "subscriptions" | "events" | "fees" | "credit_notes";
+        ExportType: "invoices" | "customers" | "subscriptions" | "events" | "fees" | "credit_notes" | "audit_logs";
         /** FeatureCreate */
         FeatureCreate: {
             /** Code */
@@ -5629,6 +5741,78 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** IntegrationCustomerResponse */
+        IntegrationCustomerResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** External Customer Id */
+            external_customer_id: string;
+            /** Settings */
+            settings?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** IntegrationMappingResponse */
+        IntegrationMappingResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /** Mappable Type */
+            mappable_type: string;
+            /**
+             * Mappable Id
+             * Format: uuid
+             */
+            mappable_id: string;
+            /** External Id */
+            external_id: string;
+            /** External Data */
+            external_data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Last Synced At */
+            last_synced_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** IntegrationResponse */
         IntegrationResponse: {
             /**
@@ -5667,6 +5851,47 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** IntegrationSyncHistoryResponse */
+        IntegrationSyncHistoryResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /** Resource Type */
+            resource_type: string;
+            /** Resource Id */
+            resource_id?: string | null;
+            /** External Id */
+            external_id?: string | null;
+            /** Action */
+            action: string;
+            /** Status */
+            status: string;
+            /** Error Message */
+            error_message?: string | null;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** IntegrationUpdate */
         IntegrationUpdate: {
@@ -14472,6 +14697,51 @@ export interface operations {
             };
         };
     };
+    rotate_api_key_v1_organizations_current_api_keys__api_key_id__rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                api_key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreateResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description API key not found or not active */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     revoke_api_key_v1_organizations_current_api_keys__api_key_id__delete: {
         parameters: {
             query?: never;
@@ -15636,6 +15906,44 @@ export interface operations {
             };
         };
     };
+    estimate_data_export_v1_data_exports_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataExportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportEstimate"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_data_export_v1_data_exports__export_id__get: {
         parameters: {
             query?: never;
@@ -15997,6 +16305,152 @@ export interface operations {
             };
         };
     };
+    list_integration_customers_v1_integrations__integration_id__customers_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCustomerResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integration_mappings_v1_integrations__integration_id__mappings_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationMappingResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integration_sync_history_v1_integrations__integration_id__sync_history_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                resource_type?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSyncHistoryResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_audit_logs_v1_audit_logs__get: {
         parameters: {
             query?: {
@@ -16005,6 +16459,9 @@ export interface operations {
                 resource_type?: string | null;
                 resource_id?: string | null;
                 action?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                actor_type?: string | null;
             };
             header?: never;
             path?: never;

@@ -79,6 +79,21 @@ class ApiKeyRepository:
         self.db.refresh(api_key)
         return api_key
 
+    def rotate(self, api_key_id: UUID, organization_id: UUID) -> tuple[ApiKey, str] | None:
+        """Rotate an API key: revoke the old one and create a new one with the same config."""
+        old_key = self.get_by_id(api_key_id, organization_id)
+        if not old_key or old_key.status != "active":
+            return None
+
+        old_key.status = "revoked"  # type: ignore[assignment]
+
+        new_data = ApiKeyCreate(
+            name=old_key.name,  # type: ignore[arg-type]
+            expires_at=old_key.expires_at,  # type: ignore[arg-type]
+        )
+        new_key, raw_key = self.create(organization_id, new_data)
+        return new_key, raw_key
+
     def update_last_used(self, api_key: ApiKey, now: datetime) -> None:
         api_key.last_used_at = now  # type: ignore[assignment]
         self.db.commit()

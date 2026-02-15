@@ -843,7 +843,7 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Key prefix display is helpful but could be more prominent
 
 **Recommendations:**
-- [ ] Add "Rotate Key" action (revoke old, create new with same config)
+- [x] Add "Rotate Key" action (revoke old, create new with same config)
 - [ ] Add last-used timestamp display (already in model)
 - [ ] Add key creation date display
 - [ ] Add expiration warning indicators

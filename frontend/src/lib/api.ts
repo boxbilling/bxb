@@ -899,6 +899,8 @@ export const organizationsApi = {
     request<ApiKeyListResponse[]>('/v1/organizations/current/api_keys'),
   revokeApiKey: (apiKeyId: string) =>
     request<void>(`/v1/organizations/current/api_keys/${apiKeyId}`, { method: 'DELETE' }),
+  rotateApiKey: (apiKeyId: string) =>
+    request<ApiKeyCreateResponse>(`/v1/organizations/current/api_keys/${apiKeyId}/rotate`, { method: 'POST' }),
 }
 
 // Dunning Campaigns API

@@ -170,6 +170,31 @@ async def list_api_keys(
     return repo.list_by_org(organization_id, skip=skip, limit=limit)
 
 
+@router.post(
+    "/current/api_keys/{api_key_id}/rotate",
+    response_model=ApiKeyCreateResponse,
+    summary="Rotate API key",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "API key not found or not active"},
+    },
+)
+async def rotate_api_key(
+    api_key_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> dict[str, Any]:
+    """Rotate an API key: revoke the old key and create a new one with the same config."""
+    repo = ApiKeyRepository(db)
+    result = repo.rotate(api_key_id, organization_id)
+    if not result:
+        raise HTTPException(status_code=404, detail="API key not found or not active")
+    new_key, raw_key = result
+    response = ApiKeyResponse.model_validate(new_key).model_dump()
+    response["raw_key"] = raw_key
+    return response
+
+
 @router.delete(
     "/current/api_keys/{api_key_id}",
     status_code=204,

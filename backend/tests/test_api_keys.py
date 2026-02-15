@@ -299,6 +299,56 @@ class TestApiKeyRepository:
         result = repo.revoke(uuid.uuid4(), DEFAULT_ORG_ID)
         assert result is None
 
+    def test_rotate(self, db_session):
+        """Test rotating an API key revokes old and creates new with same config."""
+        repo = ApiKeyRepository(db_session)
+        expires = datetime.now(UTC) + timedelta(days=90)
+        old_key, old_raw = repo.create(
+            DEFAULT_ORG_ID, ApiKeyCreate(name="Rotate Me", expires_at=expires)
+        )
+        old_id = old_key.id
+
+        result = repo.rotate(old_id, DEFAULT_ORG_ID)
+        assert result is not None
+        new_key, new_raw = result
+
+        # Old key is revoked
+        db_session.refresh(old_key)
+        assert old_key.status == "revoked"
+
+        # New key has same config
+        assert new_key.name == "Rotate Me"
+        assert new_key.expires_at is not None
+        assert new_key.status == "active"
+        assert new_key.id != old_id
+
+        # New raw key is different
+        assert new_raw != old_raw
+        assert new_raw.startswith("bxb_")
+
+    def test_rotate_not_found(self, db_session):
+        """Test rotating a non-existent API key returns None."""
+        repo = ApiKeyRepository(db_session)
+        result = repo.rotate(uuid.uuid4(), DEFAULT_ORG_ID)
+        assert result is None
+
+    def test_rotate_already_revoked(self, db_session):
+        """Test rotating an already revoked key returns None."""
+        repo = ApiKeyRepository(db_session)
+        api_key, _ = repo.create(DEFAULT_ORG_ID, ApiKeyCreate(name="Already Revoked"))
+        repo.revoke(api_key.id, DEFAULT_ORG_ID)
+
+        result = repo.rotate(api_key.id, DEFAULT_ORG_ID)
+        assert result is None
+
+    def test_rotate_wrong_org(self, db_session, second_org):
+        """Test rotating an API key from wrong org returns None."""
+        repo = ApiKeyRepository(db_session)
+        api_key, _ = repo.create(DEFAULT_ORG_ID, ApiKeyCreate(name="Wrong Org Rotate"))
+
+        result = repo.rotate(api_key.id, second_org.id)
+        assert result is None
+
     def test_update_last_used(self, db_session):
         """Test updating last_used_at timestamp."""
         repo = ApiKeyRepository(db_session)
