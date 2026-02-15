@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.core.database import get_db
 from app.main import app
+from app.models.add_on import AddOn
+from app.models.applied_add_on import AppliedAddOn
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.organization import Organization
@@ -1248,6 +1250,8 @@ class TestPortalCrossCutting:
             "/portal/payment_methods",
             "/portal/subscriptions",
             "/portal/plans",
+            "/portal/add_ons",
+            "/portal/add_ons/purchased",
         ]
         for endpoint in endpoints:
             response = client.get(f"{endpoint}?token={token}")
@@ -1266,7 +1270,220 @@ class TestPortalCrossCutting:
             "/portal/payment_methods",
             "/portal/subscriptions",
             "/portal/plans",
+            "/portal/add_ons",
+            "/portal/add_ons/purchased",
         ]
         for endpoint in endpoints:
             response = client.get(f"{endpoint}?token={token}")
             assert response.status_code == 401, f"Expected 401 for {endpoint}"
+
+
+class TestPortalAddOns:
+    """Tests for portal add-on endpoints."""
+
+    @pytest.fixture
+    def add_on(self, db_session):
+        a = AddOn(
+            code=f"addon_{uuid.uuid4().hex[:8]}",
+            name="Premium Support",
+            description="24/7 premium support access",
+            amount_cents=4999,
+            amount_currency="USD",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(a)
+        db_session.commit()
+        db_session.refresh(a)
+        return a
+
+    @pytest.fixture
+    def add_on_2(self, db_session):
+        a = AddOn(
+            code=f"addon2_{uuid.uuid4().hex[:8]}",
+            name="Extra Storage",
+            description="Additional 100GB storage",
+            amount_cents=1999,
+            amount_currency="USD",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(a)
+        db_session.commit()
+        db_session.refresh(a)
+        return a
+
+    @pytest.fixture
+    def other_org_add_on(self, db_session):
+        other_org_id = uuid.UUID("00000000-0000-0000-0000-000000000099")
+        org = Organization(id=other_org_id, name="Other Org Portal Addon")
+        db_session.merge(org)
+        db_session.commit()
+        a = AddOn(
+            code=f"other_addon_{uuid.uuid4().hex[:8]}",
+            name="Other Org Add-on",
+            amount_cents=999,
+            amount_currency="EUR",
+            organization_id=other_org_id,
+        )
+        db_session.add(a)
+        db_session.commit()
+        db_session.refresh(a)
+        return a
+
+    @pytest.fixture
+    def applied_add_on(self, db_session, customer, add_on):
+        applied = AppliedAddOn(
+            add_on_id=add_on.id,
+            customer_id=customer.id,
+            amount_cents=4999,
+            amount_currency="USD",
+        )
+        db_session.add(applied)
+        db_session.commit()
+        db_session.refresh(applied)
+        return applied
+
+    def test_list_available_add_ons(self, client, customer, add_on, add_on_2):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/add_ons?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        codes = {a["code"] for a in data}
+        assert add_on.code in codes
+        assert add_on_2.code in codes
+        # Verify response shape
+        item = next(a for a in data if a["code"] == add_on.code)
+        assert item["name"] == "Premium Support"
+        assert item["description"] == "24/7 premium support access"
+        assert float(item["amount_cents"]) == 4999.0
+        assert item["amount_currency"] == "USD"
+
+    def test_list_available_add_ons_empty(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/add_ons?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_available_add_ons_excludes_other_org(
+        self, client, customer, add_on, other_org_add_on
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/add_ons?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        codes = {a["code"] for a in data}
+        assert add_on.code in codes
+        assert other_org_add_on.code not in codes
+
+    def test_list_purchased_add_ons(self, client, customer, add_on, applied_add_on):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/add_ons/purchased?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["add_on_name"] == "Premium Support"
+        assert data[0]["add_on_code"] == add_on.code
+        assert float(data[0]["amount_cents"]) == 4999.0
+        assert data[0]["amount_currency"] == "USD"
+
+    def test_list_purchased_add_ons_empty(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/add_ons/purchased?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_purchased_excludes_other_customer(
+        self, client, customer, other_customer, add_on, db_session
+    ):
+        # Apply add-on to other customer only
+        applied = AppliedAddOn(
+            add_on_id=add_on.id,
+            customer_id=other_customer.id,
+            amount_cents=4999,
+            amount_currency="USD",
+        )
+        db_session.add(applied)
+        db_session.commit()
+        # Our customer should see nothing
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/add_ons/purchased?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_purchase_add_on_success(self, client, customer, add_on):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/add_ons/{add_on.id}/purchase?token={token}"
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["add_on_name"] == "Premium Support"
+        assert float(data["amount_cents"]) == 4999.0
+        assert data["amount_currency"] == "USD"
+        assert "applied_add_on_id" in data
+        assert "invoice_id" in data
+
+    def test_purchase_add_on_creates_invoice(self, client, customer, add_on, db_session):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/add_ons/{add_on.id}/purchase?token={token}"
+        )
+        assert response.status_code == 201
+        data = response.json()
+        # Verify invoice was created
+        invoice = db_session.query(Invoice).filter(
+            Invoice.id == uuid.UUID(data["invoice_id"])
+        ).first()
+        assert invoice is not None
+        assert str(invoice.customer_id) == str(customer.id)
+
+    def test_purchase_add_on_not_found(self, client, customer):
+        token = _make_portal_token(customer.id)
+        fake_id = uuid.uuid4()
+        response = client.post(
+            f"/portal/add_ons/{fake_id}/purchase?token={token}"
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Add-on not found"
+
+    def test_purchase_add_on_other_org_not_found(
+        self, client, customer, other_org_add_on
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/add_ons/{other_org_add_on.id}/purchase?token={token}"
+        )
+        assert response.status_code == 404
+
+    def test_purchase_add_on_appears_in_purchased(self, client, customer, add_on):
+        token = _make_portal_token(customer.id)
+        # Purchase
+        response = client.post(
+            f"/portal/add_ons/{add_on.id}/purchase?token={token}"
+        )
+        assert response.status_code == 201
+        # Verify it shows up in purchased list
+        response = client.get(f"/portal/add_ons/purchased?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["add_on_name"] == "Premium Support"
+
+    def test_purchase_add_on_service_error(self, client, customer, add_on):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.AddOnService.apply_add_on",
+            side_effect=ValueError("Service error"),
+        ):
+            response = client.post(
+                f"/portal/add_ons/{add_on.id}/purchase?token={token}"
+            )
+        assert response.status_code == 400
+        assert response.json()["detail"] == "Service error"
+
+    def test_purchase_add_on_invalid_uuid(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/add_ons/not-a-uuid/purchase?token={token}"
+        )
+        assert response.status_code == 422

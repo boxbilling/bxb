@@ -69,6 +69,9 @@ type AddOnUpdate = components['schemas']['AddOnUpdate']
 type ApplyAddOnRequest = components['schemas']['ApplyAddOnRequest']
 type AppliedAddOnResponse = components['schemas']['AppliedAddOnResponse']
 type AppliedAddOnDetailResponse = components['schemas']['AppliedAddOnDetailResponse']
+type PortalAddOnResponse = components['schemas']['PortalAddOnResponse']
+type PortalPurchasedAddOnResponse = components['schemas']['PortalPurchasedAddOnResponse']
+type PortalPurchaseAddOnResponse = components['schemas']['PortalPurchaseAddOnResponse']
 
 type CreditNoteResponse = components['schemas']['CreditNoteResponse']
 type CreditNoteCreate = components['schemas']['CreditNoteCreate']
@@ -486,6 +489,14 @@ export const portalApi = {
     portalRequest<SubscriptionResponse>(`/portal/subscriptions/${subscriptionId}/change_plan`, token, {
       method: 'POST',
       body: JSON.stringify({ new_plan_id: newPlanId }),
+    }),
+  listAddOns: (token: string) =>
+    portalRequest<PortalAddOnResponse[]>('/portal/add_ons', token),
+  listPurchasedAddOns: (token: string) =>
+    portalRequest<PortalPurchasedAddOnResponse[]>('/portal/add_ons/purchased', token),
+  purchaseAddOn: (token: string, addOnId: string) =>
+    portalRequest<PortalPurchaseAddOnResponse>(`/portal/add_ons/${addOnId}/purchase`, token, {
+      method: 'POST',
     }),
 }
 

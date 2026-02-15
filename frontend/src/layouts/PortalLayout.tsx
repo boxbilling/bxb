@@ -12,6 +12,7 @@ import {
   Menu,
   UserCog,
   CreditCard,
+  Package,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { portalApi } from '@/lib/api'
@@ -38,6 +39,7 @@ const portalNavItems = [
   { name: 'Payments', href: '/portal/payments', icon: ArrowLeftRight },
   { name: 'Wallet', href: '/portal/wallet', icon: Wallet },
   { name: 'Payment Methods', href: '/portal/payment-methods', icon: CreditCard },
+  { name: 'Add-ons', href: '/portal/add-ons', icon: Package },
   { name: 'Profile', href: '/portal/profile', icon: UserCog },
 ]
 

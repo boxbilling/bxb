@@ -949,8 +949,10 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 <!-- Implemented: Added PortalProfileUpdate schema, PATCH /portal/profile endpoint, PortalProfilePage.tsx with editable name/email/timezone fields, SearchableSelect for timezone, Profile nav link in portal layout, 11 new backend tests. -->
 - [x] Allow customer to manage payment methods (add/remove/set default)
 <!-- Implemented: Added 4 portal endpoints (GET/POST/DELETE /portal/payment_methods, POST /portal/payment_methods/{id}/set_default) with customer-scoped auth. Created PortalPaymentMethodsPage.tsx with card brand icons, default management, add/remove dialogs. Added portal nav link and route. 20 new backend tests, all 3816 tests pass at 100% coverage. -->
-- [ ] Allow customer to view and upgrade/downgrade subscription
-- [ ] Allow customer to purchase add-ons
+- [x] Allow customer to view and upgrade/downgrade subscription
+<!-- Implemented: Added 5 portal endpoints (GET /portal/subscriptions, GET /portal/subscriptions/{id}, GET /portal/plans, POST /portal/subscriptions/{id}/change_plan_preview, POST /portal/subscriptions/{id}/change_plan) with customer-scoped auth. Created PortalSubscriptionsPage.tsx with subscription list, plan change dialog with upgrade/downgrade badges, proration preview with credit/charge breakdown, and confirmation flow. Added Subscriptions nav link to portal layout. New PortalSubscriptionResponse, PortalPlanResponse, PortalChangePlanRequest schemas. 24 new backend tests, all 3840 tests pass at 100% coverage. -->
+- [x] Allow customer to purchase add-ons
+<!-- Implemented: Added 3 portal endpoints (GET /portal/add_ons, GET /portal/add_ons/purchased, POST /portal/add_ons/{id}/purchase) with customer-scoped auth. GET /portal/add_ons lists available add-ons for the organization. GET /portal/add_ons/purchased lists add-ons the customer has already purchased with add-on name/code. POST /portal/add_ons/{id}/purchase uses AddOnService to create AppliedAddOn + one-off Invoice + Fee. Created PortalAddOnsPage.tsx with tabbed layout (Available/Purchased), add-on cards with price and description, purchase confirmation dialog, and purchased history with dates. Added Add-ons nav link (Package icon) to portal layout. New PortalAddOnResponse, PortalPurchasedAddOnResponse, PortalPurchaseAddOnResponse schemas. 13 new backend tests added. All 3853 tests pass at 100% coverage. -->
 - [ ] Allow customer to apply coupon codes
 
 **Dashboard Enhancements:**

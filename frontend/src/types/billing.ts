@@ -92,6 +92,9 @@ export type AddOnUpdate = components['schemas']['AddOnUpdate']
 export type ApplyAddOnRequest = components['schemas']['ApplyAddOnRequest']
 export type AppliedAddOn = components['schemas']['AppliedAddOnResponse']
 export type AppliedAddOnDetail = components['schemas']['AppliedAddOnDetailResponse']
+export type PortalAddOn = components['schemas']['PortalAddOnResponse']
+export type PortalPurchasedAddOn = components['schemas']['PortalPurchasedAddOnResponse']
+export type PortalPurchaseAddOnResult = components['schemas']['PortalPurchaseAddOnResponse']
 
 // --- Credit Notes ---
 export type CreditNote = components['schemas']['CreditNoteResponse']

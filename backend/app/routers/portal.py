@@ -14,6 +14,8 @@ from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
 from app.models.subscription import Subscription
 from app.models.wallet import Wallet
+from app.repositories.add_on_repository import AddOnRepository
+from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
@@ -23,6 +25,11 @@ from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.wallet_repository import WalletRepository
+from app.schemas.add_on import (
+    PortalAddOnResponse,
+    PortalPurchaseAddOnResponse,
+    PortalPurchasedAddOnResponse,
+)
 from app.schemas.customer import CustomerResponse, PortalProfileUpdate
 from app.schemas.invoice import InvoiceResponse
 from app.schemas.organization import PortalBrandingResponse
@@ -39,6 +46,7 @@ from app.schemas.subscription import (
 )
 from app.schemas.usage import CurrentUsageResponse
 from app.schemas.wallet import WalletResponse
+from app.services.add_on_service import AddOnService
 from app.services.pdf_service import PdfService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.usage_query_service import UsageQueryService
@@ -655,3 +663,106 @@ async def portal_change_plan(
 
     db.refresh(subscription)
     return SubscriptionResponse.model_validate(subscription)
+
+
+# ── Add-ons ──────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/add_ons",
+    response_model=list[PortalAddOnResponse],
+    summary="List available add-ons",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def list_portal_add_ons(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[PortalAddOnResponse]:
+    """List all add-ons available for purchase."""
+    _customer_id, organization_id = portal_auth
+    add_on_repo = AddOnRepository(db)
+    add_ons = add_on_repo.get_all(organization_id)
+    return [
+        PortalAddOnResponse(
+            id=a.id,  # type: ignore[arg-type]
+            code=str(a.code),
+            name=str(a.name),
+            description=a.description,  # type: ignore[arg-type]
+            amount_cents=a.amount_cents,  # type: ignore[arg-type]
+            amount_currency=str(a.amount_currency),
+        )
+        for a in add_ons
+    ]
+
+
+@router.get(
+    "/add_ons/purchased",
+    response_model=list[PortalPurchasedAddOnResponse],
+    summary="List purchased add-ons",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def list_portal_purchased_add_ons(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[PortalPurchasedAddOnResponse]:
+    """List all add-ons the customer has purchased."""
+    customer_id, _organization_id = portal_auth
+    applied_repo = AppliedAddOnRepository(db)
+    add_on_repo = AddOnRepository(db)
+    applied = applied_repo.get_by_customer_id(customer_id)
+    result: list[PortalPurchasedAddOnResponse] = []
+    for app_addon in applied:
+        addon = add_on_repo.get_by_id(UUID(str(app_addon.add_on_id)))
+        result.append(
+            PortalPurchasedAddOnResponse(
+                id=app_addon.id,  # type: ignore[arg-type]
+                add_on_id=app_addon.add_on_id,  # type: ignore[arg-type]
+                add_on_name=str(addon.name) if addon else "Unknown",
+                add_on_code=str(addon.code) if addon else "unknown",
+                amount_cents=app_addon.amount_cents,  # type: ignore[arg-type]
+                amount_currency=str(app_addon.amount_currency),
+                created_at=app_addon.created_at,  # type: ignore[arg-type]
+            )
+        )
+    return result
+
+
+@router.post(
+    "/add_ons/{add_on_id}/purchase",
+    response_model=PortalPurchaseAddOnResponse,
+    status_code=201,
+    summary="Purchase an add-on",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Add-on not found"},
+    },
+)
+async def portal_purchase_add_on(
+    add_on_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalPurchaseAddOnResponse:
+    """Purchase an add-on. Creates an applied add-on record and a one-off invoice."""
+    customer_id, organization_id = portal_auth
+    add_on_repo = AddOnRepository(db)
+    add_on = add_on_repo.get_by_id(add_on_id, organization_id)
+    if not add_on:
+        raise HTTPException(status_code=404, detail="Add-on not found")
+
+    service = AddOnService(db)
+    try:
+        applied, invoice = service.apply_add_on(
+            add_on_code=str(add_on.code),
+            customer_id=customer_id,
+            organization_id=organization_id,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+
+    return PortalPurchaseAddOnResponse(
+        applied_add_on_id=applied.id,  # type: ignore[arg-type]
+        invoice_id=invoice.id,  # type: ignore[arg-type]
+        add_on_name=str(add_on.name),
+        amount_cents=add_on.amount_cents,  # type: ignore[arg-type]
+        amount_currency=str(add_on.amount_currency),
+    )
