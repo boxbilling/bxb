@@ -119,6 +119,7 @@ type IntegrationUpdate = components['schemas']['IntegrationUpdate']
 
 type DataExportResponse = components['schemas']['DataExportResponse']
 type DataExportCreate = components['schemas']['DataExportCreate']
+type DataExportEstimate = { export_type: string; record_count: number }
 
 type EventResponse = components['schemas']['EventResponse']
 type EventCreate = components['schemas']['EventCreate']
@@ -961,6 +962,11 @@ export const dataExportsApi = {
   get: (id: string) => request<DataExportResponse>(`/v1/data_exports/${id}`),
   create: (data: DataExportCreate) =>
     request<DataExportResponse>('/v1/data_exports/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  estimate: (data: DataExportCreate) =>
+    request<DataExportEstimate>('/v1/data_exports/estimate', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

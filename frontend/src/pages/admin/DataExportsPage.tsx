@@ -47,7 +47,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
-import type { DataExport, ExportType } from '@/types/billing'
+import type { DataExport, DataExportEstimate, ExportType } from '@/types/billing'
 
 const EXPORT_TYPES: ExportType[] = [
   'invoices',
@@ -357,6 +357,21 @@ function NewExportDialog({
   const [exportType, setExportType] = useState<ExportType | ''>('')
   const [filterValues, setFilterValues] = useState<Record<string, string>>({})
 
+  const nonEmptyFilters = Object.fromEntries(
+    Object.entries(filterValues).filter(([, v]) => v.trim() !== '')
+  )
+  const hasFilters = Object.keys(nonEmptyFilters).length > 0
+
+  const { data: estimate, isFetching: isEstimating } = useQuery<DataExportEstimate>({
+    queryKey: ['data-export-estimate', exportType, nonEmptyFilters],
+    queryFn: () =>
+      dataExportsApi.estimate({
+        export_type: exportType as ExportType,
+        filters: hasFilters ? nonEmptyFilters : undefined,
+      }),
+    enabled: !!exportType,
+  })
+
   const handleFilterChange = (key: string, value: string) => {
     setFilterValues((prev) => ({ ...prev, [key]: value }))
   }
@@ -370,13 +385,9 @@ function NewExportDialog({
     e.preventDefault()
     if (!exportType) return
 
-    const nonEmptyFilters = Object.fromEntries(
-      Object.entries(filterValues).filter(([, v]) => v.trim() !== '')
-    )
-
     onSubmit({
       export_type: exportType,
-      filters: Object.keys(nonEmptyFilters).length > 0 ? nonEmptyFilters : undefined,
+      filters: hasFilters ? nonEmptyFilters : undefined,
     })
   }
 
@@ -427,6 +438,22 @@ function NewExportDialog({
                   filterValues={filterValues}
                   onFilterChange={handleFilterChange}
                 />
+              </div>
+            )}
+            {exportType && (
+              <div className="rounded-md border bg-muted/50 p-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Estimated records</span>
+                  <span className="font-medium">
+                    {isEstimating ? (
+                      <Loader2 className="h-4 w-4 animate-spin inline" />
+                    ) : estimate ? (
+                      estimate.record_count.toLocaleString()
+                    ) : (
+                      '—'
+                    )}
+                  </span>
+                </div>
               </div>
             )}
           </div>

@@ -16,6 +16,13 @@ class DataExportCreate(BaseModel):
     filters: dict[str, Any] | None = None
 
 
+class DataExportEstimate(BaseModel):
+    """Schema for data export size estimate response."""
+
+    export_type: str
+    record_count: int
+
+
 class DataExportResponse(BaseModel):
     """Schema for data export response."""
 

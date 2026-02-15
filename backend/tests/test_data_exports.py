@@ -24,7 +24,7 @@ from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.credit_note import CreditNoteCreate
 from app.schemas.customer import CustomerCreate
-from app.schemas.data_export import DataExportCreate, DataExportResponse
+from app.schemas.data_export import DataExportCreate, DataExportEstimate, DataExportResponse
 from app.schemas.event import EventCreate
 from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
@@ -246,6 +246,15 @@ class TestDataExportSchema:
         data = DataExportCreate(export_type=ExportType.CUSTOMERS)
         assert data.export_type == ExportType.CUSTOMERS
         assert data.filters is None
+
+    def test_estimate_schema(self):
+        """Test DataExportEstimate schema."""
+        estimate = DataExportEstimate(
+            export_type="invoices",
+            record_count=42,
+        )
+        assert estimate.export_type == "invoices"
+        assert estimate.record_count == 42
 
     def test_response_schema(self):
         """Test DataExportResponse schema with from_attributes."""
@@ -678,6 +687,132 @@ class TestDataExportService:
         assert _fmt_dt(None) == ""
 
 
+class TestDataExportEstimateService:
+    """Tests for DataExportService.estimate_count."""
+
+    def test_estimate_invoices(self, db_session, invoice):
+        """Test estimate count for invoices."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.INVOICES)
+        assert count == 1
+
+    def test_estimate_invoices_with_status_filter(self, db_session, invoice):
+        """Test estimate count for invoices with status filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.INVOICES, {"status": "paid"})
+        assert count == 0
+
+    def test_estimate_invoices_with_customer_filter(self, db_session, invoice, customer):
+        """Test estimate count for invoices with customer filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.INVOICES, {"customer_id": str(customer.id)}
+        )
+        assert count == 1
+
+    def test_estimate_customers(self, db_session, customer):
+        """Test estimate count for customers."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.CUSTOMERS)
+        assert count == 1
+
+    def test_estimate_subscriptions(self, db_session, subscription):
+        """Test estimate count for subscriptions."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.SUBSCRIPTIONS)
+        assert count == 1
+
+    def test_estimate_subscriptions_with_status_filter(self, db_session, subscription):
+        """Test estimate count for subscriptions with status filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.SUBSCRIPTIONS, {"status": "terminated"}
+        )
+        assert count == 0
+
+    def test_estimate_subscriptions_with_customer_filter(self, db_session, subscription, customer):
+        """Test estimate count for subscriptions with customer filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.SUBSCRIPTIONS, {"customer_id": str(customer.id)}
+        )
+        assert count == 1
+
+    def test_estimate_events(self, db_session, event):
+        """Test estimate count for events."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.EVENTS)
+        assert count == 1
+
+    def test_estimate_events_with_customer_filter(self, db_session, event, customer):
+        """Test estimate count for events with external_customer_id filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.EVENTS, {"external_customer_id": customer.external_id}
+        )
+        assert count == 1
+
+    def test_estimate_events_with_code_filter(self, db_session, event):
+        """Test estimate count for events with code filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.EVENTS, {"code": "nonexistent_code"}
+        )
+        assert count == 0
+
+    def test_estimate_fees(self, db_session, fee):
+        """Test estimate count for fees."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.FEES)
+        assert count == 1
+
+    def test_estimate_fees_with_type_filter(self, db_session, fee):
+        """Test estimate count for fees with fee_type filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.FEES, {"fee_type": "add_on"}
+        )
+        assert count == 0
+
+    def test_estimate_fees_with_invoice_filter(self, db_session, fee, invoice):
+        """Test estimate count for fees with invoice_id filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.FEES, {"invoice_id": str(invoice.id)}
+        )
+        assert count == 1
+
+    def test_estimate_credit_notes(self, db_session, credit_note):
+        """Test estimate count for credit notes."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.CREDIT_NOTES)
+        assert count == 1
+
+    def test_estimate_credit_notes_with_status_filter(self, db_session, credit_note):
+        """Test estimate count for credit notes with status filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID, ExportType.CREDIT_NOTES, {"status": "finalized"}
+        )
+        assert count == 0
+
+    def test_estimate_empty_data(self, db_session):
+        """Test estimate count with no matching data."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.INVOICES)
+        assert count == 0
+
+    def test_estimate_unknown_type(self, db_session):
+        """Test estimate count with an unknown export type raises ValueError."""
+        service = DataExportService(db_session)
+
+        class FakeType:
+            value = "nonexistent_type"
+
+        with pytest.raises(ValueError, match="Unknown export type"):
+            service.estimate_count(DEFAULT_ORG_ID, FakeType())  # type: ignore[arg-type]
+
+
 class TestDataExportAPI:
     """Tests for data export API endpoints."""
 
@@ -809,6 +944,65 @@ class TestDataExportAPI:
         response = client.get(f"/v1/data_exports/{export.id}/download")
         assert response.status_code == 404
         assert "file not found" in response.json()["detail"].lower()
+
+
+class TestDataExportEstimateAPI:
+    """Tests for data export estimate API endpoint."""
+
+    def test_estimate_export(self, client, customer):
+        """Test POST /v1/data_exports/estimate."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={"export_type": "customers"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["export_type"] == "customers"
+        assert data["record_count"] == 1
+
+    def test_estimate_export_with_filters(self, client, invoice):
+        """Test POST /v1/data_exports/estimate with filters."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={
+                "export_type": "invoices",
+                "filters": {"status": "draft"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["record_count"] == 1
+
+    def test_estimate_export_with_no_matches(self, client, invoice):
+        """Test POST /v1/data_exports/estimate when no records match."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={
+                "export_type": "invoices",
+                "filters": {"status": "paid"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["record_count"] == 0
+
+    def test_estimate_export_invalid_type(self, client):
+        """Test POST /v1/data_exports/estimate with invalid export type."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={"export_type": "invalid_type"},
+        )
+        assert response.status_code == 422
+
+    def test_estimate_export_empty_data(self, client):
+        """Test POST /v1/data_exports/estimate with no data."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={"export_type": "invoices"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["record_count"] == 0
 
 
 class TestDataExportServiceErrorHandling:

@@ -31,6 +31,26 @@ class DataExportService:
         self.db = db
         self.repo = DataExportRepository(db)
 
+    def estimate_count(
+        self,
+        organization_id: UUID,
+        export_type: ExportType,
+        filters: dict[str, Any] | None = None,
+    ) -> int:
+        """Estimate the number of records that would be exported."""
+        counters = {
+            ExportType.INVOICES.value: self._count_invoices,
+            ExportType.CUSTOMERS.value: self._count_customers,
+            ExportType.SUBSCRIPTIONS.value: self._count_subscriptions,
+            ExportType.EVENTS.value: self._count_events,
+            ExportType.FEES.value: self._count_fees,
+            ExportType.CREDIT_NOTES.value: self._count_credit_notes,
+        }
+        counter = counters.get(export_type.value)
+        if not counter:
+            raise ValueError(f"Unknown export type: {export_type.value}")
+        return counter(organization_id, filters or {})
+
     def create_export(
         self,
         organization_id: UUID,
@@ -358,6 +378,56 @@ class DataExportService:
                 ]
             )
         return output.getvalue(), len(credit_notes)
+
+    # --- Count methods for size estimation ---
+
+    def _count_invoices(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count invoices matching filters."""
+        query = self.db.query(Invoice).filter(Invoice.organization_id == organization_id)
+        if filters.get("status"):
+            query = query.filter(Invoice.status == filters["status"])
+        if filters.get("customer_id"):
+            query = query.filter(Invoice.customer_id == filters["customer_id"])
+        return query.count()
+
+    def _count_customers(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count customers matching filters."""
+        query = self.db.query(Customer).filter(Customer.organization_id == organization_id)
+        return query.count()
+
+    def _count_subscriptions(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count subscriptions matching filters."""
+        query = self.db.query(Subscription).filter(Subscription.organization_id == organization_id)
+        if filters.get("status"):
+            query = query.filter(Subscription.status == filters["status"])
+        if filters.get("customer_id"):
+            query = query.filter(Subscription.customer_id == filters["customer_id"])
+        return query.count()
+
+    def _count_events(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count events matching filters."""
+        query = self.db.query(Event).filter(Event.organization_id == organization_id)
+        if filters.get("external_customer_id"):
+            query = query.filter(Event.external_customer_id == filters["external_customer_id"])
+        if filters.get("code"):
+            query = query.filter(Event.code == filters["code"])
+        return query.count()
+
+    def _count_fees(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count fees matching filters."""
+        query = self.db.query(Fee).filter(Fee.organization_id == organization_id)
+        if filters.get("fee_type"):
+            query = query.filter(Fee.fee_type == filters["fee_type"])
+        if filters.get("invoice_id"):
+            query = query.filter(Fee.invoice_id == filters["invoice_id"])
+        return query.count()
+
+    def _count_credit_notes(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count credit notes matching filters."""
+        query = self.db.query(CreditNote).filter(CreditNote.organization_id == organization_id)
+        if filters.get("status"):
+            query = query.filter(CreditNote.status == filters["status"])
+        return query.count()
 
 
 def _fmt_dt(dt: datetime | None) -> str:

@@ -11,7 +11,7 @@ from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.data_export import DataExport, ExportStatus
 from app.repositories.data_export_repository import DataExportRepository
-from app.schemas.data_export import DataExportCreate, DataExportResponse
+from app.schemas.data_export import DataExportCreate, DataExportEstimate, DataExportResponse
 from app.services.data_export_service import DataExportService
 
 router = APIRouter()
@@ -47,6 +47,33 @@ async def create_data_export(
     repo = DataExportRepository(db)
     updated = repo.get_by_id(export.id, organization_id)  # type: ignore[arg-type]
     return updated  # type: ignore[return-value]
+
+
+@router.post(
+    "/estimate",
+    response_model=DataExportEstimate,
+    summary="Estimate export size",
+    responses={
+        401: {"description": "Unauthorized"},
+        422: {"description": "Validation error"},
+    },
+)
+async def estimate_data_export(
+    data: DataExportCreate,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> DataExportEstimate:
+    """Estimate the number of records for a data export without creating it."""
+    service = DataExportService(db)
+    record_count = service.estimate_count(
+        organization_id=organization_id,
+        export_type=data.export_type,
+        filters=data.filters,
+    )
+    return DataExportEstimate(
+        export_type=data.export_type.value,
+        record_count=record_count,
+    )
 
 
 @router.get(

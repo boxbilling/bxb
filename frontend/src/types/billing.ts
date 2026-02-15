@@ -165,6 +165,7 @@ export type IntegrationUpdate = components['schemas']['IntegrationUpdate']
 export type DataExport = components['schemas']['DataExportResponse']
 export type DataExportCreate = components['schemas']['DataExportCreate']
 export type ExportType = components['schemas']['ExportType']
+export type DataExportEstimate = { export_type: string; record_count: number }
 
 // --- Events ---
 export type Event = components['schemas']['EventResponse']
