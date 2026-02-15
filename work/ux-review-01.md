@@ -821,11 +821,11 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No branding preview
 
 **Recommendations:**
-- [ ] Add per-section save buttons (or auto-save with debounce)
-- [ ] Add real-time validation as user types
-- [ ] Mask HMAC key with show/hide toggle
-- [ ] Add branding preview panel (show how invoice email would look)
-- [ ] Add timezone and currency searchable selects (not plain dropdowns)
+- [x] Add per-section save buttons (or auto-save with debounce) — Each card section (General, Billing, Branding, Legal Address) now has its own independent Save button with loading state indicator. Sections are disabled while another section is saving.
+- [x] Add real-time validation as user types — Validation runs on touched fields in real-time: required fields (name, currency, timezone), non-negative numbers (grace period, payment term), valid URL (logo), valid email. Errors shown inline below fields with `aria-invalid` for accessibility.
+- [x] Mask HMAC key with show/hide toggle — HMAC key input now uses `type="password"` by default with an Eye/EyeOff toggle button to reveal/hide the value.
+- [x] Add branding preview panel (show how invoice email would look) — Branding section now has a live preview panel showing organization logo (with fallback initial), name, email, sample invoice line with currency, and net payment term. Updates in real-time as fields change.
+- [x] Add timezone and currency searchable selects (not plain dropdowns) — Both timezone and currency now use searchable Popover+Command comboboxes. Currency expanded from 3 to 20 options. Timezone uses full IANA timezone list via `Intl.supportedValuesOf`.
 
 **Modal vs. Page Decision:**
 - Full page is correct for Settings
