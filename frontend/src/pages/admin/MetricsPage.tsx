@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, BarChart3, Search, Layers } from 'lucide-react'
+import { Plus, Code, Hash, ArrowUp, CircleDot, BarChart3, Search, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -24,11 +24,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Select,
   SelectContent,
@@ -39,7 +41,7 @@ import {
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { billableMetricsApi, ApiError } from '@/lib/api'
 import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/types/billing'
 
@@ -407,97 +409,111 @@ export default function MetricsPage() {
         </Select>
       </div>
 
-      {/* Metrics Grid */}
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-4 w-48" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-6 w-24" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : filteredMetrics.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Code className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">
-              {search || aggregationFilter !== 'all' ? 'No metrics match your filters' : 'No billable metrics'}
-            </h3>
-            <p className="text-muted-foreground text-center max-w-sm mt-1">
-              {search || aggregationFilter !== 'all'
-                ? 'Try adjusting your search terms or filters'
-                : 'Create your first billable metric to start tracking usage'}
-            </p>
-            {!search && aggregationFilter === 'all' && (
-              <Button onClick={() => setFormOpen(true)} className="mt-4">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Metric
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredMetrics.map((metric) => (
-            <Card key={metric.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-base">{metric.name}</CardTitle>
-                    <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                      {metric.code}
-                    </code>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(metric)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => setDeleteMetric(metric)}
-                        className="text-destructive"
+      {/* Metrics Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Code</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Aggregation</TableHead>
+              <TableHead>Field</TableHead>
+              <TableHead>Plans</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              [...Array(3)].map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                </TableRow>
+              ))
+            ) : filteredMetrics.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Code className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-muted-foreground">
+                      {search || aggregationFilter !== 'all'
+                        ? 'No metrics match your filters'
+                        : 'No billable metrics'}
+                    </p>
+                    {!search && aggregationFilter === 'all' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => setFormOpen(true)}
                       >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                {metric.description && (
-                  <CardDescription>{metric.description}</CardDescription>
-                )}
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <AggregationBadge type={metric.aggregation_type} />
-                  {metric.field_name && (
-                    <Badge variant="secondary">
-                      <Code className="mr-1 h-3 w-3" />
-                      {metric.field_name}
-                    </Badge>
-                  )}
-                  <Badge variant="outline" className="text-muted-foreground">
-                    <Layers className="mr-1 h-3 w-3" />
-                    {planCounts?.[metric.id] ?? 0} {(planCounts?.[metric.id] ?? 0) === 1 ? 'plan' : 'plans'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create your first metric
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredMetrics.map((metric) => {
+                const count = planCounts?.[metric.id] ?? 0
+                return (
+                  <TableRow key={metric.id}>
+                    <TableCell className="font-medium">{metric.name}</TableCell>
+                    <TableCell>
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.code}</code>
+                    </TableCell>
+                    <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                      {metric.description || <span className="text-muted-foreground">&mdash;</span>}
+                    </TableCell>
+                    <TableCell>
+                      <AggregationBadge type={metric.aggregation_type} />
+                    </TableCell>
+                    <TableCell>
+                      {metric.field_name ? (
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.field_name}</code>
+                      ) : (
+                        <span className="text-muted-foreground">&mdash;</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+                        {count}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(metric)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDeleteMetric(metric)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Create/Edit Dialog */}
       <MetricFormDialog
