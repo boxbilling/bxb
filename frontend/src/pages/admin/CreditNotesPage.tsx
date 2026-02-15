@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
   Search,
   MoreHorizontal,
   Eye,
+  Pencil,
   CheckCircle,
   XCircle,
   FileText,
@@ -29,8 +30,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -57,21 +56,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
-import { creditNotesApi, customersApi, invoicesApi, feesApi, ApiError } from '@/lib/api'
-import type {
-  CreditNote,
-  CreditNoteCreate,
-  CreditNoteItemCreate,
-  Customer,
-  Invoice,
-  Fee,
-} from '@/types/billing'
+import { creditNotesApi, customersApi, ApiError } from '@/lib/api'
+import type { CreditNote, Customer } from '@/types/billing'
 
 function formatCurrency(cents: number | string, currency: string = 'USD'): string {
   const num = typeof cents === 'string' ? parseFloat(cents) : cents
@@ -123,371 +113,6 @@ function CreditStatusBadge({ status }: { status: string | null | undefined }) {
     <Badge variant={config.variant} className={config.className}>
       {status}
     </Badge>
-  )
-}
-
-// --- Create Credit Note Dialog ---
-function CreateCreditNoteDialog({
-  open,
-  onOpenChange,
-  customers,
-  onSubmit,
-  isLoading,
-  preselectedInvoiceId,
-  preselectedCustomerId,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  customers: Customer[]
-  onSubmit: (data: CreditNoteCreate) => void
-  isLoading: boolean
-  preselectedInvoiceId?: string
-  preselectedCustomerId?: string
-}) {
-  const [formData, setFormData] = useState<{
-    number: string
-    invoice_id: string
-    customer_id: string
-    credit_note_type: 'credit' | 'refund' | 'offset'
-    reason: string
-    description: string
-    credit_amount_cents: string
-    refund_amount_cents: string
-    total_amount_cents: string
-    taxes_amount_cents: string
-    currency: string
-  }>({
-    number: '',
-    invoice_id: preselectedInvoiceId ?? '',
-    customer_id: preselectedCustomerId ?? '',
-    credit_note_type: 'credit',
-    reason: 'other',
-    description: '',
-    credit_amount_cents: '0',
-    refund_amount_cents: '0',
-    total_amount_cents: '0',
-    taxes_amount_cents: '0',
-    currency: 'USD',
-  })
-
-  const [selectedFees, setSelectedFees] = useState<CreditNoteItemCreate[]>([])
-
-  // Fetch invoices for the selected customer
-  const { data: invoices = [] } = useQuery({
-    queryKey: ['invoices-for-cn', formData.customer_id],
-    queryFn: () => invoicesApi.list({ customer_id: formData.customer_id, status: 'finalized' as never }),
-    enabled: !!formData.customer_id,
-  })
-
-  // Fetch fees for selected invoice
-  const { data: fees = [] } = useQuery({
-    queryKey: ['fees-for-cn', formData.invoice_id],
-    queryFn: () => feesApi.list({ invoice_id: formData.invoice_id }),
-    enabled: !!formData.invoice_id,
-  })
-
-  const toggleFee = (fee: Fee) => {
-    setSelectedFees((prev) => {
-      const exists = prev.find((f) => f.fee_id === fee.id)
-      if (exists) {
-        return prev.filter((f) => f.fee_id !== fee.id)
-      }
-      return [...prev, { fee_id: fee.id, amount_cents: fee.amount_cents }]
-    })
-  }
-
-  const updateFeeAmount = (feeId: string, amount: string) => {
-    setSelectedFees((prev) =>
-      prev.map((f) => (f.fee_id === feeId ? { ...f, amount_cents: amount } : f))
-    )
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const data: CreditNoteCreate = {
-      number: formData.number,
-      invoice_id: formData.invoice_id,
-      customer_id: formData.customer_id,
-      credit_note_type: formData.credit_note_type,
-      reason: formData.reason as CreditNoteCreate['reason'],
-      currency: formData.currency,
-      credit_amount_cents: formData.credit_amount_cents,
-      refund_amount_cents: formData.refund_amount_cents,
-      total_amount_cents: formData.total_amount_cents,
-      taxes_amount_cents: formData.taxes_amount_cents,
-      items: selectedFees,
-    }
-    if (formData.description) data.description = formData.description
-    onSubmit(data)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create Credit Note</DialogTitle>
-            <DialogDescription>
-              Create a credit note for an invoice
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cn_number">Number *</Label>
-                <Input
-                  id="cn_number"
-                  value={formData.number}
-                  onChange={(e) =>
-                    setFormData({ ...formData, number: e.target.value })
-                  }
-                  placeholder="e.g. CN-2024-001"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cn_currency">Currency</Label>
-                <Input
-                  id="cn_currency"
-                  value={formData.currency}
-                  onChange={(e) =>
-                    setFormData({ ...formData, currency: e.target.value })
-                  }
-                  placeholder="USD"
-                  maxLength={3}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cn_customer">Customer *</Label>
-                <Select
-                  value={formData.customer_id}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, customer_id: value, invoice_id: '' })
-                  }
-                >
-                  <SelectTrigger id="cn_customer">
-                    <SelectValue placeholder="Select a customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cn_invoice">Invoice *</Label>
-                <Select
-                  value={formData.invoice_id}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, invoice_id: value })
-                  }
-                  disabled={!formData.customer_id}
-                >
-                  <SelectTrigger id="cn_invoice">
-                    <SelectValue placeholder="Select an invoice" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {invoices.map((inv: Invoice) => (
-                      <SelectItem key={inv.id} value={inv.id}>
-                        {inv.invoice_number} — {formatCurrency(inv.total, inv.currency)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cn_type">Type *</Label>
-                <Select
-                  value={formData.credit_note_type}
-                  onValueChange={(value: 'credit' | 'refund' | 'offset') =>
-                    setFormData({ ...formData, credit_note_type: value })
-                  }
-                >
-                  <SelectTrigger id="cn_type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="credit">Credit</SelectItem>
-                    <SelectItem value="refund">Refund</SelectItem>
-                    <SelectItem value="offset">Offset</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cn_reason">Reason *</Label>
-                <Select
-                  value={formData.reason}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, reason: value })
-                  }
-                >
-                  <SelectTrigger id="cn_reason">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(REASON_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cn_description">Description</Label>
-              <Textarea
-                id="cn_description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Optional description of the credit note"
-                rows={2}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cn_credit_amount">Credit Amount (cents)</Label>
-                <Input
-                  id="cn_credit_amount"
-                  type="number"
-                  min="0"
-                  value={formData.credit_amount_cents}
-                  onChange={(e) =>
-                    setFormData({ ...formData, credit_amount_cents: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cn_refund_amount">Refund Amount (cents)</Label>
-                <Input
-                  id="cn_refund_amount"
-                  type="number"
-                  min="0"
-                  value={formData.refund_amount_cents}
-                  onChange={(e) =>
-                    setFormData({ ...formData, refund_amount_cents: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="cn_total_amount">Total Amount (cents) *</Label>
-                <Input
-                  id="cn_total_amount"
-                  type="number"
-                  min="0"
-                  value={formData.total_amount_cents}
-                  onChange={(e) =>
-                    setFormData({ ...formData, total_amount_cents: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cn_taxes_amount">Taxes Amount (cents)</Label>
-                <Input
-                  id="cn_taxes_amount"
-                  type="number"
-                  min="0"
-                  value={formData.taxes_amount_cents}
-                  onChange={(e) =>
-                    setFormData({ ...formData, taxes_amount_cents: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Fee selection for credit note items */}
-            {fees.length > 0 && (
-              <div className="space-y-2">
-                <Label>Select Fees to Credit</Label>
-                <div className="rounded-md border max-h-40 overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[40px]"></TableHead>
-                        <TableHead>Fee</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead>Credit Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {fees.map((fee: Fee) => {
-                        const selected = selectedFees.find((f) => f.fee_id === fee.id)
-                        return (
-                          <TableRow key={fee.id}>
-                            <TableCell>
-                              <input
-                                type="checkbox"
-                                checked={!!selected}
-                                onChange={() => toggleFee(fee)}
-                                className="h-4 w-4 rounded border-input"
-                              />
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {fee.fee_type} — {fee.description || fee.id.slice(0, 8)}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {formatCurrency(fee.amount_cents)}
-                            </TableCell>
-                            <TableCell>
-                              {selected && (
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  value={String(selected.amount_cents)}
-                                  onChange={(e) => updateFeeAmount(fee.id, e.target.value)}
-                                  className="h-7 w-24"
-                                />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                isLoading ||
-                !formData.number ||
-                !formData.customer_id ||
-                !formData.invoice_id
-              }
-            >
-              {isLoading ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -693,28 +318,12 @@ function CreditNoteDetailDialog({
 
 export default function CreditNotesPage() {
   const queryClient = useQueryClient()
-  const location = useLocation()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [formOpen, setFormOpen] = useState(false)
   const [detailCreditNote, setDetailCreditNote] = useState<CreditNote | null>(null)
   const [finalizeCreditNote, setFinalizeCreditNote] = useState<CreditNote | null>(null)
   const [voidCreditNote, setVoidCreditNote] = useState<CreditNote | null>(null)
-
-  // Read navigation state from InvoicesPage to pre-select invoice/customer
-  const locationState = location.state as { invoiceId?: string; customerId?: string } | null
-  const [preselectedInvoiceId, setPreselectedInvoiceId] = useState<string | undefined>(undefined)
-  const [preselectedCustomerId, setPreselectedCustomerId] = useState<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (locationState?.invoiceId) {
-      setPreselectedInvoiceId(locationState.invoiceId)
-      setPreselectedCustomerId(locationState.customerId)
-      setFormOpen(true)
-      // Clear the navigation state so it doesn't re-trigger
-      window.history.replaceState({}, '')
-    }
-  }, [locationState?.invoiceId, locationState?.customerId])
 
   // Fetch credit notes
   const {
@@ -726,7 +335,7 @@ export default function CreditNotesPage() {
     queryFn: () => creditNotesApi.list(),
   })
 
-  // Fetch customers for display and create dialog
+  // Fetch customers for display
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => customersApi.list(),
@@ -754,21 +363,6 @@ export default function CreditNotesPage() {
       0
     ),
   }
-
-  // Create mutation
-  const createMutation = useMutation({
-    mutationFn: (data: CreditNoteCreate) => creditNotesApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['credit-notes'] })
-      setFormOpen(false)
-      toast.success('Credit note created successfully')
-    },
-    onError: (error) => {
-      const message =
-        error instanceof ApiError ? error.message : 'Failed to create credit note'
-      toast.error(message)
-    },
-  })
 
   // Finalize mutation
   const finalizeMutation = useMutation({
@@ -825,7 +419,7 @@ export default function CreditNotesPage() {
             Manage credit notes for customer invoices
           </p>
         </div>
-        <Button onClick={() => setFormOpen(true)}>
+        <Button onClick={() => navigate('/admin/credit-notes/new')}>
           <Plus className="mr-2 h-4 w-4" />
           Create Credit Note
         </Button>
@@ -987,6 +581,14 @@ export default function CreditNotesPage() {
                         </DropdownMenuItem>
                         {cn.status === 'draft' && (
                           <DropdownMenuItem
+                            onClick={() => navigate(`/admin/credit-notes/${cn.id}/edit`)}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {cn.status === 'draft' && (
+                          <DropdownMenuItem
                             onClick={() => setFinalizeCreditNote(cn)}
                           >
                             <CheckCircle className="mr-2 h-4 w-4" />
@@ -1011,23 +613,6 @@ export default function CreditNotesPage() {
           </TableBody>
         </Table>
       </div>
-
-      {/* Create Dialog */}
-      <CreateCreditNoteDialog
-        open={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open)
-          if (!open) {
-            setPreselectedInvoiceId(undefined)
-            setPreselectedCustomerId(undefined)
-          }
-        }}
-        customers={customers}
-        onSubmit={(data) => createMutation.mutate(data)}
-        isLoading={createMutation.isPending}
-        preselectedInvoiceId={preselectedInvoiceId}
-        preselectedCustomerId={preselectedCustomerId}
-      />
 
       {/* Detail Dialog */}
       <CreditNoteDetailDialog

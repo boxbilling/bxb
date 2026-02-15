@@ -342,7 +342,7 @@ export default function InvoiceDetailPage() {
             <Button
               variant="outline"
               onClick={() => {
-                navigate('/admin/credit-notes', {
+                navigate('/admin/credit-notes/new', {
                   state: { invoiceId: invoice.id, customerId: invoice.customer_id },
                 })
               }}

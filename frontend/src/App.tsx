@@ -19,6 +19,7 @@ import {
   CouponsPage,
   AddOnsPage,
   CreditNotesPage,
+  CreditNoteFormPage,
   TaxesPage,
   DunningCampaignsPage,
   IntegrationsPage,
@@ -64,6 +65,8 @@ function App() {
         <Route path="coupons" element={<CouponsPage />} />
         <Route path="add-ons" element={<AddOnsPage />} />
         <Route path="credit-notes" element={<CreditNotesPage />} />
+        <Route path="credit-notes/new" element={<CreditNoteFormPage />} />
+        <Route path="credit-notes/:id/edit" element={<CreditNoteFormPage />} />
         <Route path="taxes" element={<TaxesPage />} />
         <Route path="dunning-campaigns" element={<DunningCampaignsPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />

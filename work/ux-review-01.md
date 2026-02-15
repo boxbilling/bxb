@@ -502,10 +502,14 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Detail modal is information-dense
 
 **Recommendations:**
-- [ ] **Credit note creation should be a full page** (`/admin/credit-notes/new`). The cascading form (select customer → select invoice → select fees → set amounts) is too complex for a modal.
-- [ ] Add edit capability for draft credit notes
-- [ ] Keep detail view as modal (credit notes are simpler than invoices once created)
-- [ ] Pre-fill form when navigating from invoice detail page (already partially implemented via state)
+- [x] **Credit note creation should be a full page** (`/admin/credit-notes/new`). The cascading form (select customer → select invoice → select fees → set amounts) is too complex for a modal.
+  <!-- Completed: Created CreditNoteFormPage.tsx as a dedicated full-page form at /admin/credit-notes/new. Form is organized into 4 Card sections in a 2-column grid: Customer & Invoice (cascading customer→invoice selectors with number/currency fields), Type & Reason (type selector, reason dropdown, description textarea), Amounts (credit/refund/total/taxes with live currency preview), and Fee Selection (checkbox table with per-fee credit amount overrides). Removed the CreateCreditNoteDialog modal entirely from CreditNotesPage. The "Create Credit Note" button now navigates to the form page. Routes added in App.tsx: /admin/credit-notes/new and /admin/credit-notes/:id/edit. CreditNoteFormPage exported from pages/admin/index.ts. -->
+- [x] Add edit capability for draft credit notes
+  <!-- Completed: CreditNoteFormPage supports edit mode at /admin/credit-notes/:id/edit. In edit mode, the form loads the existing credit note via useQuery, pre-fills all fields, and locks customer/invoice/type fields (since they're immutable). Editable fields for drafts: reason, description, credit/refund/total/taxes amounts. Uses creditNotesApi.update() which calls the existing PUT /v1/credit_notes/{id} endpoint (backend already enforces draft-only updates with 400 status). Non-draft credit notes show a "Cannot edit" message with back button. Added "Edit" dropdown action (with Pencil icon) to CreditNotesPage table rows for draft credit notes. -->
+- [x] Keep detail view as modal (credit notes are simpler than invoices once created)
+  <!-- Verified: CreditNoteDetailDialog remains as a Dialog modal, which is correct since credit notes are read-only entities once created (simpler than invoices). The modal displays all credit note details: customer, invoice, type, reason, amounts breakdown, statuses, dates, and Download PDF / Send Email actions. No changes needed. -->
+- [x] Pre-fill form when navigating from invoice detail page (already partially implemented via state)
+  <!-- Completed: InvoiceDetailPage "Create Credit Note" button now navigates to /admin/credit-notes/new (instead of /admin/credit-notes) with state: { invoiceId, customerId }. CreditNoteFormPage reads location.state on mount and pre-fills customer_id and invoice_id fields, so the cascading selectors start pre-populated. Navigation state is cleared via window.history.replaceState to prevent re-triggers on back navigation. -->
 
 **Modal vs. Page Decision:**
 - **Create**: Should be a **FULL PAGE** (complex multi-step form)
