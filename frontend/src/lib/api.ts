@@ -341,6 +341,8 @@ export const customersApi = {
     request<CustomerCurrentUsageResponse[]>(`/v1/customers/${externalId}/past_usage${buildQuery({ external_subscription_id: externalSubscriptionId, periods_count: periodsCount })}`),
   getPortalUrl: (externalId: string) =>
     request<{ portal_url: string }>(`/v1/customers/${externalId}/portal_url`),
+  getHealth: (customerId: string) =>
+    request<{ status: string; total_invoices: number; paid_invoices: number; overdue_invoices: number; total_payments: number; failed_payments: number; overdue_amount: number }>(`/v1/customers/${customerId}/health`),
 }
 
 // Billable Metrics API

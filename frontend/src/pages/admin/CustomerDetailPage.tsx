@@ -66,6 +66,7 @@ import {
 } from '@/components/ui/chart'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
+import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
@@ -1080,7 +1081,10 @@ export default function CustomerDetailPage() {
             <div className="flex items-center gap-3">
               <CustomerAvatar name={customer.name} size="lg" />
               <div>
-                <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
+                  <CustomerHealthBadge customerId={customer.id} />
+                </div>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
                 </p>

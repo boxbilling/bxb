@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -10,13 +10,21 @@ from app.core.database import get_db
 from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.applied_coupon import AppliedCoupon
 from app.models.customer import Customer
+from app.models.invoice import Invoice, InvoiceStatus
+from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.coupon import AppliedCouponResponse
-from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.customer import (
+    CustomerCreate,
+    CustomerHealthResponse,
+    CustomerHealthStatus,
+    CustomerResponse,
+    CustomerUpdate,
+)
 from app.schemas.portal import PortalUrlResponse
 from app.schemas.usage import CurrentUsageResponse
 from app.services.portal_service import PortalService
@@ -199,6 +207,92 @@ async def generate_portal_url(
     customer = _get_customer_by_external_id(external_id, db, organization_id)
     service = PortalService(db)
     return service.generate_portal_url(UUID(str(customer.id)), organization_id)
+
+
+@router.get(
+    "/{customer_id}/health",
+    response_model=CustomerHealthResponse,
+    summary="Get customer health indicator",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
+async def get_customer_health(
+    customer_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> CustomerHealthResponse:
+    """Get customer health indicator based on payment history."""
+    repo = CustomerRepository(db)
+    customer = repo.get_by_id(customer_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    now = datetime.now()
+
+    # Query invoices for this customer
+    invoices = (
+        db.query(Invoice)
+        .filter(
+            Invoice.customer_id == customer_id,
+            Invoice.organization_id == organization_id,
+            Invoice.status != InvoiceStatus.DRAFT.value,
+            Invoice.status != InvoiceStatus.VOIDED.value,
+        )
+        .all()
+    )
+    total_invoices = len(invoices)
+    paid_invoices = sum(1 for i in invoices if i.status == InvoiceStatus.PAID.value)
+    overdue_invoices = sum(
+        1
+        for i in invoices
+        if i.status == InvoiceStatus.FINALIZED.value
+        and i.due_date is not None
+        and i.due_date < now
+    )
+    overdue_amount = sum(
+        float(i.total)
+        for i in invoices
+        if i.status == InvoiceStatus.FINALIZED.value
+        and i.due_date is not None
+        and i.due_date < now
+    )
+
+    # Query payments for this customer
+    payments = (
+        db.query(Payment)
+        .filter(
+            Payment.customer_id == customer_id,
+            Payment.organization_id == organization_id,
+        )
+        .all()
+    )
+    total_payments = len(payments)
+    failed_payments = sum(
+        1 for p in payments if p.status == PaymentStatus.FAILED.value
+    )
+
+    # Determine health status
+    if overdue_invoices > 0 or failed_payments >= 2:
+        status = CustomerHealthStatus.CRITICAL
+    elif (
+        (total_invoices > 0 and paid_invoices < total_invoices and overdue_invoices == 0)
+        or failed_payments == 1
+    ):
+        status = CustomerHealthStatus.WARNING
+    else:
+        status = CustomerHealthStatus.GOOD
+
+    return CustomerHealthResponse(
+        status=status,
+        total_invoices=total_invoices,
+        paid_invoices=paid_invoices,
+        overdue_invoices=overdue_invoices,
+        total_payments=total_payments,
+        failed_payments=failed_payments,
+        overdue_amount=overdue_amount,
+    )
 
 
 @router.get(

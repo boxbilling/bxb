@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any
 from uuid import UUID
 
@@ -40,3 +41,19 @@ class CustomerResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CustomerHealthStatus(str, Enum):
+    GOOD = "good"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class CustomerHealthResponse(BaseModel):
+    status: CustomerHealthStatus
+    total_invoices: int
+    paid_invoices: int
+    overdue_invoices: int
+    total_payments: int
+    failed_payments: int
+    overdue_amount: float

@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { customersApi, ApiError } from '@/lib/api'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
+import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import type { Customer, CustomerCreate, CustomerUpdate } from '@/types/billing'
 
 export default function CustomersPage() {
@@ -245,6 +246,7 @@ export default function CustomersPage() {
                     <div className="flex items-center gap-2">
                       <CustomerAvatar name={customer.name} size="sm" />
                       {customer.name}
+                      <CustomerHealthBadge customerId={customer.id} />
                     </div>
                   </TableCell>
                   <TableCell>

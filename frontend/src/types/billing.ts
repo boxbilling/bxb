@@ -189,6 +189,17 @@ export type InvoicePreviewRequest = components['schemas']['InvoicePreviewRequest
 export type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
 export type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
 
+// --- Customer Health ---
+export interface CustomerHealthResponse {
+  status: 'good' | 'warning' | 'critical'
+  total_invoices: number
+  paid_invoices: number
+  overdue_invoices: number
+  total_payments: number
+  failed_payments: number
+  overdue_amount: number
+}
+
 // --- Dashboard types ---
 export interface TrendIndicator {
   previous_value: number

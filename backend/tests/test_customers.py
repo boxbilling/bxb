@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,6 +13,8 @@ from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer, UUIDType, generate_uuid, utc_now
 from app.models.event import Event
+from app.models.invoice import Invoice, InvoiceStatus
+from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus
 from app.repositories.customer_repository import CustomerRepository
@@ -783,3 +786,179 @@ class TestCustomerUsageAPI:
         )
         assert response.status_code == 404
         assert response.json()["detail"] == "Plan not found"
+
+
+class TestCustomerHealthAPI:
+    """Tests for customer health indicator endpoint."""
+
+    def _create_customer(self, db_session) -> Customer:
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"health-cust-{uuid.uuid4().hex[:8]}",
+            name="Health Test Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+        return customer
+
+    def _create_invoice(
+        self, db_session, customer: Customer, status: str, overdue: bool = False
+    ) -> Invoice:
+        now = datetime.now(UTC)
+        due_date = now - timedelta(days=10) if overdue else now + timedelta(days=30)
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number=f"HEALTH-INV-{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            status=status,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("100.00"),
+            total=Decimal("100.00"),
+            currency="USD",
+            due_date=due_date,
+            issued_at=now - timedelta(days=5),
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+        db_session.refresh(inv)
+        return inv
+
+    def _create_payment(
+        self, db_session, customer: Customer, invoice: Invoice, status: str
+    ) -> Payment:
+        payment = Payment(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_id=invoice.id,
+            customer_id=customer.id,
+            amount=Decimal("100.00"),
+            currency="USD",
+            status=status,
+            provider="stripe",
+        )
+        db_session.add(payment)
+        db_session.commit()
+        db_session.refresh(payment)
+        return payment
+
+    def test_health_good_no_billing_history(self, client: TestClient, db_session):
+        """Customer with no invoices or payments is healthy."""
+        customer = self._create_customer(db_session)
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "good"
+        assert data["total_invoices"] == 0
+        assert data["paid_invoices"] == 0
+        assert data["overdue_invoices"] == 0
+        assert data["total_payments"] == 0
+        assert data["failed_payments"] == 0
+        assert data["overdue_amount"] == 0.0
+
+    def test_health_good_all_paid(self, client: TestClient, db_session):
+        """Customer with all invoices paid is healthy."""
+        customer = self._create_customer(db_session)
+        inv = self._create_invoice(db_session, customer, InvoiceStatus.PAID.value)
+        self._create_payment(db_session, customer, inv, PaymentStatus.SUCCEEDED.value)
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "good"
+        assert data["total_invoices"] == 1
+        assert data["paid_invoices"] == 1
+        assert data["overdue_invoices"] == 0
+
+    def test_health_warning_unpaid_not_overdue(self, client: TestClient, db_session):
+        """Customer with finalized but not-yet-overdue invoice is warning."""
+        customer = self._create_customer(db_session)
+        self._create_invoice(
+            db_session, customer, InvoiceStatus.FINALIZED.value, overdue=False
+        )
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "warning"
+        assert data["total_invoices"] == 1
+        assert data["paid_invoices"] == 0
+        assert data["overdue_invoices"] == 0
+
+    def test_health_warning_one_failed_payment(self, client: TestClient, db_session):
+        """Customer with exactly one failed payment is warning."""
+        customer = self._create_customer(db_session)
+        inv = self._create_invoice(db_session, customer, InvoiceStatus.PAID.value)
+        self._create_payment(db_session, customer, inv, PaymentStatus.FAILED.value)
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "warning"
+        assert data["failed_payments"] == 1
+
+    def test_health_critical_overdue_invoices(self, client: TestClient, db_session):
+        """Customer with overdue invoices is critical."""
+        customer = self._create_customer(db_session)
+        self._create_invoice(
+            db_session, customer, InvoiceStatus.FINALIZED.value, overdue=True
+        )
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "critical"
+        assert data["overdue_invoices"] == 1
+        assert data["overdue_amount"] == 100.0
+
+    def test_health_critical_multiple_failed_payments(
+        self, client: TestClient, db_session
+    ):
+        """Customer with 2+ failed payments is critical."""
+        customer = self._create_customer(db_session)
+        inv = self._create_invoice(db_session, customer, InvoiceStatus.PAID.value)
+        self._create_payment(db_session, customer, inv, PaymentStatus.FAILED.value)
+        self._create_payment(db_session, customer, inv, PaymentStatus.FAILED.value)
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "critical"
+        assert data["failed_payments"] == 2
+
+    def test_health_excludes_draft_and_voided(self, client: TestClient, db_session):
+        """Draft and voided invoices are excluded from health calculation."""
+        customer = self._create_customer(db_session)
+        self._create_invoice(db_session, customer, InvoiceStatus.DRAFT.value)
+        self._create_invoice(db_session, customer, InvoiceStatus.VOIDED.value)
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "good"
+        assert data["total_invoices"] == 0
+
+    def test_health_customer_not_found(self, client: TestClient):
+        """404 for nonexistent customer."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(f"/v1/customers/{fake_id}/health")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+    def test_health_mixed_scenario(self, client: TestClient, db_session):
+        """Customer with mix of paid invoices and one overdue is critical."""
+        customer = self._create_customer(db_session)
+        inv1 = self._create_invoice(db_session, customer, InvoiceStatus.PAID.value)
+        self._create_payment(db_session, customer, inv1, PaymentStatus.SUCCEEDED.value)
+        self._create_invoice(
+            db_session, customer, InvoiceStatus.FINALIZED.value, overdue=True
+        )
+
+        response = client.get(f"/v1/customers/{customer.id}/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "critical"
+        assert data["total_invoices"] == 2
+        assert data["paid_invoices"] == 1
+        assert data["overdue_invoices"] == 1
