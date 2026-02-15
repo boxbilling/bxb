@@ -57,6 +57,21 @@ const EXPORT_TYPES: ExportType[] = [
   'credit_notes',
 ]
 
+const EXPORT_TYPE_DESCRIPTIONS: Record<ExportType, string> = {
+  invoices:
+    'Invoice number, customer, status, amounts, currency, and dates (issued, due, paid). Filterable by status and customer.',
+  customers:
+    'Customer external ID, name, email, currency, timezone, and creation date.',
+  subscriptions:
+    'Subscription external ID, customer, plan, status, billing time, and lifecycle dates. Filterable by status and customer.',
+  events:
+    'Usage event transaction ID, customer, billable metric code, and timestamps. Filterable by customer and code.',
+  fees:
+    'Fee ID, invoice, type, amount, units, event count, payment status, and creation date. Filterable by fee type and invoice.',
+  credit_notes:
+    'Credit note number, invoice, customer, type, status, amount, currency, and dates. Filterable by status.',
+}
+
 function capitalize(s: string): string {
   return s
     .split('_')
@@ -244,11 +259,21 @@ function NewExportDialog({
                 <SelectContent>
                   {EXPORT_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>
-                      {capitalize(type)}
+                      <div className="flex flex-col gap-0.5">
+                        <span>{capitalize(type)}</span>
+                        <span className="text-xs text-muted-foreground font-normal">
+                          {EXPORT_TYPE_DESCRIPTIONS[type]}
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {exportType && (
+                <p className="text-xs text-muted-foreground">
+                  {EXPORT_TYPE_DESCRIPTIONS[exportType]}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="filters">Filters (JSON, optional)</Label>

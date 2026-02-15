@@ -753,7 +753,7 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No export preview
 
 **Recommendations:**
-- [ ] Add descriptions for each export type
+- [x] Add descriptions for each export type — Added `EXPORT_TYPE_DESCRIPTIONS` map to `DataExportsPage.tsx` with per-type summaries of exported columns and available filters. Descriptions appear in the Select dropdown items and as helper text below the selector.
 - [ ] Replace JSON filter input with structured form (date range, status, customer, etc.)
 - [ ] Add export size estimate before creation
 - [ ] Show progress percentage for in-progress exports
