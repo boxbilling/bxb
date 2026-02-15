@@ -1,6 +1,6 @@
 """Tests for Dashboard API endpoints."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -841,3 +841,177 @@ class TestDashboardRepoDialect:
         # to_char won't work on SQLite, so the query will raise
         with pytest.raises(Exception):  # noqa: B017
             repo.monthly_revenue_trend(org_id)
+
+
+class TestComputeTrend:
+    """Tests for the _compute_trend helper."""
+
+    def test_positive_change(self):
+        from app.routers.dashboard import _compute_trend
+
+        trend = _compute_trend(150.0, 100.0)
+        assert trend.previous_value == 100.0
+        assert trend.change_percent == 50.0
+
+    def test_negative_change(self):
+        from app.routers.dashboard import _compute_trend
+
+        trend = _compute_trend(80.0, 100.0)
+        assert trend.previous_value == 100.0
+        assert trend.change_percent == -20.0
+
+    def test_no_change(self):
+        from app.routers.dashboard import _compute_trend
+
+        trend = _compute_trend(100.0, 100.0)
+        assert trend.change_percent == 0.0
+
+    def test_previous_zero_returns_none_percent(self):
+        from app.routers.dashboard import _compute_trend
+
+        trend = _compute_trend(50.0, 0.0)
+        assert trend.previous_value == 0.0
+        assert trend.change_percent is None
+
+    def test_both_zero(self):
+        from app.routers.dashboard import _compute_trend
+
+        trend = _compute_trend(0.0, 0.0)
+        assert trend.previous_value == 0.0
+        assert trend.change_percent is None
+
+    def test_rounding(self):
+        from app.routers.dashboard import _compute_trend
+
+        trend = _compute_trend(10.0, 3.0)
+        assert trend.previous_value == 3.0
+        assert trend.change_percent == 233.3
+
+
+class TestPreviousPeriod:
+    """Tests for the _previous_period helper."""
+
+    def test_both_dates(self):
+        from app.routers.dashboard import _previous_period
+
+        prev_start, prev_end = _previous_period(date(2024, 2, 1), date(2024, 2, 29))
+        # 28-day period, previous should be 28 days before start
+        assert prev_end == date(2024, 1, 31)
+        duration = (date(2024, 2, 29) - date(2024, 2, 1)).days
+        assert (prev_end - prev_start).days == duration
+
+    def test_no_dates_defaults_to_30_days(self):
+        from app.routers.dashboard import _previous_period
+
+        prev_start, prev_end = _previous_period(None, None)
+        today = date.today()
+        expected_end = today - timedelta(days=31)
+        assert prev_end == expected_end
+        assert (prev_end - prev_start).days == 30
+
+    def test_only_start_date(self):
+        from app.routers.dashboard import _previous_period
+
+        prev_start, prev_end = _previous_period(date(2024, 3, 1), None)
+        today = date.today()
+        duration = (today - date(2024, 3, 1)).days
+        assert prev_end == date(2024, 2, 29)
+        assert (prev_end - prev_start).days == duration
+
+    def test_only_end_date(self):
+        from app.routers.dashboard import _previous_period
+
+        prev_start, prev_end = _previous_period(None, date(2024, 6, 30))
+        # Default start is end - 30 days = 2024-05-31
+        start = date(2024, 5, 31)
+        duration = (date(2024, 6, 30) - start).days  # 30
+        assert prev_end == start - timedelta(days=1)
+        assert (prev_end - prev_start).days == duration
+
+
+class TestTrendIndicatorsInResponses:
+    """Tests that trend indicators are present and correct in API responses."""
+
+    def test_revenue_trend_with_data(self, client: TestClient, seeded_data):
+        """Revenue response includes mrr_trend."""
+        response = client.get("/dashboard/revenue")
+        assert response.status_code == 200
+        data = response.json()
+        assert "mrr_trend" in data
+        assert data["mrr_trend"] is not None
+        assert "previous_value" in data["mrr_trend"]
+        assert "change_percent" in data["mrr_trend"]
+
+    def test_revenue_trend_empty_db(self, client: TestClient):
+        """Revenue trend with empty db returns zero previous and None percent."""
+        response = client.get("/dashboard/revenue")
+        data = response.json()
+        assert data["mrr_trend"]["previous_value"] == 0.0
+        assert data["mrr_trend"]["change_percent"] is None
+
+    def test_customers_trend_with_data(self, client: TestClient, seeded_data):
+        """Customer metrics include new_trend and churned_trend."""
+        response = client.get("/dashboard/customers")
+        assert response.status_code == 200
+        data = response.json()
+        assert "new_trend" in data
+        assert "churned_trend" in data
+        assert data["new_trend"] is not None
+        assert data["churned_trend"] is not None
+
+    def test_customers_trend_empty_db(self, client: TestClient):
+        """Customer trends with empty db."""
+        response = client.get("/dashboard/customers")
+        data = response.json()
+        assert data["new_trend"]["previous_value"] == 0.0
+        assert data["new_trend"]["change_percent"] is None
+        assert data["churned_trend"]["previous_value"] == 0.0
+        assert data["churned_trend"]["change_percent"] is None
+
+    def test_subscriptions_trend_with_data(self, client: TestClient, seeded_data):
+        """Subscription metrics include new_trend and canceled_trend."""
+        response = client.get("/dashboard/subscriptions")
+        assert response.status_code == 200
+        data = response.json()
+        assert "new_trend" in data
+        assert "canceled_trend" in data
+        assert data["new_trend"] is not None
+        assert data["canceled_trend"] is not None
+
+    def test_subscriptions_trend_empty_db(self, client: TestClient):
+        """Subscription trends with empty db."""
+        response = client.get("/dashboard/subscriptions")
+        data = response.json()
+        assert data["new_trend"]["previous_value"] == 0.0
+        assert data["new_trend"]["change_percent"] is None
+        assert data["canceled_trend"]["previous_value"] == 0.0
+        assert data["canceled_trend"]["change_percent"] is None
+
+    def test_revenue_trend_with_date_range(self, client: TestClient, seeded_data):
+        """Revenue trend respects explicit date range for previous period."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/revenue?start_date={week_ago}&end_date={today}"
+        )
+        data = response.json()
+        assert data["mrr_trend"] is not None
+        # Previous period should cover the 7 days before week_ago
+        assert isinstance(data["mrr_trend"]["previous_value"], float)
+
+    def test_customers_trend_with_previous_data(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """When there are customers in the previous period, change_percent is a number."""
+        # Move one customer's created_at to 45 days ago (in the "previous" period
+        # for a 30-day window)
+        c = seeded_data["customers"][0]
+        c.created_at = datetime.now(UTC) - timedelta(days=45)
+        db_session.commit()
+
+        response = client.get("/dashboard/customers")
+        data = response.json()
+        # new_this_month = 1 (only c2 is recent), prev period has c1
+        assert data["new_this_month"] == 1
+        assert data["new_trend"]["previous_value"] == 1.0
+        assert data["new_trend"]["change_percent"] == 0.0

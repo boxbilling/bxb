@@ -190,6 +190,11 @@ export type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
 export type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
 
 // --- Dashboard types ---
+export interface TrendIndicator {
+  previous_value: number
+  change_percent: number | null
+}
+
 export interface DashboardStats {
   total_customers: number
   active_subscriptions: number
@@ -218,12 +223,15 @@ export interface RevenueMetrics {
   overdue_amount: number
   currency: string
   monthly_trend: RevenueDataPoint[]
+  mrr_trend: TrendIndicator | null
 }
 
 export interface CustomerMetrics {
   total: number
   new_this_month: number
   churned_this_month: number
+  new_trend: TrendIndicator | null
+  churned_trend: TrendIndicator | null
 }
 
 export interface SubscriptionPlanBreakdown {
@@ -236,6 +244,8 @@ export interface SubscriptionMetrics {
   new_this_month: number
   canceled_this_month: number
   by_plan: SubscriptionPlanBreakdown[]
+  new_trend: TrendIndicator | null
+  canceled_trend: TrendIndicator | null
 }
 
 export interface UsageMetricVolume {

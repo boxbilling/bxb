@@ -928,12 +928,15 @@ export const dashboardApi = {
       overdue_amount: number
       currency: string
       monthly_trend: { month: string; revenue: number }[]
+      mrr_trend: { previous_value: number; change_percent: number | null } | null
     }>(`/dashboard/revenue${buildQuery(params)}`),
   getCustomerMetrics: (params?: DashboardDateRange) =>
     request<{
       total: number
       new_this_month: number
       churned_this_month: number
+      new_trend: { previous_value: number; change_percent: number | null } | null
+      churned_trend: { previous_value: number; change_percent: number | null } | null
     }>(`/dashboard/customers${buildQuery(params)}`),
   getSubscriptionMetrics: (params?: DashboardDateRange) =>
     request<{
@@ -941,6 +944,8 @@ export const dashboardApi = {
       new_this_month: number
       canceled_this_month: number
       by_plan: { plan_name: string; count: number }[]
+      new_trend: { previous_value: number; change_percent: number | null } | null
+      canceled_trend: { previous_value: number; change_percent: number | null } | null
     }>(`/dashboard/subscriptions${buildQuery(params)}`),
   getUsageMetrics: (params?: DashboardDateRange) =>
     request<{

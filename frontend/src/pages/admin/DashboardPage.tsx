@@ -6,12 +6,14 @@ import {
   DollarSign,
   FileText,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
   Wallet,
   UserPlus,
   UserMinus,
   BarChart3,
   CalendarIcon,
+  Minus,
 } from 'lucide-react'
 import {
   Line,
@@ -67,6 +69,37 @@ function formatRelativeTime(timestamp: string) {
   return `${days}d ago`
 }
 
+function TrendBadge({
+  changePercent,
+  invertColor,
+}: {
+  changePercent: number | null
+  invertColor?: boolean
+}) {
+  if (changePercent === null) return null
+
+  const isPositive = changePercent > 0
+  const isNeutral = changePercent === 0
+
+  let colorClass: string
+  if (isNeutral) {
+    colorClass = 'text-muted-foreground'
+  } else if (invertColor ? !isPositive : isPositive) {
+    colorClass = 'text-emerald-600 dark:text-emerald-400'
+  } else {
+    colorClass = 'text-red-600 dark:text-red-400'
+  }
+
+  const TrendIcon = isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown
+
+  return (
+    <span className={`inline-flex items-center gap-0.5 text-xs font-medium ${colorClass}`}>
+      <TrendIcon className="h-3 w-3" />
+      {Math.abs(changePercent)}%
+    </span>
+  )
+}
+
 function StatCard({
   title,
   value,
@@ -74,6 +107,8 @@ function StatCard({
   icon: Icon,
   mono,
   loading,
+  trend,
+  invertTrendColor,
 }: {
   title: string
   value: string | number
@@ -81,6 +116,8 @@ function StatCard({
   icon: React.ElementType
   mono?: boolean
   loading?: boolean
+  trend?: { change_percent: number | null } | null
+  invertTrendColor?: boolean
 }) {
   return (
     <Card>
@@ -97,9 +134,12 @@ function StatCard({
               <p className="text-[13px] font-medium text-muted-foreground">{title}</p>
               <Icon className="h-4 w-4 text-muted-foreground" />
             </div>
-            <p className={`text-2xl font-semibold tracking-tight ${mono ? 'font-mono' : ''}`}>
-              {value}
-            </p>
+            <div className="flex items-baseline gap-2">
+              <p className={`text-2xl font-semibold tracking-tight ${mono ? 'font-mono' : ''}`}>
+                {value}
+              </p>
+              {trend && <TrendBadge changePercent={trend.change_percent} invertColor={invertTrendColor} />}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">{description}</p>
           </>
         )}
@@ -315,6 +355,7 @@ export default function DashboardPage() {
           icon={TrendingUp}
           mono
           loading={revenueLoading}
+          trend={revenue?.mrr_trend}
         />
         <StatCard
           title="Outstanding Invoices"
@@ -369,6 +410,7 @@ export default function DashboardPage() {
           description={periodLabel}
           icon={UserPlus}
           loading={customersLoading}
+          trend={customerMetrics?.new_trend}
         />
         <StatCard
           title="Churned"
@@ -376,6 +418,8 @@ export default function DashboardPage() {
           description={periodLabel}
           icon={UserMinus}
           loading={customersLoading}
+          trend={customerMetrics?.churned_trend}
+          invertTrendColor
         />
       </div>
 
@@ -394,6 +438,7 @@ export default function DashboardPage() {
           description={periodLabel}
           icon={CreditCard}
           loading={subscriptionsLoading}
+          trend={subscriptionMetrics?.new_trend}
         />
         <StatCard
           title="Canceled"
@@ -401,6 +446,8 @@ export default function DashboardPage() {
           description={periodLabel}
           icon={CreditCard}
           loading={subscriptionsLoading}
+          trend={subscriptionMetrics?.canceled_trend}
+          invertTrendColor
         />
       </div>
 

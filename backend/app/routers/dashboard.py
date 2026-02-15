@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -15,11 +15,33 @@ from app.schemas.dashboard import (
     RevenueResponse,
     SubscriptionMetricsResponse,
     SubscriptionPlanBreakdown,
+    TrendIndicator,
     UsageMetricsResponse,
     UsageMetricVolume,
 )
 
 router = APIRouter()
+
+
+def _compute_trend(current: float, previous: float) -> TrendIndicator:
+    """Build a TrendIndicator comparing current vs previous period."""
+    change_percent = (
+        None if previous == 0 else round(((current - previous) / previous) * 100, 1)
+    )
+    return TrendIndicator(previous_value=previous, change_percent=change_percent)
+
+
+def _previous_period(
+    start_date: date | None, end_date: date | None
+) -> tuple[date, date]:
+    """Return the immediately preceding period of equal length."""
+    today = date.today()
+    end = end_date or today
+    start = start_date or (end - timedelta(days=30))
+    duration = (end - start).days
+    prev_end = start - timedelta(days=1)
+    prev_start = prev_end - timedelta(days=duration)
+    return prev_start, prev_end
 
 
 @router.get(
@@ -123,13 +145,16 @@ async def get_revenue(
     trend = repo.monthly_revenue_trend(
         organization_id, start_date=start_date, end_date=end_date
     )
+    mrr = repo.sum_monthly_revenue(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    prev_start, prev_end = _previous_period(start_date, end_date)
+    prev_mrr = repo.sum_monthly_revenue(
+        organization_id, start_date=prev_start, end_date=prev_end
+    )
     return RevenueResponse(
-        mrr=repo.sum_monthly_revenue(
-            organization_id, start_date=start_date, end_date=end_date
-        ),
-        total_revenue_this_month=repo.sum_monthly_revenue(
-            organization_id, start_date=start_date, end_date=end_date
-        ),
+        mrr=mrr,
+        total_revenue_this_month=mrr,
         outstanding_invoices=repo.outstanding_invoices_total(organization_id),
         overdue_amount=repo.overdue_invoices_total(organization_id),
         currency="USD",
@@ -137,6 +162,7 @@ async def get_revenue(
             RevenueDataPoint(month=m.month, revenue=m.revenue)
             for m in trend
         ],
+        mrr_trend=_compute_trend(mrr, prev_mrr),
     )
 
 
@@ -154,14 +180,25 @@ async def get_customer_metrics(
 ) -> CustomerMetricsResponse:
     """Get customer metrics: total, new this month, churned this month."""
     repo = DashboardRepository(db)
+    new_count = repo.new_customers_this_month(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    churned_count = repo.churned_customers_this_month(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    prev_start, prev_end = _previous_period(start_date, end_date)
+    prev_new = repo.new_customers_this_month(
+        organization_id, start_date=prev_start, end_date=prev_end
+    )
+    prev_churned = repo.churned_customers_this_month(
+        organization_id, start_date=prev_start, end_date=prev_end
+    )
     return CustomerMetricsResponse(
         total=repo.count_customers(organization_id),
-        new_this_month=repo.new_customers_this_month(
-            organization_id, start_date=start_date, end_date=end_date
-        ),
-        churned_this_month=repo.churned_customers_this_month(
-            organization_id, start_date=start_date, end_date=end_date
-        ),
+        new_this_month=new_count,
+        churned_this_month=churned_count,
+        new_trend=_compute_trend(new_count, prev_new),
+        churned_trend=_compute_trend(churned_count, prev_churned),
     )
 
 
@@ -180,18 +217,29 @@ async def get_subscription_metrics(
     """Get subscription metrics: active, new, canceled, by-plan breakdown."""
     repo = DashboardRepository(db)
     by_plan = repo.subscriptions_by_plan(organization_id)
+    new_count = repo.new_subscriptions_this_month(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    canceled_count = repo.canceled_subscriptions_this_month(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    prev_start, prev_end = _previous_period(start_date, end_date)
+    prev_new = repo.new_subscriptions_this_month(
+        organization_id, start_date=prev_start, end_date=prev_end
+    )
+    prev_canceled = repo.canceled_subscriptions_this_month(
+        organization_id, start_date=prev_start, end_date=prev_end
+    )
     return SubscriptionMetricsResponse(
         active=repo.count_active_subscriptions(organization_id),
-        new_this_month=repo.new_subscriptions_this_month(
-            organization_id, start_date=start_date, end_date=end_date
-        ),
-        canceled_this_month=repo.canceled_subscriptions_this_month(
-            organization_id, start_date=start_date, end_date=end_date
-        ),
+        new_this_month=new_count,
+        canceled_this_month=canceled_count,
         by_plan=[
             SubscriptionPlanBreakdown(plan_name=p.plan_name, count=p.count)
             for p in by_plan
         ],
+        new_trend=_compute_trend(new_count, prev_new),
+        canceled_trend=_compute_trend(canceled_count, prev_canceled),
     )
 
 

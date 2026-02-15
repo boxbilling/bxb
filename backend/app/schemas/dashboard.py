@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 
 
+class TrendIndicator(BaseModel):
+    previous_value: float
+    change_percent: float | None  # None when previous_value is 0
+
+
 class DashboardStatsResponse(BaseModel):
     total_customers: int
     active_subscriptions: int
@@ -29,12 +34,15 @@ class RevenueResponse(BaseModel):
     overdue_amount: float
     currency: str
     monthly_trend: list[RevenueDataPoint]
+    mrr_trend: TrendIndicator | None = None
 
 
 class CustomerMetricsResponse(BaseModel):
     total: int
     new_this_month: int
     churned_this_month: int
+    new_trend: TrendIndicator | None = None
+    churned_trend: TrendIndicator | None = None
 
 
 class SubscriptionPlanBreakdown(BaseModel):
@@ -47,6 +55,8 @@ class SubscriptionMetricsResponse(BaseModel):
     new_this_month: int
     canceled_this_month: int
     by_plan: list[SubscriptionPlanBreakdown]
+    new_trend: TrendIndicator | None = None
+    canceled_trend: TrendIndicator | None = None
 
 
 class UsageMetricVolume(BaseModel):
