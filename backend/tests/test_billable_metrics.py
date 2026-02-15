@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from app.core.database import get_db
 from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
+from app.models.charge import Charge
+from app.models.plan import Plan
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.schemas.billable_metric import BillableMetricCreate, BillableMetricStats
 from tests.conftest import DEFAULT_ORG_ID
@@ -981,3 +983,166 @@ class TestBillableMetricsStatsAPI:
         data = response.json()
         assert data["total"] == 3
         assert data["by_aggregation_type"] == {"count": 3}
+
+
+class TestBillableMetricRepositoryPlanCounts:
+    def test_plan_counts_empty(self, db_session):
+        """Test plan counts with no metrics or charges."""
+        repo = BillableMetricRepository(db_session)
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result == {}
+
+    def test_plan_counts_no_charges(self, db_session):
+        """Test plan counts when metrics exist but no charges reference them."""
+        repo = BillableMetricRepository(db_session)
+        repo.create(
+            BillableMetricCreate(code="unused", name="Unused", aggregation_type=AggregationType.COUNT),
+            DEFAULT_ORG_ID,
+        )
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result == {}
+
+    def test_plan_counts_single_plan(self, db_session):
+        """Test plan counts when one plan uses one metric."""
+        repo = BillableMetricRepository(db_session)
+        metric = repo.create(
+            BillableMetricCreate(code="api_calls", name="API Calls", aggregation_type=AggregationType.COUNT),
+            DEFAULT_ORG_ID,
+        )
+        plan = Plan(code="basic", name="Basic", interval="monthly", organization_id=DEFAULT_ORG_ID)
+        db_session.add(plan)
+        db_session.commit()
+        db_session.refresh(plan)
+
+        charge = Charge(
+            organization_id=DEFAULT_ORG_ID,
+            plan_id=plan.id,
+            billable_metric_id=metric.id,
+            charge_model="standard",
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result == {str(metric.id): 1}
+
+    def test_plan_counts_multiple_plans(self, db_session):
+        """Test plan counts when multiple plans use the same metric."""
+        repo = BillableMetricRepository(db_session)
+        metric = repo.create(
+            BillableMetricCreate(code="storage", name="Storage", aggregation_type=AggregationType.SUM, field_name="gb"),
+            DEFAULT_ORG_ID,
+        )
+        for i in range(3):
+            plan = Plan(code=f"plan_{i}", name=f"Plan {i}", interval="monthly", organization_id=DEFAULT_ORG_ID)
+            db_session.add(plan)
+            db_session.commit()
+            db_session.refresh(plan)
+            charge = Charge(
+                organization_id=DEFAULT_ORG_ID,
+                plan_id=plan.id,
+                billable_metric_id=metric.id,
+                charge_model="standard",
+            )
+            db_session.add(charge)
+        db_session.commit()
+
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result == {str(metric.id): 3}
+
+    def test_plan_counts_multiple_charges_same_plan(self, db_session):
+        """Test that multiple charges from the same plan count as 1 plan."""
+        repo = BillableMetricRepository(db_session)
+        metric = repo.create(
+            BillableMetricCreate(code="events", name="Events", aggregation_type=AggregationType.COUNT),
+            DEFAULT_ORG_ID,
+        )
+        plan = Plan(code="pro", name="Pro", interval="monthly", organization_id=DEFAULT_ORG_ID)
+        db_session.add(plan)
+        db_session.commit()
+        db_session.refresh(plan)
+
+        # Two charges in the same plan using the same metric
+        for _ in range(2):
+            charge = Charge(
+                organization_id=DEFAULT_ORG_ID,
+                plan_id=plan.id,
+                billable_metric_id=metric.id,
+                charge_model="standard",
+            )
+            db_session.add(charge)
+        db_session.commit()
+
+        result = repo.plan_counts(DEFAULT_ORG_ID)
+        assert result == {str(metric.id): 1}
+
+
+class TestBillableMetricPlanCountsAPI:
+    def test_plan_counts_empty(self, client: TestClient):
+        """Test plan counts API with no data."""
+        response = client.get("/v1/billable_metrics/plan_counts")
+        assert response.status_code == 200
+        assert response.json() == {}
+
+    def test_plan_counts_with_data(self, client: TestClient, db_session):
+        """Test plan counts API with metrics referenced by plans."""
+        # Create metric via API
+        metric_resp = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "pc_metric", "name": "PC Metric", "aggregation_type": "count"},
+        )
+        metric_id = metric_resp.json()["id"]
+
+        # Create plan and charge directly in DB
+        plan = Plan(code="pc_plan", name="PC Plan", interval="monthly", organization_id=DEFAULT_ORG_ID)
+        db_session.add(plan)
+        db_session.commit()
+        db_session.refresh(plan)
+
+        charge = Charge(
+            organization_id=DEFAULT_ORG_ID,
+            plan_id=plan.id,
+            billable_metric_id=uuid.UUID(metric_id),
+            charge_model="standard",
+        )
+        db_session.add(charge)
+        db_session.commit()
+
+        response = client.get("/v1/billable_metrics/plan_counts")
+        assert response.status_code == 200
+        data = response.json()
+        assert data[metric_id] == 1
+
+    def test_plan_counts_multiple_metrics(self, client: TestClient, db_session):
+        """Test plan counts API with multiple metrics."""
+        m1_resp = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "pc_m1", "name": "M1", "aggregation_type": "count"},
+        )
+        m2_resp = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "pc_m2", "name": "M2", "aggregation_type": "sum", "field_name": "val"},
+        )
+        m1_id = m1_resp.json()["id"]
+        m2_id = m2_resp.json()["id"]
+
+        plan1 = Plan(code="pc_p1", name="P1", interval="monthly", organization_id=DEFAULT_ORG_ID)
+        plan2 = Plan(code="pc_p2", name="P2", interval="monthly", organization_id=DEFAULT_ORG_ID)
+        db_session.add_all([plan1, plan2])
+        db_session.commit()
+        db_session.refresh(plan1)
+        db_session.refresh(plan2)
+
+        # m1 used in both plans, m2 used in only plan1
+        db_session.add_all([
+            Charge(organization_id=DEFAULT_ORG_ID, plan_id=plan1.id, billable_metric_id=uuid.UUID(m1_id), charge_model="standard"),
+            Charge(organization_id=DEFAULT_ORG_ID, plan_id=plan2.id, billable_metric_id=uuid.UUID(m1_id), charge_model="standard"),
+            Charge(organization_id=DEFAULT_ORG_ID, plan_id=plan1.id, billable_metric_id=uuid.UUID(m2_id), charge_model="volume"),
+        ])
+        db_session.commit()
+
+        response = client.get("/v1/billable_metrics/plan_counts")
+        assert response.status_code == 200
+        data = response.json()
+        assert data[m1_id] == 2
+        assert data[m2_id] == 1

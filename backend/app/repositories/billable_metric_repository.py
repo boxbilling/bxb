@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.billable_metric import BillableMetric
+from app.models.charge import Charge
 from app.schemas.billable_metric import BillableMetricCreate, BillableMetricUpdate
 
 
@@ -97,6 +98,19 @@ class BillableMetricRepository:
             .all()
         )
         return {str(agg_type): int(cnt) for agg_type, cnt in rows}
+
+    def plan_counts(self, organization_id: UUID) -> dict[str, int]:
+        """Return a mapping of billable_metric_id -> count of distinct plans using it."""
+        rows = (
+            self.db.query(
+                Charge.billable_metric_id,
+                func.count(func.distinct(Charge.plan_id)),
+            )
+            .filter(Charge.organization_id == organization_id)
+            .group_by(Charge.billable_metric_id)
+            .all()
+        )
+        return {str(metric_id): int(cnt) for metric_id, cnt in rows}
 
     def code_exists(self, code: str, organization_id: UUID) -> bool:
         """Check if a billable metric with the given code already exists."""

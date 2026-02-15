@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, BarChart3, Search } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, BarChart3, Search, Layers } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -241,6 +241,12 @@ export default function MetricsPage() {
     queryFn: () => billableMetricsApi.stats(),
   })
 
+  // Fetch plan counts per metric
+  const { data: planCounts } = useQuery({
+    queryKey: ['billable-metrics-plan-counts'],
+    queryFn: () => billableMetricsApi.planCounts(),
+  })
+
   const filteredMetrics = metrics?.filter((m) => {
     if (!search) return true
     const q = search.toLowerCase()
@@ -257,6 +263,7 @@ export default function MetricsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
       queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['billable-metrics-plan-counts'] })
       setFormOpen(false)
       toast.success('Billable metric created successfully')
     },
@@ -273,6 +280,7 @@ export default function MetricsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
       queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['billable-metrics-plan-counts'] })
       setEditingMetric(null)
       setFormOpen(false)
       toast.success('Billable metric updated successfully')
@@ -289,6 +297,7 @@ export default function MetricsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
       queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['billable-metrics-plan-counts'] })
       setDeleteMetric(null)
       toast.success('Billable metric deleted successfully')
     },
@@ -462,6 +471,10 @@ export default function MetricsPage() {
                       {metric.field_name}
                     </Badge>
                   )}
+                  <Badge variant="outline" className="text-muted-foreground">
+                    <Layers className="mr-1 h-3 w-3" />
+                    {planCounts?.[metric.id] ?? 0} {(planCounts?.[metric.id] ?? 0) === 1 ? 'plan' : 'plans'}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
