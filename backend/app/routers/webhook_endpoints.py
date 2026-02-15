@@ -8,11 +8,13 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.webhook import Webhook
+from app.models.webhook_delivery_attempt import WebhookDeliveryAttempt
 from app.models.webhook_endpoint import WebhookEndpoint
 from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
 from app.repositories.webhook_repository import WebhookRepository
 from app.schemas.webhook import (
     EndpointDeliveryStats,
+    WebhookDeliveryAttemptResponse,
     WebhookEndpointCreate,
     WebhookEndpointResponse,
     WebhookEndpointUpdate,
@@ -193,6 +195,24 @@ async def get_webhook(
     if not webhook:
         raise HTTPException(status_code=404, detail="Webhook not found")
     return webhook
+
+
+@router.get(
+    "/hooks/{webhook_id}/delivery_attempts",
+    response_model=list[WebhookDeliveryAttemptResponse],
+    summary="Get webhook delivery attempts",
+    responses={404: {"description": "Webhook not found"}},
+)
+async def get_webhook_delivery_attempts(
+    webhook_id: UUID,
+    db: Session = Depends(get_db),
+) -> list[WebhookDeliveryAttempt]:
+    """Get all delivery attempts for a webhook, ordered by attempt number."""
+    repo = WebhookRepository(db)
+    webhook = repo.get_by_id(webhook_id)
+    if not webhook:
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    return repo.get_delivery_attempts(webhook_id)
 
 
 @router.post(

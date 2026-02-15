@@ -14,6 +14,8 @@ import {
   XCircle,
   Clock,
   Webhook,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -70,6 +72,7 @@ import type {
   WebhookEndpointCreate,
   WebhookEndpointUpdate,
   Webhook as WebhookType,
+  WebhookDeliveryAttempt,
   EndpointDeliveryStats,
 } from '@/types/billing'
 
@@ -293,6 +296,106 @@ function EndpointFormDialog({
   )
 }
 
+// --- Retry History Timeline ---
+function RetryHistoryTimeline({ webhookId }: { webhookId: string }) {
+  const { data: attempts = [], isLoading } = useQuery({
+    queryKey: ['webhook-delivery-attempts', webhookId],
+    queryFn: () => webhookEndpointsApi.deliveryAttempts(webhookId),
+  })
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="flex gap-3">
+            <Skeleton className="h-6 w-6 rounded-full shrink-0" />
+            <div className="flex-1 space-y-1">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  if (attempts.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">No delivery attempts recorded yet.</p>
+    )
+  }
+
+  return (
+    <div className="relative space-y-0">
+      {attempts.map((attempt: WebhookDeliveryAttempt, index: number) => (
+        <div key={attempt.id} className="relative flex gap-3 pb-4 last:pb-0">
+          {/* Connector line */}
+          {index < attempts.length - 1 && (
+            <div className="absolute left-3 top-6 bottom-0 w-px bg-border" />
+          )}
+
+          {/* Status dot */}
+          <div
+            className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+              attempt.success
+                ? 'bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400'
+                : 'bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400'
+            }`}
+          >
+            {attempt.success ? (
+              <CheckCircle className="h-3.5 w-3.5" />
+            ) : attempt.error_message ? (
+              <AlertTriangle className="h-3.5 w-3.5" />
+            ) : (
+              <XCircle className="h-3.5 w-3.5" />
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {attempt.attempt_number === 0 ? 'Initial delivery' : `Retry #${attempt.attempt_number}`}
+              </span>
+              {attempt.success ? (
+                <Badge className="bg-green-600 text-xs">Succeeded</Badge>
+              ) : (
+                <Badge variant="destructive" className="text-xs">Failed</Badge>
+              )}
+              {attempt.http_status != null && (
+                <span
+                  className={`text-xs font-mono ${
+                    attempt.http_status >= 200 && attempt.http_status < 300
+                      ? 'text-green-600'
+                      : 'text-red-600'
+                  }`}
+                >
+                  HTTP {attempt.http_status}
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {format(new Date(attempt.attempted_at), 'MMM d, yyyy HH:mm:ss')}
+            </p>
+
+            {attempt.error_message && (
+              <p className="text-xs text-red-600 mt-1 font-mono truncate" title={attempt.error_message}>
+                {attempt.error_message}
+              </p>
+            )}
+            {attempt.response_body && !attempt.success && (
+              <p className="text-xs text-muted-foreground mt-1 font-mono truncate" title={attempt.response_body}>
+                {attempt.response_body}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // --- Webhook Detail Dialog ---
 function WebhookDetailDialog({
   open,
@@ -366,6 +469,14 @@ function WebhookDetailDialog({
               </div>
             )}
           </div>
+
+          {/* Delivery Attempts Timeline */}
+          {webhook.retries > 0 || webhook.status !== 'pending' ? (
+            <div className="space-y-2">
+              <Label>Delivery Attempts</Label>
+              <RetryHistoryTimeline webhookId={webhook.id} />
+            </div>
+          ) : null}
 
           {/* Payload */}
           <div className="space-y-2">
@@ -524,6 +635,7 @@ export default function WebhooksPage() {
     mutationFn: (webhookId: string) => webhookEndpointsApi.retryWebhook(webhookId),
     onSuccess: (updatedWebhook) => {
       queryClient.invalidateQueries({ queryKey: ['webhooks'] })
+      queryClient.invalidateQueries({ queryKey: ['webhook-delivery-attempts', updatedWebhook.id] })
       setSelectedWebhook(updatedWebhook)
       toast.success('Webhook retry initiated')
     },

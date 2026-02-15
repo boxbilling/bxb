@@ -445,6 +445,226 @@ class TestWebhookListAPI:
         assert data["status"] == "failed"
 
 
+class TestDeliveryAttemptsAPI:
+    """Tests for webhook delivery attempts API endpoint."""
+
+    def test_delivery_attempts_empty(self, client: TestClient, sample_webhook):
+        """Test fetching delivery attempts when none exist."""
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{sample_webhook.id}/delivery_attempts"
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_delivery_attempts_after_successful_delivery(
+        self, client: TestClient, db_session, active_endpoint
+    ):
+        """Test that successful delivery creates a delivery attempt record."""
+        repo = WebhookRepository(db_session)
+        webhook = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "invoice.created"},
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "OK"
+
+        with patch("app.services.webhook_service.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.post.return_value = mock_response
+            mock_client_cls.return_value = mock_client
+
+            from app.services.webhook_service import WebhookService
+
+            svc = WebhookService(db_session)
+            svc.deliver_webhook(webhook.id)
+
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{webhook.id}/delivery_attempts"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["attempt_number"] == 0
+        assert data[0]["success"] is True
+        assert data[0]["http_status"] == 200
+        assert data[0]["response_body"] == "OK"
+        assert data[0]["error_message"] is None
+
+    def test_delivery_attempts_after_failed_delivery(
+        self, client: TestClient, db_session, active_endpoint
+    ):
+        """Test that failed delivery creates a delivery attempt record."""
+        repo = WebhookRepository(db_session)
+        webhook = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "invoice.created"},
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.text = "Internal Server Error"
+
+        with patch("app.services.webhook_service.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.post.return_value = mock_response
+            mock_client_cls.return_value = mock_client
+
+            from app.services.webhook_service import WebhookService
+
+            svc = WebhookService(db_session)
+            svc.deliver_webhook(webhook.id)
+
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{webhook.id}/delivery_attempts"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["attempt_number"] == 0
+        assert data[0]["success"] is False
+        assert data[0]["http_status"] == 500
+        assert data[0]["response_body"] == "Internal Server Error"
+
+    def test_delivery_attempts_multiple_retries(
+        self, client: TestClient, db_session, active_endpoint
+    ):
+        """Test delivery attempts accumulate across retries."""
+        repo = WebhookRepository(db_session)
+        webhook = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "invoice.created"},
+        )
+
+        mock_response = MagicMock()
+        mock_response.status_code = 502
+        mock_response.text = "Bad Gateway"
+
+        from app.services.webhook_service import WebhookService
+
+        svc = WebhookService(db_session)
+
+        with patch("app.services.webhook_service.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.post.return_value = mock_response
+            mock_client_cls.return_value = mock_client
+
+            # Initial delivery (attempt 0) — fails
+            svc.deliver_webhook(webhook.id)
+
+            # Retry (attempt 1) — also fails
+            repo.increment_retry(webhook.id)
+            svc.deliver_webhook(webhook.id)
+
+            # Retry (attempt 2) — succeeds
+            repo.increment_retry(webhook.id)
+            mock_response.status_code = 200
+            mock_response.text = "OK"
+            svc.deliver_webhook(webhook.id)
+
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{webhook.id}/delivery_attempts"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3
+
+        # Ordered by attempt_number ascending
+        assert data[0]["attempt_number"] == 0
+        assert data[0]["success"] is False
+        assert data[0]["http_status"] == 502
+
+        assert data[1]["attempt_number"] == 1
+        assert data[1]["success"] is False
+        assert data[1]["http_status"] == 502
+
+        assert data[2]["attempt_number"] == 2
+        assert data[2]["success"] is True
+        assert data[2]["http_status"] == 200
+
+    def test_delivery_attempts_not_found(self, client: TestClient):
+        """Test 404 when webhook doesn't exist."""
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{uuid4()}/delivery_attempts"
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Webhook not found"
+
+    def test_delivery_attempts_http_error(
+        self, client: TestClient, db_session, active_endpoint
+    ):
+        """Test that HTTP errors record delivery attempts with error_message."""
+        import httpx
+
+        repo = WebhookRepository(db_session)
+        webhook = repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "test"},
+        )
+
+        with patch("app.services.webhook_service.httpx.Client") as mock_client_cls:
+            mock_client = MagicMock()
+            mock_client.__enter__ = MagicMock(return_value=mock_client)
+            mock_client.__exit__ = MagicMock(return_value=False)
+            mock_client.post.side_effect = httpx.ConnectError("Connection refused")
+            mock_client_cls.return_value = mock_client
+
+            from app.services.webhook_service import WebhookService
+
+            svc = WebhookService(db_session)
+            svc.deliver_webhook(webhook.id)
+
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{webhook.id}/delivery_attempts"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["success"] is False
+        assert data[0]["http_status"] is None
+        assert "Connection refused" in data[0]["error_message"]
+
+    def test_delivery_attempts_endpoint_not_found(
+        self, client: TestClient, db_session
+    ):
+        """Test delivery attempt recorded when endpoint is missing."""
+        from app.models.webhook import Webhook as WebhookModel
+
+        fake_wh = WebhookModel(
+            webhook_endpoint_id=uuid4(),
+            webhook_type="test",
+            payload={"x": 1},
+        )
+        db_session.add(fake_wh)
+        db_session.commit()
+        db_session.refresh(fake_wh)
+
+        from app.services.webhook_service import WebhookService
+
+        svc = WebhookService(db_session)
+        svc.deliver_webhook(fake_wh.id)
+
+        response = client.get(
+            f"/v1/webhook_endpoints/hooks/{fake_wh.id}/delivery_attempts"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["success"] is False
+        assert data[0]["error_message"] == "Endpoint not found"
+
+
 class TestInvoiceWebhookTriggers:
     """Tests for webhook triggers in the invoice router."""
 

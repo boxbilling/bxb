@@ -58,6 +58,7 @@ from app.models.wallet_transaction import (
     WalletTransaction,
 )
 from app.models.webhook import Webhook
+from app.models.webhook_delivery_attempt import WebhookDeliveryAttempt
 from app.models.webhook_endpoint import WebhookEndpoint
 
 __all__ = [
@@ -135,5 +136,6 @@ __all__ = [
     "WalletStatus",
     "WalletTransaction",
     "Webhook",
+    "WebhookDeliveryAttempt",
     "WebhookEndpoint",
 ]

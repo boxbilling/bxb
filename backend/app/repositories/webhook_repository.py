@@ -8,6 +8,7 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.models.webhook import Webhook
+from app.models.webhook_delivery_attempt import WebhookDeliveryAttempt
 
 
 class WebhookRepository:
@@ -149,3 +150,35 @@ class WebhookRepository:
         self.db.commit()
         self.db.refresh(webhook)
         return webhook
+
+    def create_delivery_attempt(
+        self,
+        webhook_id: UUID,
+        attempt_number: int,
+        success: bool,
+        http_status: int | None = None,
+        response_body: str | None = None,
+        error_message: str | None = None,
+    ) -> WebhookDeliveryAttempt:
+        """Record a delivery attempt for a webhook."""
+        attempt = WebhookDeliveryAttempt(
+            webhook_id=webhook_id,
+            attempt_number=attempt_number,
+            http_status=http_status,
+            response_body=response_body,
+            success=success,
+            error_message=error_message,
+        )
+        self.db.add(attempt)
+        self.db.commit()
+        self.db.refresh(attempt)
+        return attempt
+
+    def get_delivery_attempts(self, webhook_id: UUID) -> list[WebhookDeliveryAttempt]:
+        """Get all delivery attempts for a webhook, ordered by attempt number."""
+        return (
+            self.db.query(WebhookDeliveryAttempt)
+            .filter(WebhookDeliveryAttempt.webhook_id == webhook_id)
+            .order_by(WebhookDeliveryAttempt.attempt_number.asc())
+            .all()
+        )

@@ -2368,6 +2368,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/webhook_endpoints/hooks/{webhook_id}/delivery_attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get webhook delivery attempts
+         * @description Get all delivery attempts for a webhook, ordered by attempt number.
+         */
+        get: operations["get_webhook_delivery_attempts_v1_webhook_endpoints_hooks__webhook_id__delivery_attempts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/webhook_endpoints/hooks/{webhook_id}/retry": {
         parameters: {
             query?: never;
@@ -6849,6 +6869,34 @@ export interface components {
             expiration_at?: string | null;
             /** Priority */
             priority?: number | null;
+        };
+        /** WebhookDeliveryAttemptResponse */
+        WebhookDeliveryAttemptResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Webhook Id
+             * Format: uuid
+             */
+            webhook_id: string;
+            /** Attempt Number */
+            attempt_number: number;
+            /** Http Status */
+            http_status?: number | null;
+            /** Response Body */
+            response_body?: string | null;
+            /** Success */
+            success: boolean;
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Attempted At
+             * Format: date-time
+             */
+            attempted_at: string;
         };
         /** WebhookEndpointCreate */
         WebhookEndpointCreate: {
@@ -13626,6 +13674,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Webhook not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_webhook_delivery_attempts_v1_webhook_endpoints_hooks__webhook_id__delivery_attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryAttemptResponse"][];
                 };
             };
             /** @description Webhook not found */

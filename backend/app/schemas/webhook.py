@@ -61,3 +61,16 @@ class EndpointDeliveryStats(BaseModel):
     succeeded: int
     failed: int
     success_rate: float
+
+
+class WebhookDeliveryAttemptResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    webhook_id: UUID
+    attempt_number: int
+    http_status: int | None = None
+    response_body: str | None = None
+    success: bool
+    error_message: str | None = None
+    attempted_at: datetime

@@ -115,6 +115,7 @@ class WebhookService:
 
         Loads the webhook and endpoint, generates a signature, POSTs the
         payload, and updates the webhook status based on the response.
+        Records each delivery attempt in the delivery_attempts table.
 
         Args:
             webhook_id: ID of the webhook to deliver.
@@ -127,6 +128,8 @@ class WebhookService:
             logger.error("Webhook %s not found", webhook_id)
             return False
 
+        attempt_number = int(webhook.retries)
+
         endpoint = self.endpoint_repo.get_by_id(webhook.webhook_endpoint_id)  # type: ignore[arg-type]
         if not endpoint:
             logger.error(
@@ -135,6 +138,12 @@ class WebhookService:
                 webhook_id,
             )
             self.webhook_repo.mark_failed(webhook_id, response="Endpoint not found")
+            self.webhook_repo.create_delivery_attempt(
+                webhook_id=webhook_id,
+                attempt_number=attempt_number,
+                success=False,
+                error_message="Endpoint not found",
+            )
             return False
 
         payload_bytes = json.dumps(webhook.payload, default=str).encode("utf-8")
@@ -157,6 +166,13 @@ class WebhookService:
 
             if 200 <= resp.status_code < 300:
                 self.webhook_repo.mark_succeeded(webhook_id, resp.status_code)
+                self.webhook_repo.create_delivery_attempt(
+                    webhook_id=webhook_id,
+                    attempt_number=attempt_number,
+                    success=True,
+                    http_status=resp.status_code,
+                    response_body=resp.text[:1000] if resp.text else None,
+                )
                 return True
             else:
                 response_text = resp.text[:1000] if resp.text else None
@@ -165,13 +181,27 @@ class WebhookService:
                     http_status=resp.status_code,
                     response=response_text,
                 )
+                self.webhook_repo.create_delivery_attempt(
+                    webhook_id=webhook_id,
+                    attempt_number=attempt_number,
+                    success=False,
+                    http_status=resp.status_code,
+                    response_body=response_text,
+                )
                 return False
 
         except httpx.HTTPError as exc:
             logger.warning("Webhook delivery failed for %s: %s", webhook_id, exc)
+            error_msg = str(exc)[:1000]
             self.webhook_repo.mark_failed(
                 webhook_id,
-                response=str(exc)[:1000],
+                response=error_msg,
+            )
+            self.webhook_repo.create_delivery_attempt(
+                webhook_id=webhook_id,
+                attempt_number=attempt_number,
+                success=False,
+                error_message=error_msg,
             )
             return False
 

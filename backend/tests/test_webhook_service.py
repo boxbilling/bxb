@@ -79,6 +79,187 @@ def inactive_endpoint(db_session):
     return repo.update(endpoint.id, WebhookEndpointUpdate(status="inactive"), DEFAULT_ORG_ID)
 
 
+class TestDeliveryAttemptRepository:
+    """Tests for WebhookRepository delivery attempt methods."""
+
+    def test_create_delivery_attempt(self, db_session, active_endpoint):
+        """Test creating a delivery attempt record."""
+        webhook_repo = WebhookRepository(db_session)
+        webhook = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "test"},
+        )
+
+        attempt = webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=0,
+            success=True,
+            http_status=200,
+            response_body="OK",
+        )
+
+        assert attempt.webhook_id == webhook.id
+        assert attempt.attempt_number == 0
+        assert attempt.success is True
+        assert attempt.http_status == 200
+        assert attempt.response_body == "OK"
+        assert attempt.error_message is None
+        assert attempt.attempted_at is not None
+
+    def test_create_delivery_attempt_with_error(self, db_session, active_endpoint):
+        """Test creating a failed delivery attempt with error message."""
+        webhook_repo = WebhookRepository(db_session)
+        webhook = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "test"},
+        )
+
+        attempt = webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=0,
+            success=False,
+            error_message="Connection refused",
+        )
+
+        assert attempt.success is False
+        assert attempt.http_status is None
+        assert attempt.error_message == "Connection refused"
+
+    def test_get_delivery_attempts_empty(self, db_session, active_endpoint):
+        """Test getting delivery attempts when none exist."""
+        webhook_repo = WebhookRepository(db_session)
+        webhook = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "test"},
+        )
+
+        attempts = webhook_repo.get_delivery_attempts(webhook.id)
+        assert attempts == []
+
+    def test_get_delivery_attempts_ordered(self, db_session, active_endpoint):
+        """Test that delivery attempts are returned in order."""
+        webhook_repo = WebhookRepository(db_session)
+        webhook = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "test"},
+        )
+
+        webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=2,
+            success=True,
+            http_status=200,
+        )
+        webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=0,
+            success=False,
+            http_status=500,
+        )
+        webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=1,
+            success=False,
+            http_status=502,
+        )
+
+        attempts = webhook_repo.get_delivery_attempts(webhook.id)
+        assert len(attempts) == 3
+        assert [a.attempt_number for a in attempts] == [0, 1, 2]
+
+    def test_get_delivery_attempts_scoped_to_webhook(self, db_session, active_endpoint):
+        """Test that delivery attempts are scoped to the correct webhook."""
+        webhook_repo = WebhookRepository(db_session)
+        wh1 = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="invoice.created",
+            payload={"event": "1"},
+        )
+        wh2 = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="payment.succeeded",
+            payload={"event": "2"},
+        )
+
+        webhook_repo.create_delivery_attempt(
+            webhook_id=wh1.id,
+            attempt_number=0,
+            success=True,
+            http_status=200,
+        )
+        webhook_repo.create_delivery_attempt(
+            webhook_id=wh2.id,
+            attempt_number=0,
+            success=False,
+            http_status=500,
+        )
+
+        attempts_wh1 = webhook_repo.get_delivery_attempts(wh1.id)
+        assert len(attempts_wh1) == 1
+        assert attempts_wh1[0].success is True
+
+        attempts_wh2 = webhook_repo.get_delivery_attempts(wh2.id)
+        assert len(attempts_wh2) == 1
+        assert attempts_wh2[0].success is False
+
+
+class TestDeliveryAttemptSchema:
+    """Tests for WebhookDeliveryAttemptResponse schema."""
+
+    def test_schema_from_model(self, db_session, active_endpoint):
+        """Test schema serialization from model."""
+        from app.schemas.webhook import WebhookDeliveryAttemptResponse
+
+        webhook_repo = WebhookRepository(db_session)
+        webhook = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="test",
+            payload={"event": "test"},
+        )
+        attempt = webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=1,
+            success=False,
+            http_status=503,
+            response_body="Service Unavailable",
+            error_message=None,
+        )
+
+        response = WebhookDeliveryAttemptResponse.model_validate(attempt)
+        assert response.webhook_id == webhook.id
+        assert response.attempt_number == 1
+        assert response.success is False
+        assert response.http_status == 503
+        assert response.response_body == "Service Unavailable"
+        assert response.error_message is None
+
+    def test_schema_optional_fields(self, db_session, active_endpoint):
+        """Test schema with optional fields as None."""
+        from app.schemas.webhook import WebhookDeliveryAttemptResponse
+
+        webhook_repo = WebhookRepository(db_session)
+        webhook = webhook_repo.create(
+            webhook_endpoint_id=active_endpoint.id,
+            webhook_type="test",
+            payload={"event": "test"},
+        )
+        attempt = webhook_repo.create_delivery_attempt(
+            webhook_id=webhook.id,
+            attempt_number=0,
+            success=False,
+            error_message="Timeout",
+        )
+
+        response = WebhookDeliveryAttemptResponse.model_validate(attempt)
+        assert response.http_status is None
+        assert response.response_body is None
+        assert response.error_message == "Timeout"
+
+
 class TestGenerateHmacSignature:
     """Tests for the generate_hmac_signature function."""
 
