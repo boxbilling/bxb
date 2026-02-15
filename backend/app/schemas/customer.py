@@ -27,6 +27,12 @@ class CustomerUpdate(BaseModel):
     net_payment_term: int | None = Field(default=None, ge=0)
 
 
+class PortalProfileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    email: EmailStr | None = None
+    timezone: str | None = Field(default=None, max_length=50)
+
+
 class CustomerResponse(BaseModel):
     id: UUID
     external_id: str

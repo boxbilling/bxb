@@ -511,6 +511,111 @@ class TestPortalBrandingEndpoint:
         assert response.json()["detail"] == "Organization not found"
 
 
+class TestPortalProfileUpdateEndpoint:
+    """Tests for PATCH /portal/profile."""
+
+    def test_update_name(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"name": "Updated Name"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Updated Name"
+        assert data["email"] == "portal-ep@example.com"
+        assert data["timezone"] == "UTC"
+
+    def test_update_email(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"email": "new-email@example.com"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["email"] == "new-email@example.com"
+        assert data["name"] == "Portal Endpoint Customer"
+
+    def test_update_timezone(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"timezone": "America/New_York"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["timezone"] == "America/New_York"
+
+    def test_update_all_fields(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={
+                "name": "Full Update",
+                "email": "full@example.com",
+                "timezone": "Europe/London",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Full Update"
+        assert data["email"] == "full@example.com"
+        assert data["timezone"] == "Europe/London"
+
+    def test_update_empty_body(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Portal Endpoint Customer"
+
+    def test_update_email_to_null(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"email": None},
+        )
+        assert response.status_code == 200
+        assert response.json()["email"] is None
+
+    def test_invalid_email_returns_422(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"email": "not-an-email"},
+        )
+        assert response.status_code == 422
+
+    def test_empty_name_returns_422(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"name": ""},
+        )
+        assert response.status_code == 422
+
+    def test_expired_token_returns_401(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"name": "Should Fail"},
+        )
+        assert response.status_code == 401
+
+    def test_customer_not_found_returns_404(self, client: TestClient):
+        token = _make_portal_token(uuid.uuid4())
+        response = client.patch(
+            f"/portal/profile?token={token}",
+            json={"name": "Ghost"},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+
 class TestPortalCrossCutting:
     """Cross-cutting tests for portal auth and scoping."""
 

@@ -418,6 +418,11 @@ export const portalApi = {
     portalRequest<PaymentResponse[]>('/portal/payments', token),
   getWallet: (token: string) =>
     portalRequest<WalletResponse>('/portal/wallet', token),
+  updateProfile: (token: string, data: { name?: string; email?: string | null; timezone?: string }) =>
+    portalRequest<CustomerResponse>('/portal/profile', token, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Customers API

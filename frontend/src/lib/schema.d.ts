@@ -3475,6 +3475,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update customer profile
+         * @description Update the authenticated customer's profile (name, email, timezone).
+         */
+        patch: operations["update_portal_profile_portal_profile_patch"];
+        trace?: never;
+    };
+    "/portal/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get organization branding for portal
+         * @description Get the organization's branding information for portal display.
+         */
+        get: operations["get_portal_branding_portal_branding_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/portal/invoices": {
         parameters: {
             query?: never;
@@ -6259,6 +6299,10 @@ export interface components {
             logo_url: string | null;
             /** Email */
             email: string | null;
+            /** Portal Accent Color */
+            portal_accent_color: string | null;
+            /** Portal Welcome Message */
+            portal_welcome_message: string | null;
             /** Legal Name */
             legal_name: string | null;
             /** Address Line1 */
@@ -6377,17 +6421,6 @@ export interface components {
             zipcode?: string | null;
             /** Country */
             country?: string | null;
-        };
-        /** PortalBrandingResponse */
-        PortalBrandingResponse: {
-            /** Name */
-            name: string;
-            /** Logo Url */
-            logo_url: string | null;
-            /** Accent Color */
-            accent_color: string | null;
-            /** Welcome Message */
-            welcome_message: string | null;
         };
         /**
          * PaymentAttemptEntry
@@ -6778,6 +6811,26 @@ export interface components {
             trial_period_days?: number | null;
             /** Charges */
             charges?: components["schemas"]["ChargeInput"][] | null;
+        };
+        /** PortalBrandingResponse */
+        PortalBrandingResponse: {
+            /** Name */
+            name: string;
+            /** Logo Url */
+            logo_url: string | null;
+            /** Accent Color */
+            accent_color: string | null;
+            /** Welcome Message */
+            welcome_message: string | null;
+        };
+        /** PortalProfileUpdate */
+        PortalProfileUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Timezone */
+            timezone?: string | null;
         };
         /** PortalUrlResponse */
         PortalUrlResponse: {
@@ -17684,6 +17737,98 @@ export interface operations {
                 content?: never;
             };
             /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_portal_profile_portal_profile_patch: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_portal_branding_portal_branding_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalBrandingResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Organization not found */
             404: {
                 headers: {
                     [name: string]: unknown;

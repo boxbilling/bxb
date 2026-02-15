@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ShieldX,
   Menu,
+  UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { portalApi } from '@/lib/api'
@@ -33,6 +34,7 @@ const portalNavItems = [
   { name: 'Usage', href: '/portal/usage', icon: BarChart3 },
   { name: 'Payments', href: '/portal/payments', icon: ArrowLeftRight },
   { name: 'Wallet', href: '/portal/wallet', icon: Wallet },
+  { name: 'Profile', href: '/portal/profile', icon: UserCog },
 ]
 
 function PortalNavLinks({ onClick }: { onClick?: () => void }) {

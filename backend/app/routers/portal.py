@@ -17,7 +17,7 @@ from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.wallet_repository import WalletRepository
-from app.schemas.customer import CustomerResponse
+from app.schemas.customer import CustomerResponse, PortalProfileUpdate
 from app.schemas.invoice import InvoiceResponse
 from app.schemas.organization import PortalBrandingResponse
 from app.schemas.payment import PaymentResponse
@@ -48,6 +48,34 @@ async def get_portal_customer_profile(
     customer = repo.get_by_id(customer_id, organization_id)
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
+    return customer
+
+
+@router.patch(
+    "/profile",
+    response_model=CustomerResponse,
+    summary="Update customer profile",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Customer not found"},
+        422: {"description": "Validation error"},
+    },
+)
+async def update_portal_profile(
+    data: PortalProfileUpdate,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> Customer:
+    """Update the authenticated customer's profile (name, email, timezone)."""
+    customer_id, organization_id = portal_auth
+    repo = CustomerRepository(db)
+    customer = repo.get_by_id(customer_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(customer, key, value)
+    db.commit()
+    db.refresh(customer)
     return customer
 
 

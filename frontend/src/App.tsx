@@ -42,6 +42,7 @@ import {
   PortalUsagePage,
   PortalPaymentsPage,
   PortalWalletPage,
+  PortalProfilePage,
 } from './pages/portal'
 import SettingsPage from './pages/admin/SettingsPage'
 import ApiKeysPage from './pages/admin/ApiKeysPage'
@@ -97,6 +98,7 @@ function App() {
         <Route path="usage" element={<PortalUsagePage />} />
         <Route path="payments" element={<PortalPaymentsPage />} />
         <Route path="wallet" element={<PortalWalletPage />} />
+        <Route path="profile" element={<PortalProfilePage />} />
       </Route>
 
       {/* Redirect root to admin */}
