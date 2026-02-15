@@ -819,7 +819,7 @@ export const webhookEndpointsApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/webhook_endpoints/${id}`, { method: 'DELETE' }),
-  listWebhooks: (params?: { skip?: number; limit?: number; endpoint_id?: string; status?: string }) =>
+  listWebhooks: (params?: { skip?: number; limit?: number; endpoint_id?: string; status?: string; webhook_type?: string }) =>
     request<WebhookResponse[]>(`/v1/webhook_endpoints/hooks/list${buildQuery(params)}`),
   getWebhook: (webhookId: string) =>
     request<WebhookResponse>(`/v1/webhook_endpoints/hooks/${webhookId}`),

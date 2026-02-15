@@ -657,7 +657,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 **Recommendations:**
 - [x] Add counts to tabs: "Endpoints (5)" and "Recent (142)"
   <!-- Completed: Updated WebhooksPage TabsTrigger labels to include dynamic counts from the already-fetched endpoints and webhooks arrays. Counts are hidden during loading state to avoid showing stale "(0)" values. Tab labels now show e.g. "Endpoints (5)" and "Recent Webhooks (142)". Pure frontend change — no backend modifications needed since data was already available from existing React Query hooks. All 3576 backend tests pass with 100% coverage maintained. -->
-- [ ] Add event type filter for recent webhooks
+- [x] Add event type filter for recent webhooks
+  <!-- Completed: Added event type filter dropdown (Select component with Filter icon) to the Recent Webhooks tab alongside the existing status filter. Dropdown groups 25 webhook event types into 7 categories (Invoice, Payment, Subscription, Customer, Credit Note, Wallet, Usage) with category headers for easy browsing. Client-side filtering combines both status and event type filters. Empty state message is context-aware of active filters ("No webhooks match your filters" vs "No webhooks found"). Frontend API client listWebhooks() method extended with webhook_type parameter (backend already supported filtering). No backend changes needed. TypeScript compiles clean, all 3576 backend tests pass with 100% coverage. -->
 - [ ] Add delivery success rate indicator per endpoint
 - [ ] Add retry history timeline per webhook
 

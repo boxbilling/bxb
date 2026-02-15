@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
   Search,
+  Filter,
   MoreHorizontal,
   Pencil,
   Trash2,
@@ -70,6 +71,49 @@ import type {
   WebhookEndpointUpdate,
   Webhook as WebhookType,
 } from '@/types/billing'
+
+const WEBHOOK_EVENT_TYPE_CATEGORIES: Record<string, string[]> = {
+  Invoice: [
+    'invoice.created',
+    'invoice.finalized',
+    'invoice.paid',
+    'invoice.voided',
+  ],
+  Payment: [
+    'payment.created',
+    'payment.succeeded',
+    'payment.failed',
+  ],
+  Subscription: [
+    'subscription.created',
+    'subscription.terminated',
+    'subscription.canceled',
+    'subscription.started',
+    'subscription.paused',
+    'subscription.resumed',
+    'subscription.plan_changed',
+    'subscription.trial_ended',
+  ],
+  Customer: [
+    'customer.created',
+    'customer.updated',
+  ],
+  'Credit Note': [
+    'credit_note.created',
+    'credit_note.finalized',
+    'credit_note.refund.succeeded',
+    'credit_note.refund.failed',
+  ],
+  Wallet: [
+    'wallet.created',
+    'wallet.terminated',
+    'wallet.transaction.created',
+  ],
+  Usage: [
+    'usage_threshold.crossed',
+    'usage_alert.triggered',
+  ],
+}
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -364,6 +408,7 @@ export default function WebhooksPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [webhookStatusFilter, setWebhookStatusFilter] = useState<string>('all')
+  const [webhookEventTypeFilter, setWebhookEventTypeFilter] = useState<string>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [editingEndpoint, setEditingEndpoint] = useState<WebhookEndpoint | null>(null)
   const [deleteEndpoint, setDeleteEndpoint] = useState<WebhookEndpoint | null>(null)
@@ -401,7 +446,10 @@ export default function WebhooksPage() {
   const filteredWebhooks = webhooks.filter((wh) => {
     const matchesStatus =
       webhookStatusFilter === 'all' || wh.status === webhookStatusFilter
-    return matchesStatus
+    const matchesEventType =
+      webhookEventTypeFilter === 'all' ||
+      wh.webhook_type === webhookEventTypeFilter
+    return matchesStatus && matchesEventType
   })
 
   // Stats
@@ -691,7 +739,7 @@ export default function WebhooksPage() {
 
         {/* Recent Webhooks Tab */}
         <TabsContent value="webhooks" className="space-y-4">
-          {/* Filter */}
+          {/* Filters */}
           <div className="flex items-center gap-4">
             <Select value={webhookStatusFilter} onValueChange={setWebhookStatusFilter}>
               <SelectTrigger className="w-[180px]">
@@ -702,6 +750,29 @@ export default function WebhooksPage() {
                 <SelectItem value="succeeded">Succeeded</SelectItem>
                 <SelectItem value="failed">Failed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={webhookEventTypeFilter} onValueChange={setWebhookEventTypeFilter}>
+              <SelectTrigger className="w-[260px]">
+                <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
+                <SelectValue placeholder="Event Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Event Types</SelectItem>
+                {Object.entries(WEBHOOK_EVENT_TYPE_CATEGORIES).map(
+                  ([category, types]) => (
+                    <div key={category}>
+                      <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                        {category}
+                      </div>
+                      {types.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  )
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -738,7 +809,9 @@ export default function WebhooksPage() {
                       className="h-24 text-center text-muted-foreground"
                     >
                       <Webhook className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                      No webhooks found
+                      {webhookStatusFilter !== 'all' || webhookEventTypeFilter !== 'all'
+                        ? 'No webhooks match your filters'
+                        : 'No webhooks found'}
                     </TableCell>
                   </TableRow>
                 ) : (
