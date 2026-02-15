@@ -77,3 +77,13 @@ class AppliedCouponResponse(BaseModel):
     terminated_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CouponAnalyticsResponse(BaseModel):
+    """Analytics data for a coupon."""
+
+    times_applied: int
+    active_applications: int
+    terminated_applications: int
+    total_discount_cents: Decimal
+    remaining_uses: int | None = None

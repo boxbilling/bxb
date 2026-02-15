@@ -1287,3 +1287,331 @@ class TestCouponAPI:
         assert response.status_code == 201
         data = response.json()
         assert data["percentage_rate"] == "30.00"
+
+
+class TestRemoveAppliedCoupon:
+    """Tests for DELETE /v1/coupons/applied/{applied_coupon_id} endpoint."""
+
+    def test_remove_applied_coupon_success(
+        self, client, db_session, fixed_coupon, customer
+    ):
+        """Test removing an applied coupon terminates it."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied = applied_repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+
+        response = client.delete(f"/v1/coupons/applied/{applied.id}")
+        assert response.status_code == 204
+
+        # Verify it was terminated
+        db_session.refresh(applied)
+        assert applied.status == AppliedCouponStatus.TERMINATED.value
+        assert applied.terminated_at is not None
+
+    def test_remove_applied_coupon_not_found(self, client):
+        """Test removing non-existent applied coupon returns 404."""
+        response = client.delete(f"/v1/coupons/applied/{uuid4()}")
+        assert response.status_code == 404
+
+    def test_remove_applied_coupon_invalid_uuid(self, client):
+        """Test removing with invalid UUID returns 422."""
+        response = client.delete("/v1/coupons/applied/not-a-uuid")
+        assert response.status_code == 422
+
+
+class TestCouponAnalytics:
+    """Tests for GET /v1/coupons/{code}/analytics endpoint."""
+
+    def test_analytics_no_applications(self, client, db_session, fixed_coupon):
+        """Test analytics for coupon with no applications."""
+        response = client.get(f"/v1/coupons/{fixed_coupon.code}/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["times_applied"] == 0
+        assert data["active_applications"] == 0
+        assert data["terminated_applications"] == 0
+        assert Decimal(data["total_discount_cents"]) == Decimal("0")
+        assert data["remaining_uses"] is None
+
+    def test_analytics_with_active_applications(
+        self, client, db_session, fixed_coupon, customer, customer2
+    ):
+        """Test analytics with active coupon applications."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied_repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+        applied_repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer2.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+
+        response = client.get(f"/v1/coupons/{fixed_coupon.code}/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["times_applied"] == 2
+        assert data["active_applications"] == 2
+        assert data["terminated_applications"] == 0
+
+    def test_analytics_with_terminated_once_coupon(
+        self, client, db_session, fixed_coupon, customer
+    ):
+        """Test analytics with terminated once-frequency coupon (discount tracked)."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied = applied_repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+        applied_repo.terminate(applied.id)
+
+        response = client.get(f"/v1/coupons/{fixed_coupon.code}/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["times_applied"] == 1
+        assert data["active_applications"] == 0
+        assert data["terminated_applications"] == 1
+        assert Decimal(data["total_discount_cents"]) == Decimal("1000")
+
+    def test_analytics_with_recurring_coupon(
+        self, client, db_session, recurring_coupon, customer
+    ):
+        """Test analytics with recurring coupon showing remaining uses."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied_repo.create(
+            coupon_id=recurring_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("500"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="recurring",
+            frequency_duration=3,
+        )
+
+        response = client.get(f"/v1/coupons/{recurring_coupon.code}/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["times_applied"] == 1
+        assert data["active_applications"] == 1
+        assert data["remaining_uses"] == 3
+
+    def test_analytics_recurring_partially_consumed(
+        self, client, db_session, recurring_coupon, customer
+    ):
+        """Test analytics with recurring coupon partially consumed."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied = applied_repo.create(
+            coupon_id=recurring_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("500"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="recurring",
+            frequency_duration=3,
+        )
+        # Decrement once (simulating one billing cycle consumed)
+        applied_repo.decrement_frequency(applied.id)
+
+        response = client.get(f"/v1/coupons/{recurring_coupon.code}/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["remaining_uses"] == 2
+        # 1 time used * 500 cents = 500
+        assert Decimal(data["total_discount_cents"]) == Decimal("500")
+
+    def test_analytics_coupon_not_found(self, client):
+        """Test analytics for non-existent coupon returns 404."""
+        response = client.get("/v1/coupons/NONEXISTENT/analytics")
+        assert response.status_code == 404
+
+    def test_analytics_percentage_coupon_no_discount_tracking(
+        self, client, db_session, percentage_coupon, customer
+    ):
+        """Test analytics for percentage coupon (no discount amount tracking for forever)."""
+        applied_repo = AppliedCouponRepository(db_session)
+        applied_repo.create(
+            coupon_id=percentage_coupon.id,
+            customer_id=customer.id,
+            amount_cents=None,
+            amount_currency=None,
+            percentage_rate=Decimal("20.00"),
+            frequency="forever",
+            frequency_duration=None,
+        )
+
+        response = client.get(f"/v1/coupons/{percentage_coupon.code}/analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["times_applied"] == 1
+        assert data["active_applications"] == 1
+        assert data["remaining_uses"] is None
+
+
+class TestDuplicateCoupon:
+    """Tests for POST /v1/coupons/{code}/duplicate endpoint."""
+
+    def test_duplicate_fixed_coupon(self, client, db_session, fixed_coupon):
+        """Test duplicating a fixed amount coupon."""
+        response = client.post(f"/v1/coupons/{fixed_coupon.code}/duplicate")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["code"] == "FIXED10_copy"
+        assert data["name"] == "$10 Off (Copy)"
+        assert data["coupon_type"] == "fixed_amount"
+        assert Decimal(data["amount_cents"]) == Decimal("1000.0000")
+        assert data["amount_currency"] == "USD"
+        assert data["frequency"] == "once"
+        assert data["status"] == "active"
+
+    def test_duplicate_percentage_coupon(
+        self, client, db_session, percentage_coupon
+    ):
+        """Test duplicating a percentage coupon."""
+        response = client.post(f"/v1/coupons/{percentage_coupon.code}/duplicate")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["code"] == "PERCENT20_copy"
+        assert data["name"] == "20% Off (Copy)"
+        assert data["coupon_type"] == "percentage"
+        assert Decimal(data["percentage_rate"]) == Decimal("20.00")
+
+    def test_duplicate_recurring_coupon(
+        self, client, db_session, recurring_coupon
+    ):
+        """Test duplicating a recurring coupon preserves frequency_duration."""
+        response = client.post(
+            f"/v1/coupons/{recurring_coupon.code}/duplicate"
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["code"] == "RECURRING5_copy"
+        assert data["frequency"] == "recurring"
+        assert data["frequency_duration"] == 3
+        assert data["reusable"] is False
+
+    def test_duplicate_coupon_not_found(self, client):
+        """Test duplicating non-existent coupon returns 404."""
+        response = client.post("/v1/coupons/NONEXISTENT/duplicate")
+        assert response.status_code == 404
+
+    def test_duplicate_coupon_code_conflict(
+        self, client, db_session, fixed_coupon
+    ):
+        """Test duplicating when _copy code already exists returns 409."""
+        # First duplicate
+        response = client.post(f"/v1/coupons/{fixed_coupon.code}/duplicate")
+        assert response.status_code == 201
+
+        # Second duplicate should fail
+        response = client.post(f"/v1/coupons/{fixed_coupon.code}/duplicate")
+        assert response.status_code == 409
+        assert "already exists" in response.json()["detail"]
+
+
+class TestAppliedCouponRepositoryExtensions:
+    """Tests for new AppliedCouponRepository methods."""
+
+    def test_get_all_by_coupon_id(
+        self, db_session, fixed_coupon, customer, customer2
+    ):
+        """Test get_all_by_coupon_id returns all applications for a coupon."""
+        repo = AppliedCouponRepository(db_session)
+        repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+        repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer2.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+
+        results = repo.get_all_by_coupon_id(fixed_coupon.id)
+        assert len(results) == 2
+
+    def test_get_all_by_coupon_id_empty(self, db_session, fixed_coupon):
+        """Test get_all_by_coupon_id returns empty for unused coupon."""
+        repo = AppliedCouponRepository(db_session)
+        results = repo.get_all_by_coupon_id(fixed_coupon.id)
+        assert len(results) == 0
+
+    def test_count_by_coupon_id(
+        self, db_session, fixed_coupon, customer, customer2
+    ):
+        """Test count_by_coupon_id returns correct count."""
+        repo = AppliedCouponRepository(db_session)
+        repo.create(
+            coupon_id=fixed_coupon.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            percentage_rate=None,
+            frequency="once",
+            frequency_duration=None,
+        )
+
+        assert repo.count_by_coupon_id(fixed_coupon.id) == 1
+        assert repo.count_by_coupon_id(uuid4()) == 0
+
+
+class TestCouponAnalyticsSchema:
+    """Tests for CouponAnalyticsResponse schema."""
+
+    def test_schema_validation(self):
+        """Test CouponAnalyticsResponse schema with valid data."""
+        from app.schemas.coupon import CouponAnalyticsResponse
+
+        data = CouponAnalyticsResponse(
+            times_applied=5,
+            active_applications=3,
+            terminated_applications=2,
+            total_discount_cents=Decimal("5000"),
+            remaining_uses=10,
+        )
+        assert data.times_applied == 5
+        assert data.total_discount_cents == Decimal("5000")
+        assert data.remaining_uses == 10
+
+    def test_schema_remaining_uses_none(self):
+        """Test CouponAnalyticsResponse with remaining_uses=None."""
+        from app.schemas.coupon import CouponAnalyticsResponse
+
+        data = CouponAnalyticsResponse(
+            times_applied=1,
+            active_applications=1,
+            terminated_applications=0,
+            total_discount_cents=Decimal("0"),
+            remaining_uses=None,
+        )
+        assert data.remaining_uses is None

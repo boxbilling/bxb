@@ -9,6 +9,14 @@ import {
   UserPlus,
   Eye,
   Percent,
+  Copy,
+  BarChart3,
+  XCircle,
+  DollarSign,
+  Users,
+  Loader2,
+  Tag,
+  TrendingUp,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -45,6 +53,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -58,7 +67,6 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { couponsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Coupon,
@@ -153,6 +161,25 @@ function CouponFormDialog({
       onSubmit(create)
     }
   }
+
+  // Live discount preview
+  const discountPreview = (() => {
+    if (coupon) return null // Only show for create
+    if (formData.coupon_type === 'percentage' && formData.percentage_rate) {
+      const rate = parseFloat(formData.percentage_rate)
+      if (rate > 0 && rate <= 100) {
+        const exampleAmount = 10000 // $100.00
+        const discount = exampleAmount * rate / 100
+        return `${rate}% off — e.g. on a $100 invoice, customer saves ${formatCurrency(discount, formData.amount_currency || 'USD')}`
+      }
+    } else if (formData.coupon_type === 'fixed_amount' && formData.amount_cents) {
+      const cents = parseFloat(formData.amount_cents)
+      if (cents > 0) {
+        return `${formatCurrency(cents, formData.amount_currency || 'USD')} off per ${formData.frequency === 'once' ? 'use' : formData.frequency === 'recurring' ? `billing period (${formData.frequency_duration || '?'} times)` : 'billing period (forever)'}`
+      }
+    }
+    return null
+  })()
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -324,6 +351,15 @@ function CouponFormDialog({
                   />
                   <Label htmlFor="reusable">Reusable (can be applied to multiple customers)</Label>
                 </div>
+                {discountPreview && (
+                  <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-sm">
+                    <div className="flex items-center gap-2 text-primary font-medium mb-1">
+                      <TrendingUp className="h-3.5 w-3.5" />
+                      Discount Preview
+                    </div>
+                    <p className="text-muted-foreground">{discountPreview}</p>
+                  </div>
+                )}
               </>
             )}
             <div className="grid grid-cols-2 gap-4">
@@ -410,6 +446,23 @@ function ApplyCouponDialog({
     onSubmit(data)
   }
 
+  // Live preview of discount for apply dialog
+  const applyPreview = (() => {
+    if (!coupon) return null
+    const amount = amountOverride
+      ? parseFloat(amountOverride)
+      : parseFloat(String(coupon.amount_cents || '0'))
+    if (coupon.coupon_type === 'percentage') {
+      const rate = parseFloat(String(coupon.percentage_rate || '0'))
+      if (rate > 0) {
+        return `Customer will receive ${rate}% off on qualifying invoices`
+      }
+    } else if (amount > 0) {
+      return `Customer will receive ${formatCurrency(amount, coupon.amount_currency || 'USD')} off${amountOverride ? ' (overridden)' : ''}`
+    }
+    return null
+  })()
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[400px]">
@@ -417,7 +470,7 @@ function ApplyCouponDialog({
           <DialogHeader>
             <DialogTitle>Apply Coupon</DialogTitle>
             <DialogDescription>
-              Apply "{coupon?.name}" to a customer
+              Apply &quot;{coupon?.name}&quot; to a customer
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -465,6 +518,15 @@ function ApplyCouponDialog({
                 />
               </div>
             )}
+            {applyPreview && (
+              <div className="rounded-md bg-primary/5 border border-primary/20 p-3 text-sm">
+                <div className="flex items-center gap-2 text-primary font-medium mb-1">
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  Discount Preview
+                </div>
+                <p className="text-muted-foreground">{applyPreview}</p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -484,7 +546,7 @@ function ApplyCouponDialog({
   )
 }
 
-// --- Applied Coupons Dialog ---
+// --- Applied Coupons Dialog with Remove Action ---
 function AppliedCouponsDialog({
   open,
   onOpenChange,
@@ -496,17 +558,14 @@ function AppliedCouponsDialog({
   coupon: Coupon | null
   customers: Array<{ id: string; name: string }>
 }) {
-  // Fetch applied coupons for all customers to find those with this coupon
-  // We query each customer's applied coupons, but since we can't filter by coupon,
-  // we rely on listing all customers and their coupons
+  const queryClient = useQueryClient()
   const customerQueries = customers.map((c) => ({
     id: c.id,
     name: c.name,
   }))
 
-  // Fetch applied coupons for each customer
   const { data: allApplied = [], isLoading } = useQuery({
-    queryKey: ['applied-coupons-all'],
+    queryKey: ['applied-coupons-all', coupon?.id],
     queryFn: async () => {
       const results: Array<AppliedCoupon & { customerName: string }> = []
       for (const c of customerQueries) {
@@ -524,17 +583,34 @@ function AppliedCouponsDialog({
     enabled: !!coupon && open,
   })
 
+  const removeMutation = useMutation({
+    mutationFn: (appliedCouponId: string) =>
+      couponsApi.removeApplied(appliedCouponId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applied-coupons-all'] })
+      queryClient.invalidateQueries({ queryKey: ['coupon-analytics'] })
+      toast.success('Coupon removed from customer')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'Failed to remove coupon'
+      toast.error(message)
+    },
+  })
+
   const couponApplied = allApplied.filter((a) => a.coupon_id === coupon?.id)
 
   if (!coupon) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[700px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Applied Coupons</DialogTitle>
           <DialogDescription>
-            Customers with "{coupon.name}" ({coupon.code}) applied
+            Customers with &quot;{coupon.name}&quot; ({coupon.code}) applied
           </DialogDescription>
         </DialogHeader>
 
@@ -547,6 +623,7 @@ function AppliedCouponsDialog({
                 <TableHead>Frequency</TableHead>
                 <TableHead>Remaining</TableHead>
                 <TableHead>Applied</TableHead>
+                <TableHead className="w-[80px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -558,12 +635,13 @@ function AppliedCouponsDialog({
                     <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   </TableRow>
                 ))
               ) : couponApplied.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="h-16 text-center text-muted-foreground"
                   >
                     No customers have this coupon applied
@@ -589,6 +667,24 @@ function AppliedCouponsDialog({
                     <TableCell className="text-muted-foreground text-sm">
                       {format(new Date(applied.created_at), 'MMM d, yyyy')}
                     </TableCell>
+                    <TableCell>
+                      {applied.status === 'active' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => removeMutation.mutate(applied.id)}
+                          disabled={removeMutation.isPending}
+                        >
+                          {removeMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          <span className="ml-1 text-xs">Remove</span>
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -609,6 +705,7 @@ export default function CouponsPage() {
   const [applyCoupon, setApplyCoupon] = useState<Coupon | null>(null)
   const [viewApplied, setViewApplied] = useState<Coupon | null>(null)
   const [terminateCoupon, setTerminateCoupon] = useState<Coupon | null>(null)
+  const [analyticsCoupon, setAnalyticsCoupon] = useState<Coupon | null>(null)
 
   // Fetch coupons
   const {
@@ -624,6 +721,13 @@ export default function CouponsPage() {
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
     queryFn: () => customersApi.list(),
+  })
+
+  // Fetch analytics for selected coupon
+  const { data: analytics, isLoading: analyticsLoading } = useQuery({
+    queryKey: ['coupon-analytics', analyticsCoupon?.code],
+    queryFn: () => couponsApi.analytics(analyticsCoupon!.code),
+    enabled: !!analyticsCoupon,
   })
 
   // Filter coupons
@@ -699,12 +803,29 @@ export default function CouponsPage() {
     mutationFn: (data: ApplyCouponRequest) => couponsApi.apply(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applied-coupons-all'] })
+      queryClient.invalidateQueries({ queryKey: ['coupon-analytics'] })
       setApplyCoupon(null)
       toast.success('Coupon applied successfully')
     },
     onError: (error) => {
       const message =
         error instanceof ApiError ? error.message : 'Failed to apply coupon'
+      toast.error(message)
+    },
+  })
+
+  // Duplicate mutation
+  const duplicateMutation = useMutation({
+    mutationFn: (code: string) => couponsApi.duplicate(code),
+    onSuccess: (newCoupon) => {
+      queryClient.invalidateQueries({ queryKey: ['coupons'] })
+      toast.success(`Coupon duplicated as "${newCoupon.code}"`)
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'Failed to duplicate coupon'
       toast.error(message)
     },
   })
@@ -919,8 +1040,15 @@ export default function CouponsPage() {
                           <Eye className="mr-2 h-4 w-4" />
                           View Applied
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setAnalyticsCoupon(coupon)}
+                        >
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          Usage Analytics
+                        </DropdownMenuItem>
                         {coupon.status === 'active' && (
                           <>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleEdit(coupon)}
                             >
@@ -933,6 +1061,13 @@ export default function CouponsPage() {
                               <UserPlus className="mr-2 h-4 w-4" />
                               Apply to Customer
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => duplicateMutation.mutate(coupon.code)}
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => setTerminateCoupon(coupon)}
                               className="text-destructive"
@@ -971,13 +1106,85 @@ export default function CouponsPage() {
         isLoading={applyMutation.isPending}
       />
 
-      {/* View Applied Coupons Dialog */}
+      {/* View Applied Coupons Dialog with Remove Action */}
       <AppliedCouponsDialog
         open={!!viewApplied}
         onOpenChange={(open) => !open && setViewApplied(null)}
         coupon={viewApplied}
         customers={customers.map((c) => ({ id: c.id, name: c.name }))}
       />
+
+      {/* Usage Analytics Dialog */}
+      <Dialog
+        open={!!analyticsCoupon}
+        onOpenChange={(open) => !open && setAnalyticsCoupon(null)}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Usage Analytics</DialogTitle>
+            <DialogDescription>
+              Analytics for &quot;{analyticsCoupon?.name}&quot; ({analyticsCoupon?.code})
+            </DialogDescription>
+          </DialogHeader>
+          {analyticsLoading ? (
+            <div className="grid grid-cols-2 gap-4 py-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              ))}
+            </div>
+          ) : analytics ? (
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div className="rounded-lg border p-4 space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  Times Applied
+                </div>
+                <p className="text-2xl font-bold">{analytics.times_applied}</p>
+              </div>
+              <div className="rounded-lg border p-4 space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Tag className="h-4 w-4" />
+                  Active
+                </div>
+                <p className="text-2xl font-bold text-green-600">
+                  {analytics.active_applications}
+                </p>
+              </div>
+              <div className="rounded-lg border p-4 space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <DollarSign className="h-4 w-4" />
+                  Total Discount Given
+                </div>
+                <p className="text-2xl font-bold">
+                  {formatCurrency(
+                    analytics.total_discount_cents,
+                    analyticsCoupon?.amount_currency || 'USD'
+                  )}
+                </p>
+              </div>
+              <div className="rounded-lg border p-4 space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <BarChart3 className="h-4 w-4" />
+                  Remaining Uses
+                </div>
+                <p className="text-2xl font-bold">
+                  {analytics.remaining_uses !== null
+                    ? analytics.remaining_uses
+                    : '—'}
+                </p>
+                {analytics.remaining_uses === null && (
+                  <p className="text-xs text-muted-foreground">
+                    No recurring applications
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       {/* Terminate Confirmation */}
       <AlertDialog
@@ -988,7 +1195,7 @@ export default function CouponsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Terminate Coupon</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to terminate "{terminateCoupon?.name}" (
+              Are you sure you want to terminate &quot;{terminateCoupon?.name}&quot; (
               {terminateCoupon?.code})? This coupon will no longer be applicable
               to new customers.
             </AlertDialogDescription>

@@ -696,6 +696,22 @@ export const couponsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  removeApplied: (appliedCouponId: string) =>
+    request<void>(`/v1/coupons/applied/${appliedCouponId}`, {
+      method: 'DELETE',
+    }),
+  analytics: (code: string) =>
+    request<{
+      times_applied: number
+      active_applications: number
+      terminated_applications: number
+      total_discount_cents: string
+      remaining_uses: number | null
+    }>(`/v1/coupons/${code}/analytics`),
+  duplicate: (code: string) =>
+    request<CouponResponse>(`/v1/coupons/${code}/duplicate`, {
+      method: 'POST',
+    }),
 }
 
 // Add-ons API

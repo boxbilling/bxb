@@ -115,3 +115,23 @@ class AppliedCouponRepository:
         self.db.commit()
         self.db.refresh(applied_coupon)
         return applied_coupon
+
+    def get_all_by_coupon_id(self, coupon_id: UUID) -> list[AppliedCoupon]:
+        """Get all applied coupons for a specific coupon."""
+        return (
+            self.db.query(AppliedCoupon)
+            .filter(AppliedCoupon.coupon_id == coupon_id)
+            .order_by(AppliedCoupon.created_at.desc())
+            .all()
+        )
+
+    def count_by_coupon_id(self, coupon_id: UUID) -> int:
+        """Count applied coupons for a specific coupon."""
+        from sqlalchemy import func as sa_func
+
+        return (
+            self.db.query(sa_func.count(AppliedCoupon.id))
+            .filter(AppliedCoupon.coupon_id == coupon_id)
+            .scalar()
+            or 0
+        )
