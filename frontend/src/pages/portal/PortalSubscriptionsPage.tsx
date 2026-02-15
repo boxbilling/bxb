@@ -28,7 +28,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
   pending: { label: 'Pending', variant: 'outline', icon: Clock },
 }
 
-function formatCurrency(amountCents: number, currency: string): string {
+function formatCurrency(amountCents: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency.toUpperCase(),

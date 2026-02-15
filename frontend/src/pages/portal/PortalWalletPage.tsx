@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { portalApi } from '@/lib/api'
 import { usePortalToken } from '@/layouts/PortalLayout'
 
-function formatCurrency(amount: string | number, currency: string): string {
+function formatCurrency(amount: string | number, currency: string = 'USD'): string {
   const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

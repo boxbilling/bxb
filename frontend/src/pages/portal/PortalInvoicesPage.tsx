@@ -35,7 +35,7 @@ const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
   failed: 'destructive',
 }
 
-function formatAmount(amount: string, currency: string): string {
+function formatAmount(amount: string, currency: string = 'USD'): string {
   const num = parseFloat(amount)
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
