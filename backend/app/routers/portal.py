@@ -1,6 +1,7 @@
 """Customer self-service portal API endpoints."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -19,6 +20,8 @@ from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.coupon_repository import CouponRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.entitlement_repository import EntitlementRepository
+from app.repositories.feature_repository import FeatureRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.organization_repository import OrganizationRepository
@@ -41,6 +44,13 @@ from app.schemas.invoice import InvoiceResponse
 from app.schemas.organization import PortalBrandingResponse
 from app.schemas.payment import PaymentResponse
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse
+from app.schemas.portal import (
+    PortalDashboardSummaryResponse,
+    PortalNextBillingInfo,
+    PortalQuickActions,
+    PortalUpcomingCharge,
+    PortalUsageProgress,
+)
 from app.schemas.subscription import (
     ChangePlanPreviewResponse,
     PlanSummary,
@@ -59,6 +69,195 @@ from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.usage_query_service import UsageQueryService
 
 router = APIRouter()
+
+
+# ── Dashboard Summary ─────────────────────────────────────────────────
+
+
+@router.get(
+    "/dashboard_summary",
+    response_model=PortalDashboardSummaryResponse,
+    summary="Get portal dashboard summary",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def get_portal_dashboard_summary(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalDashboardSummaryResponse:
+    """Aggregated dashboard: billing, charges, usage, actions."""
+    customer_id, organization_id = portal_auth
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    sub_repo = SubscriptionRepository(db)
+    plan_repo = PlanRepository(db)
+    invoice_repo = InvoiceRepository(db)
+    wallet_repo = WalletRepository(db)
+    entitlement_repo = EntitlementRepository(db)
+    feature_repo = FeatureRepository(db)
+
+    subscriptions = sub_repo.get_by_customer_id(customer_id, organization_id)
+    active_subs = [s for s in subscriptions if s.status in ("active", "pending")]
+
+    now = datetime.now(UTC)
+
+    # ── Next billing dates ──
+    next_billing: list[PortalNextBillingInfo] = []
+    for sub in active_subs:
+        plan = plan_repo.get_by_id(UUID(str(sub.plan_id)), organization_id)
+        if not plan:
+            continue  # pragma: no cover
+        interval_str = str(plan.interval)
+        total_days = _PORTAL_INTERVAL_DAYS.get(interval_str, 30)
+
+        period_anchor = sub.started_at or sub.created_at
+        if period_anchor:
+            anchor = period_anchor if period_anchor.tzinfo else period_anchor.replace(tzinfo=UTC)
+        else:  # pragma: no cover
+            anchor = now
+
+        if anchor > now:
+            nbd = anchor
+            days_until = (anchor - now).days
+        else:
+            elapsed_days = (now - anchor).days
+            periods_elapsed = elapsed_days // total_days
+            nbd = anchor + timedelta(days=(periods_elapsed + 1) * total_days)
+            days_until = (nbd - now).days
+
+        next_billing.append(
+            PortalNextBillingInfo(
+                subscription_id=sub.id,  # type: ignore[arg-type]
+                subscription_external_id=str(sub.external_id),
+                plan_name=str(plan.name),
+                plan_interval=interval_str,
+                next_billing_date=nbd,  # type: ignore[arg-type]
+                days_until_next_billing=days_until,
+                amount_cents=int(plan.amount_cents),
+                currency=str(plan.currency),
+            )
+        )
+
+    # ── Upcoming charges estimate ──
+    upcoming_charges: list[PortalUpcomingCharge] = []
+    usage_service = UsageQueryService(db)
+    for sub in active_subs:
+        plan = plan_repo.get_by_id(UUID(str(sub.plan_id)), organization_id)
+        if not plan:
+            continue  # pragma: no cover
+        base_amount = int(plan.amount_cents)
+
+        usage_amount = 0
+        try:
+            usage = usage_service.get_current_usage(
+                subscription_id=UUID(str(sub.id)),
+                external_customer_id=str(customer.external_id),
+            )
+            usage_amount = int(usage.amount_cents)
+        except Exception:
+            pass  # If usage calculation fails, default to 0
+
+        upcoming_charges.append(
+            PortalUpcomingCharge(
+                subscription_id=sub.id,  # type: ignore[arg-type]
+                subscription_external_id=str(sub.external_id),
+                plan_name=str(plan.name),
+                base_amount_cents=base_amount,
+                usage_amount_cents=usage_amount,
+                total_estimated_cents=base_amount + usage_amount,
+                currency=str(plan.currency),
+            )
+        )
+
+    # ── Usage progress vs. plan limits ──
+    usage_progress: list[PortalUsageProgress] = []
+    seen_features: set[UUID] = set()
+    for sub in active_subs:
+        plan_id = UUID(str(sub.plan_id))
+        entitlements = entitlement_repo.get_by_plan_id(plan_id, organization_id)
+        for ent in entitlements:
+            feature_id = UUID(str(ent.feature_id))
+            if feature_id in seen_features:
+                continue
+            seen_features.add(feature_id)
+            feature = feature_repo.get_by_id(feature_id, organization_id)
+            if not feature:
+                continue  # pragma: no cover
+
+            current_usage = None
+            usage_pct = None
+            if str(feature.feature_type) == "quantity":
+                try:
+                    limit_val = float(str(ent.value))
+                    if limit_val > 0:
+                        # Try to get current usage for this subscription
+                        usage_resp = usage_service.get_current_usage(
+                            subscription_id=UUID(str(sub.id)),
+                            external_customer_id=str(customer.external_id),
+                        )
+                        # Sum up usage for charges whose metric code matches feature code
+                        feature_code = str(feature.code)
+                        total_units = sum(
+                            float(c.units) for c in usage_resp.charges
+                            if c.billable_metric.code == feature_code
+                        )
+                        current_usage = Decimal(str(total_units))
+                        usage_pct = min(100.0, (total_units / limit_val) * 100)
+                except (ValueError, Exception):
+                    pass  # Non-numeric entitlement or usage query failure
+
+            usage_progress.append(
+                PortalUsageProgress(
+                    feature_name=str(feature.name),
+                    feature_code=str(feature.code),
+                    feature_type=str(feature.feature_type),
+                    entitlement_value=str(ent.value),
+                    current_usage=current_usage,
+                    usage_percentage=usage_pct,
+                )
+            )
+
+    # ── Quick actions ──
+    invoices = invoice_repo.get_all(
+        organization_id=organization_id,
+        customer_id=customer_id,
+        status=InvoiceStatus.FINALIZED,
+        limit=1000,
+    )
+    outstanding_total = sum(int(inv.total) for inv in invoices)
+
+    wallets = wallet_repo.get_by_customer_id(customer_id)
+    active_wallets = [w for w in wallets if str(w.status) == "active"]
+    wallet_balance = sum(int(w.balance_cents) for w in active_wallets)
+
+    currency = str(customer.currency) if customer.currency else "USD"
+
+    quick_actions = PortalQuickActions(
+        outstanding_invoice_count=len(invoices),
+        outstanding_amount_cents=outstanding_total,
+        has_wallet=len(active_wallets) > 0,
+        wallet_balance_cents=wallet_balance,
+        has_active_subscription=len(active_subs) > 0,
+        currency=currency,
+    )
+
+    return PortalDashboardSummaryResponse(
+        next_billing=next_billing,
+        upcoming_charges=upcoming_charges,
+        usage_progress=usage_progress,
+        quick_actions=quick_actions,
+    )
+
+
+_PORTAL_INTERVAL_DAYS = {
+    "weekly": 7,
+    "monthly": 30,
+    "quarterly": 90,
+    "yearly": 365,
+}
 
 
 @router.get(

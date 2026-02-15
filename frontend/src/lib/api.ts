@@ -235,6 +235,52 @@ export type PortalPlanResponse = {
   currency: string
 }
 
+export type PortalNextBillingInfo = {
+  subscription_id: string
+  subscription_external_id: string
+  plan_name: string
+  plan_interval: string
+  next_billing_date: string
+  days_until_next_billing: number
+  amount_cents: number
+  currency: string
+}
+
+export type PortalUpcomingCharge = {
+  subscription_id: string
+  subscription_external_id: string
+  plan_name: string
+  base_amount_cents: number
+  usage_amount_cents: number
+  total_estimated_cents: number
+  currency: string
+}
+
+export type PortalUsageProgress = {
+  feature_name: string
+  feature_code: string
+  feature_type: string
+  entitlement_value: string
+  current_usage: number | null
+  usage_percentage: number | null
+}
+
+export type PortalQuickActions = {
+  outstanding_invoice_count: number
+  outstanding_amount_cents: number
+  has_wallet: boolean
+  wallet_balance_cents: number
+  has_active_subscription: boolean
+  currency: string
+}
+
+export type PortalDashboardSummaryResponse = {
+  next_billing: PortalNextBillingInfo[]
+  upcoming_charges: PortalUpcomingCharge[]
+  usage_progress: PortalUsageProgress[]
+  quick_actions: PortalQuickActions
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ORG_STORAGE_KEY = 'bxb_organization_id'
@@ -439,6 +485,8 @@ async function portalRequestBlob(
 
 // Portal API — customer-facing, authenticated via JWT token
 export const portalApi = {
+  getDashboardSummary: (token: string) =>
+    portalRequest<PortalDashboardSummaryResponse>('/portal/dashboard_summary', token),
   getCustomer: (token: string) =>
     portalRequest<CustomerResponse>('/portal/customer', token),
   getBranding: (token: string) =>

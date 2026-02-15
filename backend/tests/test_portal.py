@@ -16,6 +16,8 @@ from app.models.add_on import AddOn
 from app.models.applied_add_on import AppliedAddOn
 from app.models.coupon import Coupon
 from app.models.customer import Customer
+from app.models.entitlement import Entitlement
+from app.models.feature import Feature
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.organization import Organization
 from app.models.payment import Payment, PaymentStatus
@@ -1750,3 +1752,506 @@ class TestPortalCoupons:
             json={"coupon_code": coupon_fixed.code},
         )
         assert response.status_code == 401
+
+
+class TestPortalDashboardSummaryEndpoint:
+    """Tests for GET /portal/dashboard_summary."""
+
+    @pytest.fixture
+    def plan(self, db_session):
+        p = Plan(
+            code=f"plan_{uuid.uuid4().hex[:8]}",
+            name="Pro Plan",
+            interval="monthly",
+            amount_cents=2000,
+            currency="USD",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def active_subscription(self, db_session, customer, plan):
+        s = Subscription(
+            external_id=f"sub_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+        return s
+
+    @pytest.fixture
+    def pending_subscription(self, db_session, customer, plan):
+        s = Subscription(
+            external_id=f"sub_pending_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="pending",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2030, 6, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+        return s
+
+    @pytest.fixture
+    def finalized_invoice(self, db_session, customer):
+        inv = Invoice(
+            invoice_number=f"INV-FIN-{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            status=InvoiceStatus.FINALIZED.value,
+            billing_period_start=datetime(2025, 1, 1),
+            billing_period_end=datetime(2025, 1, 31),
+            subtotal=500,
+            total=500,
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+        db_session.refresh(inv)
+        return inv
+
+    @pytest.fixture
+    def feature_boolean(self, db_session):
+        f = Feature(
+            code="sso",
+            name="Single Sign-On",
+            feature_type="boolean",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(f)
+        db_session.commit()
+        db_session.refresh(f)
+        return f
+
+    @pytest.fixture
+    def feature_quantity(self, db_session):
+        f = Feature(
+            code="api_calls",
+            name="API Calls",
+            feature_type="quantity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(f)
+        db_session.commit()
+        db_session.refresh(f)
+        return f
+
+    @pytest.fixture
+    def entitlement_boolean(self, db_session, plan, feature_boolean):
+        e = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature_boolean.id,
+            value="true",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(e)
+        db_session.commit()
+        db_session.refresh(e)
+        return e
+
+    @pytest.fixture
+    def entitlement_quantity(self, db_session, plan, feature_quantity):
+        e = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature_quantity.id,
+            value="1000",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(e)
+        db_session.commit()
+        db_session.refresh(e)
+        return e
+
+    def test_empty_dashboard(self, client: TestClient, customer):
+        """No subscriptions, invoices, or wallets — all sections empty."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["next_billing"] == []
+        assert data["upcoming_charges"] == []
+        assert data["usage_progress"] == []
+        qa = data["quick_actions"]
+        assert qa["outstanding_invoice_count"] == 0
+        assert qa["outstanding_amount_cents"] == 0
+        assert qa["has_wallet"] is False
+        assert qa["has_active_subscription"] is False
+
+    def test_next_billing_active_subscription(
+        self, client: TestClient, customer, active_subscription, plan
+    ):
+        """Active subscription returns next billing info."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["next_billing"]) == 1
+        nb = data["next_billing"][0]
+        assert nb["subscription_id"] == str(active_subscription.id)
+        assert nb["plan_name"] == "Pro Plan"
+        assert nb["plan_interval"] == "monthly"
+        assert nb["amount_cents"] == 2000
+        assert nb["currency"] == "USD"
+        assert nb["days_until_next_billing"] >= 0
+
+    def test_next_billing_pending_future_subscription(
+        self, client: TestClient, customer, pending_subscription, plan
+    ):
+        """Pending subscription with future start date."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["next_billing"]) == 1
+        nb = data["next_billing"][0]
+        assert nb["subscription_id"] == str(pending_subscription.id)
+        # Future start date — days_until should be > 0
+        assert nb["days_until_next_billing"] > 0
+
+    def test_upcoming_charges_with_usage(
+        self, client: TestClient, customer, active_subscription, plan
+    ):
+        """Upcoming charges include base amount + mocked usage."""
+        token = _make_portal_token(customer.id)
+
+        from decimal import Decimal
+
+        from app.schemas.usage import (
+            BillableMetricUsage,
+            ChargeUsage,
+            CurrentUsageResponse,
+        )
+
+        mock_usage = CurrentUsageResponse(
+            from_datetime=datetime(2025, 1, 1, tzinfo=UTC),
+            to_datetime=datetime(2025, 1, 31, tzinfo=UTC),
+            amount_cents=Decimal("300"),
+            currency="USD",
+            charges=[
+                ChargeUsage(
+                    billable_metric=BillableMetricUsage(
+                        code="api_calls",
+                        name="API Calls",
+                        aggregation_type="count",
+                    ),
+                    units=Decimal("150"),
+                    amount_cents=Decimal("300"),
+                    charge_model="standard",
+                    filters={},
+                ),
+            ],
+        )
+
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+            return_value=mock_usage,
+        ):
+            response = client.get(
+                f"/portal/dashboard_summary?token={token}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["upcoming_charges"]) == 1
+        uc = data["upcoming_charges"][0]
+        assert uc["base_amount_cents"] == 2000
+        assert uc["usage_amount_cents"] == 300
+        assert uc["total_estimated_cents"] == 2300
+
+    def test_upcoming_charges_usage_failure_defaults_zero(
+        self, client: TestClient, customer, active_subscription, plan
+    ):
+        """Usage query failure defaults usage_amount_cents to 0."""
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+            side_effect=Exception("Usage service down"),
+        ):
+            response = client.get(
+                f"/portal/dashboard_summary?token={token}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["upcoming_charges"]) == 1
+        uc = data["upcoming_charges"][0]
+        assert uc["usage_amount_cents"] == 0
+        assert uc["total_estimated_cents"] == 2000
+
+    def test_usage_progress_boolean_feature(
+        self,
+        client: TestClient,
+        customer,
+        active_subscription,
+        plan,
+        feature_boolean,
+        entitlement_boolean,
+    ):
+        """Boolean feature entitlement appears in usage_progress."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        booleans = [
+            p for p in data["usage_progress"]
+            if p["feature_type"] == "boolean"
+        ]
+        assert len(booleans) == 1
+        assert booleans[0]["feature_name"] == "Single Sign-On"
+        assert booleans[0]["entitlement_value"] == "true"
+        assert booleans[0]["current_usage"] is None
+        assert booleans[0]["usage_percentage"] is None
+
+    def test_usage_progress_quantity_feature(
+        self,
+        client: TestClient,
+        customer,
+        active_subscription,
+        plan,
+        feature_quantity,
+        entitlement_quantity,
+    ):
+        """Quantity feature with matching usage shows progress %."""
+        token = _make_portal_token(customer.id)
+
+        from decimal import Decimal
+
+        from app.schemas.usage import (
+            BillableMetricUsage,
+            ChargeUsage,
+            CurrentUsageResponse,
+        )
+
+        mock_usage = CurrentUsageResponse(
+            from_datetime=datetime(2025, 1, 1, tzinfo=UTC),
+            to_datetime=datetime(2025, 1, 31, tzinfo=UTC),
+            amount_cents=Decimal("0"),
+            currency="USD",
+            charges=[
+                ChargeUsage(
+                    billable_metric=BillableMetricUsage(
+                        code="api_calls",
+                        name="API Calls",
+                        aggregation_type="count",
+                    ),
+                    units=Decimal("750"),
+                    amount_cents=Decimal("0"),
+                    charge_model="standard",
+                    filters={},
+                ),
+            ],
+        )
+
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+            return_value=mock_usage,
+        ):
+            response = client.get(
+                f"/portal/dashboard_summary?token={token}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        quantities = [
+            p for p in data["usage_progress"]
+            if p["feature_type"] == "quantity"
+        ]
+        assert len(quantities) == 1
+        assert quantities[0]["feature_name"] == "API Calls"
+        assert quantities[0]["entitlement_value"] == "1000"
+        assert float(quantities[0]["current_usage"]) == 750.0
+        assert quantities[0]["usage_percentage"] == 75.0
+
+    def test_quick_actions_with_outstanding_invoice(
+        self, client: TestClient, customer, finalized_invoice
+    ):
+        """Quick actions show outstanding invoice count and amount."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        qa = response.json()["quick_actions"]
+        assert qa["outstanding_invoice_count"] == 1
+        assert qa["outstanding_amount_cents"] == 500
+
+    def test_quick_actions_with_wallet(
+        self, client: TestClient, customer, wallet
+    ):
+        """Quick actions show wallet info."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        qa = response.json()["quick_actions"]
+        assert qa["has_wallet"] is True
+        assert qa["wallet_balance_cents"] == 5000
+
+    def test_quick_actions_has_active_subscription(
+        self, client: TestClient, customer, active_subscription
+    ):
+        """Quick actions reflect active subscription presence."""
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        qa = response.json()["quick_actions"]
+        assert qa["has_active_subscription"] is True
+
+    def test_invalid_token(self, client: TestClient):
+        """Invalid token returns 401."""
+        response = client.get(
+            "/portal/dashboard_summary?token=invalid"
+        )
+        assert response.status_code == 401
+
+    def test_customer_not_found(self, client: TestClient):
+        """Non-existent customer returns 404."""
+        token = _make_portal_token(uuid.uuid4())
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 404
+
+    def test_terminated_subscription_excluded(
+        self, client: TestClient, customer, plan, db_session
+    ):
+        """Terminated subscriptions don't appear in billing/charges."""
+        s = Subscription(
+            external_id=f"sub_term_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="terminated",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["next_billing"] == []
+        assert data["upcoming_charges"] == []
+        assert data["quick_actions"]["has_active_subscription"] is False
+
+    def test_usage_progress_quantity_usage_failure(
+        self,
+        client: TestClient,
+        customer,
+        active_subscription,
+        plan,
+        feature_quantity,
+        entitlement_quantity,
+    ):
+        """Usage query failure for quantity feature defaults to None."""
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+            side_effect=Exception("Service down"),
+        ):
+            response = client.get(
+                f"/portal/dashboard_summary?token={token}"
+            )
+        assert response.status_code == 200
+        quantities = [
+            p for p in response.json()["usage_progress"]
+            if p["feature_type"] == "quantity"
+        ]
+        assert len(quantities) == 1
+        # Usage query failed, so current_usage and percentage are None
+        assert quantities[0]["current_usage"] is None
+        assert quantities[0]["usage_percentage"] is None
+
+    def test_duplicate_feature_across_subscriptions_deduped(
+        self,
+        client: TestClient,
+        customer,
+        plan,
+        feature_boolean,
+        entitlement_boolean,
+        db_session,
+    ):
+        """Same feature on two subscriptions appears only once."""
+        # Create two active subs with the same plan
+        s1 = Subscription(
+            external_id=f"sub_dup1_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        s2 = Subscription(
+            external_id=f"sub_dup2_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add_all([s1, s2])
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        # Feature should appear only once despite two subs
+        booleans = [
+            p for p in response.json()["usage_progress"]
+            if p["feature_code"] == "sso"
+        ]
+        assert len(booleans) == 1
+
+    def test_quantity_entitlement_zero_limit(
+        self,
+        client: TestClient,
+        customer,
+        active_subscription,
+        plan,
+        feature_quantity,
+        db_session,
+    ):
+        """Quantity entitlement with value=0 skips usage calc."""
+        e = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature_quantity.id,
+            value="0",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(e)
+        db_session.commit()
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/dashboard_summary?token={token}"
+        )
+        assert response.status_code == 200
+        quantities = [
+            p for p in response.json()["usage_progress"]
+            if p["feature_type"] == "quantity"
+        ]
+        assert len(quantities) == 1
+        # Zero limit means no usage calculation attempted
+        assert quantities[0]["current_usage"] is None
+        assert quantities[0]["usage_percentage"] is None
