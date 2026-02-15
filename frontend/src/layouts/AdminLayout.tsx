@@ -19,6 +19,7 @@ import {
   Bell,
   Plug,
   Radio,
+  ToggleLeft,
   Send,
   FileDown,
   ScrollText,
@@ -61,6 +62,7 @@ const navigationGroups = [
     items: [
       { name: 'Billable Metrics', href: '/admin/metrics', icon: Gauge },
       { name: 'Plans', href: '/admin/plans', icon: Layers },
+      { name: 'Features', href: '/admin/features', icon: ToggleLeft },
     ],
   },
   {

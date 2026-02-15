@@ -120,6 +120,14 @@ type BillingEntityResponse = components['schemas']['BillingEntityResponse']
 type BillingEntityCreate = components['schemas']['BillingEntityCreate']
 type BillingEntityUpdate = components['schemas']['BillingEntityUpdate']
 
+type FeatureResponse = components['schemas']['FeatureResponse']
+type FeatureCreate = components['schemas']['FeatureCreate']
+type FeatureUpdate = components['schemas']['FeatureUpdate']
+
+type EntitlementResponse = components['schemas']['EntitlementResponse']
+type EntitlementCreate = components['schemas']['EntitlementCreate']
+type EntitlementUpdate = components['schemas']['EntitlementUpdate']
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ORG_STORAGE_KEY = 'bxb_organization_id'
@@ -318,6 +326,8 @@ export const subscriptionsApi = {
     }),
   terminate: (id: string, onTerminationAction?: string) =>
     request<void>(`/v1/subscriptions/${id}${buildQuery({ on_termination_action: onTerminationAction })}`, { method: 'DELETE' }),
+  getEntitlements: (externalId: string) =>
+    request<EntitlementResponse[]>(`/v1/subscriptions/${externalId}/entitlements`),
 }
 
 // Events API
@@ -745,6 +755,43 @@ export const billingEntitiesApi = {
     }),
   delete: (code: string) =>
     request<void>(`/v1/billing_entities/${code}`, { method: 'DELETE' }),
+}
+
+// Features API
+export const featuresApi = {
+  list: () =>
+    request<FeatureResponse[]>('/v1/features/'),
+  get: (code: string) => request<FeatureResponse>(`/v1/features/${code}`),
+  create: (data: FeatureCreate) =>
+    request<FeatureResponse>('/v1/features/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (code: string, data: FeatureUpdate) =>
+    request<FeatureResponse>(`/v1/features/${code}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (code: string) =>
+    request<void>(`/v1/features/${code}`, { method: 'DELETE' }),
+}
+
+// Entitlements API
+export const entitlementsApi = {
+  list: (params?: { plan_id?: string }) =>
+    request<EntitlementResponse[]>(`/v1/entitlements/${buildQuery(params)}`),
+  create: (data: EntitlementCreate) =>
+    request<EntitlementResponse>('/v1/entitlements/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: EntitlementUpdate) =>
+    request<EntitlementResponse>(`/v1/entitlements/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    request<void>(`/v1/entitlements/${id}`, { method: 'DELETE' }),
 }
 
 // Dashboard API

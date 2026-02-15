@@ -25,6 +25,7 @@ import {
   PaymentMethodsPage,
   AuditLogsPage,
   BillingEntitiesPage,
+  FeaturesPage,
 } from './pages/admin'
 import SettingsPage from './pages/admin/SettingsPage'
 import ApiKeysPage from './pages/admin/ApiKeysPage'
@@ -57,6 +58,7 @@ function App() {
         <Route path="payment-methods" element={<PaymentMethodsPage />} />
         <Route path="webhooks" element={<WebhooksPage />} />
         <Route path="billing-entities" element={<BillingEntitiesPage />} />
+        <Route path="features" element={<FeaturesPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />

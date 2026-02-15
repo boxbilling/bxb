@@ -160,6 +160,17 @@ export type BillingEntity = components['schemas']['BillingEntityResponse']
 export type BillingEntityCreate = components['schemas']['BillingEntityCreate']
 export type BillingEntityUpdate = components['schemas']['BillingEntityUpdate']
 
+// --- Features ---
+export type Feature = components['schemas']['FeatureResponse']
+export type FeatureCreate = components['schemas']['FeatureCreate']
+export type FeatureUpdate = components['schemas']['FeatureUpdate']
+export type FeatureType = components['schemas']['FeatureType']
+
+// --- Entitlements ---
+export type Entitlement = components['schemas']['EntitlementResponse']
+export type EntitlementCreate = components['schemas']['EntitlementCreate']
+export type EntitlementUpdate = components['schemas']['EntitlementUpdate']
+
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
