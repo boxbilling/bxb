@@ -27,6 +27,7 @@ from app.models.dunning_campaign import DunningCampaign
 from app.models.dunning_campaign_threshold import DunningCampaignThreshold
 from app.models.event import Event
 from app.models.fee import Fee, FeePaymentStatus, FeeType
+from app.models.idempotency_record import IdempotencyRecord
 from app.models.integration import (
     Integration,
     IntegrationProviderType,
@@ -96,6 +97,7 @@ __all__ = [
     "Fee",
     "FeePaymentStatus",
     "FeeType",
+    "IdempotencyRecord",
     "Integration",
     "IntegrationCustomer",
     "IntegrationMapping",
