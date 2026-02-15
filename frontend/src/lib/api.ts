@@ -201,6 +201,44 @@ async function request<T>(
   return response.json()
 }
 
+export interface PaginatedResponse<T> {
+  data: T[]
+  totalCount: number
+}
+
+async function requestWithCount<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<PaginatedResponse<T>> {
+  const url = `${API_BASE_URL}${endpoint}`
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const orgId = getActiveOrganizationId()
+  if (orgId) {
+    headers['X-Organization-Id'] = orgId
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new ApiError(response.status, error.message || error.detail || 'Request failed', error)
+  }
+
+  const totalCount = parseInt(response.headers.get('X-Total-Count') || '0', 10)
+  const data = await response.json()
+  return { data, totalCount }
+}
+
 async function requestBlob(
   endpoint: string,
   options: RequestInit = {}
@@ -454,6 +492,8 @@ export const subscriptionsApi = {
 export const eventsApi = {
   list: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string }) =>
     request<EventResponse[]>(`/v1/events/${buildQuery(params)}`),
+  listPaginated: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string }) =>
+    requestWithCount<EventResponse>(`/v1/events/${buildQuery(params)}`),
   get: (id: string) => request<EventResponse>(`/v1/events/${id}`),
   create: (data: EventCreate) =>
     request<EventResponse>('/v1/events/', {

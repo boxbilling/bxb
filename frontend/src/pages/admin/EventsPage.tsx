@@ -1,20 +1,13 @@
-import { Fragment, useState, useEffect, useMemo } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query'
 import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon } from 'lucide-react'
 import { format, subDays, subMonths, startOfDay, endOfDay } from 'date-fns'
 import { toast } from 'sonner'
+import { useVirtualizer } from '@tanstack/react-virtual'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -203,6 +196,7 @@ function FeeEstimatorDialog({
 }
 
 const POLLING_INTERVAL = 5000
+const PAGE_SIZE = 100
 
 type DatePreset = 'all' | '1h' | '24h' | '7d' | '30d' | 'custom'
 
@@ -236,6 +230,9 @@ function getPresetTimestamps(preset: DatePreset): { from?: string; to?: string }
   return { from: from.toISOString(), to: now.toISOString() }
 }
 
+const ROW_HEIGHT = 41
+const EXPANDED_ROW_HEIGHT = 120
+
 export default function EventsPage() {
   const [customerFilter, setCustomerFilter] = useState('')
   const [codeFilter, setCodeFilter] = useState('')
@@ -245,6 +242,8 @@ export default function EventsPage() {
   const [datePreset, setDatePreset] = useState<DatePreset>('all')
   const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined)
   const [calendarOpen, setCalendarOpen] = useState(false)
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Debounce filter values
   const [debouncedCustomer, setDebouncedCustomer] = useState('')
@@ -276,17 +275,73 @@ export default function EventsPage() {
     return {}
   }, [datePreset, customRange])
 
-  const { data: events, isLoading, error, dataUpdatedAt } = useQuery({
-    queryKey: ['events', { external_customer_id: debouncedCustomer || undefined, code: debouncedCode || undefined, ...dateParams }],
-    queryFn: () =>
-      eventsApi.list({
-        limit: 100,
-        external_customer_id: debouncedCustomer || undefined,
-        code: debouncedCode || undefined,
-        ...dateParams,
+  const filterParams = useMemo(() => ({
+    external_customer_id: debouncedCustomer || undefined,
+    code: debouncedCode || undefined,
+    ...dateParams,
+  }), [debouncedCustomer, debouncedCode, dateParams])
+
+  const {
+    data,
+    isLoading,
+    error,
+    dataUpdatedAt,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['events', filterParams],
+    queryFn: ({ pageParam = 0 }) =>
+      eventsApi.listPaginated({
+        skip: pageParam,
+        limit: PAGE_SIZE,
+        ...filterParams,
       }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, _allPages, lastPageParam) => {
+      const nextSkip = lastPageParam + PAGE_SIZE
+      if (nextSkip >= lastPage.totalCount) return undefined
+      return nextSkip
+    },
     refetchInterval: isPolling ? POLLING_INTERVAL : false,
   })
+
+  const allEvents = useMemo(
+    () => data?.pages.flatMap((page) => page.data) ?? [],
+    [data],
+  )
+
+  const totalCount = data?.pages[0]?.totalCount ?? 0
+
+  const rowVirtualizer = useVirtualizer({
+    count: allEvents.length,
+    getScrollElement: () => scrollContainerRef.current,
+    estimateSize: (index) => {
+      const event = allEvents[index]
+      if (event && expandedRow === event.id) {
+        return ROW_HEIGHT + EXPANDED_ROW_HEIGHT
+      }
+      return ROW_HEIGHT
+    },
+    overscan: 20,
+  })
+
+  // Trigger fetch when scrolling near the bottom
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    const { scrollTop, scrollHeight, clientHeight } = container
+    if (scrollHeight - scrollTop - clientHeight < 300 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
+
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+    container.addEventListener('scroll', handleScroll)
+    return () => container.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
 
   if (error) {
     return (
@@ -432,96 +487,156 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* Last updated */}
-      {dataUpdatedAt > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Last updated: {format(new Date(dataUpdatedAt), 'HH:mm:ss')}
-        </p>
-      )}
+      {/* Status bar */}
+      <div className="flex items-center justify-between">
+        {dataUpdatedAt > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Last updated: {format(new Date(dataUpdatedAt), 'HH:mm:ss')}
+          </p>
+        )}
+        {!isLoading && allEvents.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Showing {allEvents.length.toLocaleString()} of {totalCount.toLocaleString()} events
+          </p>
+        )}
+      </div>
 
-      {/* Table */}
+      {/* Virtualized Table */}
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[180px]">Timestamp</TableHead>
-              <TableHead>Transaction ID</TableHead>
-              <TableHead>Customer ID</TableHead>
-              <TableHead>Code</TableHead>
-              <TableHead>Properties</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              [...Array(10)].map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-5 w-36" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                </TableRow>
-              ))
-            ) : !events || events.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Activity className="h-8 w-8" />
-                    <p>No events found</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              events.map((event) => (
-                <Fragment key={event.id}>
-                  <TableRow
-                    className="cursor-pointer"
-                    onClick={() => setExpandedRow(expandedRow === event.id ? null : event.id)}
+        {/* Fixed table header */}
+        <div className="border-b">
+          <table className="w-full caption-bottom text-sm">
+            <thead className="[&_tr]:border-b">
+              <tr className="border-b transition-colors hover:bg-muted/50">
+                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground w-[180px]">Timestamp</th>
+                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Transaction ID</th>
+                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Customer ID</th>
+                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Code</th>
+                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Properties</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
+
+        {/* Scrollable virtual body */}
+        <div
+          ref={scrollContainerRef}
+          className="overflow-auto"
+          style={{ maxHeight: 'calc(100vh - 380px)', minHeight: '200px' }}
+        >
+          {isLoading ? (
+            <table className="w-full caption-bottom text-sm">
+              <tbody>
+                {[...Array(10)].map((_, i) => (
+                  <tr key={i} className="border-b transition-colors">
+                    <td className="p-4 align-middle w-[180px]"><Skeleton className="h-5 w-36" /></td>
+                    <td className="p-4 align-middle"><Skeleton className="h-5 w-48" /></td>
+                    <td className="p-4 align-middle"><Skeleton className="h-5 w-28" /></td>
+                    <td className="p-4 align-middle"><Skeleton className="h-5 w-24" /></td>
+                    <td className="p-4 align-middle"><Skeleton className="h-5 w-32" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : allEvents.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-24">
+              <Activity className="h-8 w-8" />
+              <p>No events found</p>
+            </div>
+          ) : (
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const event = allEvents[virtualRow.index]
+                const isExpanded = expandedRow === event.id
+                return (
+                  <div
+                    key={event.id}
+                    data-index={virtualRow.index}
+                    ref={rowVirtualizer.measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
                   >
-                    <TableCell>
-                      <span className="text-sm">
-                        {format(new Date(event.timestamp), 'MMM d, yyyy HH:mm:ss')}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                        {event.transaction_id}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                        {event.external_customer_id}
-                      </code>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{event.code}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {Object.keys(event.properties).length > 0 ? (
-                        <code className="text-xs text-muted-foreground">
-                          {JSON.stringify(event.properties).length > 50
-                            ? JSON.stringify(event.properties).slice(0, 50) + '...'
-                            : JSON.stringify(event.properties)}
-                        </code>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                  {expandedRow === event.id && (
-                    <TableRow key={`${event.id}-details`}>
-                      <TableCell colSpan={5} className="bg-muted/50 p-4">
-                        <pre className="whitespace-pre-wrap break-all text-xs font-mono">
-                          {JSON.stringify(event.properties, null, 2)}
-                        </pre>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </Fragment>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                    <table className="w-full caption-bottom text-sm">
+                      <tbody>
+                        <tr
+                          className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
+                          onClick={() => setExpandedRow(isExpanded ? null : event.id)}
+                        >
+                          <td className="p-4 align-middle w-[180px]">
+                            <span className="text-sm">
+                              {format(new Date(event.timestamp), 'MMM d, yyyy HH:mm:ss')}
+                            </span>
+                          </td>
+                          <td className="p-4 align-middle">
+                            <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                              {event.transaction_id}
+                            </code>
+                          </td>
+                          <td className="p-4 align-middle">
+                            <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                              {event.external_customer_id}
+                            </code>
+                          </td>
+                          <td className="p-4 align-middle">
+                            <Badge variant="outline">{event.code}</Badge>
+                          </td>
+                          <td className="p-4 align-middle">
+                            {Object.keys(event.properties).length > 0 ? (
+                              <code className="text-xs text-muted-foreground">
+                                {JSON.stringify(event.properties).length > 50
+                                  ? JSON.stringify(event.properties).slice(0, 50) + '...'
+                                  : JSON.stringify(event.properties)}
+                              </code>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="border-b">
+                            <td colSpan={5} className="bg-muted/50 p-4">
+                              <pre className="whitespace-pre-wrap break-all text-xs font-mono">
+                                {JSON.stringify(event.properties, null, 2)}
+                              </pre>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Loading more indicator */}
+          {isFetchingNextPage && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading more events...</span>
+            </div>
+          )}
+
+          {/* End of list indicator */}
+          {!hasNextPage && allEvents.length > 0 && !isLoading && (
+            <div className="flex items-center justify-center py-3">
+              <span className="text-xs text-muted-foreground">
+                All {totalCount.toLocaleString()} events loaded
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Fee Estimator Dialog */}
