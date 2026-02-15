@@ -728,6 +728,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{subscription_id}/change_plan_preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview plan change with price comparison and proration
+         * @description Preview a plan change showing price comparison and proration details.
+         */
+        post: operations["change_plan_preview_v1_subscriptions__subscription_id__change_plan_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{subscription_id}/cancel": {
         parameters: {
             query?: never;
@@ -3433,6 +3453,36 @@ export interface components {
          */
         BillingTime: "calendar" | "anniversary";
         /**
+         * ChangePlanPreviewRequest
+         * @description Request body for plan change preview.
+         */
+        ChangePlanPreviewRequest: {
+            /**
+             * New Plan Id
+             * Format: uuid
+             */
+            new_plan_id: string;
+            /**
+             * Effective Date
+             * @description When the plan change takes effect. Defaults to now.
+             */
+            effective_date?: string | null;
+        };
+        /**
+         * ChangePlanPreviewResponse
+         * @description Response for plan change preview showing comparison and proration.
+         */
+        ChangePlanPreviewResponse: {
+            current_plan: components["schemas"]["PlanSummary"];
+            new_plan: components["schemas"]["PlanSummary"];
+            /**
+             * Effective Date
+             * Format: date-time
+             */
+            effective_date: string;
+            proration: components["schemas"]["ProrationDetail"];
+        };
+        /**
          * ChargeFilterInput
          * @description Filter configuration for a charge within a plan.
          */
@@ -5320,6 +5370,27 @@ export interface components {
             /** Total Amount Cents */
             total_amount_cents: number;
         };
+        /**
+         * PlanSummary
+         * @description Summary of a plan for comparison.
+         */
+        PlanSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+            /** Interval */
+            interval: string;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Currency */
+            currency: string;
+        };
         /** PlanUpdate */
         PlanUpdate: {
             /** Name */
@@ -5339,6 +5410,22 @@ export interface components {
         PortalUrlResponse: {
             /** Portal Url */
             portal_url: string;
+        };
+        /**
+         * ProrationDetail
+         * @description Proration calculation detail.
+         */
+        ProrationDetail: {
+            /** Days Remaining */
+            days_remaining: number;
+            /** Total Days */
+            total_days: number;
+            /** Current Plan Credit Cents */
+            current_plan_credit_cents: number;
+            /** New Plan Charge Cents */
+            new_plan_charge_cents: number;
+            /** Net Amount Cents */
+            net_amount_cents: number;
         };
         /** RecentActivityResponse */
         RecentActivityResponse: {
@@ -5589,6 +5676,8 @@ export interface components {
         SubscriptionStatus: "pending" | "active" | "canceled" | "terminated";
         /** SubscriptionUpdate */
         SubscriptionUpdate: {
+            /** Plan Id */
+            plan_id?: string | null;
             status?: components["schemas"]["SubscriptionStatus"] | null;
             /** Ending At */
             ending_at?: string | null;
@@ -8117,6 +8206,62 @@ export interface operations {
                 content?: never;
             };
             /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_plan_preview_v1_subscriptions__subscription_id__change_plan_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePlanPreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePlanPreviewResponse"];
+                };
+            };
+            /** @description Invalid plan or same plan */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription or plan not found */
             404: {
                 headers: {
                     [name: string]: unknown;

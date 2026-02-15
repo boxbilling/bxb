@@ -22,6 +22,8 @@ type SubscriptionResponse = components['schemas']['SubscriptionResponse']
 type SubscriptionCreate = components['schemas']['SubscriptionCreate']
 type SubscriptionUpdate = components['schemas']['SubscriptionUpdate']
 type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']
+type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest']
+type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
 type InvoiceUpdate = components['schemas']['InvoiceUpdate']
@@ -431,6 +433,11 @@ export const subscriptionsApi = {
     request<EntitlementResponse[]>(`/v1/subscriptions/${externalId}/entitlements`),
   getLifecycle: (id: string) =>
     request<SubscriptionLifecycleResponse>(`/v1/subscriptions/${id}/lifecycle`),
+  changePlanPreview: (id: string, data: ChangePlanPreviewRequest) =>
+    request<ChangePlanPreviewResponse>(`/v1/subscriptions/${id}/change_plan_preview`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Events API

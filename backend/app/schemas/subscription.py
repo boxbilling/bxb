@@ -19,6 +19,7 @@ class SubscriptionCreate(BaseModel):
 
 
 class SubscriptionUpdate(BaseModel):
+    plan_id: UUID | None = None
     status: SubscriptionStatus | None = None
     ending_at: datetime | None = None
     canceled_at: datetime | None = None
@@ -53,3 +54,43 @@ class SubscriptionResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class ChangePlanPreviewRequest(BaseModel):
+    """Request body for plan change preview."""
+
+    new_plan_id: UUID
+    effective_date: datetime | None = Field(
+        default=None,
+        description="When the plan change takes effect. Defaults to now.",
+    )
+
+
+class PlanSummary(BaseModel):
+    """Summary of a plan for comparison."""
+
+    id: UUID
+    name: str
+    code: str
+    interval: str
+    amount_cents: int
+    currency: str
+
+
+class ProrationDetail(BaseModel):
+    """Proration calculation detail."""
+
+    days_remaining: int
+    total_days: int
+    current_plan_credit_cents: int
+    new_plan_charge_cents: int
+    net_amount_cents: int
+
+
+class ChangePlanPreviewResponse(BaseModel):
+    """Response for plan change preview showing comparison and proration."""
+
+    current_plan: PlanSummary
+    new_plan: PlanSummary
+    effective_date: datetime
+    proration: ProrationDetail

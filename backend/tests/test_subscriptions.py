@@ -1056,3 +1056,377 @@ class TestSubscriptionsAPI:
         assert len(data) == 2
         for sub in data:
             assert sub["customer_id"] == customer1["id"]
+
+
+class TestChangePlanPreviewAPI:
+    """Tests for the change plan preview endpoint."""
+
+    def _setup(self, client: TestClient) -> dict:
+        """Create customer, two plans, and a subscription for testing."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_cp_{uuid.uuid4().hex[:6]}", "name": "CP Customer"},
+        ).json()
+        plan_a = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_a_{uuid.uuid4().hex[:6]}",
+                "name": "Basic Plan",
+                "interval": "monthly",
+                "amount_cents": 2000,
+                "currency": "USD",
+            },
+        ).json()
+        plan_b = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_b_{uuid.uuid4().hex[:6]}",
+                "name": "Pro Plan",
+                "interval": "monthly",
+                "amount_cents": 5000,
+                "currency": "USD",
+            },
+        ).json()
+        started = (datetime.now(UTC) - timedelta(days=10)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_cp_{uuid.uuid4().hex[:6]}",
+                "customer_id": customer["id"],
+                "plan_id": plan_a["id"],
+                "started_at": started,
+            },
+        ).json()
+        return {"customer": customer, "plan_a": plan_a, "plan_b": plan_b, "sub": sub}
+
+    def test_change_plan_preview_basic(self, client: TestClient):
+        """Test basic plan change preview returns comparison and proration."""
+        setup = self._setup(client)
+        response = client.post(
+            f"/v1/subscriptions/{setup['sub']['id']}/change_plan_preview",
+            json={"new_plan_id": setup["plan_b"]["id"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Verify plan summaries
+        assert data["current_plan"]["id"] == setup["plan_a"]["id"]
+        assert data["current_plan"]["name"] == "Basic Plan"
+        assert data["current_plan"]["amount_cents"] == 2000
+        assert data["new_plan"]["id"] == setup["plan_b"]["id"]
+        assert data["new_plan"]["name"] == "Pro Plan"
+        assert data["new_plan"]["amount_cents"] == 5000
+
+        # Verify proration structure
+        proration = data["proration"]
+        assert "days_remaining" in proration
+        assert "total_days" in proration
+        assert proration["total_days"] == 30  # monthly
+        assert "current_plan_credit_cents" in proration
+        assert "new_plan_charge_cents" in proration
+        assert "net_amount_cents" in proration
+        # Net should be positive (upgrading from $20 to $50)
+        assert proration["net_amount_cents"] > 0
+
+    def test_change_plan_preview_with_effective_date(self, client: TestClient):
+        """Test preview with explicit future effective date."""
+        setup = self._setup(client)
+        future_date = (datetime.now(UTC) + timedelta(days=5)).isoformat()
+        response = client.post(
+            f"/v1/subscriptions/{setup['sub']['id']}/change_plan_preview",
+            json={
+                "new_plan_id": setup["plan_b"]["id"],
+                "effective_date": future_date,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["effective_date"] is not None
+        assert data["proration"]["days_remaining"] >= 0
+
+    def test_change_plan_preview_naive_effective_date(self, client: TestClient):
+        """Test preview with timezone-naive effective date (no +00:00 suffix)."""
+        setup = self._setup(client)
+        # Send a naive datetime string without timezone info
+        naive_date = (datetime.now(UTC) + timedelta(days=2)).strftime("%Y-%m-%dT%H:%M:%S")
+        response = client.post(
+            f"/v1/subscriptions/{setup['sub']['id']}/change_plan_preview",
+            json={
+                "new_plan_id": setup["plan_b"]["id"],
+                "effective_date": naive_date,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["proration"]["days_remaining"] >= 0
+
+    def test_change_plan_preview_downgrade(self, client: TestClient):
+        """Test preview for a downgrade (new plan is cheaper)."""
+        setup = self._setup(client)
+        # Create a cheaper plan
+        cheap_plan = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_cheap_{uuid.uuid4().hex[:6]}",
+                "name": "Starter Plan",
+                "interval": "monthly",
+                "amount_cents": 500,
+                "currency": "USD",
+            },
+        ).json()
+        response = client.post(
+            f"/v1/subscriptions/{setup['sub']['id']}/change_plan_preview",
+            json={"new_plan_id": cheap_plan["id"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Net should be negative (downgrading from $20 to $5)
+        assert data["proration"]["net_amount_cents"] < 0
+
+    def test_change_plan_preview_same_plan(self, client: TestClient):
+        """Test preview when selecting the same plan returns 400."""
+        setup = self._setup(client)
+        response = client.post(
+            f"/v1/subscriptions/{setup['sub']['id']}/change_plan_preview",
+            json={"new_plan_id": setup["plan_a"]["id"]},
+        )
+        assert response.status_code == 400
+        assert "different" in response.json()["detail"].lower()
+
+    def test_change_plan_preview_subscription_not_found(self, client: TestClient):
+        """Test preview with non-existent subscription returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = client.post(
+            f"/v1/subscriptions/{fake_id}/change_plan_preview",
+            json={"new_plan_id": str(uuid.uuid4())},
+        )
+        assert response.status_code == 404
+        assert "Subscription not found" in response.json()["detail"]
+
+    def test_change_plan_preview_new_plan_not_found(self, client: TestClient):
+        """Test preview with non-existent new plan returns 404."""
+        setup = self._setup(client)
+        response = client.post(
+            f"/v1/subscriptions/{setup['sub']['id']}/change_plan_preview",
+            json={"new_plan_id": str(uuid.uuid4())},
+        )
+        assert response.status_code == 404
+        assert "New plan not found" in response.json()["detail"]
+
+    def test_change_plan_preview_weekly_interval(self, client: TestClient):
+        """Test proration with weekly plan interval."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_wk_{uuid.uuid4().hex[:6]}", "name": "Weekly Cust"},
+        ).json()
+        plan_weekly = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_wk_{uuid.uuid4().hex[:6]}",
+                "name": "Weekly Plan",
+                "interval": "weekly",
+                "amount_cents": 700,
+            },
+        ).json()
+        plan_weekly_2 = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_wk2_{uuid.uuid4().hex[:6]}",
+                "name": "Weekly Plan 2",
+                "interval": "weekly",
+                "amount_cents": 1400,
+            },
+        ).json()
+        started = (datetime.now(UTC) - timedelta(days=3)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_wk_{uuid.uuid4().hex[:6]}",
+                "customer_id": customer["id"],
+                "plan_id": plan_weekly["id"],
+                "started_at": started,
+            },
+        ).json()
+        response = client.post(
+            f"/v1/subscriptions/{sub['id']}/change_plan_preview",
+            json={"new_plan_id": plan_weekly_2["id"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["proration"]["total_days"] == 7
+
+    def test_change_plan_preview_yearly_interval(self, client: TestClient):
+        """Test proration with yearly plan interval."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_yr_{uuid.uuid4().hex[:6]}", "name": "Yearly Cust"},
+        ).json()
+        plan_yearly = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_yr_{uuid.uuid4().hex[:6]}",
+                "name": "Yearly Plan",
+                "interval": "yearly",
+                "amount_cents": 12000,
+            },
+        ).json()
+        plan_yearly_2 = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_yr2_{uuid.uuid4().hex[:6]}",
+                "name": "Yearly Plan 2",
+                "interval": "yearly",
+                "amount_cents": 24000,
+            },
+        ).json()
+        started = (datetime.now(UTC) - timedelta(days=100)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_yr_{uuid.uuid4().hex[:6]}",
+                "customer_id": customer["id"],
+                "plan_id": plan_yearly["id"],
+                "started_at": started,
+            },
+        ).json()
+        response = client.post(
+            f"/v1/subscriptions/{sub['id']}/change_plan_preview",
+            json={"new_plan_id": plan_yearly_2["id"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["proration"]["total_days"] == 365
+
+    def test_change_plan_preview_no_started_at(self, client: TestClient):
+        """Test preview when subscription has no started_at (uses full period)."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_ns_{uuid.uuid4().hex[:6]}", "name": "NoStart Cust"},
+        ).json()
+        plan_a = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_ns_a_{uuid.uuid4().hex[:6]}",
+                "name": "Plan A NoStart",
+                "interval": "monthly",
+                "amount_cents": 1000,
+            },
+        ).json()
+        plan_b = client.post(
+            "/v1/plans/",
+            json={
+                "code": f"plan_ns_b_{uuid.uuid4().hex[:6]}",
+                "name": "Plan B NoStart",
+                "interval": "monthly",
+                "amount_cents": 3000,
+            },
+        ).json()
+        # Create without started_at — pending subscription
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_ns_{uuid.uuid4().hex[:6]}",
+                "customer_id": customer["id"],
+                "plan_id": plan_a["id"],
+            },
+        ).json()
+        response = client.post(
+            f"/v1/subscriptions/{sub['id']}/change_plan_preview",
+            json={"new_plan_id": plan_b["id"]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Should use created_at as anchor
+        assert data["proration"]["total_days"] == 30
+
+    def test_update_subscription_plan_id(self, client: TestClient):
+        """Test that plan_id can be updated via the PUT endpoint."""
+        setup = self._setup(client)
+        response = client.put(
+            f"/v1/subscriptions/{setup['sub']['id']}",
+            json={
+                "plan_id": setup["plan_b"]["id"],
+                "previous_plan_id": setup["plan_a"]["id"],
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["plan_id"] == setup["plan_b"]["id"]
+        assert data["previous_plan_id"] == setup["plan_a"]["id"]
+
+
+class TestChangePlanPreviewSchemas:
+    """Tests for the change plan preview Pydantic schemas."""
+
+    def test_change_plan_preview_request_defaults(self):
+        """Test ChangePlanPreviewRequest default values."""
+        from app.schemas.subscription import ChangePlanPreviewRequest
+
+        req = ChangePlanPreviewRequest(new_plan_id=uuid.uuid4())
+        assert req.effective_date is None
+
+    def test_change_plan_preview_request_with_date(self):
+        """Test ChangePlanPreviewRequest with effective_date."""
+        from app.schemas.subscription import ChangePlanPreviewRequest
+
+        now = datetime.now(UTC)
+        req = ChangePlanPreviewRequest(new_plan_id=uuid.uuid4(), effective_date=now)
+        assert req.effective_date == now
+
+    def test_plan_summary(self):
+        """Test PlanSummary schema."""
+        from app.schemas.subscription import PlanSummary
+
+        ps = PlanSummary(
+            id=uuid.uuid4(),
+            name="Test Plan",
+            code="test",
+            interval="monthly",
+            amount_cents=2000,
+            currency="USD",
+        )
+        assert ps.name == "Test Plan"
+        assert ps.amount_cents == 2000
+
+    def test_proration_detail(self):
+        """Test ProrationDetail schema."""
+        from app.schemas.subscription import ProrationDetail
+
+        pd = ProrationDetail(
+            days_remaining=15,
+            total_days=30,
+            current_plan_credit_cents=1000,
+            new_plan_charge_cents=2500,
+            net_amount_cents=1500,
+        )
+        assert pd.days_remaining == 15
+        assert pd.net_amount_cents == 1500
+
+    def test_change_plan_preview_response(self):
+        """Test ChangePlanPreviewResponse schema."""
+        from app.schemas.subscription import (
+            ChangePlanPreviewResponse,
+            PlanSummary,
+            ProrationDetail,
+        )
+
+        now = datetime.now(UTC)
+        resp = ChangePlanPreviewResponse(
+            current_plan=PlanSummary(
+                id=uuid.uuid4(), name="A", code="a", interval="monthly",
+                amount_cents=2000, currency="USD",
+            ),
+            new_plan=PlanSummary(
+                id=uuid.uuid4(), name="B", code="b", interval="monthly",
+                amount_cents=5000, currency="USD",
+            ),
+            effective_date=now,
+            proration=ProrationDetail(
+                days_remaining=20, total_days=30,
+                current_plan_credit_cents=1333, new_plan_charge_cents=3333,
+                net_amount_cents=2000,
+            ),
+        )
+        assert resp.current_plan.name == "A"
+        assert resp.new_plan.name == "B"
+        assert resp.proration.net_amount_cents == 2000

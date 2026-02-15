@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
 
@@ -17,7 +18,15 @@ from app.repositories.entitlement_repository import EntitlementRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.entitlement import EntitlementResponse
-from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
+from app.schemas.subscription import (
+    ChangePlanPreviewRequest,
+    ChangePlanPreviewResponse,
+    PlanSummary,
+    ProrationDetail,
+    SubscriptionCreate,
+    SubscriptionResponse,
+    SubscriptionUpdate,
+)
 from app.schemas.subscription_lifecycle import LifecycleEvent, SubscriptionLifecycleResponse
 from app.services.audit_service import AuditService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
@@ -191,6 +200,107 @@ async def update_subscription(
     )
 
     return subscription
+
+
+INTERVAL_DAYS = {
+    "weekly": 7,
+    "monthly": 30,
+    "quarterly": 90,
+    "yearly": 365,
+}
+
+
+@router.post(
+    "/{subscription_id}/change_plan_preview",
+    response_model=ChangePlanPreviewResponse,
+    summary="Preview plan change with price comparison and proration",
+    responses={
+        400: {"description": "Invalid plan or same plan"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription or plan not found"},
+    },
+)
+async def change_plan_preview(
+    subscription_id: UUID,
+    data: ChangePlanPreviewRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> ChangePlanPreviewResponse:
+    """Preview a plan change showing price comparison and proration details."""
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    plan_repo = PlanRepository(db)
+    current_plan = plan_repo.get_by_id(
+        UUID(str(subscription.plan_id)), organization_id
+    )
+    if not current_plan:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Current plan not found")
+
+    new_plan = plan_repo.get_by_id(data.new_plan_id, organization_id)
+    if not new_plan:
+        raise HTTPException(status_code=404, detail="New plan not found")
+
+    if str(subscription.plan_id) == str(data.new_plan_id):
+        raise HTTPException(
+            status_code=400, detail="New plan must be different from current plan"
+        )
+
+    effective = data.effective_date or datetime.now(UTC)
+    # Ensure effective is timezone-aware for comparison
+    if effective.tzinfo is None:
+        effective = effective.replace(tzinfo=UTC)
+
+    # Calculate proration based on billing interval
+    interval_str = str(current_plan.interval)
+    total_days = INTERVAL_DAYS.get(interval_str, 30)
+
+    # Determine period start based on started_at or created_at
+    period_anchor = subscription.started_at or subscription.created_at
+    if period_anchor:
+        # Ensure timezone-aware for subtraction
+        anchor = period_anchor if period_anchor.tzinfo else period_anchor.replace(tzinfo=UTC)
+        elapsed = (effective - anchor).days % total_days
+        days_remaining = max(total_days - elapsed, 0)
+    else:  # pragma: no cover — created_at always set by DB
+        days_remaining = total_days
+
+    current_amount: int = current_plan.amount_cents  # type: ignore[assignment]
+    new_amount: int = new_plan.amount_cents  # type: ignore[assignment]
+
+    # Prorate: credit for unused portion of current plan, charge for new plan
+    credit_cents = int(current_amount * days_remaining / total_days)
+    charge_cents = int(new_amount * days_remaining / total_days)
+    net_cents = charge_cents - credit_cents
+
+    return ChangePlanPreviewResponse(
+        current_plan=PlanSummary(
+            id=current_plan.id,  # type: ignore[arg-type]
+            name=str(current_plan.name),
+            code=str(current_plan.code),
+            interval=interval_str,
+            amount_cents=current_amount,
+            currency=str(current_plan.currency),
+        ),
+        new_plan=PlanSummary(
+            id=new_plan.id,  # type: ignore[arg-type]
+            name=str(new_plan.name),
+            code=str(new_plan.code),
+            interval=str(new_plan.interval),
+            amount_cents=new_amount,
+            currency=str(new_plan.currency),
+        ),
+        effective_date=effective,
+        proration=ProrationDetail(
+            days_remaining=days_remaining,
+            total_days=total_days,
+            current_plan_credit_cents=credit_cents,
+            new_plan_charge_cents=charge_cents,
+            net_amount_cents=net_cents,
+        ),
+    )
 
 
 @router.delete(

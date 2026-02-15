@@ -36,6 +36,10 @@ export type SubscriptionUpdate = components['schemas']['SubscriptionUpdate']
 export type SubscriptionStatus = components['schemas']['SubscriptionStatus']
 export type BillingTime = components['schemas']['BillingTime']
 export type TerminationAction = components['schemas']['TerminationAction']
+export type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest']
+export type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
+export type PlanSummary = components['schemas']['PlanSummary']
+export type ProrationDetail = components['schemas']['ProrationDetail']
 
 // --- Invoices ---
 export type Invoice = components['schemas']['InvoiceResponse']
