@@ -127,10 +127,18 @@ class InvoiceGenerationService:
             for fc in fee_creates
         ]
 
+        # Resolve billing entity from subscription
+        billing_entity_id = (
+            UUID(str(subscription.billing_entity_id))
+            if subscription.billing_entity_id
+            else None
+        )
+
         # Create invoice
         invoice_data = InvoiceCreate(
             customer_id=customer_id,
             subscription_id=subscription_id,
+            billing_entity_id=billing_entity_id,
             billing_period_start=billing_period_start,
             billing_period_end=billing_period_end,
             line_items=line_items,

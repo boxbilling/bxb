@@ -7,6 +7,7 @@ from app.routers import (
     add_ons,
     audit_logs,
     billable_metrics,
+    billing_entities,
     commitments,
     coupons,
     credit_notes,
@@ -56,6 +57,10 @@ OPENAPI_TAGS = [
     {"name": "Integrations", "description": "Connect and manage external system integrations."},
     {"name": "Items", "description": "Internal item management."},
     {"name": "Audit Logs", "description": "Query the audit trail for billing entities."},
+    {
+        "name": "Billing Entities",
+        "description": "Manage billing entities for multi-entity invoicing.",
+    },
 ]
 
 app = FastAPI(
@@ -164,6 +169,11 @@ app.include_router(
     audit_logs.router,
     prefix="/v1/audit_logs",
     tags=["Audit Logs"],
+)
+app.include_router(
+    billing_entities.router,
+    prefix="/v1/billing_entities",
+    tags=["Billing Entities"],
 )
 
 

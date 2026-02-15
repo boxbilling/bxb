@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.models.billing_entity import BillingEntity
 from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
 
@@ -76,6 +77,21 @@ class InvoiceRepository:
     def get_by_invoice_number(self, invoice_number: str) -> Invoice | None:
         return self.db.query(Invoice).filter(Invoice.invoice_number == invoice_number).first()
 
+    def _generate_entity_invoice_number(self, billing_entity_id: UUID) -> str:
+        """Generate an invoice number using the billing entity's prefix and counter."""
+        entity = self.db.query(BillingEntity).filter(BillingEntity.id == billing_entity_id).first()
+        if not entity:
+            return self._generate_invoice_number()
+
+        current_number = int(entity.next_invoice_number)
+        prefix = str(entity.invoice_prefix) if entity.invoice_prefix else "INV"
+        invoice_number = f"{prefix}-{current_number:04d}"
+
+        entity.next_invoice_number = current_number + 1  # type: ignore[assignment]
+        self.db.flush()
+
+        return invoice_number
+
     def create(self, data: InvoiceCreate, organization_id: UUID | None = None) -> Invoice:
         # Calculate totals from line items
         subtotal = Decimal(0)
@@ -85,8 +101,14 @@ class InvoiceRepository:
         # Convert line items to dict format for JSON storage
         line_items_json = [item.model_dump(mode="json") for item in data.line_items]
 
+        # Use entity-scoped numbering if billing_entity_id is provided
+        if data.billing_entity_id:
+            invoice_number = self._generate_entity_invoice_number(data.billing_entity_id)
+        else:
+            invoice_number = self._generate_invoice_number()
+
         kwargs: dict[str, Any] = {
-            "invoice_number": self._generate_invoice_number(),
+            "invoice_number": invoice_number,
             "customer_id": data.customer_id,
             "subscription_id": data.subscription_id,
             "billing_period_start": data.billing_period_start,
@@ -100,6 +122,8 @@ class InvoiceRepository:
             "issued_at": data.issued_at,
             "due_date": data.due_date,
         }
+        if data.billing_entity_id:
+            kwargs["billing_entity_id"] = data.billing_entity_id
         if organization_id is not None:
             kwargs["organization_id"] = organization_id
 

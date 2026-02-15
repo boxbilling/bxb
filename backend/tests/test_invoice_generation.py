@@ -4329,3 +4329,162 @@ class TestCommitmentTrueUp:
 
         assert invoice.total == Decimal("0")
         assert len(invoice.line_items) == 0
+
+
+class TestEntityScopedInvoiceNumbering:
+    """Test invoice numbering when billing_entity_id is set on a subscription."""
+
+    def test_invoice_uses_entity_prefix_and_counter(
+        self, db_session, customer, plan, billing_period
+    ):
+        """Invoice number uses the billing entity's prefix and next_invoice_number."""
+        from app.models.billing_entity import BillingEntity
+
+        entity = BillingEntity(
+            organization_id=DEFAULT_ORG_ID,
+            code="ent-num",
+            name="Entity Numbering",
+            invoice_prefix="ENT",
+            next_invoice_number=42,
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        sub = Subscription(
+            external_id="ent_num_sub",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+            billing_entity_id=entity.id,
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        start, end = billing_period
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=sub.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert invoice.invoice_number == "ENT-0042"
+        assert invoice.billing_entity_id == entity.id
+
+        # Verify counter was incremented
+        db_session.refresh(entity)
+        assert entity.next_invoice_number == 43
+
+    def test_entity_counter_increments_sequentially(
+        self, db_session, customer, plan, billing_period
+    ):
+        """Multiple invoices for the same entity increment sequentially."""
+        from app.models.billing_entity import BillingEntity
+
+        entity = BillingEntity(
+            organization_id=DEFAULT_ORG_ID,
+            code="ent-seq",
+            name="Sequential Entity",
+            invoice_prefix="SEQ",
+            next_invoice_number=1,
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        start, end = billing_period
+        numbers = []
+        for i in range(3):
+            sub = Subscription(
+                external_id=f"ent_seq_sub_{i}",
+                customer_id=customer.id,
+                plan_id=plan.id,
+                status=SubscriptionStatus.ACTIVE.value,
+                started_at=datetime.now(UTC) - timedelta(days=30),
+                billing_entity_id=entity.id,
+            )
+            db_session.add(sub)
+            db_session.commit()
+            db_session.refresh(sub)
+
+            service = InvoiceGenerationService(db_session)
+            invoice = service.generate_invoice(
+                subscription_id=sub.id,
+                billing_period_start=start,
+                billing_period_end=end,
+                external_customer_id=customer.external_id,
+            )
+            numbers.append(invoice.invoice_number)
+
+        assert numbers == ["SEQ-0001", "SEQ-0002", "SEQ-0003"]
+
+    def test_no_entity_uses_global_numbering(
+        self, db_session, active_subscription, customer, billing_period
+    ):
+        """Subscription without billing entity uses default global numbering."""
+        start, end = billing_period
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=active_subscription.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert invoice.invoice_number.startswith("INV-")
+        assert invoice.billing_entity_id is None
+
+    def test_entity_without_prefix_uses_default_prefix(
+        self, db_session, customer, plan, billing_period
+    ):
+        """Entity with no invoice_prefix uses 'INV' as the default prefix."""
+        from app.models.billing_entity import BillingEntity
+
+        entity = BillingEntity(
+            organization_id=DEFAULT_ORG_ID,
+            code="ent-noprefix",
+            name="No Prefix Entity",
+            invoice_prefix=None,
+            next_invoice_number=5,
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        sub = Subscription(
+            external_id="ent_noprefix_sub",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=30),
+            billing_entity_id=entity.id,
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        start, end = billing_period
+        service = InvoiceGenerationService(db_session)
+        invoice = service.generate_invoice(
+            subscription_id=sub.id,
+            billing_period_start=start,
+            billing_period_end=end,
+            external_customer_id=customer.external_id,
+        )
+
+        assert invoice.invoice_number == "INV-0005"
+        assert invoice.billing_entity_id == entity.id
+
+    def test_entity_not_found_falls_back_to_global(
+        self, db_session, billing_period
+    ):
+        """If billing_entity_id references a deleted entity, fall back to global numbering."""
+        from app.repositories.invoice_repository import InvoiceRepository
+
+        repo = InvoiceRepository(db_session)
+        result = repo._generate_entity_invoice_number(uuid4())
+        assert result.startswith("INV-")

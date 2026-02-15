@@ -20,6 +20,7 @@ class InvoiceLineItem(BaseModel):
 class InvoiceCreate(BaseModel):
     customer_id: UUID
     subscription_id: UUID | None = None
+    billing_entity_id: UUID | None = None
     billing_period_start: datetime
     billing_period_end: datetime
     invoice_type: InvoiceType = InvoiceType.SUBSCRIPTION
