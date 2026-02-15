@@ -20,6 +20,7 @@ fileConfig(config.config_file_name)
 from app.core.config import settings  # noqa
 from app.core.database import Base  # noqa
 from app.models import Item  # noqa
+from app.models.billing_entity import BillingEntity  # noqa
 
 target_metadata = Base.metadata
 

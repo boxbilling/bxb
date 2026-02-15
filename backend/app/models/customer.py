@@ -64,5 +64,11 @@ class Customer(Base):
     billing_metadata = Column(JSON, nullable=False, default=dict)
     invoice_grace_period = Column(Integer, nullable=False, default=0)
     net_payment_term = Column(Integer, nullable=False, default=30)
+    billing_entity_id = Column(
+        UUIDType,
+        ForeignKey("billing_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

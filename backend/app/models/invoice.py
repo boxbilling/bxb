@@ -41,6 +41,12 @@ class Invoice(Base):
     subscription_id = Column(
         UUIDType, ForeignKey("subscriptions.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    billing_entity_id = Column(
+        UUIDType,
+        ForeignKey("billing_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     status = Column(String(20), nullable=False, default=InvoiceStatus.DRAFT.value, index=True)
     invoice_type = Column(String(30), nullable=False, default=InvoiceType.SUBSCRIPTION.value)
 

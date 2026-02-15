@@ -63,6 +63,12 @@ class Subscription(Base):
         nullable=True,
     )
     downgraded_at = Column(DateTime(timezone=True), nullable=True)
+    billing_entity_id = Column(
+        UUIDType,
+        ForeignKey("billing_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     on_termination_action = Column(
         String(30), nullable=False, default=TerminationAction.GENERATE_INVOICE.value
     )
