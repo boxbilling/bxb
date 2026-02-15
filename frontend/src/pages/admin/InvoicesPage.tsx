@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2 } from 'lucide-react'
+import { Search, Download, Eye, FileText, FileMinus, Mail, Loader2, ScrollText, ChevronDown } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -33,6 +33,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { invoicesApi, feesApi, taxesApi, creditNotesApi, subscriptionsApi } from '@/lib/api'
 import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
 
@@ -306,6 +308,18 @@ function InvoiceDetailDialog({
 
           {/* Credit Notes */}
           <InvoiceCreditNotesSection invoiceId={invoice.id} currency={invoice.currency} />
+
+          {/* Audit Trail */}
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors w-full group">
+              <ScrollText className="h-4 w-4" />
+              Audit Trail
+              <ChevronDown className="h-4 w-4 ml-auto transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <AuditTrailTimeline resourceType="invoice" resourceId={invoice.id} />
+            </CollapsibleContent>
+          </Collapsible>
 
           {/* Actions */}
           <div className="flex gap-2">

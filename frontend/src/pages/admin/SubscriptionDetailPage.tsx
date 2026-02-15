@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3 } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
 import type { UsageThresholdCreateAPI } from '@/types/billing'
 
@@ -440,6 +441,26 @@ export default function SubscriptionDetailPage() {
               </form>
             )}
           </div>
+
+          <Separator />
+
+          {/* Activity Log */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <ScrollText className="h-4 w-4" />
+                Activity Log
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AuditTrailTimeline
+                resourceType="subscription"
+                resourceId={id!}
+                limit={20}
+                showViewAll
+              />
+            </CardContent>
+          </Card>
         </>
       ) : null}
     </div>
