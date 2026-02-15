@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { customersApi, ApiError } from '@/lib/api'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
 import type { Customer, CustomerCreate, CustomerUpdate } from '@/types/billing'
 
 export default function CustomersPage() {
@@ -241,7 +242,10 @@ export default function CustomersPage() {
                   onClick={() => navigate(`/admin/customers/${customer.id}`)}
                 >
                   <TableCell className="font-medium">
-                    {customer.name}
+                    <div className="flex items-center gap-2">
+                      <CustomerAvatar name={customer.name} size="sm" />
+                      {customer.name}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">

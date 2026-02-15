@@ -65,6 +65,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
+import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
@@ -1076,11 +1077,14 @@ export default function CustomerDetailPage() {
         <>
           {/* Header */}
           <div className="flex items-start justify-between">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
-              </p>
+            <div className="flex items-center gap-3">
+              <CustomerAvatar name={customer.name} size="lg" />
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>

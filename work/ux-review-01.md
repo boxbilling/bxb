@@ -193,7 +193,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
   <!-- Completed: Elevated the Portal Link button from outline/sm to default (primary) variant in the page header, making it the most visually prominent action. Grouped it alongside the Edit button (moved from the Customer Information card header) in a flex action bar in the main header area. This makes both key actions (Edit customer + Generate portal link) immediately discoverable at the top of the page. TypeScript compiles clean, all 3300 backend tests pass with 100% coverage. -->
 - [x] Display metadata as key-value pills instead of raw JSON
   <!-- Completed: Replaced raw JSON `<pre>` block in CustomerDetailPage with inline key-value pill badges. Each metadata entry now renders as a Badge (outline variant) showing `key: value` with the key in medium weight and the value in muted foreground color. Uses flex-wrap layout so pills flow naturally across the available width. TypeScript compiles clean, all 3300 backend tests pass with 100% coverage. -->
-- [ ] Add customer avatar/initials badge
+- [x] Add customer avatar/initials badge
+  <!-- Completed: Created CustomerAvatar component (src/components/CustomerAvatar.tsx) using existing Radix Avatar primitives. Generates 1-2 character initials from customer name with deterministic color assignment (8 color palette hashed from name). Three size variants (sm/md/lg). Added large avatar to CustomerDetailPage header beside customer name. Added small avatar to CustomersPage table rows in the Customer column. TypeScript compiles clean, all 3300 backend tests pass with 100% coverage. -->
 - [ ] Show customer health indicator (green/yellow/red based on payment history)
 
 **Modal vs. Page Decision:**
