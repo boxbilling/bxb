@@ -106,6 +106,11 @@ type InvoicePreviewResponse = components['schemas']['InvoicePreviewResponse']
 type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
 type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
 
+type PaymentMethodResponse = components['schemas']['PaymentMethodResponse']
+type PaymentMethodCreate = components['schemas']['PaymentMethodCreate']
+type SetupSessionCreate = components['schemas']['SetupSessionCreate']
+type SetupSessionResponse = components['schemas']['SetupSessionResponse']
+
 type PaymentRequestResponse = components['schemas']['PaymentRequestResponse']
 type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
 
@@ -400,6 +405,29 @@ export const paymentsApi = {
   refund: (id: string) =>
     request<PaymentResponse>(`/v1/payments/${id}/refund`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/v1/payments/${id}`, { method: 'DELETE' }),
+}
+
+// Payment Methods API
+export const paymentMethodsApi = {
+  list: (params?: { customer_id?: string }) =>
+    request<PaymentMethodResponse[]>(`/v1/payment_methods/${buildQuery(params)}`),
+  get: (id: string) => request<PaymentMethodResponse>(`/v1/payment_methods/${id}`),
+  create: (data: PaymentMethodCreate) =>
+    request<PaymentMethodResponse>('/v1/payment_methods/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    request<void>(`/v1/payment_methods/${id}`, { method: 'DELETE' }),
+  setDefault: (id: string) =>
+    request<PaymentMethodResponse>(`/v1/payment_methods/${id}/set_default`, {
+      method: 'POST',
+    }),
+  createSetupSession: (data: SetupSessionCreate) =>
+    request<SetupSessionResponse>('/v1/payment_methods/setup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Wallets API

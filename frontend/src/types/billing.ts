@@ -146,6 +146,12 @@ export type EventCreate = components['schemas']['EventCreate']
 export type EventBatchCreate = components['schemas']['EventBatchCreate']
 export type EventBatchResponse = components['schemas']['EventBatchResponse']
 
+// --- Payment Methods ---
+export type PaymentMethod = components['schemas']['PaymentMethodResponse']
+export type PaymentMethodCreate = components['schemas']['PaymentMethodCreate']
+export type SetupSessionCreate = components['schemas']['SetupSessionCreate']
+export type SetupSessionResponse = components['schemas']['SetupSessionResponse']
+
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
