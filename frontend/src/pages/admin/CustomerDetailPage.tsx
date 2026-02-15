@@ -1125,10 +1125,17 @@ export default function CustomerDetailPage() {
                   <span className="text-muted-foreground">Net Payment Term</span>
                   <span>{customer.net_payment_term} days</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="space-y-1">
                   <span className="text-muted-foreground">Billing Metadata</span>
                   {customer.billing_metadata && Object.keys(customer.billing_metadata).length > 0 ? (
-                    <pre className="text-xs bg-muted p-2 rounded">{JSON.stringify(customer.billing_metadata, null, 2)}</pre>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {Object.entries(customer.billing_metadata).map(([key, value]) => (
+                        <Badge key={key} variant="outline" className="font-normal text-xs">
+                          <span className="font-medium">{key}:</span>
+                          <span className="ml-1 text-muted-foreground">{String(value)}</span>
+                        </Badge>
+                      ))}
+                    </div>
                   ) : (
                     <span>None</span>
                   )}
