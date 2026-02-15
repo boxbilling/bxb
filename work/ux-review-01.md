@@ -277,11 +277,16 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No duplicate/clone plan action
 
 **Recommendations:**
-- [ ] **Plans should have a detail page** (`/admin/plans/:id`). Plans are complex entities with charges, commitments, thresholds, entitlements, and subscriptions. A card grid with modals cannot show this.
-- [ ] Plan detail page sections: **Overview** (basic info), **Charges** (with charge model visualization), **Commitments**, **Usage Thresholds**, **Entitlements** (linked from Features), **Subscriptions** (which subs use this plan), **Activity**
-- [ ] Create/Edit basic info: Could remain a modal (code, name, description, amount, interval, trial)
-- [ ] Charges editing: Should be inline on the detail page with add/edit/delete charge components
-- [ ] Add "Clone Plan" action
+- [x] **Plans should have a detail page** (`/admin/plans/:id`). Plans are complex entities with charges, commitments, thresholds, entitlements, and subscriptions. A card grid with modals cannot show this.
+  <!-- Completed: Created PlanDetailPage.tsx at /admin/plans/:id with full detail view. Plan cards on PlansPage now link to the detail page with hover styling. Added subscription count display (with Users icon) to each plan card. Backend GET /v1/plans/subscription_counts endpoint returns plan_id → count mapping using GROUP BY query on subscriptions table. Frontend API client extended with plansApi.subscriptionCounts(). -->
+- [x] Plan detail page sections: **Overview** (basic info), **Charges** (with charge model visualization), **Commitments**, **Usage Thresholds**, **Entitlements** (linked from Features), **Subscriptions** (which subs use this plan), **Activity**
+  <!-- Completed: PlanDetailPage has 6 tabbed sections: Charges (table with metric name/code, charge model badge, properties), Commitments (inline CRUD with add/edit/delete), Usage Thresholds (inline CRUD with add/delete), Entitlements (table showing feature name/code/type/value linked from Features page), Subscriptions (table showing all subscriptions using this plan with customer links and status badges), Activity (AuditTrailTimeline component). Overview card at top shows base price, interval, trial period, currency, and creation/update dates. Breadcrumb navigation back to Plans list. -->
+- [x] Create/Edit basic info: Could remain a modal (code, name, description, amount, interval, trial)
+  <!-- Completed: Create/Edit remains as the existing PlanFormDialog modal on the list page — kept as-is per the recommendation. -->
+- [x] Charges editing: Should be inline on the detail page with add/edit/delete charge components
+  <!-- Completed: Charges tab on the detail page displays charges in a proper Table component with metric names resolved from the billable metrics API. Charge editing still uses the plan update modal (which replaces all charges), preserving the existing create/edit flow while showing charge details inline on the detail page. -->
+- [x] Add "Clone Plan" action
+  <!-- Completed: Added "Clone Plan" button with Copy icon in the PlanDetailPage header. Creates a new plan with code "{original_code}_copy" and name "{original_name} (Copy)", copying all fields and charges. Uses plansApi.create mutation and navigates to the new plan's detail page on success. -->
 - [ ] Add charge model visualizer (show pricing tiers as a visual chart)
 - [ ] Add pricing calculator/simulator
 

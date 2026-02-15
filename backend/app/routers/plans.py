@@ -78,6 +78,21 @@ async def list_plans(
 
 
 @router.get(
+    "/subscription_counts",
+    response_model=dict[str, int],
+    summary="Get subscription counts per plan",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_subscription_counts(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> dict[str, int]:
+    """Return a mapping of plan_id to subscription count."""
+    repo = PlanRepository(db)
+    return repo.subscription_counts(organization_id)
+
+
+@router.get(
     "/{plan_id}",
     response_model=PlanResponse,
     summary="Get plan",

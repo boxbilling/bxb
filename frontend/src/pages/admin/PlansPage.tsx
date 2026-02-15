@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers, Settings, Target } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Calendar, Layers, Settings, Target, Users } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -966,6 +967,12 @@ export default function PlansPage() {
     queryFn: () => billableMetricsApi.list(),
   })
 
+  // Fetch subscription counts per plan
+  const { data: subscriptionCounts } = useQuery({
+    queryKey: ['plan-subscription-counts'],
+    queryFn: () => plansApi.subscriptionCounts(),
+  })
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: PlanCreate) => plansApi.create(data),
@@ -1085,15 +1092,15 @@ export default function PlansPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {plans.map((plan) => (
-            <Card key={plan.id}>
+            <Card key={plan.id} className="hover:border-primary/50 transition-colors">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle>{plan.name}</CardTitle>
+                  <Link to={`/admin/plans/${plan.id}`} className="min-w-0">
+                    <CardTitle className="hover:underline">{plan.name}</CardTitle>
                     <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                       {plan.code}
                     </code>
-                  </div>
+                  </Link>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -1142,6 +1149,10 @@ export default function PlansPage() {
                       {plan.trial_period_days}d trial
                     </div>
                   )}
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <Users className="h-4 w-4" />
+                    {subscriptionCounts?.[plan.id] ?? 0} subscription{(subscriptionCounts?.[plan.id] ?? 0) !== 1 ? 's' : ''}
+                  </div>
                 </div>
 
                 {/* Charges */}

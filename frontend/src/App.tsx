@@ -7,6 +7,7 @@ import {
   CustomerDetailPage,
   MetricsPage,
   PlansPage,
+  PlanDetailPage,
   SubscriptionsPage,
   SubscriptionDetailPage,
   EventsPage,
@@ -50,6 +51,7 @@ function App() {
         <Route path="customers/:id" element={<CustomerDetailPage />} />
         <Route path="metrics" element={<MetricsPage />} />
         <Route path="plans" element={<PlansPage />} />
+        <Route path="plans/:id" element={<PlanDetailPage />} />
         <Route path="subscriptions" element={<SubscriptionsPage />} />
         <Route path="subscriptions/:id" element={<SubscriptionDetailPage />} />
         <Route path="events" element={<EventsPage />} />

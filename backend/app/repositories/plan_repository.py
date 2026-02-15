@@ -7,6 +7,7 @@ from app.models.charge import Charge
 from app.models.charge_filter import ChargeFilter
 from app.models.charge_filter_value import ChargeFilterValue
 from app.models.plan import Plan
+from app.models.subscription import Subscription
 from app.schemas.plan import ChargeInput, PlanCreate, PlanUpdate
 
 
@@ -155,3 +156,16 @@ class PlanRepository:
             Plan.code == code, Plan.organization_id == organization_id
         )
         return query.first() is not None
+
+    def subscription_counts(self, organization_id: UUID) -> dict[str, int]:
+        """Return a mapping of plan_id -> subscription count."""
+        rows = (
+            self.db.query(
+                Subscription.plan_id,
+                func.count(Subscription.id),
+            )
+            .filter(Subscription.organization_id == organization_id)
+            .group_by(Subscription.plan_id)
+            .all()
+        )
+        return {str(plan_id): count for plan_id, count in rows}

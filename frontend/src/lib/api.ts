@@ -394,6 +394,8 @@ export const plansApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/plans/${id}`, { method: 'DELETE' }),
+  subscriptionCounts: () =>
+    request<Record<string, number>>('/v1/plans/subscription_counts'),
 }
 
 // Subscriptions API

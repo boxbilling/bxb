@@ -10,6 +10,7 @@ from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.plan import Plan, PlanInterval
+from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.charge_repository import ChargeRepository
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.charge import ChargeCreate, ChargeUpdate
@@ -992,3 +993,120 @@ class TestPlansWithChargesAPI:
         # Verify plan is gone
         get_response = client.get(f"/v1/plans/{plan_id}")
         assert get_response.status_code == 404
+
+
+def create_test_customer(db_session, external_id: str = "cust_1"):
+    """Helper to create a test customer."""
+    from app.models.customer import Customer
+
+    customer = Customer(
+        external_id=external_id,
+        name=f"Customer {external_id}",
+        organization_id=DEFAULT_ORG_ID,
+    )
+    db_session.add(customer)
+    db_session.commit()
+    db_session.refresh(customer)
+    return customer
+
+
+class TestPlanSubscriptionCountsRepository:
+    def test_subscription_counts_empty(self, db_session):
+        """Test subscription counts with no plans."""
+        repo = PlanRepository(db_session)
+        result = repo.subscription_counts(DEFAULT_ORG_ID)
+        assert result == {}
+
+    def test_subscription_counts_no_subscriptions(self, db_session):
+        """Test subscription counts when plans exist but no subscriptions."""
+        plan = create_test_plan(db_session, "no_subs_plan")
+        repo = PlanRepository(db_session)
+        result = repo.subscription_counts(DEFAULT_ORG_ID)
+        # Plans without subscriptions are not included in the result
+        assert str(plan.id) not in result
+
+    def test_subscription_counts_with_subscriptions(self, db_session):
+        """Test subscription counts with subscriptions."""
+        plan1 = create_test_plan(db_session, "plan_sc_1")
+        plan2 = create_test_plan(db_session, "plan_sc_2")
+        customer = create_test_customer(db_session, "sc_cust_1")
+
+        # Create 2 subscriptions for plan1
+        for i in range(2):
+            sub = Subscription(
+                external_id=f"sub_sc_{i}",
+                customer_id=customer.id,
+                plan_id=plan1.id,
+                status=SubscriptionStatus.ACTIVE.value,
+                organization_id=DEFAULT_ORG_ID,
+            )
+            db_session.add(sub)
+
+        # Create 1 subscription for plan2
+        sub = Subscription(
+            external_id="sub_sc_2",
+            customer_id=customer.id,
+            plan_id=plan2.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(sub)
+        db_session.commit()
+
+        repo = PlanRepository(db_session)
+        result = repo.subscription_counts(DEFAULT_ORG_ID)
+        assert result[str(plan1.id)] == 2
+        assert result[str(plan2.id)] == 1
+
+    def test_subscription_counts_different_org(self, db_session):
+        """Test subscription counts are org-scoped."""
+        other_org_id = uuid.UUID("00000000-0000-0000-0000-000000000099")
+        plan = create_test_plan(db_session, "org_plan")
+        customer = create_test_customer(db_session, "org_cust")
+
+        sub = Subscription(
+            external_id="sub_org_test",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(sub)
+        db_session.commit()
+
+        repo = PlanRepository(db_session)
+        # Should return count for default org
+        result = repo.subscription_counts(DEFAULT_ORG_ID)
+        assert str(plan.id) in result
+
+        # Should return empty for other org
+        result = repo.subscription_counts(other_org_id)
+        assert result == {}
+
+
+class TestPlanSubscriptionCountsAPI:
+    def test_subscription_counts_empty(self, client: TestClient):
+        """Test subscription counts endpoint with no plans."""
+        response = client.get("/v1/plans/subscription_counts")
+        assert response.status_code == 200
+        assert response.json() == {}
+
+    def test_subscription_counts_with_data(self, client: TestClient, db_session):
+        """Test subscription counts endpoint with data."""
+        plan = create_test_plan(db_session, "api_sc_plan")
+        customer = create_test_customer(db_session, "api_sc_cust")
+
+        sub = Subscription(
+            external_id="api_sub_sc",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(sub)
+        db_session.commit()
+
+        response = client.get("/v1/plans/subscription_counts")
+        assert response.status_code == 200
+        data = response.json()
+        assert data[str(plan.id)] == 1
