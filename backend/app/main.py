@@ -27,6 +27,7 @@ from app.routers import (
     payment_requests,
     payments,
     plans,
+    portal,
     subscriptions,
     taxes,
     usage_alerts,
@@ -67,6 +68,7 @@ OPENAPI_TAGS = [
     {"name": "Features", "description": "Manage feature flags and entitlement definitions."},
     {"name": "Entitlements", "description": "Manage plan entitlements for feature access control."},
     {"name": "Usage Alerts", "description": "Configure usage monitoring alerts for subscriptions."},
+    {"name": "Portal", "description": "Customer self-service portal endpoints."},
 ]
 
 app = FastAPI(
@@ -186,6 +188,7 @@ app.include_router(entitlements.router, prefix="/v1/entitlements", tags=["Entitl
 app.include_router(
     usage_alerts.router, prefix="/v1/usage_alerts", tags=["Usage Alerts"]
 )
+app.include_router(portal.router, prefix="/portal", tags=["Portal"])
 
 
 @app.get("/")
