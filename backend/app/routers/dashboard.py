@@ -72,6 +72,14 @@ async def get_stats(
     )
 
 
+_VALID_ACTIVITY_TYPES = {
+    "customer_created",
+    "subscription_created",
+    "invoice_finalized",
+    "payment_received",
+}
+
+
 @router.get(
     "/activity",
     response_model=list[RecentActivityResponse],
@@ -81,50 +89,58 @@ async def get_stats(
 async def get_recent_activity(
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
+    type: str | None = Query(None, description="Filter by activity type"),
 ) -> list[RecentActivityResponse]:
-    """Get recent billing activity."""
+    """Get recent billing activity, optionally filtered by type."""
     repo = DashboardRepository(db)
     activities: list[RecentActivityResponse] = []
+    include_types = _VALID_ACTIVITY_TYPES
+    if type and type in _VALID_ACTIVITY_TYPES:
+        include_types = {type}
 
-    for c in repo.recent_customers(organization_id):
-        activities.append(
-            RecentActivityResponse(
-                id=str(c.id),
-                type="customer_created",
-                description=f'New customer "{c.name}" created',
-                timestamp=c.created_at.isoformat() if c.created_at else "",
+    if "customer_created" in include_types:
+        for c in repo.recent_customers(organization_id):
+            activities.append(
+                RecentActivityResponse(
+                    id=str(c.id),
+                    type="customer_created",
+                    description=f'New customer "{c.name}" created',
+                    timestamp=c.created_at.isoformat() if c.created_at else "",
+                )
             )
-        )
 
-    for s in repo.recent_subscriptions(organization_id):
-        activities.append(
-            RecentActivityResponse(
-                id=str(s.id),
-                type="subscription_created",
-                description=f"Subscription {s.external_id} started",
-                timestamp=s.created_at.isoformat() if s.created_at else "",
+    if "subscription_created" in include_types:
+        for s in repo.recent_subscriptions(organization_id):
+            activities.append(
+                RecentActivityResponse(
+                    id=str(s.id),
+                    type="subscription_created",
+                    description=f"Subscription {s.external_id} started",
+                    timestamp=s.created_at.isoformat() if s.created_at else "",
+                )
             )
-        )
 
-    for inv in repo.recent_invoices(organization_id):
-        activities.append(
-            RecentActivityResponse(
-                id=str(inv.id),
-                type="invoice_finalized",
-                description=f"Invoice {inv.invoice_number} {inv.status}",
-                timestamp=inv.created_at.isoformat() if inv.created_at else "",
+    if "invoice_finalized" in include_types:
+        for inv in repo.recent_invoices(organization_id):
+            activities.append(
+                RecentActivityResponse(
+                    id=str(inv.id),
+                    type="invoice_finalized",
+                    description=f"Invoice {inv.invoice_number} {inv.status}",
+                    timestamp=inv.created_at.isoformat() if inv.created_at else "",
+                )
             )
-        )
 
-    for p in repo.recent_payments(organization_id):
-        activities.append(
-            RecentActivityResponse(
-                id=str(p.id),
-                type="payment_received",
-                description="Payment received for invoice",
-                timestamp=p.created_at.isoformat() if p.created_at else "",
+    if "payment_received" in include_types:
+        for p in repo.recent_payments(organization_id):
+            activities.append(
+                RecentActivityResponse(
+                    id=str(p.id),
+                    type="payment_received",
+                    description="Payment received for invoice",
+                    timestamp=p.created_at.isoformat() if p.created_at else "",
+                )
             )
-        )
 
     activities.sort(key=lambda a: a.timestamp, reverse=True)
     return activities[:10]

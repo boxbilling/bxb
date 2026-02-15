@@ -500,6 +500,48 @@ class TestDashboardActivity:
             assert "description" in item
             assert "timestamp" in item
 
+    def test_activity_filter_by_customer_created(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=customer_created")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert all(a["type"] == "customer_created" for a in data)
+
+    def test_activity_filter_by_subscription_created(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=subscription_created")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert all(a["type"] == "subscription_created" for a in data)
+
+    def test_activity_filter_by_invoice_finalized(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=invoice_finalized")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert all(a["type"] == "invoice_finalized" for a in data)
+
+    def test_activity_filter_by_payment_received(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=payment_received")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["type"] == "payment_received"
+
+    def test_activity_filter_invalid_type_returns_all(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=invalid_type")
+        assert response.status_code == 200
+        data = response.json()
+        # Invalid type is ignored, returns all activity
+        assert len(data) == 7
+
+    def test_activity_no_filter_returns_all(self, client: TestClient, seeded_data):
+        """Without type param, all types are included."""
+        response = client.get("/dashboard/activity")
+        data = response.json()
+        types = {a["type"] for a in data}
+        assert len(types) > 1
+
     def test_activity_limit_to_10(self, client: TestClient, db_session):
         """Activity should return at most 10 items even when many exist."""
         customer_repo = CustomerRepository(db_session)

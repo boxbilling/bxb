@@ -911,7 +911,7 @@ export const dashboardApi = {
       total_wallet_credits: number
       currency: string
     }>(`/dashboard/stats${buildQuery(params)}`),
-  getRecentActivity: () =>
+  getRecentActivity: (params?: { type?: string }) =>
     request<
       {
         id: string
@@ -919,7 +919,7 @@ export const dashboardApi = {
         description: string
         timestamp: string
       }[]
-    >('/dashboard/activity'),
+    >(`/dashboard/activity${buildQuery(params)}`),
   getRevenue: (params?: DashboardDateRange) =>
     request<{
       mrr: number

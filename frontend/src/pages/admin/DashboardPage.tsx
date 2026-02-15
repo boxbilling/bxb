@@ -321,6 +321,7 @@ const usageChartConfig = {
 export default function DashboardPage() {
   const [preset, setPreset] = useState<PeriodPreset>('30d')
   const [customRange, setCustomRange] = useState<DateRange | undefined>()
+  const [activityTypeFilter, setActivityTypeFilter] = useState('all')
 
   const dateParams: DashboardDateRange = useMemo(() => {
     if (preset === 'custom' && customRange?.from) {
@@ -363,9 +364,14 @@ export default function DashboardPage() {
     queryFn: () => dashboardApi.getUsageMetrics(dateParams),
   })
 
+  const activityParams = useMemo(
+    () => (activityTypeFilter !== 'all' ? { type: activityTypeFilter } : undefined),
+    [activityTypeFilter],
+  )
+
   const { data: activity, isLoading: activityLoading } = useQuery({
-    queryKey: ['dashboard-activity'],
-    queryFn: () => dashboardApi.getRecentActivity(),
+    queryKey: ['dashboard-activity', activityParams],
+    queryFn: () => dashboardApi.getRecentActivity(activityParams),
   })
 
   const { data: recentInvoices, isLoading: recentInvoicesLoading } = useQuery({
@@ -579,7 +585,24 @@ export default function DashboardPage() {
         {/* Recent Activity */}
         <Card className="col-span-3">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+              <Link to="/admin/audit-logs" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                View all <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <Select value={activityTypeFilter} onValueChange={setActivityTypeFilter}>
+              <SelectTrigger size="sm" className="w-[160px] mt-1">
+                <SelectValue placeholder="Filter type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All activity</SelectItem>
+                <SelectItem value="customer_created">Customers</SelectItem>
+                <SelectItem value="subscription_created">Subscriptions</SelectItem>
+                <SelectItem value="invoice_finalized">Invoices</SelectItem>
+                <SelectItem value="payment_received">Payments</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
           <CardContent>
             {activityLoading ? (
