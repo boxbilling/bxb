@@ -1067,6 +1067,32 @@ export const usageAlertsApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/usage_alerts/${id}`, { method: 'DELETE' }),
+  getStatus: (id: string) =>
+    request<UsageAlertStatusResponse>(`/v1/usage_alerts/${id}/status`),
+  listTriggers: (id: string, params?: { skip?: number; limit?: number }) =>
+    request<UsageAlertTriggerResponse[]>(`/v1/usage_alerts/${id}/triggers${buildQuery(params)}`),
+  test: (id: string) =>
+    request<UsageAlertStatusResponse>(`/v1/usage_alerts/${id}/test`, {
+      method: 'POST',
+    }),
+}
+
+type UsageAlertStatusResponse = {
+  alert_id: string
+  current_usage: string
+  threshold_value: string
+  usage_percentage: string
+  billing_period_start: string
+  billing_period_end: string
+}
+
+type UsageAlertTriggerResponse = {
+  id: string
+  usage_alert_id: string
+  current_usage: string
+  threshold_value: string
+  metric_code: string
+  triggered_at: string
 }
 
 // Dashboard API

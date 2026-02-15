@@ -2623,7 +2623,7 @@ export interface paths {
         put?: never;
         /**
          * Preview campaign execution
-         * @description Simulate what the campaign would do if executed now, without creating any payment requests.
+         * @description Simulate what the campaign would do if executed now.
          */
         post: operations["preview_campaign_v1_dunning_campaigns__campaign_id__preview_post"];
         delete?: never;
@@ -3250,6 +3250,69 @@ export interface paths {
          * @description Update a usage alert's threshold, name, or recurring flag.
          */
         patch: operations["update_usage_alert_v1_usage_alerts__alert_id__patch"];
+        trace?: never;
+    };
+    "/v1/usage_alerts/{alert_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage alert status with current usage
+         * @description Get current usage status for a usage alert.
+         */
+        get: operations["get_usage_alert_status_v1_usage_alerts__alert_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage_alerts/{alert_id}/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List alert trigger history
+         * @description List trigger history for a usage alert.
+         */
+        get: operations["list_alert_triggers_v1_usage_alerts__alert_id__triggers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage_alerts/{alert_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test a usage alert by checking current usage
+         * @description Test a usage alert by computing current usage and returning the status.
+         *
+         *     This does NOT actually trigger the alert or send webhooks; it only shows
+         *     what the current usage vs threshold looks like.
+         */
+        post: operations["test_usage_alert_v1_usage_alerts__alert_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/portal/customer": {
@@ -6830,6 +6893,54 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** UsageAlertStatusResponse */
+        UsageAlertStatusResponse: {
+            /**
+             * Alert Id
+             * Format: uuid
+             */
+            alert_id: string;
+            /** Current Usage */
+            current_usage: string;
+            /** Threshold Value */
+            threshold_value: string;
+            /** Usage Percentage */
+            usage_percentage: string;
+            /**
+             * Billing Period Start
+             * Format: date-time
+             */
+            billing_period_start: string;
+            /**
+             * Billing Period End
+             * Format: date-time
+             */
+            billing_period_end: string;
+        };
+        /** UsageAlertTriggerResponse */
+        UsageAlertTriggerResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Usage Alert Id
+             * Format: uuid
+             */
+            usage_alert_id: string;
+            /** Current Usage */
+            current_usage: string;
+            /** Threshold Value */
+            threshold_value: string;
+            /** Metric Code */
+            metric_code: string;
+            /**
+             * Triggered At
+             * Format: date-time
+             */
+            triggered_at: string;
         };
         /** UsageAlertUpdate */
         UsageAlertUpdate: {
@@ -16733,6 +16844,144 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_usage_alert_status_v1_usage_alerts__alert_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertStatusResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert, subscription, plan, or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_alert_triggers_v1_usage_alerts__alert_id__triggers_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertTriggerResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_usage_alert_v1_usage_alerts__alert_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertStatusResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert, subscription, plan, or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

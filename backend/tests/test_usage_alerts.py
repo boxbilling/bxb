@@ -13,9 +13,12 @@ from app.core.database import get_db
 from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.customer import Customer
+from app.models.event import Event
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.usage_alert_trigger import UsageAlertTrigger  # noqa: F401 — register model
 from app.repositories.usage_alert_repository import UsageAlertRepository
+from app.repositories.usage_alert_trigger_repository import UsageAlertTriggerRepository
 from app.routers.events import _enqueue_alert_checks
 from app.schemas.usage_alert import UsageAlertCreate
 from app.tasks import enqueue_check_usage_alerts
@@ -352,6 +355,210 @@ class TestUsageAlertsAPI:
         )
         assert resp2.status_code == 201
         assert resp2.json()["id"] == data1["id"]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Status / Triggers / Test Endpoint Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestUsageAlertStatusEndpoint:
+    """Tests for GET /v1/usage_alerts/{id}/status."""
+
+    def test_get_status(self, client, db_session, alert, customer, metric):
+        """Test getting alert status returns current usage info."""
+        # Create some events so there's usage
+        billing_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0)
+        for i in range(10):
+            event = Event(
+                transaction_id=f"ua_status_tx_{uuid.uuid4()}",
+                external_customer_id=str(customer.external_id),
+                code=str(metric.code),
+                timestamp=billing_start + timedelta(hours=i),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.get(f"/v1/usage_alerts/{alert.id}/status")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["alert_id"] == str(alert.id)
+        assert "current_usage" in data
+        assert "threshold_value" in data
+        assert "usage_percentage" in data
+        assert "billing_period_start" in data
+        assert "billing_period_end" in data
+
+    def test_get_status_not_found(self, client):
+        """Test status endpoint with non-existent alert."""
+        response = client.get(f"/v1/usage_alerts/{uuid.uuid4()}/status")
+        assert response.status_code == 404
+
+
+class TestUsageAlertTriggersEndpoint:
+    """Tests for GET /v1/usage_alerts/{id}/triggers."""
+
+    def test_list_triggers_empty(self, client, alert):
+        """Test listing triggers when none exist."""
+        response = client.get(f"/v1/usage_alerts/{alert.id}/triggers")
+        assert response.status_code == 200
+        assert response.json() == []
+        assert response.headers["X-Total-Count"] == "0"
+
+    def test_list_triggers_with_data(self, client, db_session, alert, metric):
+        """Test listing triggers returns trigger records."""
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        now = datetime.now(UTC)
+        trigger_repo.create(
+            usage_alert_id=alert.id,
+            current_usage=Decimal("150"),
+            threshold_value=Decimal("100"),
+            metric_code=str(metric.code),
+            triggered_at=now,
+        )
+
+        response = client.get(f"/v1/usage_alerts/{alert.id}/triggers")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["usage_alert_id"] == str(alert.id)
+        assert Decimal(data[0]["current_usage"]) == Decimal("150")
+        assert data[0]["metric_code"] == str(metric.code)
+        assert response.headers["X-Total-Count"] == "1"
+
+    def test_list_triggers_not_found(self, client):
+        """Test triggers endpoint with non-existent alert."""
+        response = client.get(f"/v1/usage_alerts/{uuid.uuid4()}/triggers")
+        assert response.status_code == 404
+
+    def test_list_triggers_pagination(self, client, db_session, alert, metric):
+        """Test listing triggers with pagination."""
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        now = datetime.now(UTC)
+        for i in range(5):
+            trigger_repo.create(
+                usage_alert_id=alert.id,
+                current_usage=Decimal(str((i + 1) * 100)),
+                threshold_value=Decimal("100"),
+                metric_code=str(metric.code),
+                triggered_at=now - timedelta(hours=5 - i),
+            )
+
+        response = client.get(f"/v1/usage_alerts/{alert.id}/triggers?skip=2&limit=2")
+        assert response.status_code == 200
+        assert len(response.json()) == 2
+        assert response.headers["X-Total-Count"] == "5"
+
+
+class TestUsageAlertTestEndpoint:
+    """Tests for POST /v1/usage_alerts/{id}/test."""
+
+    def test_test_alert(self, client, db_session, alert, customer, metric):
+        """Test the test alert endpoint returns usage status."""
+        billing_start = datetime.now(UTC).replace(day=1, hour=0, minute=0, second=0)
+        for i in range(10):
+            event = Event(
+                transaction_id=f"ua_test_tx_{uuid.uuid4()}",
+                external_customer_id=str(customer.external_id),
+                code=str(metric.code),
+                timestamp=billing_start + timedelta(hours=i),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        response = client.post(f"/v1/usage_alerts/{alert.id}/test")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["alert_id"] == str(alert.id)
+        assert "current_usage" in data
+        assert "usage_percentage" in data
+
+    def test_test_alert_not_found(self, client):
+        """Test test endpoint with non-existent alert."""
+        response = client.post(f"/v1/usage_alerts/{uuid.uuid4()}/test")
+        assert response.status_code == 404
+
+
+class TestResolveBillingPeriodErrors:
+    """Tests for _resolve_billing_period error cases."""
+
+    def _make_alert_with_entities(self, db_session, metric):
+        """Create customer, plan, subscription, and alert for error testing."""
+        repo = UsageAlertRepository(db_session)
+        c = Customer(
+            external_id=f"ua_rbp_cust_{uuid.uuid4()}",
+            name="RBP Cust",
+            email="rbp@example.com",
+        )
+        db_session.add(c)
+        db_session.commit()
+        db_session.refresh(c)
+
+        p = Plan(
+            code=f"ua_rbp_plan_{uuid.uuid4()}",
+            name="RBP Plan",
+            interval=PlanInterval.MONTHLY.value,
+            amount_cents=1000,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+
+        sub = Subscription(
+            external_id=f"ua_rbp_sub_{uuid.uuid4()}",
+            customer_id=c.id,
+            plan_id=p.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime.now(UTC) - timedelta(days=5),
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        alert = repo.create(
+            UsageAlertCreate(
+                subscription_id=sub.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+        return c, p, sub, alert
+
+    def test_status_subscription_not_found(self, client, db_session, metric):
+        """Test status when subscription is deleted."""
+        _, _, sub, alert = self._make_alert_with_entities(db_session, metric)
+
+        db_session.delete(sub)
+        db_session.commit()
+
+        response = client.get(f"/v1/usage_alerts/{alert.id}/status")
+        assert response.status_code == 404
+        assert "Subscription not found" in response.json()["detail"]
+
+    def test_status_plan_not_found(self, client, db_session, metric):
+        """Test status when plan is deleted."""
+        _, p, _, alert = self._make_alert_with_entities(db_session, metric)
+
+        db_session.delete(p)
+        db_session.commit()
+
+        response = client.get(f"/v1/usage_alerts/{alert.id}/status")
+        assert response.status_code == 404
+        assert "Plan not found" in response.json()["detail"]
+
+    def test_status_customer_not_found(self, client, db_session, metric):
+        """Test status when customer is deleted."""
+        c, _, _, alert = self._make_alert_with_entities(db_session, metric)
+
+        db_session.delete(c)
+        db_session.commit()
+
+        response = client.get(f"/v1/usage_alerts/{alert.id}/status")
+        assert response.status_code == 404
+        assert "Customer not found" in response.json()["detail"]
 
 
 # ─────────────────────────────────────────────────────────────────────────────

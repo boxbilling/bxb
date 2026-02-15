@@ -204,6 +204,24 @@ export type UsageAlert = components['schemas']['UsageAlertResponse']
 export type UsageAlertCreate = components['schemas']['UsageAlertCreate']
 export type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
 
+export interface UsageAlertStatus {
+  alert_id: string
+  current_usage: string
+  threshold_value: string
+  usage_percentage: string
+  billing_period_start: string
+  billing_period_end: string
+}
+
+export interface UsageAlertTrigger {
+  id: string
+  usage_alert_id: string
+  current_usage: string
+  threshold_value: string
+  metric_code: string
+  triggered_at: string
+}
+
 // --- Subscription Lifecycle ---
 export type LifecycleEvent = components['schemas']['LifecycleEvent']
 export type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']

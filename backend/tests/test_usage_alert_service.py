@@ -11,8 +11,16 @@ from app.models.billable_metric import AggregationType, BillableMetric
 from app.models.customer import Customer
 from app.models.event import Event
 from app.models.subscription import Subscription, SubscriptionStatus
+from app.models.usage_alert_trigger import UsageAlertTrigger  # noqa: F401 — register model
 from app.repositories.usage_alert_repository import UsageAlertRepository
-from app.schemas.usage_alert import UsageAlertCreate, UsageAlertResponse, UsageAlertUpdate
+from app.repositories.usage_alert_trigger_repository import UsageAlertTriggerRepository
+from app.schemas.usage_alert import (
+    UsageAlertCreate,
+    UsageAlertResponse,
+    UsageAlertStatusResponse,
+    UsageAlertTriggerResponse,
+    UsageAlertUpdate,
+)
 from app.services.usage_alert_service import UsageAlertService
 from app.services.webhook_service import WEBHOOK_EVENT_TYPES
 from tests.conftest import DEFAULT_ORG_ID
@@ -720,3 +728,354 @@ class TestUsageAlertWebhookEventType:
 
     def test_usage_alert_triggered_in_event_types(self):
         assert "usage_alert.triggered" in WEBHOOK_EVENT_TYPES
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Trigger History Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestTriggerHistoryRecording:
+    """Tests that trigger history records are created when alerts fire."""
+
+    def test_trigger_recorded_on_alert_fire(
+        self, db_session, subscription, customer, metric, billing_period
+    ):
+        """A trigger record should be created when an alert fires."""
+        start, end = billing_period
+        repo = UsageAlertRepository(db_session)
+        repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("10"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        for i in range(20):
+            event = Event(
+                transaction_id=f"ua_tx_trig_hist_{uuid4()}",
+                external_customer_id=str(customer.external_id),
+                code=str(metric.code),
+                timestamp=start + timedelta(hours=i),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = UsageAlertService(db_session)
+        result = service.check_alerts(
+            subscription_id=subscription.id,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert len(result) == 1
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        triggers = trigger_repo.get_by_alert_id(result[0].id)
+        assert len(triggers) == 1
+        assert triggers[0].current_usage == Decimal("20")
+        assert triggers[0].threshold_value == Decimal("10")
+        assert triggers[0].metric_code == str(metric.code)
+
+    def test_recurring_trigger_records_multiple(
+        self, db_session, subscription, customer, metric, billing_period
+    ):
+        """Recurring alert should create a trigger record each time it fires."""
+        start, end = billing_period
+        repo = UsageAlertRepository(db_session)
+        alert = repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("50"),
+                recurring=True,
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        # Create 60 events (crosses 50 once)
+        for i in range(60):
+            event = Event(
+                transaction_id=f"ua_tx_trig_rec1_{uuid4()}",
+                external_customer_id=str(customer.external_id),
+                code=str(metric.code),
+                timestamp=start + timedelta(hours=i % 24, minutes=i),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = UsageAlertService(db_session)
+        service.check_alerts(
+            subscription_id=subscription.id,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+
+        # Add more events (crosses 100)
+        for i in range(60):
+            event = Event(
+                transaction_id=f"ua_tx_trig_rec2_{uuid4()}",
+                external_customer_id=str(customer.external_id),
+                code=str(metric.code),
+                timestamp=start + timedelta(hours=i % 24, minutes=i + 100),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service.check_alerts(
+            subscription_id=subscription.id,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        triggers = trigger_repo.get_by_alert_id(alert.id)
+        assert len(triggers) == 2
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# get_current_usage_for_alert Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestGetCurrentUsageForAlert:
+    """Tests for UsageAlertService.get_current_usage_for_alert."""
+
+    def test_returns_current_usage(
+        self, db_session, subscription, customer, metric, billing_period
+    ):
+        """Should return aggregated usage for the alert's metric."""
+        start, end = billing_period
+        repo = UsageAlertRepository(db_session)
+        alert = repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        for i in range(25):
+            event = Event(
+                transaction_id=f"ua_tx_cur_usage_{uuid4()}",
+                external_customer_id=str(customer.external_id),
+                code=str(metric.code),
+                timestamp=start + timedelta(hours=i),
+                properties={},
+            )
+            db_session.add(event)
+        db_session.commit()
+
+        service = UsageAlertService(db_session)
+        usage = service.get_current_usage_for_alert(
+            alert=alert,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert usage == Decimal("25")
+
+    def test_returns_zero_for_missing_metric(
+        self, db_session, subscription, customer, billing_period
+    ):
+        """Should return 0 if the alert's metric doesn't exist."""
+        start, end = billing_period
+        repo = UsageAlertRepository(db_session)
+        alert = repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=uuid4(),
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        service = UsageAlertService(db_session)
+        usage = service.get_current_usage_for_alert(
+            alert=alert,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=start,
+            billing_period_end=end,
+        )
+        assert usage == Decimal("0")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Trigger Repository Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestUsageAlertTriggerRepository:
+    """Tests for UsageAlertTriggerRepository."""
+
+    def test_create_trigger(self, db_session, subscription, metric):
+        """Should create a trigger record."""
+        alert_repo = UsageAlertRepository(db_session)
+        alert = alert_repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        now = datetime.now(UTC)
+        trigger = trigger_repo.create(
+            usage_alert_id=alert.id,
+            current_usage=Decimal("150"),
+            threshold_value=Decimal("100"),
+            metric_code=str(metric.code),
+            triggered_at=now,
+        )
+        assert trigger.id is not None
+        assert trigger.current_usage == Decimal("150")
+        assert trigger.threshold_value == Decimal("100")
+        assert trigger.metric_code == str(metric.code)
+
+    def test_get_by_alert_id(self, db_session, subscription, metric):
+        """Should return triggers for a specific alert."""
+        alert_repo = UsageAlertRepository(db_session)
+        alert = alert_repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        now = datetime.now(UTC)
+        trigger_repo.create(
+            usage_alert_id=alert.id,
+            current_usage=Decimal("150"),
+            threshold_value=Decimal("100"),
+            metric_code="metric1",
+            triggered_at=now - timedelta(hours=2),
+        )
+        trigger_repo.create(
+            usage_alert_id=alert.id,
+            current_usage=Decimal("250"),
+            threshold_value=Decimal("100"),
+            metric_code="metric1",
+            triggered_at=now - timedelta(hours=1),
+        )
+
+        triggers = trigger_repo.get_by_alert_id(alert.id)
+        assert len(triggers) == 2
+        # Should be ordered by triggered_at DESC (most recent first)
+        assert triggers[0].current_usage == Decimal("250")
+        assert triggers[1].current_usage == Decimal("150")
+
+    def test_get_by_alert_id_pagination(self, db_session, subscription, metric):
+        """Should support pagination."""
+        alert_repo = UsageAlertRepository(db_session)
+        alert = alert_repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        now = datetime.now(UTC)
+        for i in range(5):
+            trigger_repo.create(
+                usage_alert_id=alert.id,
+                current_usage=Decimal(str((i + 1) * 100)),
+                threshold_value=Decimal("100"),
+                metric_code="metric1",
+                triggered_at=now - timedelta(hours=5 - i),
+            )
+
+        page1 = trigger_repo.get_by_alert_id(alert.id, skip=0, limit=2)
+        assert len(page1) == 2
+        page2 = trigger_repo.get_by_alert_id(alert.id, skip=2, limit=2)
+        assert len(page2) == 2
+        page3 = trigger_repo.get_by_alert_id(alert.id, skip=4, limit=2)
+        assert len(page3) == 1
+
+    def test_count_by_alert_id(self, db_session, subscription, metric):
+        """Should return count of triggers for an alert."""
+        alert_repo = UsageAlertRepository(db_session)
+        alert = alert_repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        assert trigger_repo.count_by_alert_id(alert.id) == 0
+
+        now = datetime.now(UTC)
+        trigger_repo.create(
+            usage_alert_id=alert.id,
+            current_usage=Decimal("150"),
+            threshold_value=Decimal("100"),
+            metric_code="metric1",
+            triggered_at=now,
+        )
+        assert trigger_repo.count_by_alert_id(alert.id) == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# New Schema Tests
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+class TestNewSchemas:
+    """Tests for new Pydantic schemas."""
+
+    def test_trigger_response_schema(self, db_session, subscription, metric):
+        """UsageAlertTriggerResponse should validate from a trigger model."""
+        alert_repo = UsageAlertRepository(db_session)
+        alert = alert_repo.create(
+            UsageAlertCreate(
+                subscription_id=subscription.id,
+                billable_metric_id=metric.id,
+                threshold_value=Decimal("100"),
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        trigger_repo = UsageAlertTriggerRepository(db_session)
+        trigger = trigger_repo.create(
+            usage_alert_id=alert.id,
+            current_usage=Decimal("150"),
+            threshold_value=Decimal("100"),
+            metric_code="api_calls",
+            triggered_at=datetime.now(UTC),
+        )
+
+        response = UsageAlertTriggerResponse.model_validate(trigger)
+        assert response.id == trigger.id
+        assert response.current_usage == Decimal("150")
+        assert response.metric_code == "api_calls"
+
+    def test_status_response_schema(self):
+        """UsageAlertStatusResponse should construct properly."""
+        now = datetime.now(UTC)
+        status = UsageAlertStatusResponse(
+            alert_id=uuid4(),
+            current_usage=Decimal("75"),
+            threshold_value=Decimal("100"),
+            usage_percentage=Decimal("75"),
+            billing_period_start=now,
+            billing_period_end=now + timedelta(days=30),
+        )
+        assert status.usage_percentage == Decimal("75")

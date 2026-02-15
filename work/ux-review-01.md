@@ -708,10 +708,12 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Minimal information in table rows
 
 **Recommendations:**
-- [ ] Add progress bar showing current usage as percentage of threshold
-- [ ] Add alert trigger history (dates, values at trigger time)
-- [ ] Add "Test Alert" action to simulate threshold breach
-- [ ] Improve table: show subscription name, metric name, progress percentage
+- [x] Add progress bar showing current usage as percentage of threshold
+- [x] Add alert trigger history (dates, values at trigger time)
+- [x] Add "Test Alert" action to simulate threshold breach
+- [x] Improve table: show subscription name, metric name, progress percentage
+
+> **Implementation Notes:** Added 3 new backend endpoints (`GET /{id}/status`, `GET /{id}/triggers`, `POST /{id}/test`), a `UsageAlertTrigger` model for trigger history tracking, and updated the frontend table with progress bars (color-coded: green/yellow/red), subscription external_id display, metric name + code, trigger history dialog, and test alert dialog. All 3662 backend tests pass at 100% coverage.
 
 **Modal vs. Page Decision:**
 - All MODAL - correct (alerts are simple entities)

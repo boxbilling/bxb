@@ -6,6 +6,8 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  History,
+  Zap,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -42,6 +44,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -55,8 +58,20 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { usageAlertsApi, subscriptionsApi, billableMetricsApi, ApiError } from '@/lib/api'
-import type { UsageAlert, UsageAlertCreate, UsageAlertUpdate } from '@/types/billing'
+import type {
+  UsageAlert,
+  UsageAlertCreate,
+  UsageAlertUpdate,
+  UsageAlertTrigger,
+} from '@/types/billing'
 
 function UsageAlertFormDialog({
   open,
@@ -239,12 +254,208 @@ function UsageAlertFormDialog({
   )
 }
 
+function UsageProgressCell({ alertId }: { alertId: string }) {
+  const { data: status } = useQuery({
+    queryKey: ['usage-alert-status', alertId],
+    queryFn: () => usageAlertsApi.getStatus(alertId),
+    refetchInterval: 30000,
+  })
+
+  if (!status) {
+    return <Skeleton className="h-5 w-24" />
+  }
+
+  const percentage = Math.min(Number(status.usage_percentage), 100)
+  const currentUsage = Number(status.current_usage)
+  const threshold = Number(status.threshold_value)
+  const isOverThreshold = currentUsage >= threshold
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-2 min-w-[120px]">
+            <Progress
+              value={percentage}
+              className={`h-2 w-16 ${isOverThreshold ? '[&>[data-slot=progress-indicator]]:bg-destructive' : percentage >= 80 ? '[&>[data-slot=progress-indicator]]:bg-yellow-500' : ''}`}
+            />
+            <span className={`text-xs font-mono ${isOverThreshold ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+              {percentage.toFixed(0)}%
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{currentUsage.toLocaleString()} / {threshold.toLocaleString()}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+function TriggerHistoryDialog({
+  open,
+  onOpenChange,
+  alert,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  alert: UsageAlert
+}) {
+  const { data: triggers = [], isLoading } = useQuery({
+    queryKey: ['usage-alert-triggers', alert.id],
+    queryFn: () => usageAlertsApi.listTriggers(alert.id),
+    enabled: open,
+  })
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>
+            Trigger History: {alert.name || 'Unnamed Alert'}
+          </DialogTitle>
+          <DialogDescription>
+            Times triggered: {alert.times_triggered}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[400px] overflow-y-auto">
+          {isLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : triggers.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">
+              No trigger events recorded yet
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Triggered At</TableHead>
+                  <TableHead>Usage at Trigger</TableHead>
+                  <TableHead>Threshold</TableHead>
+                  <TableHead>Metric</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {triggers.map((trigger: UsageAlertTrigger) => (
+                  <TableRow key={trigger.id}>
+                    <TableCell className="text-sm">
+                      {format(new Date(trigger.triggered_at), 'MMM d, yyyy HH:mm')}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {Number(trigger.current_usage).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {Number(trigger.threshold_value).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {trigger.metric_code}
+                      </code>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TestAlertDialog({
+  open,
+  onOpenChange,
+  alert,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  alert: UsageAlert
+}) {
+  const { data: status, isLoading } = useQuery({
+    queryKey: ['usage-alert-test', alert.id],
+    queryFn: () => usageAlertsApi.test(alert.id),
+    enabled: open,
+  })
+
+  const currentUsage = status ? Number(status.current_usage) : 0
+  const threshold = status ? Number(status.threshold_value) : 0
+  const percentage = status ? Math.min(Number(status.usage_percentage), 100) : 0
+  const wouldTrigger = currentUsage >= threshold
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[450px]">
+        <DialogHeader>
+          <DialogTitle>
+            Test Alert: {alert.name || 'Unnamed Alert'}
+          </DialogTitle>
+          <DialogDescription>
+            Current usage status for this alert (read-only, no webhooks sent)
+          </DialogDescription>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="space-y-3 py-4">
+            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ) : status ? (
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Current Usage</span>
+                <span className="font-mono font-medium">
+                  {currentUsage.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Threshold</span>
+                <span className="font-mono font-medium">
+                  {threshold.toLocaleString()}
+                </span>
+              </div>
+              <Progress
+                value={percentage}
+                className={`h-3 ${wouldTrigger ? '[&>[data-slot=progress-indicator]]:bg-destructive' : percentage >= 80 ? '[&>[data-slot=progress-indicator]]:bg-yellow-500' : ''}`}
+              />
+              <p className="text-center text-sm font-medium">
+                {percentage.toFixed(1)}% of threshold
+              </p>
+            </div>
+            <div className="rounded-md border p-3">
+              <p className={`text-sm font-medium ${wouldTrigger ? 'text-destructive' : 'text-green-600'}`}>
+                {wouldTrigger
+                  ? 'Alert WOULD trigger at this usage level'
+                  : 'Alert would NOT trigger at this usage level'}
+              </p>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>
+                Billing period:{' '}
+                {format(new Date(status.billing_period_start), 'MMM d, yyyy')} -{' '}
+                {format(new Date(status.billing_period_end), 'MMM d, yyyy')}
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function UsageAlertsPage() {
   const queryClient = useQueryClient()
   const [subscriptionFilter, setSubscriptionFilter] = useState<string>('all')
   const [formOpen, setFormOpen] = useState(false)
   const [editingAlert, setEditingAlert] = useState<UsageAlert | null>(null)
   const [deleteAlert, setDeleteAlert] = useState<UsageAlert | null>(null)
+  const [historyAlert, setHistoryAlert] = useState<UsageAlert | null>(null)
+  const [testAlert, setTestAlert] = useState<UsageAlert | null>(null)
 
   const {
     data: alerts = [],
@@ -266,6 +477,7 @@ export default function UsageAlertsPage() {
   })
 
   const metricMap = new Map(metrics.map((m) => [m.id, m]))
+  const subscriptionMap = new Map(subscriptions.map((s) => [s.id, s]))
 
   const filteredAlerts = alerts.filter((a) => {
     return (
@@ -399,6 +611,7 @@ export default function UsageAlertsPage() {
               <TableHead>Subscription</TableHead>
               <TableHead>Metric</TableHead>
               <TableHead>Threshold</TableHead>
+              <TableHead>Progress</TableHead>
               <TableHead>Recurring</TableHead>
               <TableHead>Last Triggered</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -409,9 +622,10 @@ export default function UsageAlertsPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
@@ -420,7 +634,7 @@ export default function UsageAlertsPage() {
             ) : filteredAlerts.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -430,6 +644,7 @@ export default function UsageAlertsPage() {
             ) : (
               filteredAlerts.map((alert) => {
                 const metric = metricMap.get(alert.billable_metric_id)
+                const subscription = subscriptionMap.get(alert.subscription_id)
                 return (
                   <TableRow key={alert.id}>
                     <TableCell className="font-medium">
@@ -437,14 +652,22 @@ export default function UsageAlertsPage() {
                     </TableCell>
                     <TableCell>
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                        {alert.subscription_id.slice(0, 8)}...
+                        {subscription?.external_id ?? alert.subscription_id.slice(0, 8) + '...'}
                       </code>
                     </TableCell>
                     <TableCell>
-                      {metric?.name ?? alert.billable_metric_id.slice(0, 8) + '...'}
+                      <div>
+                        <span>{metric?.name ?? alert.billable_metric_id.slice(0, 8) + '...'}</span>
+                        {metric?.code && (
+                          <span className="block text-xs text-muted-foreground">{metric.code}</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="font-mono">
                       {Number(alert.threshold_value).toLocaleString()}
+                    </TableCell>
+                    <TableCell>
+                      <UsageProgressCell alertId={alert.id} />
                     </TableCell>
                     <TableCell>
                       <Badge variant={alert.recurring ? 'default' : 'secondary'}>
@@ -468,6 +691,15 @@ export default function UsageAlertsPage() {
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setTestAlert(alert)}>
+                            <Zap className="mr-2 h-4 w-4" />
+                            Test Alert
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setHistoryAlert(alert)}>
+                            <History className="mr-2 h-4 w-4" />
+                            Trigger History
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => setDeleteAlert(alert)}
                             className="text-destructive"
@@ -527,6 +759,24 @@ export default function UsageAlertsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Trigger History Dialog */}
+      {historyAlert && (
+        <TriggerHistoryDialog
+          open={!!historyAlert}
+          onOpenChange={(open) => !open && setHistoryAlert(null)}
+          alert={historyAlert}
+        />
+      )}
+
+      {/* Test Alert Dialog */}
+      {testAlert && (
+        <TestAlertDialog
+          open={!!testAlert}
+          onOpenChange={(open) => !open && setTestAlert(null)}
+          alert={testAlert}
+        />
+      )}
     </div>
   )
 }

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.usage_alert import UsageAlert
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.usage_alert_repository import UsageAlertRepository
+from app.repositories.usage_alert_trigger_repository import UsageAlertTriggerRepository
 from app.services.usage_aggregation import UsageAggregationService
 from app.services.webhook_service import WebhookService
 
@@ -22,6 +23,7 @@ class UsageAlertService:
         self.metric_repo = BillableMetricRepository(db)
         self.usage_service = UsageAggregationService(db)
         self.webhook_service = WebhookService(db)
+        self.trigger_repo = UsageAlertTriggerRepository(db)
 
     def check_alerts(
         self,
@@ -79,6 +81,13 @@ class UsageAlertService:
                     self.db.refresh(alert)
                     triggered.append(alert)
 
+                    self._record_trigger(
+                        alert=alert,
+                        current_usage=current_usage,
+                        metric_code=metric_code,
+                        triggered_at=now,
+                    )
+
                     self._send_alert_webhook(
                         alert=alert,
                         metric_code=metric_code,
@@ -94,6 +103,13 @@ class UsageAlertService:
                     self.db.refresh(alert)
                     triggered.append(alert)
 
+                    self._record_trigger(
+                        alert=alert,
+                        current_usage=current_usage,
+                        metric_code=metric_code,
+                        triggered_at=now,
+                    )
+
                     self._send_alert_webhook(
                         alert=alert,
                         metric_code=metric_code,
@@ -102,6 +118,52 @@ class UsageAlertService:
                     )
 
         return triggered
+
+    def get_current_usage_for_alert(
+        self,
+        alert: UsageAlert,
+        external_customer_id: str,
+        billing_period_start: datetime,
+        billing_period_end: datetime,
+    ) -> Decimal:
+        """Get current usage for a specific alert's metric.
+
+        Args:
+            alert: The usage alert.
+            external_customer_id: The external customer ID for usage lookup.
+            billing_period_start: Start of the current billing period.
+            billing_period_end: End of the current billing period.
+
+        Returns:
+            Current usage value for the alert's metric.
+        """
+        metric_id = UUID(str(alert.billable_metric_id))
+        metric = self.metric_repo.get_by_id(metric_id)
+        if not metric:
+            return Decimal(0)
+
+        return self.usage_service.aggregate_usage(
+            external_customer_id=external_customer_id,
+            code=str(metric.code),
+            from_timestamp=billing_period_start,
+            to_timestamp=billing_period_end,
+        )
+
+    def _record_trigger(
+        self,
+        alert: UsageAlert,
+        current_usage: Decimal,
+        metric_code: str,
+        triggered_at: datetime,
+    ) -> None:
+        """Record a trigger event in the trigger history."""
+        self.trigger_repo.create(
+            usage_alert_id=UUID(str(alert.id)),
+            current_usage=current_usage,
+            threshold_value=Decimal(str(alert.threshold_value)),
+            metric_code=metric_code,
+            triggered_at=triggered_at,
+        )
 
     def _send_alert_webhook(
         self,
