@@ -384,7 +384,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No aggregate view (events per hour/day)
 
 **Recommendations:**
-- [ ] Add date range filter
+- [x] Add date range filter
+  <!-- Completed: Added date range filter to EventsPage with 6 presets (All time, Last hour, Last 24 hours, Last 7 days, Last 30 days, Custom range). Preset selector uses Select component with CalendarIcon. Custom range opens a dual-month Calendar popover for arbitrary date selection. Date parameters (from_timestamp/to_timestamp) are passed to the existing backend GET /v1/events/ endpoint which already supports timestamp filtering. No backend changes needed — leveraged existing infrastructure. TypeScript compiles clean, all 3444 backend tests pass with 100% coverage. -->
 - [ ] Add virtual scrolling for large event lists
 - [ ] Format properties as structured key-value pairs instead of raw JSON
 - [ ] Add event volume chart (events/hour sparkline above table)

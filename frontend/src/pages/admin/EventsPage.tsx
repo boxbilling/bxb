@@ -1,7 +1,7 @@
-import { Fragment, useState, useEffect } from 'react'
+import { Fragment, useState, useEffect, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, Activity, Pause, Play, X, Calculator, Loader2 } from 'lucide-react'
-import { format } from 'date-fns'
+import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon } from 'lucide-react'
+import { format, subDays, subMonths, startOfDay, endOfDay } from 'date-fns'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,8 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar } from '@/components/ui/calendar'
 import {
   Tooltip,
   TooltipContent,
@@ -40,6 +42,7 @@ import {
 } from '@/components/ui/tooltip'
 import { eventsApi, subscriptionsApi, billableMetricsApi } from '@/lib/api'
 import type { EstimateFeesResponse } from '@/types/billing'
+import type { DateRange } from 'react-day-picker'
 
 function formatCurrency(amount: string | number, currency: string = 'USD') {
   const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
@@ -201,12 +204,47 @@ function FeeEstimatorDialog({
 
 const POLLING_INTERVAL = 5000
 
+type DatePreset = 'all' | '1h' | '24h' | '7d' | '30d' | 'custom'
+
+const DATE_PRESET_LABELS: Record<DatePreset, string> = {
+  all: 'All time',
+  '1h': 'Last hour',
+  '24h': 'Last 24 hours',
+  '7d': 'Last 7 days',
+  '30d': 'Last 30 days',
+  custom: 'Custom range',
+}
+
+function getPresetTimestamps(preset: DatePreset): { from?: string; to?: string } {
+  if (preset === 'all' || preset === 'custom') return {}
+  const now = new Date()
+  let from: Date
+  switch (preset) {
+    case '1h':
+      from = new Date(now.getTime() - 60 * 60 * 1000)
+      break
+    case '24h':
+      from = subDays(now, 1)
+      break
+    case '7d':
+      from = startOfDay(subDays(now, 7))
+      break
+    case '30d':
+      from = startOfDay(subMonths(now, 1))
+      break
+  }
+  return { from: from.toISOString(), to: now.toISOString() }
+}
+
 export default function EventsPage() {
   const [customerFilter, setCustomerFilter] = useState('')
   const [codeFilter, setCodeFilter] = useState('')
   const [isPolling, setIsPolling] = useState(true)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [feeEstimatorOpen, setFeeEstimatorOpen] = useState(false)
+  const [datePreset, setDatePreset] = useState<DatePreset>('all')
+  const [customRange, setCustomRange] = useState<DateRange | undefined>(undefined)
+  const [calendarOpen, setCalendarOpen] = useState(false)
 
   // Debounce filter values
   const [debouncedCustomer, setDebouncedCustomer] = useState('')
@@ -222,13 +260,30 @@ export default function EventsPage() {
     return () => clearTimeout(timer)
   }, [codeFilter])
 
+  const dateParams = useMemo(() => {
+    if (datePreset === 'custom' && customRange?.from) {
+      return {
+        from_timestamp: startOfDay(customRange.from).toISOString(),
+        to_timestamp: customRange.to
+          ? endOfDay(customRange.to).toISOString()
+          : endOfDay(customRange.from).toISOString(),
+      }
+    }
+    if (datePreset !== 'all' && datePreset !== 'custom') {
+      const { from, to } = getPresetTimestamps(datePreset)
+      return { from_timestamp: from, to_timestamp: to }
+    }
+    return {}
+  }, [datePreset, customRange])
+
   const { data: events, isLoading, error, dataUpdatedAt } = useQuery({
-    queryKey: ['events', { external_customer_id: debouncedCustomer || undefined, code: debouncedCode || undefined }],
+    queryKey: ['events', { external_customer_id: debouncedCustomer || undefined, code: debouncedCode || undefined, ...dateParams }],
     queryFn: () =>
       eventsApi.list({
         limit: 100,
         external_customer_id: debouncedCustomer || undefined,
         code: debouncedCode || undefined,
+        ...dateParams,
       }),
     refetchInterval: isPolling ? POLLING_INTERVAL : false,
   })
@@ -290,8 +345,8 @@ export default function EventsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Filter by customer ID..."
@@ -310,7 +365,7 @@ export default function EventsPage() {
             </Button>
           )}
         </div>
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Filter by event code..."
@@ -327,6 +382,52 @@ export default function EventsPage() {
             >
               <X className="h-3 w-3" />
             </Button>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Select
+            value={datePreset}
+            onValueChange={(v) => {
+              const p = v as DatePreset
+              setDatePreset(p)
+              if (p === 'custom') setCalendarOpen(true)
+              if (p !== 'custom') setCustomRange(undefined)
+            }}
+          >
+            <SelectTrigger className="w-[160px]">
+              <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(DATE_PRESET_LABELS).map(([key, label]) => (
+                <SelectItem key={key} value={key}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {datePreset === 'custom' && (
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="font-normal">
+                  {customRange?.from
+                    ? customRange.to
+                      ? `${format(customRange.from, 'MMM d, yyyy')} – ${format(customRange.to, 'MMM d, yyyy')}`
+                      : format(customRange.from, 'MMM d, yyyy')
+                    : 'Pick dates'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={customRange}
+                  onSelect={setCustomRange}
+                  numberOfMonths={2}
+                  disabled={{ after: new Date() }}
+                />
+              </PopoverContent>
+            </Popover>
           )}
         </div>
       </div>
