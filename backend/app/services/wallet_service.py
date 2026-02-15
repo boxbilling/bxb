@@ -206,6 +206,80 @@ class WalletService:
             Decimal("0"),
         )
 
+    def transfer_credits(
+        self,
+        source_wallet_id: UUID,
+        target_wallet_id: UUID,
+        credits: Decimal,
+    ) -> tuple[Wallet, Wallet]:
+        """Transfer credits from one wallet to another.
+
+        Both wallets must be active. Source must have sufficient credits.
+        Returns (source_wallet, target_wallet) after transfer.
+        """
+        if source_wallet_id == target_wallet_id:
+            raise ValueError("Source and target wallets must be different")
+
+        source = self.wallet_repo.get_by_id(source_wallet_id)
+        if not source:
+            raise ValueError("Source wallet not found")
+        if source.status == WalletStatus.TERMINATED.value:
+            raise ValueError("Source wallet is terminated")
+
+        target = self.wallet_repo.get_by_id(target_wallet_id)
+        if not target:
+            raise ValueError("Target wallet not found")
+        if target.status == WalletStatus.TERMINATED.value:
+            raise ValueError("Target wallet is terminated")
+
+        source_credits = Decimal(str(source.credits_balance))
+        if source_credits < credits:
+            raise ValueError("Insufficient credits in source wallet")
+
+        source_rate = Decimal(str(source.rate_amount))
+        target_rate = Decimal(str(target.rate_amount))
+        source_amount_cents = credits * source_rate
+        target_amount_cents = credits * target_rate
+
+        # Deduct from source
+        self.wallet_repo.deduct_balance(source_wallet_id, credits, source_amount_cents)
+
+        # Create outbound transaction on source
+        self.txn_repo.create(
+            WalletTransactionCreate(
+                wallet_id=source_wallet_id,
+                customer_id=source.customer_id,  # type: ignore[arg-type]
+                transaction_type=TransactionType.OUTBOUND,
+                transaction_status=TransactionTransactionStatus.GRANTED,
+                source=TransactionSource.MANUAL,
+                status=TransactionStatus.SETTLED,
+                amount=credits,
+                credit_amount=source_amount_cents,
+            )
+        )
+
+        # Add to target
+        self.wallet_repo.update_balance(target_wallet_id, credits, target_amount_cents)
+
+        # Create inbound transaction on target
+        self.txn_repo.create(
+            WalletTransactionCreate(
+                wallet_id=target_wallet_id,
+                customer_id=target.customer_id,  # type: ignore[arg-type]
+                transaction_type=TransactionType.INBOUND,
+                transaction_status=TransactionTransactionStatus.GRANTED,
+                source=TransactionSource.MANUAL,
+                status=TransactionStatus.SETTLED,
+                amount=credits,
+                credit_amount=target_amount_cents,
+            )
+        )
+
+        # Refresh wallets
+        updated_source = self.wallet_repo.get_by_id(source_wallet_id)
+        updated_target = self.wallet_repo.get_by_id(target_wallet_id)
+        return updated_source, updated_target  # type: ignore[return-value]
+
     def check_expired_wallets(self) -> list[UUID]:
         """Find and terminate expired wallets. Returns list of terminated wallet IDs."""
         now = datetime.now(UTC)

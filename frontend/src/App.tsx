@@ -16,6 +16,7 @@ import {
   FeesPage,
   PaymentsPage,
   WalletsPage,
+  WalletDetailPage,
   CouponsPage,
   AddOnsPage,
   CreditNotesPage,
@@ -62,6 +63,7 @@ function App() {
         <Route path="fees" element={<FeesPage />} />
         <Route path="payments" element={<PaymentsPage />} />
         <Route path="wallets" element={<WalletsPage />} />
+        <Route path="wallets/:id" element={<WalletDetailPage />} />
         <Route path="coupons" element={<CouponsPage />} />
         <Route path="add-ons" element={<AddOnsPage />} />
         <Route path="credit-notes" element={<CreditNotesPage />} />

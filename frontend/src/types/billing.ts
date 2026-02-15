@@ -69,6 +69,11 @@ export type WalletUpdate = components['schemas']['WalletUpdate']
 export type WalletTopUp = components['schemas']['WalletTopUp']
 export type WalletStatus = components['schemas']['WalletStatus']
 export type WalletTransaction = components['schemas']['WalletTransactionResponse']
+export type BalanceTimelineResponse = components['schemas']['BalanceTimelineResponse']
+export type BalanceTimelinePoint = components['schemas']['BalanceTimelinePoint']
+export type DepletionForecastResponse = components['schemas']['DepletionForecastResponse']
+export type WalletTransferRequest = components['schemas']['WalletTransferRequest']
+export type WalletTransferResponse = components['schemas']['WalletTransferResponse']
 
 // --- Coupons ---
 export type Coupon = components['schemas']['CouponResponse']

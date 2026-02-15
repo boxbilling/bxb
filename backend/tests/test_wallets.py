@@ -902,3 +902,488 @@ class TestWalletAPI:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 3
+
+    # --- Balance Timeline API tests ---
+
+    def test_balance_timeline_empty(self, client, db_session, wallet):
+        """Test GET /v1/wallets/{id}/balance_timeline with no transactions."""
+        response = client.get(f"/v1/wallets/{wallet.id}/balance_timeline")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+        assert data["points"] == []
+
+    def test_balance_timeline_with_transactions(
+        self, client, db_session, customer, wallet
+    ):
+        """Test balance timeline returns daily inbound/outbound with running balance."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("100"))
+        service.top_up_wallet(wallet.id, Decimal("50"))
+
+        response = client.get(f"/v1/wallets/{wallet.id}/balance_timeline")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["points"]) >= 1
+        # All transactions on same day, so 1 aggregated point
+        point = data["points"][0]
+        assert "date" in point
+        assert Decimal(point["inbound"]) == Decimal("150.0000")
+        assert Decimal(point["outbound"]) == Decimal("0")
+        assert Decimal(point["balance"]) == Decimal("150.0000")
+
+    def test_balance_timeline_not_found(self, client):
+        """Test balance timeline returns 404 for non-existent wallet."""
+        response = client.get(
+            f"/v1/wallets/{uuid4()}/balance_timeline"
+        )
+        assert response.status_code == 404
+
+    # --- Depletion Forecast API tests ---
+
+    def test_depletion_forecast_no_consumption(
+        self, client, db_session, customer, wallet
+    ):
+        """Test depletion forecast with no consumption returns null forecast."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("100"))
+
+        response = client.get(
+            f"/v1/wallets/{wallet.id}/depletion_forecast"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+        assert data["projected_depletion_date"] is None
+        assert data["days_remaining"] is None
+        assert Decimal(data["avg_daily_consumption"]) == Decimal("0")
+
+    def test_depletion_forecast_with_consumption(
+        self, client, db_session, customer, wallet
+    ):
+        """Test depletion forecast with consumption data."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("1000"))
+        # Consume some credits
+        service.consume_credits(customer.id, Decimal("300"))
+
+        response = client.get(
+            f"/v1/wallets/{wallet.id}/depletion_forecast"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+        assert Decimal(data["avg_daily_consumption"]) > 0
+        # With consumption, should have projected date
+        assert data["days_remaining"] is not None
+        assert data["days_remaining"] > 0
+        assert data["projected_depletion_date"] is not None
+
+    def test_depletion_forecast_not_found(self, client):
+        """Test depletion forecast returns 404 for non-existent wallet."""
+        response = client.get(
+            f"/v1/wallets/{uuid4()}/depletion_forecast"
+        )
+        assert response.status_code == 404
+
+    def test_depletion_forecast_custom_days(
+        self, client, db_session, customer, wallet
+    ):
+        """Test depletion forecast with custom lookback period."""
+        response = client.get(
+            f"/v1/wallets/{wallet.id}/depletion_forecast?days=7"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+
+    # --- Transfer Credits API tests ---
+
+    def test_transfer_credits_success(
+        self, client, db_session, customer, customer2
+    ):
+        """Test POST /v1/wallets/transfer transfers credits."""
+        from app.services.wallet_service import WalletService
+
+        repo = WalletRepository(db_session)
+        source = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Source",
+                code="xfer-src",
+            )
+        )
+        target = repo.create(
+            WalletCreate(
+                customer_id=customer2.id,
+                name="Target",
+                code="xfer-tgt",
+            )
+        )
+        # Top up source
+        service = WalletService(db_session)
+        service.top_up_wallet(source.id, Decimal("200"))
+
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(source.id),
+                "target_wallet_id": str(target.id),
+                "credits": "50",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert Decimal(data["credits_transferred"]) == Decimal("50")
+        assert Decimal(
+            data["source_wallet"]["credits_balance"]
+        ) == Decimal("150.0000")
+        assert Decimal(
+            data["target_wallet"]["credits_balance"]
+        ) == Decimal("50.0000")
+
+    def test_transfer_credits_same_wallet(
+        self, client, db_session, wallet
+    ):
+        """Test transfer to same wallet returns 400."""
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(wallet.id),
+                "target_wallet_id": str(wallet.id),
+                "credits": "10",
+            },
+        )
+        assert response.status_code == 400
+        assert "different" in response.json()["detail"]
+
+    def test_transfer_credits_insufficient(
+        self, client, db_session, customer, customer2
+    ):
+        """Test transfer with insufficient credits returns 400."""
+        repo = WalletRepository(db_session)
+        source = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Empty Source",
+                code="xfer-empty",
+            )
+        )
+        target = repo.create(
+            WalletCreate(
+                customer_id=customer2.id,
+                name="Target2",
+                code="xfer-tgt2",
+            )
+        )
+
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(source.id),
+                "target_wallet_id": str(target.id),
+                "credits": "100",
+            },
+        )
+        assert response.status_code == 400
+        assert "Insufficient" in response.json()["detail"]
+
+    def test_transfer_credits_source_not_found(self, client, db_session, wallet):
+        """Test transfer with non-existent source returns 400."""
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(uuid4()),
+                "target_wallet_id": str(wallet.id),
+                "credits": "10",
+            },
+        )
+        assert response.status_code == 400
+        assert "not found" in response.json()["detail"]
+
+    def test_transfer_credits_target_not_found(self, client, db_session, wallet):
+        """Test transfer with non-existent target returns 400."""
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(wallet.id),
+                "target_wallet_id": str(uuid4()),
+                "credits": "10",
+            },
+        )
+        assert response.status_code == 400
+        assert "not found" in response.json()["detail"]
+
+    def test_transfer_credits_terminated_source(
+        self, client, db_session, customer, customer2
+    ):
+        """Test transfer from terminated wallet returns 400."""
+        repo = WalletRepository(db_session)
+        source = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Term Src",
+                code="xfer-term-src",
+            )
+        )
+        repo.terminate(source.id)
+        target = repo.create(
+            WalletCreate(
+                customer_id=customer2.id,
+                name="Target3",
+                code="xfer-tgt3",
+            )
+        )
+
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(source.id),
+                "target_wallet_id": str(target.id),
+                "credits": "10",
+            },
+        )
+        assert response.status_code == 400
+        assert "terminated" in response.json()["detail"]
+
+    def test_transfer_credits_terminated_target(
+        self, client, db_session, customer, customer2
+    ):
+        """Test transfer to terminated wallet returns 400."""
+        from app.services.wallet_service import WalletService
+
+        repo = WalletRepository(db_session)
+        source = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Src4",
+                code="xfer-src4",
+            )
+        )
+        service = WalletService(db_session)
+        service.top_up_wallet(source.id, Decimal("100"))
+
+        target = repo.create(
+            WalletCreate(
+                customer_id=customer2.id,
+                name="Term Target",
+                code="xfer-term-tgt",
+            )
+        )
+        repo.terminate(target.id)
+
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(source.id),
+                "target_wallet_id": str(target.id),
+                "credits": "10",
+            },
+        )
+        assert response.status_code == 400
+        assert "terminated" in response.json()["detail"]
+
+    def test_transfer_credits_invalid_amount(self, client):
+        """Test transfer with zero/negative credits returns 422."""
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(uuid4()),
+                "target_wallet_id": str(uuid4()),
+                "credits": "0",
+            },
+        )
+        assert response.status_code == 422
+
+        response = client.post(
+            "/v1/wallets/transfer",
+            json={
+                "source_wallet_id": str(uuid4()),
+                "target_wallet_id": str(uuid4()),
+                "credits": "-5",
+            },
+        )
+        assert response.status_code == 422
+
+
+class TestWalletTransactionRepository:
+    """Tests for WalletTransactionRepository new methods."""
+
+    def test_daily_balance_timeline_empty(self, db_session, wallet):
+        """Test daily_balance_timeline with no transactions."""
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        repo = WalletTransactionRepository(db_session)
+        result = repo.daily_balance_timeline(wallet.id)
+        assert result == []
+
+    def test_daily_balance_timeline_with_data(
+        self, db_session, customer, wallet
+    ):
+        """Test daily_balance_timeline aggregates by day."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("100"))
+        service.top_up_wallet(wallet.id, Decimal("50"))
+
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        repo = WalletTransactionRepository(db_session)
+        result = repo.daily_balance_timeline(wallet.id)
+        assert len(result) >= 1
+        assert Decimal(str(result[0]["inbound"])) == Decimal("150.0000")
+        assert Decimal(str(result[0]["outbound"])) == Decimal("0")
+
+    def test_daily_balance_timeline_with_date_filter(
+        self, db_session, customer, wallet
+    ):
+        """Test daily_balance_timeline with start_date/end_date filters."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("100"))
+
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        repo = WalletTransactionRepository(db_session)
+
+        # Filter with start_date in the past — should include data
+        past = datetime.now(UTC) - timedelta(days=1)
+        result = repo.daily_balance_timeline(
+            wallet.id, start_date=past
+        )
+        assert len(result) >= 1
+
+        # Filter with end_date in the past — should exclude data
+        far_past = datetime.now(UTC) - timedelta(days=30)
+        result = repo.daily_balance_timeline(
+            wallet.id, end_date=far_past
+        )
+        assert len(result) == 0
+
+    def test_daily_balance_timeline_postgresql_branch(self, db_session):
+        """Test daily_balance_timeline dialect detection for PostgreSQL."""
+        from unittest.mock import MagicMock, PropertyMock
+
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        # Create a mock session that reports postgresql dialect
+        mock_session = MagicMock()
+        mock_bind = MagicMock()
+        mock_bind.dialect.name = "postgresql"
+        type(mock_session).bind = PropertyMock(return_value=mock_bind)
+        mock_session.query.return_value.filter.return_value.group_by.return_value.order_by.return_value.all.return_value = []
+
+        repo = WalletTransactionRepository(mock_session)
+        result = repo.daily_balance_timeline(uuid4())
+        assert result == []
+
+    def test_avg_daily_consumption_no_data(self, db_session, wallet):
+        """Test avg_daily_consumption with no outbound transactions."""
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        repo = WalletTransactionRepository(db_session)
+        result = repo.avg_daily_consumption(wallet.id)
+        assert result == Decimal("0")
+
+    def test_avg_daily_consumption_with_data(
+        self, db_session, customer, wallet
+    ):
+        """Test avg_daily_consumption with outbound transactions."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        service.top_up_wallet(wallet.id, Decimal("1000"))
+        service.consume_credits(customer.id, Decimal("300"))
+
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        repo = WalletTransactionRepository(db_session)
+        result = repo.avg_daily_consumption(wallet.id, days=30)
+        assert result > 0
+        assert result == Decimal("300.0000") / 30
+
+
+class TestWalletServiceTransfer:
+    """Tests for WalletService.transfer_credits method."""
+
+    def test_transfer_creates_transactions(
+        self, db_session, customer, customer2
+    ):
+        """Test that transfer creates both outbound and inbound txns."""
+        from app.services.wallet_service import WalletService
+
+        repo = WalletRepository(db_session)
+        source = repo.create(
+            WalletCreate(
+                customer_id=customer.id,
+                name="Svc Src",
+                code="svc-src",
+            )
+        )
+        target = repo.create(
+            WalletCreate(
+                customer_id=customer2.id,
+                name="Svc Tgt",
+                code="svc-tgt",
+            )
+        )
+
+        service = WalletService(db_session)
+        service.top_up_wallet(source.id, Decimal("200"))
+
+        updated_src, updated_tgt = service.transfer_credits(
+            source.id, target.id, Decimal("75")
+        )
+
+        assert Decimal(str(updated_src.credits_balance)) == Decimal(
+            "125.0000"
+        )
+        assert Decimal(str(updated_tgt.credits_balance)) == Decimal(
+            "75.0000"
+        )
+
+        # Verify transactions were created
+        from app.repositories.wallet_transaction_repository import (
+            WalletTransactionRepository,
+        )
+
+        txn_repo = WalletTransactionRepository(db_session)
+        src_txns = txn_repo.get_by_wallet_id(source.id)
+        # 1 top-up + 1 transfer out = 2
+        assert len(src_txns) == 2
+        outbound = [
+            t for t in src_txns if t.transaction_type == "outbound"
+        ]
+        assert len(outbound) == 1
+
+        tgt_txns = txn_repo.get_by_wallet_id(target.id)
+        assert len(tgt_txns) == 1
+        assert tgt_txns[0].transaction_type == "inbound"
+
+    def test_transfer_same_wallet_raises(self, db_session, wallet):
+        """Test transferring to same wallet raises ValueError."""
+        from app.services.wallet_service import WalletService
+
+        service = WalletService(db_session)
+        with pytest.raises(ValueError, match="different"):
+            service.transfer_credits(wallet.id, wallet.id, Decimal("10"))

@@ -53,3 +53,35 @@ class WalletResponse(BaseModel):
     priority: int
     created_at: datetime
     updated_at: datetime
+
+
+class BalanceTimelinePoint(BaseModel):
+    date: str
+    inbound: Decimal
+    outbound: Decimal
+    balance: Decimal
+
+
+class BalanceTimelineResponse(BaseModel):
+    wallet_id: UUID
+    points: list[BalanceTimelinePoint]
+
+
+class DepletionForecastResponse(BaseModel):
+    wallet_id: UUID
+    current_balance_cents: Decimal
+    avg_daily_consumption: Decimal
+    projected_depletion_date: datetime | None = None
+    days_remaining: int | None = None
+
+
+class WalletTransferRequest(BaseModel):
+    source_wallet_id: UUID
+    target_wallet_id: UUID
+    credits: Decimal = Field(gt=0)
+
+
+class WalletTransferResponse(BaseModel):
+    source_wallet: WalletResponse
+    target_wallet: WalletResponse
+    credits_transferred: Decimal

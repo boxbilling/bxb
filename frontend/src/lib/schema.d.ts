@@ -1672,6 +1672,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/wallets/{wallet_id}/balance_timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get wallet balance timeline
+         * @description Get daily balance timeline for a wallet showing credits in/out over time.
+         */
+        get: operations["get_balance_timeline_v1_wallets__wallet_id__balance_timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/wallets/{wallet_id}/depletion_forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get wallet depletion forecast
+         * @description Get projected depletion date based on consumption rate.
+         */
+        get: operations["get_depletion_forecast_v1_wallets__wallet_id__depletion_forecast_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/wallets/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transfer credits between wallets
+         * @description Transfer credits from one wallet to another.
+         */
+        post: operations["transfer_credits_v1_wallets_transfer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/coupons/": {
         parameters: {
             query?: never;
@@ -3412,6 +3472,27 @@ export interface components {
              */
             created_at: string;
         };
+        /** BalanceTimelinePoint */
+        BalanceTimelinePoint: {
+            /** Date */
+            date: string;
+            /** Inbound */
+            inbound: string;
+            /** Outbound */
+            outbound: string;
+            /** Balance */
+            balance: string;
+        };
+        /** BalanceTimelineResponse */
+        BalanceTimelineResponse: {
+            /**
+             * Wallet Id
+             * Format: uuid
+             */
+            wallet_id: string;
+            /** Points */
+            points: components["schemas"]["BalanceTimelinePoint"][];
+        };
         /** BillableMetricCreate */
         BillableMetricCreate: {
             /** Code */
@@ -4384,6 +4465,22 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** DepletionForecastResponse */
+        DepletionForecastResponse: {
+            /**
+             * Wallet Id
+             * Format: uuid
+             */
+            wallet_id: string;
+            /** Current Balance Cents */
+            current_balance_cents: string;
+            /** Avg Daily Consumption */
+            avg_daily_consumption: string;
+            /** Projected Depletion Date */
+            projected_depletion_date?: string | null;
+            /** Days Remaining */
+            days_remaining?: number | null;
         };
         /**
          * DunningCampaignCreate
@@ -6443,6 +6540,28 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** WalletTransferRequest */
+        WalletTransferRequest: {
+            /**
+             * Source Wallet Id
+             * Format: uuid
+             */
+            source_wallet_id: string;
+            /**
+             * Target Wallet Id
+             * Format: uuid
+             */
+            target_wallet_id: string;
+            /** Credits */
+            credits: number | string;
+        };
+        /** WalletTransferResponse */
+        WalletTransferResponse: {
+            source_wallet: components["schemas"]["WalletResponse"];
+            target_wallet: components["schemas"]["WalletResponse"];
+            /** Credits Transferred */
+            credits_transferred: string;
         };
         /** WalletUpdate */
         WalletUpdate: {
@@ -11196,6 +11315,148 @@ export interface operations {
             };
             /** @description Wallet not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_balance_timeline_v1_wallets__wallet_id__balance_timeline_get: {
+        parameters: {
+            query?: {
+                start_date?: string | null;
+                end_date?: string | null;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceTimelineResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_depletion_forecast_v1_wallets__wallet_id__depletion_forecast_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepletionForecastResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    transfer_credits_v1_wallets_transfer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WalletTransferRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTransferResponse"];
+                };
+            };
+            /** @description Invalid transfer (same wallet, insufficient credits, terminated wallet) */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

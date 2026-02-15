@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
@@ -58,14 +59,12 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { walletsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Wallet,
   WalletCreate,
   WalletUpdate,
   WalletTopUp,
-  WalletTransaction,
 } from '@/types/billing'
 
 function formatCredits(value: number | string): string {
@@ -392,188 +391,6 @@ function TopUpDialog({
   )
 }
 
-// --- Wallet Detail Dialog ---
-function WalletDetailDialog({
-  open,
-  onOpenChange,
-  wallet,
-  customerName,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  wallet: Wallet | null
-  customerName: string
-}) {
-  const { data: transactions = [], isLoading: txLoading } = useQuery({
-    queryKey: ['wallet-transactions', wallet?.id],
-    queryFn: () => walletsApi.listTransactions(wallet!.id),
-    enabled: !!wallet,
-  })
-
-  if (!wallet) return null
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[650px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Wallet Details</DialogTitle>
-          <DialogDescription>
-            {wallet.name || wallet.code || wallet.id.slice(0, 8)}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Wallet Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Customer</p>
-            <p className="font-medium">{customerName}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Status</p>
-            <Badge
-              variant={wallet.status === 'active' ? 'default' : 'secondary'}
-            >
-              {wallet.status}
-            </Badge>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Credits Balance</p>
-            <p className="text-lg font-semibold">
-              {formatCredits(wallet.credits_balance)}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Balance</p>
-            <p className="text-lg font-semibold">
-              {formatCurrency(wallet.balance_cents, wallet.currency)}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Consumed Credits</p>
-            <p>{formatCredits(wallet.consumed_credits)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Consumed Amount</p>
-            <p>{formatCurrency(wallet.consumed_amount_cents, wallet.currency)}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Rate</p>
-            <p>
-              1 credit = {formatCredits(wallet.rate_amount)} cents{' '}
-              <Badge variant="outline">{wallet.currency}</Badge>
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Priority</p>
-            <p>{wallet.priority}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Expiration</p>
-            <p>
-              {wallet.expiration_at
-                ? format(new Date(wallet.expiration_at), 'MMM d, yyyy HH:mm')
-                : 'Never'}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Created</p>
-            <p>{format(new Date(wallet.created_at), 'MMM d, yyyy')}</p>
-          </div>
-        </div>
-
-        <Separator />
-
-        {/* Transactions */}
-        <div>
-          <h4 className="text-sm font-semibold mb-3">Transactions</h4>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Credits</TableHead>
-                  <TableHead>Source</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {txLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-16" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-20" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : transactions.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="h-16 text-center text-muted-foreground"
-                    >
-                      No transactions yet
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  transactions.map((tx: WalletTransaction) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            tx.transaction_type === 'inbound'
-                              ? 'default'
-                              : 'secondary'
-                          }
-                        >
-                          {tx.transaction_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={
-                            tx.transaction_type === 'inbound'
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                          }
-                        >
-                          {tx.transaction_type === 'inbound' ? '+' : '-'}
-                          {formatCredits(tx.credit_amount)}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{tx.source}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{tx.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {format(new Date(tx.created_at), 'MMM d, yyyy HH:mm')}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export default function WalletsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
@@ -581,7 +398,6 @@ export default function WalletsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
   const [topUpWallet, setTopUpWallet] = useState<Wallet | null>(null)
-  const [detailWallet, setDetailWallet] = useState<Wallet | null>(null)
   const [terminateWallet, setTerminateWallet] = useState<Wallet | null>(null)
 
   // Fetch wallets
@@ -876,7 +692,10 @@ export default function WalletsPage() {
               filteredWallets.map((wallet) => (
                 <TableRow key={wallet.id}>
                   <TableCell>
-                    <div>
+                    <Link
+                      to={`/admin/wallets/${wallet.id}`}
+                      className="block hover:underline"
+                    >
                       <div className="font-medium">
                         {wallet.name || '(unnamed)'}
                       </div>
@@ -885,7 +704,7 @@ export default function WalletsPage() {
                           {wallet.code}
                         </code>
                       )}
-                    </div>
+                    </Link>
                   </TableCell>
                   <TableCell>
                     {getCustomerName(wallet.customer_id)}
@@ -927,11 +746,11 @@ export default function WalletsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => setDetailWallet(wallet)}
-                        >
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
+                        <DropdownMenuItem asChild>
+                          <Link to={`/admin/wallets/${wallet.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </Link>
                         </DropdownMenuItem>
                         {wallet.status === 'active' && (
                           <>
@@ -985,16 +804,6 @@ export default function WalletsPage() {
           topUpWallet && topUpMutation.mutate({ id: topUpWallet.id, data })
         }
         isLoading={topUpMutation.isPending}
-      />
-
-      {/* Detail Dialog */}
-      <WalletDetailDialog
-        open={!!detailWallet}
-        onOpenChange={(open) => !open && setDetailWallet(null)}
-        wallet={detailWallet}
-        customerName={
-          detailWallet ? getCustomerName(detailWallet.customer_id) : ''
-        }
       />
 
       {/* Terminate Confirmation */}

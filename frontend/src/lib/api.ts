@@ -51,6 +51,10 @@ type WalletCreate = components['schemas']['WalletCreate']
 type WalletUpdate = components['schemas']['WalletUpdate']
 type WalletTopUp = components['schemas']['WalletTopUp']
 type WalletTransactionResponse = components['schemas']['WalletTransactionResponse']
+type BalanceTimelineResponse = components['schemas']['BalanceTimelineResponse']
+type DepletionForecastResponse = components['schemas']['DepletionForecastResponse']
+type WalletTransferRequest = components['schemas']['WalletTransferRequest']
+type WalletTransferResponse = components['schemas']['WalletTransferResponse']
 
 type CouponResponse = components['schemas']['CouponResponse']
 type CouponCreate = components['schemas']['CouponCreate']
@@ -659,6 +663,15 @@ export const walletsApi = {
     }),
   listTransactions: (walletId: string, params?: { skip?: number; limit?: number }) =>
     request<WalletTransactionResponse[]>(`/v1/wallets/${walletId}/transactions${buildQuery(params)}`),
+  getBalanceTimeline: (walletId: string, params?: { start_date?: string; end_date?: string }) =>
+    request<BalanceTimelineResponse>(`/v1/wallets/${walletId}/balance_timeline${buildQuery(params)}`),
+  getDepletionForecast: (walletId: string, params?: { days?: number }) =>
+    request<DepletionForecastResponse>(`/v1/wallets/${walletId}/depletion_forecast${buildQuery(params)}`),
+  transfer: (data: WalletTransferRequest) =>
+    request<WalletTransferResponse>('/v1/wallets/transfer', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Coupons API

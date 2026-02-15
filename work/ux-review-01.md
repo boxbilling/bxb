@@ -557,11 +557,16 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No "credit consumption" visualization
 
 **Recommendations:**
-- [ ] **Wallet detail should be a full page** (`/admin/wallets/:id`). Transaction history deserves proper space with filters, pagination, and a balance timeline chart.
-- [ ] Add balance timeline chart showing credits in/out over time
-- [ ] Add running balance column to transaction history
-- [ ] Show projected depletion date based on consumption rate
-- [ ] Add "Transfer Credits" between wallets action
+- [x] **Wallet detail should be a full page** (`/admin/wallets/:id`). Transaction history deserves proper space with filters, pagination, and a balance timeline chart.
+  <!-- Completed: Created WalletDetailPage.tsx as a dedicated full-page view at /admin/wallets/:id. Page includes breadcrumb navigation, header with wallet name/status/customer link and action buttons (Edit, Top Up, Transfer, Terminate). Four stat cards showing credits balance, monetary balance, consumed credits, and consumed amount. Wallet details card with rate, priority, expiration, and creation date. Three tabs: Transactions (full table with running balance column), Balance Timeline (area chart for balance over time + bar chart for credits in/out), and Activity (audit trail). Removed WalletDetailDialog modal from WalletsPage. Table rows and "View Details" action now navigate to the detail page. Route added in App.tsx. -->
+- [x] Add balance timeline chart showing credits in/out over time
+  <!-- Completed: Added GET /v1/wallets/{id}/balance_timeline backend endpoint returning daily aggregated inbound/outbound amounts with running balance computation. Repository method daily_balance_timeline() uses GROUP BY on day-truncated timestamps with SQLite/PostgreSQL dialect support, CASE expressions for inbound/outbound sums. Frontend Balance Timeline tab displays two charts: an AreaChart showing running balance over time with gradient fill, and a BarChart showing daily credits in (green) vs out (red). New Pydantic schemas: BalanceTimelinePoint, BalanceTimelineResponse. 5 new backend tests added. 100% coverage maintained. -->
+- [x] Add running balance column to transaction history
+  <!-- Completed: Frontend transaction table now includes a "Running Balance" column. Computed client-side by processing transactions from oldest to newest, accumulating inbound credits and subtracting outbound credits, then reversing to display newest-first order. Running balance shown in mono font with currency formatting. All 7 columns: Type, Credits, Amount, Running Balance, Source, Status, Date. -->
+- [x] Show projected depletion date based on consumption rate
+  <!-- Completed: Added GET /v1/wallets/{id}/depletion_forecast backend endpoint that calculates average daily consumption over a configurable lookback period (default 30 days, 1-365 range). Returns current_balance_cents, avg_daily_consumption, projected_depletion_date, and days_remaining. Repository method avg_daily_consumption() queries outbound transactions within the lookback window. Frontend displays a prominent forecast card (primary-tinted) between the header and info cards showing days remaining, projected depletion date, and average daily consumption. Shows contextual messages for no consumption or depleted balance. New Pydantic schema: DepletionForecastResponse. 4 new backend tests added. 100% coverage maintained. -->
+- [x] Add "Transfer Credits" between wallets action
+  <!-- Completed: Added POST /v1/wallets/transfer backend endpoint accepting source_wallet_id, target_wallet_id, and credits amount. WalletService.transfer_credits() validates both wallets are active and different, checks sufficient credits in source, deducts from source (creating outbound transaction), adds to target (creating inbound transaction), and returns updated wallet states. Frontend Transfer dialog accessible from detail page header, shows available credits, target wallet selector (listing all other active wallets with customer names), and credits amount input. New Pydantic schemas: WalletTransferRequest, WalletTransferResponse. 10 new backend tests added (7 API + 2 service + 1 repository). 100% coverage maintained across all 3518 tests. -->
 
 **Modal vs. Page Decision:**
 - **Detail**: Should be a **FULL PAGE** (transaction history + charts need space)
