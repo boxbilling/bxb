@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.credit_note import CreditNoteReason, CreditNoteType
 from app.models.data_export import DataExport, ExportStatus, ExportType, generate_uuid
+from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.data_export_repository import DataExportRepository
@@ -30,7 +31,7 @@ from app.schemas.fee import FeeCreate
 from app.schemas.invoice import InvoiceCreate, InvoiceLineItem
 from app.schemas.plan import PlanCreate
 from app.schemas.subscription import SubscriptionCreate
-from app.services.data_export_service import DataExportService, _fmt_dt
+from app.services.data_export_service import DataExportService, _fmt_dt, _fmt_json
 from tests.conftest import DEFAULT_ORG_ID
 
 
@@ -1111,3 +1112,315 @@ class TestDataExportServiceErrorHandling:
         service = DataExportService(db_session)
         with pytest.raises(ValueError, match="Unknown export type"):
             service._generate_csv("nonexistent_type", DEFAULT_ORG_ID, {})
+
+
+# ---------------------------------------------------------------------------
+# Audit log export fixtures and tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def audit_log(db_session):
+    """Create a test audit log entry."""
+    repo = AuditLogRepository(db_session)
+    return repo.create(
+        organization_id=DEFAULT_ORG_ID,
+        resource_type="invoice",
+        resource_id=uuid4(),
+        action="created",
+        changes={"total": {"old": "0", "new": "100.00"}},
+        actor_type="api_key",
+        actor_id="key_test_123",
+    )
+
+
+@pytest.fixture
+def audit_logs_mixed(db_session):
+    """Create multiple audit log entries with different types and actions."""
+    repo = AuditLogRepository(db_session)
+    logs = []
+    logs.append(
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="invoice",
+            resource_id=uuid4(),
+            action="created",
+            changes={"total": "100.00"},
+            actor_type="api_key",
+            actor_id="key_1",
+        )
+    )
+    logs.append(
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="customer",
+            resource_id=uuid4(),
+            action="updated",
+            changes={"name": {"old": "Old", "new": "New"}},
+            actor_type="system",
+        )
+    )
+    logs.append(
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="invoice",
+            resource_id=uuid4(),
+            action="status_changed",
+            changes={"status": {"old": "draft", "new": "finalized"}},
+            actor_type="api_key",
+        )
+    )
+    return logs
+
+
+class TestDataExportAuditLogs:
+    """Tests for audit log CSV export."""
+
+    def test_export_type_enum_includes_audit_logs(self):
+        """Test ExportType enum includes audit_logs."""
+        assert ExportType.AUDIT_LOGS.value == "audit_logs"
+
+    def test_process_export_audit_logs(self, db_session, audit_log):
+        """Test processing an audit log export."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 1
+        assert result.progress == 100
+        assert result.file_path is not None
+        assert result.started_at is not None
+        assert result.completed_at is not None
+        assert os.path.exists(str(result.file_path))
+
+        # Verify CSV content
+        with open(str(result.file_path)) as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        assert rows[0] == [
+            "id",
+            "resource_type",
+            "resource_id",
+            "action",
+            "actor_type",
+            "actor_id",
+            "changes",
+            "created_at",
+        ]
+        assert len(rows) == 2  # header + 1 record
+        assert rows[1][1] == "invoice"
+        assert rows[1][3] == "created"
+        assert rows[1][4] == "api_key"
+        assert rows[1][5] == "key_test_123"
+
+    def test_process_export_audit_logs_with_resource_type_filter(
+        self, db_session, audit_logs_mixed
+    ):
+        """Test audit log export with resource_type filter."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+            filters={"resource_type": "invoice"},
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 2
+
+    def test_process_export_audit_logs_with_action_filter(
+        self, db_session, audit_logs_mixed
+    ):
+        """Test audit log export with action filter."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+            filters={"action": "created"},
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 1
+
+    def test_process_export_audit_logs_no_matches(self, db_session, audit_log):
+        """Test audit log export with filter that matches nothing."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+            filters={"resource_type": "nonexistent"},
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 0
+
+    def test_process_export_audit_logs_empty(self, db_session):
+        """Test audit log export with no data."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 0
+
+    def test_process_export_audit_logs_null_actor_id(self, db_session, audit_logs_mixed):
+        """Test audit log export handles null actor_id."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+            filters={"action": "updated"},
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 1
+
+        with open(str(result.file_path)) as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+        # actor_id should be empty string for null
+        assert rows[1][5] == ""
+
+
+class TestDataExportAuditLogEstimate:
+    """Tests for audit log export estimation."""
+
+    def test_estimate_audit_logs(self, db_session, audit_log):
+        """Test estimate count for audit logs."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.AUDIT_LOGS)
+        assert count == 1
+
+    def test_estimate_audit_logs_with_resource_type_filter(
+        self, db_session, audit_logs_mixed
+    ):
+        """Test estimate count for audit logs with resource_type filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID,
+            ExportType.AUDIT_LOGS,
+            {"resource_type": "invoice"},
+        )
+        assert count == 2
+
+    def test_estimate_audit_logs_with_action_filter(
+        self, db_session, audit_logs_mixed
+    ):
+        """Test estimate count for audit logs with action filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID,
+            ExportType.AUDIT_LOGS,
+            {"action": "created"},
+        )
+        assert count == 1
+
+    def test_estimate_audit_logs_empty(self, db_session):
+        """Test estimate count for audit logs with no data."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(DEFAULT_ORG_ID, ExportType.AUDIT_LOGS)
+        assert count == 0
+
+
+class TestDataExportAuditLogAPI:
+    """Tests for audit log export API endpoints."""
+
+    def test_create_audit_log_export(self, client, audit_log):
+        """Test POST /v1/data_exports with audit_logs type."""
+        response = client.post(
+            "/v1/data_exports/",
+            json={"export_type": "audit_logs"},
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["export_type"] == "audit_logs"
+        assert data["status"] == "completed"
+        assert data["record_count"] == 1
+        assert data["progress"] == 100
+
+    def test_create_audit_log_export_with_filters(self, client, audit_logs_mixed):
+        """Test POST /v1/data_exports with audit_logs type and filters."""
+        response = client.post(
+            "/v1/data_exports/",
+            json={
+                "export_type": "audit_logs",
+                "filters": {"resource_type": "invoice"},
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["status"] == "completed"
+        assert data["record_count"] == 2
+
+    def test_estimate_audit_log_export(self, client, audit_log):
+        """Test POST /v1/data_exports/estimate with audit_logs type."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={"export_type": "audit_logs"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["export_type"] == "audit_logs"
+        assert data["record_count"] == 1
+
+    def test_estimate_audit_log_export_with_filters(self, client, audit_logs_mixed):
+        """Test POST /v1/data_exports/estimate with audit_logs type and filters."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={
+                "export_type": "audit_logs",
+                "filters": {"action": "created"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["record_count"] == 1
+
+    def test_download_audit_log_export(self, client, audit_log):
+        """Test downloading audit log export CSV."""
+        response = client.post(
+            "/v1/data_exports/",
+            json={"export_type": "audit_logs"},
+        )
+        assert response.status_code == 201
+        export_id = response.json()["id"]
+
+        response = client.get(f"/v1/data_exports/{export_id}/download")
+        assert response.status_code == 200
+        assert "text/csv" in response.headers["content-type"]
+
+        content = response.text
+        reader = csv.reader(io.StringIO(content))
+        rows = list(reader)
+        assert rows[0][0] == "id"
+        assert rows[0][1] == "resource_type"
+        assert len(rows) == 2
+
+
+class TestFmtJson:
+    """Tests for _fmt_json helper function."""
+
+    def test_fmt_json_with_dict(self):
+        """Test _fmt_json with a dict value."""
+        result = _fmt_json({"key": "value"})
+        assert result == '{"key": "value"}'
+
+    def test_fmt_json_with_none(self):
+        """Test _fmt_json with None."""
+        assert _fmt_json(None) == ""
+
+    def test_fmt_json_with_nested(self):
+        """Test _fmt_json with nested structure."""
+        result = _fmt_json({"status": {"old": "draft", "new": "finalized"}})
+        assert '"old": "draft"' in result
+        assert '"new": "finalized"' in result

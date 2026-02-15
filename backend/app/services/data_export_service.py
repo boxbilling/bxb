@@ -2,6 +2,7 @@
 
 import csv
 import io
+import json
 import logging
 import os
 from datetime import UTC, datetime
@@ -11,6 +12,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.models.audit_log import AuditLog
 from app.models.credit_note import CreditNote
 from app.models.customer import Customer
 from app.models.data_export import DataExport, ExportStatus, ExportType
@@ -45,6 +47,7 @@ class DataExportService:
             ExportType.EVENTS.value: self._count_events,
             ExportType.FEES.value: self._count_fees,
             ExportType.CREDIT_NOTES.value: self._count_credit_notes,
+            ExportType.AUDIT_LOGS.value: self._count_audit_logs,
         }
         counter = counters.get(export_type.value)
         if not counter:
@@ -134,6 +137,7 @@ class DataExportService:
             ExportType.EVENTS.value: self._generate_csv_events,
             ExportType.FEES.value: self._generate_csv_fees,
             ExportType.CREDIT_NOTES.value: self._generate_csv_credit_notes,
+            ExportType.AUDIT_LOGS.value: self._generate_csv_audit_logs,
         }
         generator = generators.get(export_type)
         if not generator:
@@ -406,6 +410,52 @@ class DataExportService:
             self._update_progress(export_id, (i + 1) * 100 // total)
         return output.getvalue(), total
 
+    def _generate_csv_audit_logs(
+        self,
+        organization_id: UUID,
+        filters: dict[str, Any],
+        export_id: UUID | None = None,
+    ) -> tuple[str, int]:
+        """Generate CSV for audit logs."""
+        query = self.db.query(AuditLog).filter(AuditLog.organization_id == organization_id)
+        if filters.get("resource_type"):
+            query = query.filter(AuditLog.resource_type == filters["resource_type"])
+        if filters.get("action"):
+            query = query.filter(AuditLog.action == filters["action"])
+
+        audit_logs = query.order_by(AuditLog.created_at.desc()).all()
+        total = len(audit_logs)
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(
+            [
+                "id",
+                "resource_type",
+                "resource_id",
+                "action",
+                "actor_type",
+                "actor_id",
+                "changes",
+                "created_at",
+            ]
+        )
+        for i, log in enumerate(audit_logs):
+            writer.writerow(
+                [
+                    str(log.id),
+                    log.resource_type,
+                    str(log.resource_id),
+                    log.action,
+                    log.actor_type,
+                    log.actor_id or "",
+                    _fmt_json(log.changes),
+                    _fmt_dt(log.created_at),  # type: ignore[arg-type]
+                ]
+            )
+            self._update_progress(export_id, (i + 1) * 100 // total)
+        return output.getvalue(), total
+
     # --- Count methods for size estimation ---
 
     def _count_invoices(self, organization_id: UUID, filters: dict[str, Any]) -> int:
@@ -456,9 +506,25 @@ class DataExportService:
             query = query.filter(CreditNote.status == filters["status"])
         return query.count()
 
+    def _count_audit_logs(self, organization_id: UUID, filters: dict[str, Any]) -> int:
+        """Count audit logs matching filters."""
+        query = self.db.query(AuditLog).filter(AuditLog.organization_id == organization_id)
+        if filters.get("resource_type"):
+            query = query.filter(AuditLog.resource_type == filters["resource_type"])
+        if filters.get("action"):
+            query = query.filter(AuditLog.action == filters["action"])
+        return query.count()
+
 
 def _fmt_dt(dt: datetime | None) -> str:
     """Format a datetime for CSV output."""
     if dt is None:
         return ""
     return dt.isoformat()
+
+
+def _fmt_json(value: Any) -> str:
+    """Format a JSON-compatible value for CSV output."""
+    if value is None:
+        return ""
+    return json.dumps(value)

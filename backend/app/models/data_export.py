@@ -20,6 +20,7 @@ class ExportType(str, Enum):
     EVENTS = "events"
     FEES = "fees"
     CREDIT_NOTES = "credit_notes"
+    AUDIT_LOGS = "audit_logs"
 
 
 class ExportStatus(str, Enum):

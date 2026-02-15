@@ -57,6 +57,7 @@ const EXPORT_TYPES: ExportType[] = [
   'events',
   'fees',
   'credit_notes',
+  'audit_logs',
 ]
 
 const EXPORT_TYPE_DESCRIPTIONS: Record<ExportType, string> = {
@@ -72,6 +73,8 @@ const EXPORT_TYPE_DESCRIPTIONS: Record<ExportType, string> = {
     'Fee ID, invoice, type, amount, units, event count, payment status, and creation date. Filterable by fee type and invoice.',
   credit_notes:
     'Credit note number, invoice, customer, type, status, amount, currency, and dates. Filterable by status.',
+  audit_logs:
+    'Audit log ID, resource type, resource ID, action, actor, changes (JSON), and timestamp. Filterable by resource type and action.',
 }
 
 type FilterFieldConfig = {
@@ -110,6 +113,21 @@ const FEE_TYPES = [
   { value: 'commitment', label: 'Commitment' },
 ]
 
+const AUDIT_LOG_RESOURCE_TYPES = [
+  { value: 'invoice', label: 'Invoice' },
+  { value: 'payment', label: 'Payment' },
+  { value: 'subscription', label: 'Subscription' },
+  { value: 'customer', label: 'Customer' },
+  { value: 'credit_note', label: 'Credit Note' },
+]
+
+const AUDIT_LOG_ACTIONS = [
+  { value: 'created', label: 'Created' },
+  { value: 'updated', label: 'Updated' },
+  { value: 'status_changed', label: 'Status Changed' },
+  { value: 'deleted', label: 'Deleted' },
+]
+
 const EXPORT_TYPE_FILTERS: Record<ExportType, FilterFieldConfig[]> = {
   invoices: [
     { key: 'status', label: 'Status', type: 'select', options: INVOICE_STATUSES },
@@ -130,6 +148,10 @@ const EXPORT_TYPE_FILTERS: Record<ExportType, FilterFieldConfig[]> = {
   ],
   credit_notes: [
     { key: 'status', label: 'Status', type: 'select', options: CREDIT_NOTE_STATUSES },
+  ],
+  audit_logs: [
+    { key: 'resource_type', label: 'Resource Type', type: 'select', options: AUDIT_LOG_RESOURCE_TYPES },
+    { key: 'action', label: 'Action', type: 'select', options: AUDIT_LOG_ACTIONS },
   ],
 }
 

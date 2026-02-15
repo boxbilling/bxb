@@ -4907,7 +4907,7 @@ export interface components {
          * @description Types of data that can be exported.
          * @enum {string}
          */
-        ExportType: "invoices" | "customers" | "subscriptions" | "events" | "fees" | "credit_notes";
+        ExportType: "invoices" | "customers" | "subscriptions" | "events" | "fees" | "credit_notes" | "audit_logs";
         /** FeatureCreate */
         FeatureCreate: {
             /** Code */

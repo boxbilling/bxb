@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight, CalendarIcon, ExternalLink } from 'lucide-react'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight, CalendarIcon, ExternalLink, Download } from 'lucide-react'
 import { format, subDays, subMonths } from 'date-fns'
 import { toast } from 'sonner'
 import type { DateRange } from 'react-day-picker'
@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/tooltip'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
-import { auditLogsApi } from '@/lib/api'
+import { auditLogsApi, dataExportsApi, ApiError } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
 
 const RESOURCE_TYPE_ROUTES: Record<string, string> = {
@@ -157,6 +157,7 @@ function ChangesDisplay({ changes }: { changes: Record<string, unknown> }) {
 }
 
 export default function AuditLogsPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [resourceTypeFilter, setResourceTypeFilter] = useState(searchParams.get('resource_type') || 'all')
   const [actionFilter, setActionFilter] = useState('all')
@@ -198,14 +199,45 @@ export default function AuditLogsPage() {
       }),
   })
 
+  const exportMutation = useMutation({
+    mutationFn: () => {
+      const filters: Record<string, string> = {}
+      if (resourceTypeFilter !== 'all') filters.resource_type = resourceTypeFilter
+      if (actionFilter !== 'all') filters.action = actionFilter
+      return dataExportsApi.create({
+        export_type: 'audit_logs' as const,
+        filters: Object.keys(filters).length > 0 ? filters : undefined,
+      })
+    },
+    onSuccess: () => {
+      toast.success('Audit log export created')
+      navigate('/admin/data-exports')
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError ? error.message : 'Failed to create export'
+      toast.error(message)
+    },
+  })
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Audit Logs</h2>
-        <p className="text-muted-foreground">
-          Track changes across all resources
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Audit Logs</h2>
+          <p className="text-muted-foreground">
+            Track changes across all resources
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={() => exportMutation.mutate()}
+          disabled={exportMutation.isPending}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {exportMutation.isPending ? 'Exporting...' : 'Export to CSV'}
+        </Button>
       </div>
 
       {/* Filters */}
