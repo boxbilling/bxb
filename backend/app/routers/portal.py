@@ -15,6 +15,7 @@ from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
 from app.models.subscription import Subscription
 from app.models.wallet import Wallet
+from app.models.wallet_transaction import WalletTransaction as WalletTransactionModel
 from app.repositories.add_on_repository import AddOnRepository
 from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
@@ -30,6 +31,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.wallet_repository import WalletRepository
+from app.repositories.wallet_transaction_repository import WalletTransactionRepository
 from app.schemas.add_on import (
     PortalAddOnResponse,
     PortalPurchaseAddOnResponse,
@@ -61,12 +63,19 @@ from app.schemas.subscription import (
     SubscriptionResponse,
 )
 from app.schemas.usage import CurrentUsageResponse
-from app.schemas.wallet import WalletResponse
+from app.schemas.wallet import (
+    BalanceTimelineResponse,
+    PortalTopUpRequest,
+    PortalTopUpResponse,
+    WalletResponse,
+)
+from app.schemas.wallet_transaction import WalletTransactionResponse
 from app.services.add_on_service import AddOnService
 from app.services.coupon_service import CouponApplicationService
 from app.services.pdf_service import PdfService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.usage_query_service import UsageQueryService
+from app.services.wallet_service import WalletService
 
 router = APIRouter()
 
@@ -511,6 +520,116 @@ async def get_portal_wallet(
     return repo.get_all(
         organization_id=organization_id,
         customer_id=customer_id,
+    )
+
+
+@router.get(
+    "/wallet/{wallet_id}/transactions",
+    response_model=list[WalletTransactionResponse],
+    summary="List wallet transactions",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Wallet not found"},
+    },
+)
+async def list_portal_wallet_transactions(
+    wallet_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list["WalletTransactionModel"]:
+    """List transactions for a customer's wallet."""
+    customer_id, organization_id = portal_auth
+    wallet_repo = WalletRepository(db)
+    wallet = wallet_repo.get_by_id(wallet_id, organization_id)
+    if not wallet or UUID(str(wallet.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    txn_repo = WalletTransactionRepository(db)
+    return txn_repo.get_by_wallet_id(wallet_id, skip=skip, limit=limit)
+
+
+@router.get(
+    "/wallet/{wallet_id}/balance_timeline",
+    response_model=BalanceTimelineResponse,
+    summary="Get wallet balance timeline",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Wallet not found"},
+    },
+)
+async def get_portal_wallet_balance_timeline(
+    wallet_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> BalanceTimelineResponse:
+    """Get daily balance timeline for a customer's wallet."""
+    customer_id, organization_id = portal_auth
+    wallet_repo = WalletRepository(db)
+    wallet = wallet_repo.get_by_id(wallet_id, organization_id)
+    if not wallet or UUID(str(wallet.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    txn_repo = WalletTransactionRepository(db)
+    raw_points = txn_repo.daily_balance_timeline(wallet_id)
+    from app.schemas.wallet import BalanceTimelinePoint
+
+    running_balance = Decimal("0")
+    points: list[BalanceTimelinePoint] = []
+    for row in raw_points:
+        inbound = Decimal(str(row["inbound"]))
+        outbound = Decimal(str(row["outbound"]))
+        running_balance += inbound - outbound
+        points.append(
+            BalanceTimelinePoint(
+                date=str(row["date"]),
+                inbound=inbound,
+                outbound=outbound,
+                balance=running_balance,
+            )
+        )
+    return BalanceTimelineResponse(wallet_id=wallet_id, points=points)
+
+
+@router.post(
+    "/wallet/{wallet_id}/top_up",
+    response_model=PortalTopUpResponse,
+    summary="Request a wallet top-up",
+    responses={
+        400: {"description": "Wallet is not active or invalid credits"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Wallet not found"},
+    },
+)
+async def portal_wallet_top_up(
+    wallet_id: UUID,
+    data: PortalTopUpRequest,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalTopUpResponse:
+    """Top up a customer's wallet with credits."""
+    customer_id, organization_id = portal_auth
+    wallet_repo = WalletRepository(db)
+    wallet = wallet_repo.get_by_id(wallet_id, organization_id)
+    if not wallet or UUID(str(wallet.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Wallet not found")
+    if str(wallet.status) != "active":
+        raise HTTPException(status_code=400, detail="Wallet is not active")
+    service = WalletService(db)
+    try:
+        updated = service.top_up_wallet(
+            wallet_id=wallet_id,
+            credits=data.credits,
+            source="manual",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from None
+    if not updated:  # pragma: no cover
+        raise HTTPException(status_code=500, detail="Top-up failed")
+    return PortalTopUpResponse(
+        wallet_id=wallet_id,
+        credits_added=data.credits,
+        new_balance_cents=Decimal(str(updated.balance_cents)),
+        new_credits_balance=Decimal(str(updated.credits_balance)),
     )
 
 

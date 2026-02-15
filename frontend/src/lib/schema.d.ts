@@ -3455,6 +3455,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/dashboard_summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get portal dashboard summary
+         * @description Aggregated dashboard: billing, charges, usage, actions.
+         */
+        get: operations["get_portal_dashboard_summary_portal_dashboard_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/portal/customer": {
         parameters: {
             query?: never;
@@ -3629,6 +3649,66 @@ export interface paths {
         get: operations["get_portal_wallet_portal_wallet_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet/{wallet_id}/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List wallet transactions
+         * @description List transactions for a customer's wallet.
+         */
+        get: operations["list_portal_wallet_transactions_portal_wallet__wallet_id__transactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet/{wallet_id}/balance_timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get wallet balance timeline
+         * @description Get daily balance timeline for a customer's wallet.
+         */
+        get: operations["get_portal_wallet_balance_timeline_portal_wallet__wallet_id__balance_timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet/{wallet_id}/top_up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a wallet top-up
+         * @description Top up a customer's wallet with credits.
+         */
+        post: operations["portal_wallet_top_up_portal_wallet__wallet_id__top_up_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7156,6 +7236,47 @@ export interface components {
             new_plan_id: string;
         };
         /**
+         * PortalDashboardSummaryResponse
+         * @description Aggregated dashboard summary for the portal.
+         */
+        PortalDashboardSummaryResponse: {
+            /** Next Billing */
+            next_billing: components["schemas"]["PortalNextBillingInfo"][];
+            /** Upcoming Charges */
+            upcoming_charges: components["schemas"]["PortalUpcomingCharge"][];
+            /** Usage Progress */
+            usage_progress: components["schemas"]["PortalUsageProgress"][];
+            quick_actions: components["schemas"]["PortalQuickActions"];
+        };
+        /**
+         * PortalNextBillingInfo
+         * @description Next billing date info for a single subscription.
+         */
+        PortalNextBillingInfo: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Subscription External Id */
+            subscription_external_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Plan Interval */
+            plan_interval: string;
+            /**
+             * Next Billing Date
+             * Format: date-time
+             */
+            next_billing_date: string;
+            /** Days Until Next Billing */
+            days_until_next_billing: number;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Currency */
+            currency: string;
+        };
+        /**
          * PortalPlanResponse
          * @description Plan info suitable for portal display.
          */
@@ -7239,6 +7360,24 @@ export interface components {
             created_at: string;
         };
         /**
+         * PortalQuickActions
+         * @description Data for quick action cards on the portal dashboard.
+         */
+        PortalQuickActions: {
+            /** Outstanding Invoice Count */
+            outstanding_invoice_count: number;
+            /** Outstanding Amount Cents */
+            outstanding_amount_cents: number;
+            /** Has Wallet */
+            has_wallet: boolean;
+            /** Wallet Balance Cents */
+            wallet_balance_cents: number;
+            /** Has Active Subscription */
+            has_active_subscription: boolean;
+            /** Currency */
+            currency: string;
+        };
+        /**
          * PortalRedeemCouponRequest
          * @description Request body for portal coupon code redemption.
          */
@@ -7275,10 +7414,70 @@ export interface components {
             plan: components["schemas"]["PlanSummary"];
             pending_downgrade_plan?: components["schemas"]["PlanSummary"] | null;
         };
+        /** PortalTopUpRequest */
+        PortalTopUpRequest: {
+            /** Credits */
+            credits: number | string;
+        };
+        /** PortalTopUpResponse */
+        PortalTopUpResponse: {
+            /**
+             * Wallet Id
+             * Format: uuid
+             */
+            wallet_id: string;
+            /** Credits Added */
+            credits_added: string;
+            /** New Balance Cents */
+            new_balance_cents: string;
+            /** New Credits Balance */
+            new_credits_balance: string;
+        };
+        /**
+         * PortalUpcomingCharge
+         * @description Upcoming charge estimate for a subscription.
+         */
+        PortalUpcomingCharge: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Subscription External Id */
+            subscription_external_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Base Amount Cents */
+            base_amount_cents: number;
+            /** Usage Amount Cents */
+            usage_amount_cents: number;
+            /** Total Estimated Cents */
+            total_estimated_cents: number;
+            /** Currency */
+            currency: string;
+        };
         /** PortalUrlResponse */
         PortalUrlResponse: {
             /** Portal Url */
             portal_url: string;
+        };
+        /**
+         * PortalUsageProgress
+         * @description Usage progress toward a plan limit/entitlement.
+         */
+        PortalUsageProgress: {
+            /** Feature Name */
+            feature_name: string;
+            /** Feature Code */
+            feature_code: string;
+            /** Feature Type */
+            feature_type: string;
+            /** Entitlement Value */
+            entitlement_value: string;
+            /** Current Usage */
+            current_usage?: string | null;
+            /** Usage Percentage */
+            usage_percentage?: number | null;
         };
         /**
          * ProrationDetail
@@ -18152,6 +18351,44 @@ export interface operations {
             };
         };
     };
+    get_portal_dashboard_summary_portal_dashboard_summary_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalDashboardSummaryResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_portal_customer_profile_portal_customer_get: {
         parameters: {
             query: {
@@ -18538,6 +18775,160 @@ export interface operations {
             };
             /** @description Invalid or expired portal token */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_wallet_transactions_portal_wallet__wallet_id__transactions_get: {
+        parameters: {
+            query: {
+                skip?: number;
+                limit?: number;
+                token: string;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTransactionResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_wallet_balance_timeline_portal_wallet__wallet_id__balance_timeline_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceTimelineResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_wallet_top_up_portal_wallet__wallet_id__top_up_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalTopUpRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalTopUpResponse"];
+                };
+            };
+            /** @description Wallet is not active or invalid credits */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

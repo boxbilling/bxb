@@ -55,6 +55,7 @@ type BalanceTimelineResponse = components['schemas']['BalanceTimelineResponse']
 type DepletionForecastResponse = components['schemas']['DepletionForecastResponse']
 type WalletTransferRequest = components['schemas']['WalletTransferRequest']
 type WalletTransferResponse = components['schemas']['WalletTransferResponse']
+type PortalTopUpResponse = components['schemas']['PortalTopUpResponse']
 
 type CouponResponse = components['schemas']['CouponResponse']
 type CouponCreate = components['schemas']['CouponCreate']
@@ -503,6 +504,17 @@ export const portalApi = {
     portalRequest<PaymentResponse[]>('/portal/payments', token),
   getWallet: (token: string) =>
     portalRequest<WalletResponse>('/portal/wallet', token),
+  getWallets: (token: string) =>
+    portalRequest<WalletResponse[]>('/portal/wallet', token),
+  getWalletTransactions: (token: string, walletId: string) =>
+    portalRequest<WalletTransactionResponse[]>(`/portal/wallet/${walletId}/transactions`, token),
+  getWalletBalanceTimeline: (token: string, walletId: string) =>
+    portalRequest<BalanceTimelineResponse>(`/portal/wallet/${walletId}/balance_timeline`, token),
+  topUpWallet: (token: string, walletId: string, credits: number) =>
+    portalRequest<PortalTopUpResponse>(`/portal/wallet/${walletId}/top_up`, token, {
+      method: 'POST',
+      body: JSON.stringify({ credits }),
+    }),
   updateProfile: (token: string, data: { name?: string; email?: string | null; timezone?: string }) =>
     portalRequest<CustomerResponse>('/portal/profile', token, {
       method: 'PATCH',

@@ -85,3 +85,14 @@ class WalletTransferResponse(BaseModel):
     source_wallet: WalletResponse
     target_wallet: WalletResponse
     credits_transferred: Decimal
+
+
+class PortalTopUpRequest(BaseModel):
+    credits: Decimal = Field(gt=0)
+
+
+class PortalTopUpResponse(BaseModel):
+    wallet_id: UUID
+    credits_added: Decimal
+    new_balance_cents: Decimal
+    new_credits_balance: Decimal

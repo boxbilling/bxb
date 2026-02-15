@@ -25,6 +25,7 @@ from app.models.payment_method import PaymentMethod
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.models.wallet import Wallet
+from app.models.wallet_transaction import WalletTransaction
 from tests.conftest import DEFAULT_ORG_ID
 
 
@@ -2255,3 +2256,343 @@ class TestPortalDashboardSummaryEndpoint:
         # Zero limit means no usage calculation attempted
         assert quantities[0]["current_usage"] is None
         assert quantities[0]["usage_percentage"] is None
+
+
+class TestPortalWalletTransactions:
+    """Tests for GET /portal/wallet/{wallet_id}/transactions."""
+
+    def test_list_transactions(self, client: TestClient, customer, wallet, db_session):
+        """Returns transaction list for the wallet."""
+        txn = WalletTransaction(
+            wallet_id=wallet.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            transaction_type="inbound",
+            transaction_status="granted",
+            source="manual",
+            status="settled",
+            amount=10,
+            credit_amount=1000,
+        )
+        db_session.add(txn)
+        db_session.commit()
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{wallet.id}/transactions?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["transaction_type"] == "inbound"
+        assert float(data[0]["amount"]) == 10
+
+    def test_transactions_empty(self, client: TestClient, customer, wallet):
+        """Returns empty list when no transactions exist."""
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{wallet.id}/transactions?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_transactions_wallet_not_found(self, client: TestClient, customer):
+        """Returns 404 for non-existent wallet."""
+        token = _make_portal_token(customer.id)
+        fake_id = uuid.uuid4()
+        response = client.get(f"/portal/wallet/{fake_id}/transactions?token={token}")
+        assert response.status_code == 404
+
+    def test_transactions_other_customer_wallet(
+        self, client: TestClient, customer, other_customer, db_session
+    ):
+        """Returns 404 when accessing another customer's wallet."""
+        other_wallet = Wallet(
+            customer_id=other_customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            name="Other Wallet",
+            code=f"other_{uuid.uuid4().hex[:8]}",
+            balance_cents=1000,
+            credits_balance=10,
+            rate_amount=1,
+            currency="USD",
+            priority=1,
+        )
+        db_session.add(other_wallet)
+        db_session.commit()
+        db_session.refresh(other_wallet)
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{other_wallet.id}/transactions?token={token}")
+        assert response.status_code == 404
+
+    def test_transactions_expired_token(self, client: TestClient, customer, wallet):
+        """Returns 401 for expired token."""
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/wallet/{wallet.id}/transactions?token={token}")
+        assert response.status_code == 401
+
+
+class TestPortalWalletBalanceTimeline:
+    """Tests for GET /portal/wallet/{wallet_id}/balance_timeline."""
+
+    def test_balance_timeline_with_data(
+        self, client: TestClient, customer, wallet, db_session
+    ):
+        """Returns timeline points when transactions exist."""
+        txn = WalletTransaction(
+            wallet_id=wallet.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            transaction_type="inbound",
+            transaction_status="granted",
+            source="manual",
+            status="settled",
+            amount=10,
+            credit_amount=1000,
+        )
+        db_session.add(txn)
+        db_session.commit()
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{wallet.id}/balance_timeline?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+        assert isinstance(data["points"], list)
+        assert len(data["points"]) >= 1
+        point = data["points"][0]
+        assert "date" in point
+        assert "inbound" in point
+        assert "outbound" in point
+        assert "balance" in point
+
+    def test_balance_timeline_empty(self, client: TestClient, customer, wallet):
+        """Returns empty points when no transactions exist."""
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{wallet.id}/balance_timeline?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+        assert data["points"] == []
+
+    def test_balance_timeline_wallet_not_found(self, client: TestClient, customer):
+        """Returns 404 for non-existent wallet."""
+        token = _make_portal_token(customer.id)
+        fake_id = uuid.uuid4()
+        response = client.get(f"/portal/wallet/{fake_id}/balance_timeline?token={token}")
+        assert response.status_code == 404
+
+    def test_balance_timeline_other_customer(
+        self, client: TestClient, customer, other_customer, db_session
+    ):
+        """Returns 404 when accessing another customer's wallet."""
+        other_wallet = Wallet(
+            customer_id=other_customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            name="Other Wallet",
+            code=f"other_tl_{uuid.uuid4().hex[:8]}",
+            balance_cents=2000,
+            credits_balance=20,
+            rate_amount=1,
+            currency="USD",
+            priority=1,
+        )
+        db_session.add(other_wallet)
+        db_session.commit()
+        db_session.refresh(other_wallet)
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{other_wallet.id}/balance_timeline?token={token}")
+        assert response.status_code == 404
+
+    def test_balance_timeline_running_balance(
+        self, client: TestClient, customer, wallet, db_session
+    ):
+        """Verifies running balance computation across multiple transactions."""
+        # Add inbound then outbound
+        txn1 = WalletTransaction(
+            wallet_id=wallet.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            transaction_type="inbound",
+            transaction_status="granted",
+            source="manual",
+            status="settled",
+            amount=20,
+            credit_amount=2000,
+        )
+        txn2 = WalletTransaction(
+            wallet_id=wallet.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            transaction_type="outbound",
+            transaction_status="invoiced",
+            source="manual",
+            status="settled",
+            amount=5,
+            credit_amount=500,
+        )
+        db_session.add_all([txn1, txn2])
+        db_session.commit()
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/wallet/{wallet.id}/balance_timeline?token={token}")
+        assert response.status_code == 200
+        points = response.json()["points"]
+        # Both transactions are on the same day, so we should get 1 point
+        assert len(points) >= 1
+        # The balance should be inbound - outbound = 2000 - 500 = 1500
+        last_point = points[-1]
+        assert float(last_point["balance"]) == 1500.0
+
+
+class TestPortalWalletTopUp:
+    """Tests for POST /portal/wallet/{wallet_id}/top_up."""
+
+    def test_top_up_success(self, client: TestClient, customer, wallet):
+        """Successfully tops up the wallet."""
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/wallet/{wallet.id}/top_up?token={token}",
+            json={"credits": 25},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["wallet_id"] == str(wallet.id)
+        assert float(data["credits_added"]) == 25
+        # Initial balance was 5000 + 25 * rate(1) = 5025
+        assert float(data["new_balance_cents"]) == 5025
+
+    def test_top_up_wallet_not_found(self, client: TestClient, customer):
+        """Returns 404 for non-existent wallet."""
+        token = _make_portal_token(customer.id)
+        fake_id = uuid.uuid4()
+        response = client.post(
+            f"/portal/wallet/{fake_id}/top_up?token={token}",
+            json={"credits": 10},
+        )
+        assert response.status_code == 404
+
+    def test_top_up_other_customer_wallet(
+        self, client: TestClient, customer, other_customer, db_session
+    ):
+        """Returns 404 when topping up another customer's wallet."""
+        other_wallet = Wallet(
+            customer_id=other_customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            name="Other Wallet",
+            code=f"other_tu_{uuid.uuid4().hex[:8]}",
+            balance_cents=1000,
+            credits_balance=10,
+            rate_amount=1,
+            currency="USD",
+            priority=1,
+        )
+        db_session.add(other_wallet)
+        db_session.commit()
+        db_session.refresh(other_wallet)
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/wallet/{other_wallet.id}/top_up?token={token}",
+            json={"credits": 10},
+        )
+        assert response.status_code == 404
+
+    def test_top_up_terminated_wallet(self, client: TestClient, customer, db_session):
+        """Returns 400 when wallet is terminated."""
+        terminated = Wallet(
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            name="Terminated Wallet",
+            code=f"term_{uuid.uuid4().hex[:8]}",
+            balance_cents=0,
+            credits_balance=0,
+            rate_amount=1,
+            currency="USD",
+            priority=1,
+            status="terminated",
+        )
+        db_session.add(terminated)
+        db_session.commit()
+        db_session.refresh(terminated)
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/wallet/{terminated.id}/top_up?token={token}",
+            json={"credits": 10},
+        )
+        assert response.status_code == 400
+        assert "not active" in response.json()["detail"]
+
+    def test_top_up_invalid_credits(self, client: TestClient, customer, wallet):
+        """Returns 422 for zero/negative credits."""
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/wallet/{wallet.id}/top_up?token={token}",
+            json={"credits": 0},
+        )
+        assert response.status_code == 422
+
+    def test_top_up_expired_token(self, client: TestClient, customer, wallet):
+        """Returns 401 for expired token."""
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.post(
+            f"/portal/wallet/{wallet.id}/top_up?token={token}",
+            json={"credits": 10},
+        )
+        assert response.status_code == 401
+
+    def test_top_up_creates_transaction(
+        self, client: TestClient, customer, wallet, db_session
+    ):
+        """Verifies that top-up creates a wallet transaction."""
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/wallet/{wallet.id}/top_up?token={token}",
+            json={"credits": 15},
+        )
+        assert response.status_code == 200
+        # Verify transaction was created
+        txn_response = client.get(f"/portal/wallet/{wallet.id}/transactions?token={token}")
+        assert txn_response.status_code == 200
+        txns = txn_response.json()
+        assert len(txns) == 1
+        assert txns[0]["transaction_type"] == "inbound"
+        assert float(txns[0]["amount"]) == 15
+
+
+    def test_top_up_service_value_error(
+        self, client: TestClient, customer, wallet
+    ):
+        """Returns 400 when service raises ValueError."""
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.WalletService.top_up_wallet",
+            side_effect=ValueError("Something went wrong"),
+        ):
+            response = client.post(
+                f"/portal/wallet/{wallet.id}/top_up?token={token}",
+                json={"credits": 10},
+            )
+        assert response.status_code == 400
+        assert "Something went wrong" in response.json()["detail"]
+
+
+class TestPortalTopUpSchemas:
+    """Tests for PortalTopUpRequest and PortalTopUpResponse schemas."""
+
+    def test_portal_top_up_request_valid(self):
+        from app.schemas.wallet import PortalTopUpRequest
+
+        req = PortalTopUpRequest(credits=10)
+        assert req.credits == 10
+
+    def test_portal_top_up_request_negative(self):
+        from pydantic import ValidationError
+
+        from app.schemas.wallet import PortalTopUpRequest
+
+        with pytest.raises(ValidationError):
+            PortalTopUpRequest(credits=-5)
+
+    def test_portal_top_up_response(self):
+        from app.schemas.wallet import PortalTopUpResponse
+
+        resp = PortalTopUpResponse(
+            wallet_id=uuid.uuid4(),
+            credits_added=10,
+            new_balance_cents=1000,
+            new_credits_balance=10,
+        )
+        assert resp.credits_added == 10
