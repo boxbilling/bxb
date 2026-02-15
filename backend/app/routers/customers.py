@@ -1,11 +1,13 @@
 from datetime import timedelta
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.database import get_db
+from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.applied_coupon import AppliedCoupon
 from app.models.customer import Customer
 from app.models.plan import Plan
@@ -212,14 +214,25 @@ async def get_customer(
 )
 async def create_customer(
     data: CustomerCreate,
+    request: Request,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
-) -> Customer:
+) -> Customer | JSONResponse:
     """Create a new customer."""
+    idempotency = check_idempotency(request, db, organization_id)
+    if isinstance(idempotency, JSONResponse):
+        return idempotency
+
     repo = CustomerRepository(db)
     if repo.external_id_exists(data.external_id, organization_id):
         raise HTTPException(status_code=409, detail="Customer with this external_id already exists")
-    return repo.create(data, organization_id)
+    customer = repo.create(data, organization_id)
+
+    if isinstance(idempotency, IdempotencyResult):
+        body = CustomerResponse.model_validate(customer).model_dump(mode="json")
+        record_idempotency_response(db, organization_id, idempotency.key, 201, body)
+
+    return customer
 
 
 @router.put(

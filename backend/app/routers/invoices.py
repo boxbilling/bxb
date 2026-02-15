@@ -1,11 +1,13 @@
 from decimal import Decimal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.database import get_db
+from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_settlement import InvoiceSettlement
 from app.models.payment import PaymentProvider
@@ -156,10 +158,15 @@ async def update_invoice(
 )
 async def finalize_invoice(
     invoice_id: UUID,
+    request: Request,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
-) -> Invoice:
+) -> Invoice | JSONResponse:
     """Finalize a draft invoice and apply wallet credits if available."""
+    idempotency = check_idempotency(request, db, organization_id)
+    if isinstance(idempotency, JSONResponse):
+        return idempotency
+
     repo = InvoiceRepository(db)
     invoice = repo.get_by_id(invoice_id, organization_id)
     if not invoice:
@@ -259,6 +266,10 @@ async def finalize_invoice(
             object_id=invoice.id,  # type: ignore[arg-type]
             payload={"invoice_id": str(invoice.id)},
         )
+
+        if isinstance(idempotency, IdempotencyResult):
+            body = InvoiceResponse.model_validate(invoice).model_dump(mode="json")
+            record_idempotency_response(db, organization_id, idempotency.key, 200, body)
 
         return invoice
     except ValueError as e:

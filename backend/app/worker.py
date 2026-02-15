@@ -8,6 +8,7 @@ from arq import cron
 from app.core.database import SessionLocal
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.idempotency_repository import IdempotencyRepository
 from app.repositories.item_repository import ItemRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
@@ -287,6 +288,22 @@ async def aggregate_daily_usage_task(ctx: dict[str, Any]) -> int:
         db.close()
 
 
+async def cleanup_idempotency_records_task(ctx: dict[str, Any]) -> int:
+    """Background task: delete idempotency records older than 24 hours.
+
+    Runs daily.
+    """
+    db = SessionLocal()
+    try:
+        repo = IdempotencyRepository(db)
+        count = repo.delete_expired(max_age_hours=24)
+        if count > 0:
+            logger.info("Cleaned up %d expired idempotency records", count)
+        return count
+    finally:
+        db.close()
+
+
 class WorkerSettings:
     functions = [
         update_item_prices,
@@ -297,6 +314,7 @@ class WorkerSettings:
         check_usage_thresholds_task,
         process_data_export_task,
         aggregate_daily_usage_task,
+        cleanup_idempotency_records_task,
     ]
     cron_jobs = [
         cron(update_item_prices, hour=0, minute=0),  # midnight daily
@@ -308,5 +326,6 @@ class WorkerSettings:
         cron(process_trial_expirations_task, minute={0}),  # hourly
         cron(generate_periodic_invoices_task, minute={0}),  # hourly
         cron(aggregate_daily_usage_task, hour=0, minute=30),  # daily at 00:30
+        cron(cleanup_idempotency_records_task, hour=0, minute=0),  # daily at midnight
     ]
     redis_settings = redis_settings

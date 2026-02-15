@@ -1,10 +1,12 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.database import get_db
+from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.subscription import Subscription, TerminationAction
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.plan_repository import PlanRepository
@@ -75,10 +77,15 @@ async def get_subscription(
 )
 async def create_subscription(
     data: SubscriptionCreate,
+    request: Request,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
-) -> Subscription:
+) -> Subscription | JSONResponse:
     """Create a new subscription."""
+    idempotency = check_idempotency(request, db, organization_id)
+    if isinstance(idempotency, JSONResponse):
+        return idempotency
+
     repo = SubscriptionRepository(db)
 
     # Check if external_id already exists
@@ -119,6 +126,10 @@ async def create_subscription(
         object_id=subscription.id,  # type: ignore[arg-type]
         payload={"subscription_id": str(subscription.id)},
     )
+
+    if isinstance(idempotency, IdempotencyResult):
+        body = SubscriptionResponse.model_validate(subscription).model_dump(mode="json")
+        record_idempotency_response(db, organization_id, idempotency.key, 201, body)
 
     return subscription
 

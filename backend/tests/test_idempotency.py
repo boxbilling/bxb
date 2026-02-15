@@ -1,10 +1,11 @@
-"""Tests for idempotency model, repository, and core dependency."""
+"""Tests for idempotency model, repository, core dependency, and endpoint integration."""
 
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 import pytest
 from fastapi import Request
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -13,6 +14,7 @@ from app.core.idempotency import (
     check_idempotency,
     record_idempotency_response,
 )
+from app.main import app
 from app.models.idempotency_record import IdempotencyRecord
 from app.repositories.idempotency_repository import IdempotencyRepository
 from tests.conftest import DEFAULT_ORG_ID
@@ -301,3 +303,317 @@ class TestRecordIdempotencyResponse:
         record_idempotency_response(
             db_session, DEFAULT_ORG_ID, "missing-key", 201, {"id": "x"}
         )
+
+
+# ---------------------------------------------------------------------------
+# Endpoint integration tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+
+class TestCustomerIdempotencyIntegration:
+    def test_create_customer_same_key_returns_cached_response(self, client: TestClient) -> None:
+        key = f"cust-idem-{uuid4()}"
+        payload = {"external_id": f"ext-{uuid4()}", "name": "Idempotent Corp"}
+
+        resp1 = client.post("/v1/customers/", json=payload, headers={"Idempotency-Key": key})
+        assert resp1.status_code == 201
+        data1 = resp1.json()
+
+        resp2 = client.post("/v1/customers/", json=payload, headers={"Idempotency-Key": key})
+        assert resp2.status_code == 201
+        assert resp2.headers.get("Idempotency-Replayed") == "true"
+        data2 = resp2.json()
+        assert data2["id"] == data1["id"]
+        assert data2["external_id"] == data1["external_id"]
+
+    def test_create_customer_different_key_creates_new(self, client: TestClient) -> None:
+        key1 = f"cust-diff-{uuid4()}"
+        key2 = f"cust-diff-{uuid4()}"
+
+        resp1 = client.post(
+            "/v1/customers/",
+            json={"external_id": f"ext-{uuid4()}", "name": "First"},
+            headers={"Idempotency-Key": key1},
+        )
+        assert resp1.status_code == 201
+
+        resp2 = client.post(
+            "/v1/customers/",
+            json={"external_id": f"ext-{uuid4()}", "name": "Second"},
+            headers={"Idempotency-Key": key2},
+        )
+        assert resp2.status_code == 201
+        assert resp2.json()["id"] != resp1.json()["id"]
+
+    def test_create_customer_no_key_works_normally(self, client: TestClient) -> None:
+        resp = client.post(
+            "/v1/customers/",
+            json={"external_id": f"ext-{uuid4()}", "name": "No Key"},
+        )
+        assert resp.status_code == 201
+        assert resp.headers.get("Idempotency-Replayed") is None
+
+
+class TestSubscriptionIdempotencyIntegration:
+    @pytest.fixture(autouse=True)
+    def _create_customer_and_plan(self, db_session: Session) -> None:
+        from app.models.customer import Customer
+        from app.models.plan import Plan, PlanInterval
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="idem-sub-cust",
+            name="Sub Idempotency Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+        self._customer_id = str(customer.id)
+
+        plan = Plan(
+            organization_id=DEFAULT_ORG_ID,
+            code="idem-test-plan",
+            name="Idempotency Test Plan",
+            interval=PlanInterval.MONTHLY.value,
+            amount_cents=1000,
+            currency="USD",
+        )
+        db_session.add(plan)
+        db_session.commit()
+        db_session.refresh(plan)
+        self._plan_id = str(plan.id)
+
+    def test_create_subscription_same_key_returns_cached(self, client: TestClient) -> None:
+        key = f"sub-idem-{uuid4()}"
+        payload = {
+            "external_id": f"sub-{uuid4()}",
+            "customer_id": self._customer_id,
+            "plan_id": self._plan_id,
+        }
+        resp1 = client.post("/v1/subscriptions/", json=payload, headers={"Idempotency-Key": key})
+        assert resp1.status_code == 201
+
+        resp2 = client.post("/v1/subscriptions/", json=payload, headers={"Idempotency-Key": key})
+        assert resp2.status_code == 201
+        assert resp2.headers.get("Idempotency-Replayed") == "true"
+        assert resp2.json()["id"] == resp1.json()["id"]
+
+
+class TestInvoiceFinalizeIdempotencyIntegration:
+    @pytest.fixture(autouse=True)
+    def _create_invoice(self, db_session: Session) -> None:
+        from app.models.customer import Customer
+        from app.models.invoice import Invoice
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="idem-inv-cust",
+            name="Invoice Idempotency Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        invoice = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            invoice_number="IDEM-INV-001",
+            status="draft",
+            invoice_type="subscription",
+            billing_period_start=datetime(2026, 1, 1),
+            billing_period_end=datetime(2026, 2, 1),
+            subtotal=1000,
+            tax_amount=0,
+            total=1000,
+            currency="USD",
+        )
+        db_session.add(invoice)
+        db_session.commit()
+        db_session.refresh(invoice)
+        self._invoice_id = str(invoice.id)
+
+    def test_finalize_invoice_same_key_returns_cached(self, client: TestClient) -> None:
+        key = f"inv-idem-{uuid4()}"
+        resp1 = client.post(
+            f"/v1/invoices/{self._invoice_id}/finalize",
+            headers={"Idempotency-Key": key},
+        )
+        assert resp1.status_code == 200
+
+        resp2 = client.post(
+            f"/v1/invoices/{self._invoice_id}/finalize",
+            headers={"Idempotency-Key": key},
+        )
+        assert resp2.status_code == 200
+        assert resp2.headers.get("Idempotency-Replayed") == "true"
+        assert resp2.json()["id"] == resp1.json()["id"]
+
+
+class TestCheckoutIdempotencyIntegration:
+    @pytest.fixture(autouse=True)
+    def _create_finalized_invoice(self, db_session: Session) -> None:
+        from app.models.customer import Customer
+        from app.models.invoice import Invoice
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="idem-pay-cust",
+            name="Payment Idempotency Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        invoice = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            invoice_number="IDEM-PAY-001",
+            status="finalized",
+            invoice_type="subscription",
+            billing_period_start=datetime(2026, 1, 1),
+            billing_period_end=datetime(2026, 2, 1),
+            subtotal=1000,
+            tax_amount=0,
+            total=1000,
+            currency="USD",
+        )
+        db_session.add(invoice)
+        db_session.commit()
+        db_session.refresh(invoice)
+        self._invoice_id = str(invoice.id)
+
+    def test_checkout_same_key_returns_cached(self, client: TestClient) -> None:
+        from unittest.mock import MagicMock, patch
+
+        mock_session = MagicMock()
+        mock_session.provider_checkout_id = "chk_123"
+        mock_session.checkout_url = "https://pay.example.com/chk_123"
+        mock_session.expires_at = None
+        mock_provider = MagicMock()
+        mock_provider.create_checkout_session.return_value = mock_session
+
+        key = f"pay-idem-{uuid4()}"
+        payload = {
+            "invoice_id": self._invoice_id,
+            "provider": "stripe",
+            "success_url": "https://example.com/ok",
+            "cancel_url": "https://example.com/cancel",
+        }
+        with patch("app.routers.payments.get_payment_provider", return_value=mock_provider):
+            resp1 = client.post(
+                "/v1/payments/checkout", json=payload, headers={"Idempotency-Key": key}
+            )
+        assert resp1.status_code == 200
+
+        resp2 = client.post(
+            "/v1/payments/checkout", json=payload, headers={"Idempotency-Key": key}
+        )
+        assert resp2.status_code == 200
+        assert resp2.headers.get("Idempotency-Replayed") == "true"
+        assert resp2.json()["payment_id"] == resp1.json()["payment_id"]
+
+
+class TestEventIdempotencyIntegration:
+    @pytest.fixture(autouse=True)
+    def _create_metric(self, db_session: Session) -> None:
+        from app.models.billable_metric import AggregationType, BillableMetric
+
+        metric = BillableMetric(
+            organization_id=DEFAULT_ORG_ID,
+            code="idem_test_calls",
+            name="Idempotency Test Calls",
+            aggregation_type=AggregationType.COUNT.value,
+        )
+        db_session.add(metric)
+        db_session.commit()
+
+    def test_create_event_same_key_returns_cached(self, client: TestClient) -> None:
+        key = f"evt-idem-{uuid4()}"
+        payload = {
+            "transaction_id": f"tx-{uuid4()}",
+            "external_customer_id": "cust-001",
+            "code": "idem_test_calls",
+            "timestamp": "2026-01-15T10:30:00Z",
+        }
+        resp1 = client.post("/v1/events/", json=payload, headers={"Idempotency-Key": key})
+        assert resp1.status_code == 201
+
+        resp2 = client.post("/v1/events/", json=payload, headers={"Idempotency-Key": key})
+        assert resp2.status_code == 201
+        assert resp2.headers.get("Idempotency-Replayed") == "true"
+        assert resp2.json()["id"] == resp1.json()["id"]
+
+
+class TestCleanupIdempotencyRecordsTask:
+    @pytest.mark.asyncio
+    async def test_cleanup_deletes_old_records(self, db_session: Session) -> None:
+        from unittest.mock import patch
+
+        from app.worker import cleanup_idempotency_records_task
+
+        repo = IdempotencyRepository(db_session)
+        record = repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            idempotency_key="cleanup-old",
+            request_method="POST",
+            request_path="/v1/customers",
+            response_status=201,
+            response_body={"id": "test"},
+        )
+        record.created_at = datetime.now(UTC) - timedelta(hours=25)  # type: ignore[assignment]
+        db_session.commit()
+
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            idempotency_key="cleanup-new",
+            request_method="POST",
+            request_path="/v1/customers",
+            response_status=201,
+            response_body={"id": "test2"},
+        )
+
+        with patch("app.worker.SessionLocal", return_value=db_session):
+            result = await cleanup_idempotency_records_task({})
+        assert result == 1
+
+        assert repo.get_by_key(DEFAULT_ORG_ID, "cleanup-old") is None
+        assert repo.get_by_key(DEFAULT_ORG_ID, "cleanup-new") is not None
+
+    @pytest.mark.asyncio
+    async def test_cleanup_nothing_to_delete(self, db_session: Session) -> None:
+        from unittest.mock import patch
+
+        from app.worker import cleanup_idempotency_records_task
+
+        with patch("app.worker.SessionLocal", return_value=db_session):
+            result = await cleanup_idempotency_records_task({})
+        assert result == 0
+
+    def test_worker_settings_includes_cleanup_function(self) -> None:
+        from app.worker import WorkerSettings
+
+        func_names = [f.__name__ for f in WorkerSettings.functions]
+        assert "cleanup_idempotency_records_task" in func_names
+
+    def test_worker_settings_includes_cleanup_cron(self) -> None:
+        from app.worker import WorkerSettings
+
+        cron_func_names = [job.coroutine.__name__ for job in WorkerSettings.cron_jobs]
+        assert "cleanup_idempotency_records_task" in cron_func_names
+
+    def test_cleanup_cron_runs_daily_at_midnight(self) -> None:
+        from app.worker import WorkerSettings
+
+        job = None
+        for j in WorkerSettings.cron_jobs:
+            if j.coroutine.__name__ == "cleanup_idempotency_records_task":
+                job = j
+                break
+        assert job is not None
+        assert job.hour == 0
+        assert job.minute == 0

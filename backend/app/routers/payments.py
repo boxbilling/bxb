@@ -4,10 +4,12 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.database import get_db
+from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.invoice import InvoiceStatus
 from app.models.invoice_settlement import SettlementType
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
@@ -123,14 +125,19 @@ async def get_payment(
 )
 async def create_checkout_session(
     data: CheckoutSessionCreate,
+    request: Request,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
-) -> CheckoutSessionResponse:
+) -> CheckoutSessionResponse | JSONResponse:
     """Create a checkout session for an invoice.
 
     This creates a payment record and returns a URL where the customer
     can complete the payment.
     """
+    idempotency = check_idempotency(request, db, organization_id)
+    if isinstance(idempotency, JSONResponse):
+        return idempotency
+
     # Get the invoice
     invoice_repo = InvoiceRepository(db)
     invoice = invoice_repo.get_by_id(data.invoice_id, organization_id)
@@ -222,12 +229,18 @@ async def create_checkout_session(
         data={"invoice_id": str(data.invoice_id), "provider": data.provider.value},
     )
 
-    return CheckoutSessionResponse(
+    result = CheckoutSessionResponse(
         payment_id=payment.id,  # type: ignore[arg-type]
         checkout_url=session.checkout_url,
         provider=data.provider.value,
         expires_at=session.expires_at,
     )
+
+    if isinstance(idempotency, IdempotencyResult):
+        body = result.model_dump(mode="json")
+        record_idempotency_response(db, organization_id, idempotency.key, 200, body)
+
+    return result
 
 
 @router.post(

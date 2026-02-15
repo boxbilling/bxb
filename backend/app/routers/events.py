@@ -5,11 +5,13 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.core.rate_limiter import RateLimiter
 from app.models.charge import ChargeModel
 from app.models.event import Event
@@ -345,15 +347,21 @@ async def get_event(
 )
 async def create_event(
     data: EventCreate,
+    request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(_check_rate_limit),
-) -> Event:
+) -> Event | JSONResponse:
     """Ingest a single event.
 
     If an event with the same transaction_id already exists, returns the existing event.
-    This provides idempotent event ingestion.
+    This provides idempotent event ingestion.  The ``Idempotency-Key`` header adds an
+    additional layer of deduplication on top of the existing ``transaction_id`` check.
     """
+    idempotency = check_idempotency(request, db, organization_id)
+    if isinstance(idempotency, JSONResponse):
+        return idempotency
+
     validate_billable_metric_code(data.code, db, organization_id)
 
     repo = EventRepository(db)
@@ -363,6 +371,10 @@ async def create_event(
         sub_ids = _get_active_subscription_ids(data.external_customer_id, db, organization_id)
         if sub_ids:
             background_tasks.add_task(_enqueue_threshold_checks, sub_ids)
+
+    if isinstance(idempotency, IdempotencyResult):
+        body = EventResponse.model_validate(event).model_dump(mode="json")
+        record_idempotency_response(db, organization_id, idempotency.key, 201, body)
 
     return event
 
