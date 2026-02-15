@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AdminLayout from './layouts/AdminLayout'
+import PortalLayout from './layouts/PortalLayout'
 import {
   DashboardPage,
   CustomersPage,
@@ -28,6 +29,13 @@ import {
   FeaturesPage,
   UsageAlertsPage,
 } from './pages/admin'
+import {
+  PortalDashboardPage,
+  PortalInvoicesPage,
+  PortalUsagePage,
+  PortalPaymentsPage,
+  PortalWalletPage,
+} from './pages/portal'
 import SettingsPage from './pages/admin/SettingsPage'
 import ApiKeysPage from './pages/admin/ApiKeysPage'
 
@@ -66,9 +74,18 @@ function App() {
         <Route path="api-keys" element={<ApiKeysPage />} />
       </Route>
 
+      {/* Customer Portal */}
+      <Route path="/portal" element={<PortalLayout />}>
+        <Route index element={<PortalDashboardPage />} />
+        <Route path="invoices" element={<PortalInvoicesPage />} />
+        <Route path="usage" element={<PortalUsagePage />} />
+        <Route path="payments" element={<PortalPaymentsPage />} />
+        <Route path="wallet" element={<PortalWalletPage />} />
+      </Route>
+
       {/* Redirect root to admin */}
       <Route path="/" element={<Navigate to="/admin" replace />} />
-      
+
       {/* Catch all - redirect to admin */}
       <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>
