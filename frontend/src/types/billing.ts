@@ -171,6 +171,11 @@ export type Entitlement = components['schemas']['EntitlementResponse']
 export type EntitlementCreate = components['schemas']['EntitlementCreate']
 export type EntitlementUpdate = components['schemas']['EntitlementUpdate']
 
+// --- Usage Alerts ---
+export type UsageAlert = components['schemas']['UsageAlertResponse']
+export type UsageAlertCreate = components['schemas']['UsageAlertCreate']
+export type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
+
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']

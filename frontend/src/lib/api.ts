@@ -128,6 +128,10 @@ type EntitlementResponse = components['schemas']['EntitlementResponse']
 type EntitlementCreate = components['schemas']['EntitlementCreate']
 type EntitlementUpdate = components['schemas']['EntitlementUpdate']
 
+type UsageAlertResponse = components['schemas']['UsageAlertResponse']
+type UsageAlertCreate = components['schemas']['UsageAlertCreate']
+type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ORG_STORAGE_KEY = 'bxb_organization_id'
@@ -792,6 +796,25 @@ export const entitlementsApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/entitlements/${id}`, { method: 'DELETE' }),
+}
+
+// Usage Alerts API
+export const usageAlertsApi = {
+  list: (params?: { subscription_id?: string; skip?: number; limit?: number }) =>
+    request<UsageAlertResponse[]>(`/v1/usage_alerts/${buildQuery(params)}`),
+  get: (id: string) => request<UsageAlertResponse>(`/v1/usage_alerts/${id}`),
+  create: (data: UsageAlertCreate) =>
+    request<UsageAlertResponse>('/v1/usage_alerts/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: UsageAlertUpdate) =>
+    request<UsageAlertResponse>(`/v1/usage_alerts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    request<void>(`/v1/usage_alerts/${id}`, { method: 'DELETE' }),
 }
 
 // Dashboard API

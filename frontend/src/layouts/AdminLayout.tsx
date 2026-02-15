@@ -28,6 +28,7 @@ import {
   Moon,
   Sun,
   Menu,
+  AlertTriangle,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
@@ -91,6 +92,7 @@ const navigationGroups = [
     items: [
       { name: 'Webhooks', href: '/admin/webhooks', icon: Radio },
       { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Bell },
+      { name: 'Usage Alerts', href: '/admin/usage-alerts', icon: AlertTriangle },
       { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
       { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
       { name: 'Integrations', href: '/admin/integrations', icon: Plug },

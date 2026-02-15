@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -37,8 +37,18 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
-import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, featuresApi, ApiError } from '@/lib/api'
-import type { UsageThresholdCreateAPI } from '@/types/billing'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, usageAlertsApi, billableMetricsApi, featuresApi, ApiError } from '@/lib/api'
+import type { UsageThresholdCreateAPI, UsageAlertCreate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -54,6 +64,14 @@ export default function SubscriptionDetailPage() {
     recurring: false,
     threshold_display_name: null,
   })
+  const [showAlertForm, setShowAlertForm] = useState(false)
+  const [alertForm, setAlertForm] = useState<{
+    billable_metric_id: string
+    threshold_value: string
+    recurring: boolean
+    name: string
+  }>({ billable_metric_id: '', threshold_value: '', recurring: false, name: '' })
+  const [deleteAlertId, setDeleteAlertId] = useState<string | null>(null)
 
   const { data: subscription, isLoading, error } = useQuery({
     queryKey: ['subscription', id],
@@ -104,6 +122,58 @@ export default function SubscriptionDetailPage() {
   })
 
   const featureMap = new Map(features?.map((f) => [f.id, f]) ?? [])
+
+  const { data: usageAlerts, isLoading: alertsLoading } = useQuery({
+    queryKey: ['usage-alerts', id],
+    queryFn: () => usageAlertsApi.list({ subscription_id: id! }),
+    enabled: !!id,
+  })
+
+  const { data: allMetrics } = useQuery({
+    queryKey: ['billable-metrics'],
+    queryFn: () => billableMetricsApi.list(),
+    enabled: !!usageAlerts && usageAlerts.length > 0 || showAlertForm,
+  })
+
+  const metricMap = new Map(allMetrics?.map((m) => [m.id, m]) ?? [])
+
+  const createAlertMutation = useMutation({
+    mutationFn: (data: UsageAlertCreate) => usageAlertsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usage-alerts', id] })
+      toast.success('Usage alert created')
+      setShowAlertForm(false)
+      setAlertForm({ billable_metric_id: '', threshold_value: '', recurring: false, name: '' })
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to create usage alert'
+      toast.error(message)
+    },
+  })
+
+  const deleteAlertMutation = useMutation({
+    mutationFn: (alertId: string) => usageAlertsApi.delete(alertId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usage-alerts', id] })
+      setDeleteAlertId(null)
+      toast.success('Usage alert deleted')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to delete usage alert'
+      toast.error(message)
+    },
+  })
+
+  const handleCreateAlert = (e: React.FormEvent) => {
+    e.preventDefault()
+    createAlertMutation.mutate({
+      subscription_id: id!,
+      billable_metric_id: alertForm.billable_metric_id,
+      threshold_value: Number(alertForm.threshold_value),
+      recurring: alertForm.recurring,
+      name: alertForm.name || null,
+    })
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (thresholdId: string) => usageThresholdsApi.delete(thresholdId),
@@ -455,6 +525,178 @@ export default function SubscriptionDetailPage() {
               </form>
             )}
           </div>
+
+          <Separator />
+
+          {/* Usage Alerts */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Usage Alerts
+                </CardTitle>
+                {!showAlertForm && (
+                  <Button size="sm" variant="outline" onClick={() => setShowAlertForm(true)}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add Alert
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {alertsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !usageAlerts?.length && !showAlertForm ? (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground mb-2">No usage alerts configured</p>
+                  <Button size="sm" variant="outline" onClick={() => setShowAlertForm(true)}>
+                    <Plus className="mr-1 h-3 w-3" />
+                    Create Alert
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {usageAlerts?.map((alert) => {
+                    const metric = metricMap.get(alert.billable_metric_id)
+                    return (
+                      <div key={alert.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {alert.name || metric?.name || 'Unnamed alert'}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Threshold: <span className="font-mono">{Number(alert.threshold_value).toLocaleString()}</span>
+                              {' \u00b7 '}
+                              <Badge variant={alert.recurring ? 'default' : 'secondary'} className="text-[10px] px-1 py-0">
+                                {alert.recurring ? 'Recurring' : 'One-time'}
+                              </Badge>
+                              {alert.triggered_at && (
+                                <>
+                                  {' \u00b7 Last triggered: '}
+                                  {format(new Date(alert.triggered_at), 'MMM d, yyyy HH:mm')}
+                                </>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0"
+                          onClick={() => setDeleteAlertId(alert.id)}
+                        >
+                          <X className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Add Alert Form */}
+              {showAlertForm && (
+                <form onSubmit={handleCreateAlert} className="space-y-3 rounded-md border p-4 mt-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="alert_metric">Billable Metric *</Label>
+                    <Select
+                      value={alertForm.billable_metric_id}
+                      onValueChange={(value) => setAlertForm({ ...alertForm, billable_metric_id: value })}
+                    >
+                      <SelectTrigger id="alert_metric">
+                        <SelectValue placeholder="Select a metric" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allMetrics?.map((metric) => (
+                          <SelectItem key={metric.id} value={metric.id}>
+                            {metric.name} ({metric.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="alert_threshold">Threshold Value *</Label>
+                    <Input
+                      id="alert_threshold"
+                      type="number"
+                      value={alertForm.threshold_value}
+                      onChange={(e) => setAlertForm({ ...alertForm, threshold_value: e.target.value })}
+                      placeholder="e.g. 1000"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="alert_recurring"
+                      checked={alertForm.recurring}
+                      onCheckedChange={(checked) =>
+                        setAlertForm({ ...alertForm, recurring: checked === true })
+                      }
+                    />
+                    <Label htmlFor="alert_recurring">Recurring</Label>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="alert_name">Name</Label>
+                    <Input
+                      id="alert_name"
+                      value={alertForm.name}
+                      onChange={(e) => setAlertForm({ ...alertForm, name: e.target.value })}
+                      placeholder="Optional alert name"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={createAlertMutation.isPending || !alertForm.billable_metric_id || !alertForm.threshold_value}
+                    >
+                      {createAlertMutation.isPending ? 'Creating...' : 'Create'}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setShowAlertForm(false)
+                        setAlertForm({ billable_metric_id: '', threshold_value: '', recurring: false, name: '' })
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Delete Alert Confirmation */}
+          <AlertDialog
+            open={!!deleteAlertId}
+            onOpenChange={(open) => !open && setDeleteAlertId(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Usage Alert</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this usage alert? This action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => deleteAlertId && deleteAlertMutation.mutate(deleteAlertId)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleteAlertMutation.isPending ? 'Deleting...' : 'Delete'}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           <Separator />
 
