@@ -7,6 +7,20 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class DunningCampaignPerformanceStats(BaseModel):
+    """Performance statistics for dunning campaigns."""
+
+    total_campaigns: int
+    active_campaigns: int
+    total_payment_requests: int
+    succeeded_requests: int
+    failed_requests: int
+    pending_requests: int
+    recovery_rate: float
+    total_recovered_amount_cents: Decimal
+    total_outstanding_amount_cents: Decimal
+
+
 class DunningCampaignThresholdCreate(BaseModel):
     """Schema for creating a dunning campaign threshold."""
 

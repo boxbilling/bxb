@@ -9,7 +9,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.main import app
+from app.models.customer import Customer
 from app.models.dunning_campaign import DunningCampaign
+from app.models.payment_request import PaymentRequest
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.schemas.dunning_campaign import (
     DunningCampaignCreate,
@@ -289,3 +291,63 @@ class TestDeleteDunningCampaign:
         response = client.delete(f"/v1/dunning_campaigns/{fake_id}")
         assert response.status_code == 404
         assert response.json()["detail"] == "Dunning campaign not found"
+
+
+class TestPerformanceStats:
+    def test_performance_stats_empty(self, client: TestClient) -> None:
+        """Test performance stats with no data."""
+        response = client.get("/v1/dunning_campaigns/performance_stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_campaigns"] == 0
+        assert data["active_campaigns"] == 0
+        assert data["total_payment_requests"] == 0
+        assert data["recovery_rate"] == 0.0
+        assert data["total_recovered_amount_cents"] == "0"
+        assert data["total_outstanding_amount_cents"] == "0"
+
+    def test_performance_stats_with_data(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test performance stats with campaigns and payment requests."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-api-perf",
+            name="API Perf Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Add payment requests linked to the campaign
+        for status, amount in [
+            ("succeeded", Decimal("5000")),
+            ("succeeded", Decimal("3000")),
+            ("failed", Decimal("2000")),
+        ]:
+            pr = PaymentRequest(
+                organization_id=DEFAULT_ORG_ID,
+                customer_id=customer.id,
+                dunning_campaign_id=campaign.id,
+                amount_cents=amount,
+                amount_currency="USD",
+                payment_status=status,
+            )
+            db_session.add(pr)
+        db_session.commit()
+
+        response = client.get("/v1/dunning_campaigns/performance_stats")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_campaigns"] == 1
+        assert data["active_campaigns"] == 1
+        assert data["total_payment_requests"] == 3
+        assert data["succeeded_requests"] == 2
+        assert data["failed_requests"] == 1
+        assert data["pending_requests"] == 0
+        assert data["recovery_rate"] == 66.7
+        assert Decimal(data["total_recovered_amount_cents"]) == Decimal("8000")
+        assert Decimal(data["total_outstanding_amount_cents"]) == Decimal("2000")

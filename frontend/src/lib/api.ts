@@ -99,6 +99,7 @@ type ApiKeyListResponse = components['schemas']['ApiKeyListResponse']
 type DunningCampaignResponse = components['schemas']['DunningCampaignResponse']
 type DunningCampaignCreate = components['schemas']['DunningCampaignCreate']
 type DunningCampaignUpdate = components['schemas']['DunningCampaignUpdate']
+type DunningCampaignPerformanceStats = components['schemas']['DunningCampaignPerformanceStats']
 
 type CommitmentResponse = components['schemas']['CommitmentResponse']
 type CommitmentCreateAPI = components['schemas']['CommitmentCreateAPI']
@@ -875,6 +876,8 @@ export const dunningCampaignsApi = {
     }),
   delete: (id: string) =>
     request<void>(`/v1/dunning_campaigns/${id}`, { method: 'DELETE' }),
+  performanceStats: () =>
+    request<DunningCampaignPerformanceStats>('/v1/dunning_campaigns/performance_stats'),
 }
 
 // Commitments API

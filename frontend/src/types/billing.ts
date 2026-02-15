@@ -133,6 +133,7 @@ export type DunningCampaignCreate = components['schemas']['DunningCampaignCreate
 export type DunningCampaignUpdate = components['schemas']['DunningCampaignUpdate']
 export type DunningCampaignThreshold = components['schemas']['DunningCampaignThresholdResponse']
 export type DunningCampaignThresholdCreate = components['schemas']['DunningCampaignThresholdCreate']
+export type DunningCampaignPerformanceStats = components['schemas']['DunningCampaignPerformanceStats']
 
 // --- Commitments ---
 export type Commitment = components['schemas']['CommitmentResponse']

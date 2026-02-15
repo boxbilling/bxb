@@ -11,6 +11,7 @@ from app.models.dunning_campaign import DunningCampaign
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.schemas.dunning_campaign import (
     DunningCampaignCreate,
+    DunningCampaignPerformanceStats,
     DunningCampaignResponse,
     DunningCampaignThresholdResponse,
     DunningCampaignUpdate,
@@ -78,6 +79,21 @@ async def list_dunning_campaigns(
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
     campaigns = repo.get_all(organization_id, skip=skip, limit=limit, status=status)
     return [_campaign_to_response(c, repo) for c in campaigns]
+
+
+@router.get(
+    "/performance_stats",
+    response_model=DunningCampaignPerformanceStats,
+    summary="Get dunning campaign performance stats",
+    responses={401: {"description": "Unauthorized"}},
+)
+async def get_performance_stats(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> DunningCampaignPerformanceStats:
+    """Get performance statistics across all dunning campaigns."""
+    repo = DunningCampaignRepository(db)
+    return repo.performance_stats(organization_id)
 
 
 @router.get(

@@ -2524,6 +2524,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dunning_campaigns/performance_stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get dunning campaign performance stats
+         * @description Get performance statistics across all dunning campaigns.
+         */
+        get: operations["get_performance_stats_v1_dunning_campaigns_performance_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dunning_campaigns/{campaign_id}": {
         parameters: {
             query?: never;
@@ -4764,6 +4784,30 @@ export interface components {
             status: string;
             /** Thresholds */
             thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][];
+        };
+        /**
+         * DunningCampaignPerformanceStats
+         * @description Performance statistics for dunning campaigns.
+         */
+        DunningCampaignPerformanceStats: {
+            /** Total Campaigns */
+            total_campaigns: number;
+            /** Active Campaigns */
+            active_campaigns: number;
+            /** Total Payment Requests */
+            total_payment_requests: number;
+            /** Succeeded Requests */
+            succeeded_requests: number;
+            /** Failed Requests */
+            failed_requests: number;
+            /** Pending Requests */
+            pending_requests: number;
+            /** Recovery Rate */
+            recovery_rate: number;
+            /** Total Recovered Amount Cents */
+            total_recovered_amount_cents: string;
+            /** Total Outstanding Amount Cents */
+            total_outstanding_amount_cents: string;
         };
         /**
          * DunningCampaignResponse
@@ -14117,6 +14161,33 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_performance_stats_v1_dunning_campaigns_performance_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningCampaignPerformanceStats"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

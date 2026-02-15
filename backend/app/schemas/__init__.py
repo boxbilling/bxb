@@ -34,6 +34,7 @@ from app.schemas.daily_usage import DailyUsageCreate, DailyUsageResponse
 from app.schemas.dashboard import DashboardStatsResponse, RecentActivityResponse
 from app.schemas.dunning_campaign import (
     DunningCampaignCreate,
+    DunningCampaignPerformanceStats,
     DunningCampaignResponse,
     DunningCampaignThresholdCreate,
     DunningCampaignThresholdResponse,
@@ -117,6 +118,7 @@ __all__ = [
     "DailyUsageCreate",
     "DailyUsageResponse",
     "DunningCampaignCreate",
+    "DunningCampaignPerformanceStats",
     "DunningCampaignResponse",
     "DunningCampaignThresholdCreate",
     "DunningCampaignThresholdResponse",

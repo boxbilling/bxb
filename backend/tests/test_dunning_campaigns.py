@@ -8,11 +8,14 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.customer import Customer
 from app.models.dunning_campaign import DunningCampaign
 from app.models.dunning_campaign_threshold import DunningCampaignThreshold
+from app.models.payment_request import PaymentRequest
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.schemas.dunning_campaign import (
     DunningCampaignCreate,
+    DunningCampaignPerformanceStats,
     DunningCampaignResponse,
     DunningCampaignThresholdCreate,
     DunningCampaignThresholdResponse,
@@ -366,3 +369,169 @@ class TestDunningCampaignRepository:
         repo = DunningCampaignRepository(db_session)
         thresholds = repo.get_thresholds(uuid.uuid4())
         assert thresholds == []
+
+    def test_performance_stats_empty(self, db_session: Session) -> None:
+        """Performance stats with no campaigns or payment requests."""
+        repo = DunningCampaignRepository(db_session)
+        stats = repo.performance_stats(DEFAULT_ORG_ID)
+        assert stats.total_campaigns == 0
+        assert stats.active_campaigns == 0
+        assert stats.total_payment_requests == 0
+        assert stats.succeeded_requests == 0
+        assert stats.failed_requests == 0
+        assert stats.pending_requests == 0
+        assert stats.recovery_rate == 0.0
+        assert stats.total_recovered_amount_cents == Decimal("0")
+        assert stats.total_outstanding_amount_cents == Decimal("0")
+
+    def test_performance_stats_with_campaigns_only(self, db_session: Session) -> None:
+        """Performance stats with campaigns but no payment requests."""
+        repo = DunningCampaignRepository(db_session)
+        repo.create(DunningCampaignCreate(code="dc-ps1", name="Active"), DEFAULT_ORG_ID)
+        repo.create(
+            DunningCampaignCreate(code="dc-ps2", name="Inactive", status="inactive"),
+            DEFAULT_ORG_ID,
+        )
+
+        stats = repo.performance_stats(DEFAULT_ORG_ID)
+        assert stats.total_campaigns == 2
+        assert stats.active_campaigns == 1
+        assert stats.total_payment_requests == 0
+        assert stats.recovery_rate == 0.0
+
+    def test_performance_stats_with_payment_requests(self, db_session: Session) -> None:
+        """Performance stats with campaigns and payment requests of various statuses."""
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(DunningCampaignCreate(code="dc-perf", name="Perf"), DEFAULT_ORG_ID)
+
+        # Create a customer for payment requests
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-perf-stats",
+            name="Perf Stats Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Create payment requests with different statuses
+        pr_succeeded = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("5000"),
+            amount_currency="USD",
+            payment_status="succeeded",
+        )
+        pr_failed = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("3000"),
+            amount_currency="USD",
+            payment_status="failed",
+        )
+        pr_pending = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("2000"),
+            amount_currency="USD",
+            payment_status="pending",
+        )
+        db_session.add_all([pr_succeeded, pr_failed, pr_pending])
+        db_session.commit()
+
+        stats = repo.performance_stats(DEFAULT_ORG_ID)
+        assert stats.total_campaigns == 1
+        assert stats.active_campaigns == 1
+        assert stats.total_payment_requests == 3
+        assert stats.succeeded_requests == 1
+        assert stats.failed_requests == 1
+        assert stats.pending_requests == 1
+        # Recovery rate: 1/3 = 33.3%
+        assert stats.recovery_rate == 33.3
+        assert stats.total_recovered_amount_cents == Decimal("5000")
+        # Outstanding = failed + pending amounts
+        assert stats.total_outstanding_amount_cents == Decimal("5000")
+
+    def test_performance_stats_excludes_non_dunning_requests(self, db_session: Session) -> None:
+        """Payment requests without dunning_campaign_id are excluded from stats."""
+        repo = DunningCampaignRepository(db_session)
+        repo.create(DunningCampaignCreate(code="dc-excl", name="Exclude"), DEFAULT_ORG_ID)
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-excl",
+            name="Exclusion Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Payment request NOT linked to a dunning campaign
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=None,
+            amount_cents=Decimal("9999"),
+            amount_currency="USD",
+            payment_status="succeeded",
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        stats = repo.performance_stats(DEFAULT_ORG_ID)
+        assert stats.total_payment_requests == 0
+        assert stats.total_recovered_amount_cents == Decimal("0")
+
+    def test_performance_stats_100_recovery_rate(self, db_session: Session) -> None:
+        """Performance stats with 100% recovery rate."""
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(DunningCampaignCreate(code="dc-100", name="Perfect"), DEFAULT_ORG_ID)
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-100",
+            name="Perfect Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        for _i in range(3):
+            pr = PaymentRequest(
+                organization_id=DEFAULT_ORG_ID,
+                customer_id=customer.id,
+                dunning_campaign_id=campaign.id,
+                amount_cents=Decimal("1000"),
+                amount_currency="USD",
+                payment_status="succeeded",
+            )
+            db_session.add(pr)
+        db_session.commit()
+
+        stats = repo.performance_stats(DEFAULT_ORG_ID)
+        assert stats.recovery_rate == 100.0
+        assert stats.total_recovered_amount_cents == Decimal("3000")
+        assert stats.total_outstanding_amount_cents == Decimal("0")
+
+
+class TestDunningCampaignPerformanceStatsSchema:
+    """Test DunningCampaignPerformanceStats Pydantic schema."""
+
+    def test_schema_construction(self) -> None:
+        stats = DunningCampaignPerformanceStats(
+            total_campaigns=2,
+            active_campaigns=1,
+            total_payment_requests=10,
+            succeeded_requests=7,
+            failed_requests=2,
+            pending_requests=1,
+            recovery_rate=70.0,
+            total_recovered_amount_cents=Decimal("50000"),
+            total_outstanding_amount_cents=Decimal("15000"),
+        )
+        assert stats.total_campaigns == 2
+        assert stats.recovery_rate == 70.0
+        assert stats.total_recovered_amount_cents == Decimal("50000")

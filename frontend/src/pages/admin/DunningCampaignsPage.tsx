@@ -9,6 +9,9 @@ import {
   Megaphone,
   Mail,
   AlertTriangle,
+  TrendingUp,
+  DollarSign,
+  CheckCircle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -378,6 +381,12 @@ export default function DunningCampaignsPage() {
     queryFn: () => dunningCampaignsApi.list(),
   })
 
+  // Fetch performance stats
+  const { data: perfStats } = useQuery({
+    queryKey: ['dunning-campaigns-performance-stats'],
+    queryFn: () => dunningCampaignsApi.performanceStats(),
+  })
+
   // Filter campaigns
   const filteredCampaigns = campaigns.filter((c) => {
     const matchesSearch =
@@ -389,26 +398,13 @@ export default function DunningCampaignsPage() {
     return matchesSearch && matchesStatus
   })
 
-  // Stats
-  const stats = {
-    total: campaigns.length,
-    active: campaigns.filter((c) => c.status === 'active').length,
-    avgMaxAttempts:
-      campaigns.length > 0
-        ? campaigns.reduce((sum, c) => sum + c.max_attempts, 0) /
-          campaigns.length
-        : 0,
-    withThresholds: campaigns.filter(
-      (c) => c.thresholds && c.thresholds.length > 0
-    ).length,
-  }
-
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: DunningCampaignCreate) =>
       dunningCampaignsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dunning-campaigns'] })
+      queryClient.invalidateQueries({ queryKey: ['dunning-campaigns-performance-stats'] })
       setFormOpen(false)
       toast.success('Dunning campaign created successfully')
     },
@@ -427,6 +423,7 @@ export default function DunningCampaignsPage() {
       dunningCampaignsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dunning-campaigns'] })
+      queryClient.invalidateQueries({ queryKey: ['dunning-campaigns-performance-stats'] })
       setEditingCampaign(null)
       setFormOpen(false)
       toast.success('Dunning campaign updated successfully')
@@ -445,6 +442,7 @@ export default function DunningCampaignsPage() {
     mutationFn: (id: string) => dunningCampaignsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['dunning-campaigns'] })
+      queryClient.invalidateQueries({ queryKey: ['dunning-campaigns-performance-stats'] })
       setDeleteCampaign(null)
       toast.success('Dunning campaign deleted successfully')
     },
@@ -511,51 +509,75 @@ export default function DunningCampaignsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Campaigns
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <Megaphone className="h-3.5 w-3.5" />
+              Active Campaigns
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {stats.active}
+              {perfStats?.active_campaigns ?? 0}
             </div>
+            <p className="text-xs text-muted-foreground">
+              of {perfStats?.total_campaigns ?? 0} total
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Avg Max Attempts
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Recovery Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${
+              (perfStats?.recovery_rate ?? 0) >= 70
+                ? 'text-green-600'
+                : (perfStats?.recovery_rate ?? 0) >= 40
+                  ? 'text-yellow-600'
+                  : 'text-red-600'
+            }`}>
+              {perfStats?.recovery_rate?.toFixed(1) ?? '0.0'}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {perfStats?.succeeded_requests ?? 0} of {perfStats?.total_payment_requests ?? 0} requests
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <DollarSign className="h-3.5 w-3.5" />
+              Total Recovered
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              ${((Number(perfStats?.total_recovered_amount_cents ?? 0)) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              from succeeded requests
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-1.5">
+              <CheckCircle className="h-3.5 w-3.5" />
+              Request Breakdown
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.avgMaxAttempts.toFixed(1)}
+              {perfStats?.total_payment_requests ?? 0}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              With Thresholds
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {stats.withThresholds}
-            </div>
+            <p className="text-xs text-muted-foreground">
+              {perfStats?.pending_requests ?? 0} pending, {perfStats?.failed_requests ?? 0} failed
+            </p>
           </CardContent>
         </Card>
       </div>
