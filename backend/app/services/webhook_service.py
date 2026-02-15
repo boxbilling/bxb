@@ -43,6 +43,7 @@ WEBHOOK_EVENT_TYPES = [
     "wallet.terminated",
     "wallet.transaction.created",
     "usage_threshold.crossed",
+    "usage_alert.triggered",
 ]
 
 

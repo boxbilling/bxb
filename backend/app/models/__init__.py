@@ -47,6 +47,7 @@ from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.models.plan import Plan, PlanInterval
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.models.tax import Tax
+from app.models.usage_alert import UsageAlert
 from app.models.usage_threshold import UsageThreshold
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import (
@@ -124,6 +125,7 @@ __all__ = [
     "SubscriptionStatus",
     "TerminationAction",
     "Tax",
+    "UsageAlert",
     "UsageThreshold",
     "TransactionSource",
     "TransactionStatus",
