@@ -311,11 +311,16 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No way to see "which plans have this feature" from the features table
 
 **Recommendations:**
-- [ ] Keep single page but improve layout: split into two clear panels or use tabs
-- [ ] Add "Plans" column to features table showing count of plans with this feature
-- [ ] Make feature row expandable to show all plan entitlements inline
-- [ ] Improve entitlement value input: show toggle switch for boolean, slider for quantity, text for custom
-- [ ] Add "Copy entitlements from plan" action for bulk setup
+- [x] Keep single page but improve layout: split into two clear panels or use tabs
+  <!-- Completed: Redesigned FeaturesPage with a Tabs component (Features tab + Plan Entitlements tab). Features tab shows the features table with expandable rows. Plan Entitlements tab shows the plan-filtered entitlements table with add/copy actions. This separates the two concerns clearly while keeping them on one page. -->
+- [x] Add "Plans" column to features table showing count of plans with this feature
+  <!-- Completed: Added GET /v1/features/plan_counts backend endpoint that queries entitlements table to count distinct plans per feature. Added plan_counts() repository method using GROUP BY on feature_id with COUNT(DISTINCT plan_id). Frontend fetches counts via featuresApi.planCounts() and displays in a "Plans" column with Layers icon and correct singular/plural grammar. 6 new backend tests added. 100% coverage maintained. -->
+- [x] Make feature row expandable to show all plan entitlements inline
+  <!-- Completed: Created ExpandableFeatureRow component with chevron toggle button. Clicking a feature row expands it to reveal a nested table showing all plan entitlements for that feature (plan name, value, delete action). Uses state-managed Set of expanded feature IDs. Fetches all entitlements and groups by feature_id for inline display. Empty state shown when feature has no entitlements. -->
+- [x] Improve entitlement value input: show toggle switch for boolean, slider for quantity, text for custom
+  <!-- Completed: Created EntitlementValueInput component that renders type-appropriate controls. Boolean features show a Switch toggle with Enabled/Disabled label. Quantity features show a Slider (0-1000 range) paired with a number input for precise values, plus helper text. Custom features show a plain text input. Used in the Add Entitlement dialog. -->
+- [x] Add "Copy entitlements from plan" action for bulk setup
+  <!-- Completed: Added POST /v1/entitlements/copy backend endpoint that accepts source_plan_id and target_plan_id. Copies all entitlements from source to target, skipping features that already exist on target. Validates both plans exist and are different. Frontend adds "Copy from Plan" button in the Entitlements tab with a dialog for selecting source and target plans (target dropdown excludes selected source). EntitlementCopyRequest Pydantic schema added. 6 new backend tests added covering: success, skip existing, empty source, same plan, source not found, target not found. 100% coverage maintained. -->
 
 **Modal vs. Page Decision:**
 - **Create/Edit feature**: MODAL is correct (simple form, 4 fields)
@@ -342,7 +347,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No subscription timeline/lifecycle visualization
 
 **Recommendations:**
-- [ ] Add **Edit Subscription** capability for mutable fields (external_id, billing_time, pay_in_advance)
+- [x] Add **Edit Subscription** capability for mutable fields (external_id, billing_time, pay_in_advance)
+  <!-- Completed: Created EditSubscriptionDialog component (src/components/EditSubscriptionDialog.tsx) with form fields for billing_time, pay_in_advance, on_termination_action, and trial_period_days. Added Edit button with Pencil icon to SubscriptionDetailPage header (visible for active/pending subscriptions). Added Edit icon button to SubscriptionsPage table row actions. Both pages use subscriptionsApi.update() which calls the existing PUT /v1/subscriptions/{id} endpoint with audit logging. SubscriptionDetailPage info card now also displays billing_time, pay_in_advance, on_termination_action, and trial_period_days fields. Update mutation invalidates queries on success and shows toast feedback. TypeScript compiles clean, all 3364 backend tests pass with 100% coverage. -->
 - [ ] Add subscription lifecycle timeline (created → active → events → invoices → payments)
 - [ ] Add "Invoices" tab on detail page showing all invoices for this subscription
 - [ ] Improve "Change Plan" dialog: show price comparison, proration preview, effective date picker

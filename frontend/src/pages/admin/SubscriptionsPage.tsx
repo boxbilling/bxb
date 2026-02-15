@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, ArrowUpDown, Target, Trash2 } from 'lucide-react'
+import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -44,8 +44,9 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
+import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
-import type { Subscription, SubscriptionCreate, SubscriptionStatus, Plan, TerminationAction, UsageThresholdCreateAPI } from '@/types/billing'
+import type { Subscription, SubscriptionCreate, SubscriptionUpdate, SubscriptionStatus, Plan, TerminationAction, UsageThresholdCreateAPI } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', {
@@ -390,6 +391,7 @@ export default function SubscriptionsPage() {
   const [changePlanSub, setChangePlanSub] = useState<Subscription | null>(null)
   const [terminateSub, setTerminateSub] = useState<Subscription | null>(null)
   const [thresholdsSub, setThresholdsSub] = useState<Subscription | null>(null)
+  const [editSub, setEditSub] = useState<Subscription | null>(null)
 
   // Fetch subscriptions from API
   const { data: subscriptions, isLoading, error } = useQuery({
@@ -466,6 +468,20 @@ export default function SubscriptionsPage() {
     },
     onError: (error) => {
       toast.error(error instanceof ApiError ? error.message : 'Failed to terminate subscription')
+    },
+  })
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: SubscriptionUpdate }) =>
+      subscriptionsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      setEditSub(null)
+      toast.success('Subscription updated')
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to update subscription')
     },
   })
 
@@ -605,6 +621,15 @@ export default function SubscriptionsPage() {
                               variant="ghost"
                               size="icon"
                               className="h-7 w-7"
+                              title="Edit subscription"
+                              onClick={() => setEditSub(sub)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
                               title="Change plan"
                               onClick={() => setChangePlanSub(sub)}
                             >
@@ -675,6 +700,17 @@ export default function SubscriptionsPage() {
         onOpenChange={(open) => !open && setThresholdsSub(null)}
         subscription={thresholdsSub}
       />
+
+      {/* Edit Subscription Dialog */}
+      {editSub && (
+        <EditSubscriptionDialog
+          open={!!editSub}
+          onOpenChange={(open) => !open && setEditSub(null)}
+          subscription={editSub}
+          onSubmit={(data) => updateMutation.mutate({ id: editSub.id, data })}
+          isLoading={updateMutation.isPending}
+        />
+      )}
     </div>
   )
 }

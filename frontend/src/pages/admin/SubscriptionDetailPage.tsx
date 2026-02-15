@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -37,6 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
+import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,7 +49,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, usageAlertsApi, billableMetricsApi, featuresApi, ApiError } from '@/lib/api'
-import type { UsageThresholdCreateAPI, UsageAlertCreate } from '@/types/billing'
+import type { UsageThresholdCreateAPI, UsageAlertCreate, SubscriptionUpdate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -72,6 +73,7 @@ export default function SubscriptionDetailPage() {
     name: string
   }>({ billable_metric_id: '', threshold_value: '', recurring: false, name: '' })
   const [deleteAlertId, setDeleteAlertId] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
 
   const { data: subscription, isLoading, error } = useQuery({
     queryKey: ['subscription', id],
@@ -136,6 +138,19 @@ export default function SubscriptionDetailPage() {
   })
 
   const metricMap = new Map(allMetrics?.map((m) => [m.id, m]) ?? [])
+
+  const updateMutation = useMutation({
+    mutationFn: (data: SubscriptionUpdate) => subscriptionsApi.update(id!, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      setEditOpen(false)
+      toast.success('Subscription updated')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to update subscription'
+      toast.error(message)
+    },
+  })
 
   const createAlertMutation = useMutation({
     mutationFn: (data: UsageAlertCreate) => usageAlertsApi.create(data),
@@ -256,11 +271,19 @@ export default function SubscriptionDetailPage() {
       ) : subscription ? (
         <>
           {/* Header */}
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">Subscription Details</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {customerName} \u2014 {planName}
-            </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Subscription Details</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {customerName} \u2014 {planName}
+              </p>
+            </div>
+            {(subscription.status === 'active' || subscription.status === 'pending') && (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Pencil className="mr-1 h-3.5 w-3.5" />
+                Edit
+              </Button>
+            )}
           </div>
 
           {/* Subscription Info */}
@@ -290,6 +313,24 @@ export default function SubscriptionDetailPage() {
                   <span className="text-muted-foreground">Plan</span>
                   <span>{planName}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Billing Time</span>
+                  <span className="capitalize">{subscription.billing_time}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Pay in Advance</span>
+                  <span>{subscription.pay_in_advance ? 'Yes' : 'No'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">On Termination</span>
+                  <span className="capitalize">{subscription.on_termination_action.replace(/_/g, ' ')}</span>
+                </div>
+                {subscription.trial_period_days > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Trial Period</span>
+                    <span>{subscription.trial_period_days} days</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Started At</span>
                   <span>{subscription.started_at ? format(new Date(subscription.started_at), 'MMM d, yyyy HH:mm') : '\u2014'}</span>
@@ -789,6 +830,15 @@ export default function SubscriptionDetailPage() {
               />
             </CardContent>
           </Card>
+
+          {/* Edit Subscription Dialog */}
+          <EditSubscriptionDialog
+            open={editOpen}
+            onOpenChange={setEditOpen}
+            subscription={subscription}
+            onSubmit={(data) => updateMutation.mutate(data)}
+            isLoading={updateMutation.isPending}
+          />
         </>
       ) : null}
     </div>
