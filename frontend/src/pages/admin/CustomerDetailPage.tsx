@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3 } from 'lucide-react'
+import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3, Landmark, Star, Trash2, Plus } from 'lucide-react'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { toast } from 'sonner'
 
 import {
   Breadcrumb,
@@ -13,6 +14,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -39,13 +41,23 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, taxesApi } from '@/lib/api'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, AppliedTax, CustomerCurrentUsageResponse } from '@/types/billing'
+import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, taxesApi, paymentMethodsApi, ApiError } from '@/lib/api'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, AppliedTax, CustomerCurrentUsageResponse, PaymentMethod } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -496,6 +508,150 @@ function CustomerTaxesTab({ customerId }: { customerId: string }) {
   )
 }
 
+function formatPaymentMethodDetails(method: PaymentMethod): string {
+  const details = method.details as { last4?: string; brand?: string; exp_month?: number; exp_year?: number } | null
+  if (!details) return method.type
+  if (details.brand && details.last4) {
+    const parts = [`${details.brand} **** ${details.last4}`]
+    if (details.exp_month && details.exp_year) {
+      parts.push(`exp ${String(details.exp_month).padStart(2, '0')}/${String(details.exp_year).slice(-2)}`)
+    }
+    return parts.join(', ')
+  }
+  if (details.last4) return `**** ${details.last4}`
+  return method.type
+}
+
+function CustomerPaymentMethodsCard({ customerId }: { customerId: string }) {
+  const queryClient = useQueryClient()
+  const [deleteMethod, setDeleteMethod] = useState<PaymentMethod | null>(null)
+
+  const { data: paymentMethods, isLoading } = useQuery({
+    queryKey: ['customer-payment-methods', customerId],
+    queryFn: () => paymentMethodsApi.list({ customer_id: customerId }),
+  })
+
+  const setDefaultMutation = useMutation({
+    mutationFn: (id: string) => paymentMethodsApi.setDefault(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-payment-methods', customerId] })
+      toast.success('Default payment method updated')
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to set default payment method')
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => paymentMethodsApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-payment-methods', customerId] })
+      setDeleteMethod(null)
+      toast.success('Payment method removed')
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to remove payment method')
+    },
+  })
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-3">
+          <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
+          <Button variant="outline" size="sm" asChild>
+            <Link to={`/admin/payment-methods?customer=${customerId}`}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add
+            </Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : !paymentMethods?.length ? (
+            <p className="text-sm text-muted-foreground py-4">No payment methods found</p>
+          ) : (
+            <div className="space-y-3">
+              {paymentMethods.map((pm) => (
+                <div
+                  key={pm.id}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div className="flex items-center gap-3">
+                    {pm.type === 'card' ? (
+                      <CreditCard className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <Landmark className="h-5 w-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <div className="text-sm font-medium">{formatPaymentMethodDetails(pm)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {pm.provider}
+                      </div>
+                    </div>
+                    {pm.is_default && (
+                      <Badge variant="secondary" className="ml-2">Default</Badge>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    {!pm.is_default && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setDefaultMutation.mutate(pm.id)}
+                        disabled={setDefaultMutation.isPending}
+                        title="Set as default"
+                      >
+                        <Star className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDeleteMethod(pm)}
+                      disabled={pm.is_default}
+                      title={pm.is_default ? 'Cannot remove default payment method' : 'Remove'}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AlertDialog
+        open={!!deleteMethod}
+        onOpenChange={(open) => !open && setDeleteMethod(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Payment Method</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this payment method? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMethod && deleteMutation.mutate(deleteMethod.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? 'Removing...' : 'Remove'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}
+
 function ChargeUsageTable({ charges, currency }: { charges: CustomerCurrentUsageResponse['charges']; currency: string }) {
   if (!charges.length) {
     return <p className="text-sm text-muted-foreground py-2">No charge data</p>
@@ -853,6 +1009,9 @@ export default function CustomerDetailPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Payment Methods */}
+          <CustomerPaymentMethodsCard customerId={customer.id} />
 
           {/* Related Data Tabs */}
           <Tabs defaultValue="subscriptions">
