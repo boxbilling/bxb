@@ -799,7 +799,7 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 
 **Recommendations:**
 - [x] Add date range filter (essential for audit logs) — Added `start_date` and `end_date` query parameters to `GET /v1/audit_logs/` endpoint with repository-level filtering on `created_at`. Frontend `AuditLogsPage` now has a date preset selector (All time, 24h, 7d, 30d, 90d, Custom) with a dual-month calendar popover for custom ranges, following the same pattern as the Dashboard date picker.
-- [ ] Add "View Resource" link to navigate to the changed entity
+- [x] Add "View Resource" link to navigate to the changed entity — Added a `RESOURCE_TYPE_ROUTES` mapping (customer, invoice, subscription, plan, wallet, credit_note, dunning_campaign, integration) and a `getResourceUrl()` helper. Each audit log row now shows an ExternalLink icon next to the resource ID that navigates to the entity's detail page. The expanded row details also include a "View {resource_type}" link at the bottom. Resources without detail pages (e.g., payment) gracefully omit the link.
 - [ ] Add export to CSV functionality
 - [ ] Add actor filter (by user/system)
 - [ ] Improve diff visualization (syntax highlighted JSON diff)

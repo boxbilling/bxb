@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight, CalendarIcon } from 'lucide-react'
+import { Search, ScrollText, X, Copy, ChevronRight, ArrowRight, CalendarIcon, ExternalLink } from 'lucide-react'
 import { format, subDays, subMonths } from 'date-fns'
 import { toast } from 'sonner'
 import type { DateRange } from 'react-day-picker'
@@ -35,6 +35,23 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { auditLogsApi } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
+
+const RESOURCE_TYPE_ROUTES: Record<string, string> = {
+  customer: '/admin/customers',
+  invoice: '/admin/invoices',
+  subscription: '/admin/subscriptions',
+  plan: '/admin/plans',
+  wallet: '/admin/wallets',
+  credit_note: '/admin/credit-notes',
+  dunning_campaign: '/admin/dunning-campaigns',
+  integration: '/admin/integrations',
+}
+
+function getResourceUrl(resourceType: string, resourceId: string): string | null {
+  const base = RESOURCE_TYPE_ROUTES[resourceType]
+  if (!base) return null
+  return `${base}/${resourceId}`
+}
 
 type DatePreset = 'all' | '24h' | '7d' | '30d' | '90d' | 'custom'
 
@@ -338,7 +355,25 @@ export default function AuditLogsPage() {
                         <ResourceTypeBadge resourceType={log.resource_type} />
                       </TableCell>
                       <TableCell>
-                        <CopyableId id={log.resource_id} />
+                        <div className="flex items-center gap-1.5">
+                          <CopyableId id={log.resource_id} />
+                          {getResourceUrl(log.resource_type, log.resource_id) && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Link
+                                    to={getResourceUrl(log.resource_type, log.resource_id)!}
+                                    className="inline-flex items-center text-muted-foreground hover:text-primary transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>View {log.resource_type.replace(/_/g, ' ')}</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <ActionBadge action={log.action} />
@@ -361,6 +396,17 @@ export default function AuditLogsPage() {
                       <TableRow>
                         <TableCell colSpan={7} className="bg-muted/50 p-4">
                           <ChangesDisplay changes={log.changes} />
+                          {getResourceUrl(log.resource_type, log.resource_id) && (
+                            <div className="mt-3 pt-3 border-t">
+                              <Link
+                                to={getResourceUrl(log.resource_type, log.resource_id)!}
+                                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                              >
+                                View {log.resource_type.replace(/_/g, ' ')}
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </Link>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     )}
