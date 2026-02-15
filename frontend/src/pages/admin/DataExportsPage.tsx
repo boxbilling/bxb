@@ -41,11 +41,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { dataExportsApi, ApiError } from '@/lib/api'
+import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
 import type { DataExport, ExportType } from '@/types/billing'
 
 const EXPORT_TYPES: ExportType[] = [
@@ -70,6 +71,65 @@ const EXPORT_TYPE_DESCRIPTIONS: Record<ExportType, string> = {
     'Fee ID, invoice, type, amount, units, event count, payment status, and creation date. Filterable by fee type and invoice.',
   credit_notes:
     'Credit note number, invoice, customer, type, status, amount, currency, and dates. Filterable by status.',
+}
+
+type FilterFieldConfig = {
+  key: string
+  label: string
+  type: 'select' | 'text' | 'customer'
+  options?: { value: string; label: string }[]
+  placeholder?: string
+}
+
+const INVOICE_STATUSES = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'finalized', label: 'Finalized' },
+  { value: 'paid', label: 'Paid' },
+  { value: 'voided', label: 'Voided' },
+]
+
+const SUBSCRIPTION_STATUSES = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'canceled', label: 'Canceled' },
+  { value: 'terminated', label: 'Terminated' },
+]
+
+const CREDIT_NOTE_STATUSES = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'finalized', label: 'Finalized' },
+]
+
+const FEE_TYPES = [
+  { value: 'charge', label: 'Charge' },
+  { value: 'subscription', label: 'Subscription' },
+  { value: 'add_on', label: 'Add-on' },
+  { value: 'credit', label: 'Credit' },
+  { value: 'commitment', label: 'Commitment' },
+]
+
+const EXPORT_TYPE_FILTERS: Record<ExportType, FilterFieldConfig[]> = {
+  invoices: [
+    { key: 'status', label: 'Status', type: 'select', options: INVOICE_STATUSES },
+    { key: 'customer_id', label: 'Customer', type: 'customer' },
+  ],
+  customers: [],
+  subscriptions: [
+    { key: 'status', label: 'Status', type: 'select', options: SUBSCRIPTION_STATUSES },
+    { key: 'customer_id', label: 'Customer', type: 'customer' },
+  ],
+  events: [
+    { key: 'external_customer_id', label: 'External Customer ID', type: 'text', placeholder: 'e.g. cust_123' },
+    { key: 'code', label: 'Billable Metric Code', type: 'text', placeholder: 'e.g. api_calls' },
+  ],
+  fees: [
+    { key: 'fee_type', label: 'Fee Type', type: 'select', options: FEE_TYPES },
+    { key: 'invoice_id', label: 'Invoice ID', type: 'text', placeholder: 'UUID of the invoice' },
+  ],
+  credit_notes: [
+    { key: 'status', label: 'Status', type: 'select', options: CREDIT_NOTE_STATUSES },
+  ],
 }
 
 function capitalize(s: string): string {
@@ -201,6 +261,87 @@ function ViewDetailsDialog({
   )
 }
 
+// --- Structured Filter Fields ---
+function ExportFilterFields({
+  exportType,
+  filterValues,
+  onFilterChange,
+}: {
+  exportType: ExportType
+  filterValues: Record<string, string>
+  onFilterChange: (key: string, value: string) => void
+}) {
+  const fields = EXPORT_TYPE_FILTERS[exportType]
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customersApi.list(),
+    enabled: fields.some((f) => f.type === 'customer'),
+  })
+
+  if (fields.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground py-2">
+        No filters available for this export type.
+      </p>
+    )
+  }
+
+  return (
+    <div className="grid gap-3">
+      {fields.map((field) => (
+        <div key={field.key} className="space-y-1.5">
+          <Label htmlFor={`filter-${field.key}`}>{field.label}</Label>
+          {field.type === 'select' && field.options && (
+            <Select
+              value={filterValues[field.key] || '__all__'}
+              onValueChange={(v) => onFilterChange(field.key, v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger id={`filter-${field.key}`}>
+                <SelectValue placeholder={`All ${field.label.toLowerCase()}s`} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All</SelectItem>
+                {field.options.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {field.type === 'customer' && (
+            <Select
+              value={filterValues[field.key] || '__all__'}
+              onValueChange={(v) => onFilterChange(field.key, v === '__all__' ? '' : v)}
+            >
+              <SelectTrigger id={`filter-${field.key}`}>
+                <SelectValue placeholder="All customers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All</SelectItem>
+                {customers.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name || c.external_id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {field.type === 'text' && (
+            <Input
+              id={`filter-${field.key}`}
+              value={filterValues[field.key] || ''}
+              onChange={(e) => onFilterChange(field.key, e.target.value)}
+              placeholder={field.placeholder}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // --- New Export Dialog ---
 function NewExportDialog({
   open,
@@ -214,25 +355,28 @@ function NewExportDialog({
   isLoading: boolean
 }) {
   const [exportType, setExportType] = useState<ExportType | ''>('')
-  const [filtersJson, setFiltersJson] = useState('')
+  const [filterValues, setFilterValues] = useState<Record<string, string>>({})
+
+  const handleFilterChange = (key: string, value: string) => {
+    setFilterValues((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleExportTypeChange = (value: ExportType) => {
+    setExportType(value)
+    setFilterValues({})
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!exportType) return
 
-    let parsedFilters: Record<string, unknown> | undefined
-    if (filtersJson.trim()) {
-      try {
-        parsedFilters = JSON.parse(filtersJson)
-      } catch {
-        toast.error('Invalid JSON in filters field')
-        return
-      }
-    }
+    const nonEmptyFilters = Object.fromEntries(
+      Object.entries(filterValues).filter(([, v]) => v.trim() !== '')
+    )
 
     onSubmit({
       export_type: exportType,
-      filters: parsedFilters || undefined,
+      filters: Object.keys(nonEmptyFilters).length > 0 ? nonEmptyFilters : undefined,
     })
   }
 
@@ -251,7 +395,7 @@ function NewExportDialog({
               <Label htmlFor="export_type">Export Type *</Label>
               <Select
                 value={exportType}
-                onValueChange={(value) => setExportType(value as ExportType)}
+                onValueChange={(value) => handleExportTypeChange(value as ExportType)}
               >
                 <SelectTrigger id="export_type">
                   <SelectValue placeholder="Select export type" />
@@ -275,16 +419,16 @@ function NewExportDialog({
                 </p>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="filters">Filters (JSON, optional)</Label>
-              <textarea
-                id="filters"
-                className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={filtersJson}
-                onChange={(e) => setFiltersJson(e.target.value)}
-                placeholder='e.g. {"status": "paid"}'
-              />
-            </div>
+            {exportType && (
+              <div className="space-y-2">
+                <Label>Filters</Label>
+                <ExportFilterFields
+                  exportType={exportType}
+                  filterValues={filterValues}
+                  onFilterChange={handleFilterChange}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

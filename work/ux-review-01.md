@@ -754,7 +754,7 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 
 **Recommendations:**
 - [x] Add descriptions for each export type — Added `EXPORT_TYPE_DESCRIPTIONS` map to `DataExportsPage.tsx` with per-type summaries of exported columns and available filters. Descriptions appear in the Select dropdown items and as helper text below the selector.
-- [ ] Replace JSON filter input with structured form (date range, status, customer, etc.)
+- [x] Replace JSON filter input with structured form (date range, status, customer, etc.) — Replaced raw JSON textarea with a dynamic structured filter form in `NewExportDialog`. Each export type now shows its relevant filter fields: status dropdowns (with correct enum values for invoices, subscriptions, credit notes), customer selector (loaded from API), fee type selector, and text inputs for external customer ID, billable metric code, and invoice ID. Filter fields are defined in `EXPORT_TYPE_FILTERS` config and reset when switching export types. Types with no filters (customers) show a "No filters available" message.
 - [ ] Add export size estimate before creation
 - [ ] Show progress percentage for in-progress exports
 
