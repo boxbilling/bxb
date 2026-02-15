@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -76,6 +76,12 @@ export default function SubscriptionDetailPage() {
     queryKey: ['current-usage', id],
     queryFn: () => usageThresholdsApi.getCurrentUsage(id!),
     enabled: !!id,
+  })
+
+  const { data: customerUsage, isLoading: customerUsageLoading } = useQuery({
+    queryKey: ['customer-usage', customer?.external_id, subscription?.external_id],
+    queryFn: () => customersApi.getCurrentUsage(customer!.external_id, subscription!.external_id),
+    enabled: !!customer?.external_id && !!subscription?.external_id,
   })
 
   const { data: thresholds, isLoading: thresholdsLoading } = useQuery({
@@ -236,6 +242,67 @@ export default function SubscriptionDetailPage() {
                     <Calendar className="h-3 w-3" />
                     Billing Period: {format(new Date(usage.billing_period_start), 'MMM d, yyyy')} \u2014 {format(new Date(usage.billing_period_end), 'MMM d, yyyy')}
                   </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Per-Metric Usage Breakdown */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Usage Breakdown
+                </CardTitle>
+                {customer && (
+                  <Link
+                    to={`/admin/customers/${subscription.customer_id}?tab=usage`}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    View Full Usage
+                  </Link>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {customerUsageLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !customerUsage?.charges?.length ? (
+                <p className="text-sm text-muted-foreground">No per-metric usage data available</p>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Metric</TableHead>
+                        <TableHead>Units</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Charge Model</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {customerUsage.charges.map((charge, idx) => (
+                        <TableRow key={`${charge.billable_metric.code}-${idx}`}>
+                          <TableCell>
+                            <div>{charge.billable_metric.name}</div>
+                            <div className="text-xs text-muted-foreground">{charge.billable_metric.code}</div>
+                          </TableCell>
+                          <TableCell className="font-mono">{charge.units}</TableCell>
+                          <TableCell className="font-mono">
+                            {formatCurrency(Number(charge.amount_cents), customerUsage.currency)}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{charge.charge_model}</Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
