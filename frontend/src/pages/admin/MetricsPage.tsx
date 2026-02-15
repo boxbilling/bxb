@@ -418,7 +418,7 @@ export default function MetricsPage() {
               <TableHead>Code</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Aggregation</TableHead>
-              <TableHead>Field</TableHead>
+              <TableHead>Field / Expression</TableHead>
               <TableHead>Plans</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -478,6 +478,8 @@ export default function MetricsPage() {
                     <TableCell>
                       {metric.field_name ? (
                         <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.field_name}</code>
+                      ) : metric.expression ? (
+                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded block max-w-[200px] truncate" title={metric.expression}>{metric.expression}</code>
                       ) : (
                         <span className="text-muted-foreground">&mdash;</span>
                       )}
