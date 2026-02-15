@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import {
   Search,
   MoreHorizontal,
   Pencil,
   Eye,
   DollarSign,
-  AlertCircle,
+  FileText,
+  User,
+  ExternalLink,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
@@ -46,8 +49,8 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { feesApi, taxesApi, ApiError } from '@/lib/api'
-import type { Fee, FeeUpdate, FeeType, FeePaymentStatus, AppliedTax } from '@/types/billing'
+import { feesApi, taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
+import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD'): string {
   return new Intl.NumberFormat('en-US', {
@@ -98,7 +101,7 @@ function AppliedTaxesSection({ feeId }: { feeId: string }) {
       {appliedTaxes.map((at) => (
         <div key={at.id} className="flex justify-between pl-4">
           <span className="text-muted-foreground">
-            Tax {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}
+            {at.tax_name || 'Tax'} {at.tax_rate ? `(${formatTaxRate(at.tax_rate)})` : ''}
           </span>
           <span className="font-medium">{formatCurrency(parseInt(at.tax_amount_cents))}</span>
         </div>
@@ -136,6 +139,32 @@ export default function FeesPage() {
         payment_status: paymentStatusFilter !== 'all' ? (paymentStatusFilter as FeePaymentStatus) : undefined,
       }),
   })
+
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customersApi.list(),
+  })
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => invoicesApi.list(),
+  })
+
+  const customerMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const c of customers) {
+      map[c.id] = c.name || c.external_id
+    }
+    return map
+  }, [customers])
+
+  const invoiceMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const inv of invoices) {
+      map[inv.id] = inv.invoice_number || inv.id
+    }
+    return map
+  }, [invoices])
 
   const filteredFees = fees.filter((f) => {
     if (!search) return true
@@ -306,11 +335,12 @@ export default function FeesPage() {
             <TableRow>
               <TableHead>Fee Type</TableHead>
               <TableHead>Description</TableHead>
+              <TableHead>Customer</TableHead>
+              <TableHead>Invoice</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Tax</TableHead>
               <TableHead>Total</TableHead>
               <TableHead>Payment Status</TableHead>
-              <TableHead>Units / Events</TableHead>
               <TableHead>Created</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -321,11 +351,12 @@ export default function FeesPage() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
@@ -333,7 +364,7 @@ export default function FeesPage() {
             ) : filteredFees.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <DollarSign className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -354,6 +385,28 @@ export default function FeesPage() {
                     <TableCell className="max-w-[200px] truncate">
                       {fee.description || fee.metric_code || '—'}
                     </TableCell>
+                    <TableCell>
+                      <Link
+                        to={`/admin/customers/${fee.customer_id}`}
+                        className="flex items-center gap-1 text-sm text-primary hover:underline"
+                      >
+                        <User className="h-3 w-3" />
+                        {customerMap[fee.customer_id] || fee.customer_id.slice(0, 8)}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      {fee.invoice_id ? (
+                        <Link
+                          to={`/admin/invoices/${fee.invoice_id}`}
+                          className="flex items-center gap-1 text-sm text-primary hover:underline"
+                        >
+                          <FileText className="h-3 w-3" />
+                          {invoiceMap[fee.invoice_id] || fee.invoice_id.slice(0, 8)}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>{formatCurrency(parseInt(fee.amount_cents))}</TableCell>
                     <TableCell>{formatCurrency(parseInt(fee.taxes_amount_cents))}</TableCell>
                     <TableCell>{formatCurrency(parseInt(fee.total_amount_cents))}</TableCell>
@@ -361,9 +414,6 @@ export default function FeesPage() {
                       <Badge variant={statusBadge.variant} className={statusBadge.className}>
                         {fee.payment_status}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {fee.units} units / {fee.events_count} events
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {format(new Date(fee.created_at), 'MMM d, yyyy')}
@@ -532,26 +582,47 @@ export default function FeesPage() {
                 <span className="text-muted-foreground">Metric Code</span>
                 <span className="font-medium">{viewingFee.metric_code || '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Customer ID</span>
-                <span className="font-mono text-xs">{viewingFee.customer_id}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Customer</span>
+                <Link
+                  to={`/admin/customers/${viewingFee.customer_id}`}
+                  className="flex items-center gap-1 text-primary hover:underline"
+                  onClick={() => setViewingFee(null)}
+                >
+                  {customerMap[viewingFee.customer_id] || viewingFee.customer_id.slice(0, 8)}
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
               </div>
               {viewingFee.invoice_id && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Invoice ID</span>
-                  <span className="font-mono text-xs">{viewingFee.invoice_id}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Invoice</span>
+                  <Link
+                    to={`/admin/invoices/${viewingFee.invoice_id}`}
+                    className="flex items-center gap-1 text-primary hover:underline"
+                    onClick={() => setViewingFee(null)}
+                  >
+                    {invoiceMap[viewingFee.invoice_id] || viewingFee.invoice_id.slice(0, 8)}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
+                </div>
+              )}
+              {viewingFee.subscription_id && (
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Subscription</span>
+                  <Link
+                    to={`/admin/subscriptions/${viewingFee.subscription_id}`}
+                    className="flex items-center gap-1 text-primary hover:underline"
+                    onClick={() => setViewingFee(null)}
+                  >
+                    {viewingFee.subscription_id.slice(0, 8)}...
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
               )}
               {viewingFee.charge_id && (
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Charge ID</span>
                   <span className="font-mono text-xs">{viewingFee.charge_id}</span>
-                </div>
-              )}
-              {viewingFee.subscription_id && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subscription ID</span>
-                  <span className="font-mono text-xs">{viewingFee.subscription_id}</span>
                 </div>
               )}
               {viewingFee.commitment_id && (

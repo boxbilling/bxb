@@ -3301,6 +3301,10 @@ export interface components {
             tax_rate?: string | null;
             /** Tax Amount Cents */
             tax_amount_cents: string;
+            /** Tax Name */
+            tax_name?: string | null;
+            /** Tax Code */
+            tax_code?: string | null;
             /**
              * Created At
              * Format: date-time

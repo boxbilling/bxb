@@ -448,10 +448,14 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - "Applied taxes" in detail is a flat list
 
 **Recommendations:**
-- [ ] Add clickable link to parent invoice from fee row
-- [ ] Add clickable link to subscription/customer
-- [ ] Keep detail as modal (fees are subordinate to invoices, not standalone entities)
-- [ ] Improve tax display with rate percentages
+- [x] Add clickable link to parent invoice from fee row
+  <!-- Completed: Added "Invoice" column to the fees table with clickable Link components pointing to /admin/invoices/:id. Invoice numbers are resolved via a lookup map built from invoicesApi.list(). Shows invoice number (or truncated ID as fallback) with FileText icon. Fees without an invoice_id show an em-dash. In the detail modal, invoice_id is now a clickable link with ExternalLink icon that navigates to the invoice detail page. -->
+- [x] Add clickable link to subscription/customer
+  <!-- Completed: Added "Customer" column to the fees table with clickable Link components pointing to /admin/customers/:id. Customer names are resolved via a lookup map built from customersApi.list(). Shows customer name (or truncated ID as fallback) with User icon. In the detail modal, customer_id and subscription_id are now clickable links with ExternalLink icons navigating to their respective detail pages (/admin/customers/:id and /admin/subscriptions/:id). Dialog closes on link click for clean navigation. -->
+- [x] Keep detail as modal (fees are subordinate to invoices, not standalone entities)
+  <!-- Verified: Fee detail view remains as a Dialog modal, which is correct since fees are sub-entities of invoices and don't warrant their own detail page. The modal now includes clickable links to parent invoice, customer, and subscription for easy navigation. -->
+- [x] Improve tax display with rate percentages
+  <!-- Completed: Enhanced AppliedTaxResponse backend schema with tax_name and tax_code fields. Updated GET /v1/taxes/applied and POST /v1/taxes/apply endpoints to join with Tax table and populate tax name/code. Frontend AppliedTaxesSection now displays "VAT 20% (20.00%)" instead of just "Tax (20.00%)" — showing the actual tax name alongside the rate percentage. 1 new backend test added for schema validation with tax info. Existing API tests updated to assert on tax_name/tax_code fields. OpenAPI schema and frontend types regenerated. 100% coverage maintained across all 3479 tests. -->
 
 **Modal vs. Page Decision:**
 - **Detail view**: MODAL is correct (fees are sub-entities of invoices)

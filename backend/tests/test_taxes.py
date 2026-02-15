@@ -467,6 +467,24 @@ class TestTaxSchema:
         response = AppliedTaxResponse.model_validate(applied)
         assert response.tax_id == basic_tax.id
         assert response.taxable_type == "customer"
+        assert response.tax_name is None
+        assert response.tax_code is None
+
+    def test_applied_tax_response_with_tax_info(self, db_session, basic_tax):
+        """Test AppliedTaxResponse with tax_name and tax_code populated."""
+        repo = AppliedTaxRepository(db_session)
+        applied = repo.create(
+            tax_id=basic_tax.id,
+            taxable_type="fee",
+            taxable_id=uuid4(),
+            tax_rate=Decimal("0.2000"),
+        )
+        response = AppliedTaxResponse.model_validate(applied)
+        response.tax_name = basic_tax.name
+        response.tax_code = basic_tax.code
+        assert response.tax_name == "VAT 20%"
+        assert response.tax_code == "VAT_20"
+        assert response.tax_rate == Decimal("0.2000")
 
     def test_apply_tax_request(self):
         """Test ApplyTaxRequest schema."""

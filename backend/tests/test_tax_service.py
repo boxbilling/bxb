@@ -680,7 +680,7 @@ class TestTaxRouter:
         assert resp.status_code == 404
 
     def test_apply_tax(self, client):
-        """POST /v1/taxes/apply applies a tax to an entity."""
+        """POST /v1/taxes/apply applies a tax to an entity and returns tax name/code."""
         client.post(
             "/v1/taxes/",
             json={"code": "APPLY_TAX", "name": "Apply Tax", "rate": "0.1000"},
@@ -698,6 +698,8 @@ class TestTaxRouter:
         data = resp.json()
         assert data["taxable_type"] == "customer"
         assert data["taxable_id"] == entity_id
+        assert data["tax_name"] == "Apply Tax"
+        assert data["tax_code"] == "APPLY_TAX"
 
     def test_apply_tax_not_found(self, client):
         """POST /v1/taxes/apply with bad code returns 404."""
@@ -770,7 +772,7 @@ class TestTaxRouter:
             assert resp.json()["taxable_type"] == entity_type
 
     def test_list_applied_taxes(self, client):
-        """GET /v1/taxes/applied returns applied taxes for an entity."""
+        """GET /v1/taxes/applied returns applied taxes with tax name and code."""
         client.post(
             "/v1/taxes/",
             json={"code": "LIST_AT", "name": "List AT", "rate": "0.1000"},
@@ -792,6 +794,8 @@ class TestTaxRouter:
         assert len(data) == 1
         assert data[0]["taxable_type"] == "customer"
         assert data[0]["taxable_id"] == entity_id
+        assert data[0]["tax_name"] == "List AT"
+        assert data[0]["tax_code"] == "LIST_AT"
 
     def test_list_applied_taxes_empty(self, client):
         """GET /v1/taxes/applied returns empty list when no taxes applied."""
@@ -832,4 +836,9 @@ class TestTaxRouter:
             f"/v1/taxes/applied?taxable_type=invoice&taxable_id={entity_id}"
         )
         assert resp.status_code == 200
-        assert len(resp.json()) == 2
+        items = resp.json()
+        assert len(items) == 2
+        names = {item["tax_name"] for item in items}
+        codes = {item["tax_code"] for item in items}
+        assert names == {"LAM Tax 1", "LAM Tax 2"}
+        assert codes == {"LAM1", "LAM2"}

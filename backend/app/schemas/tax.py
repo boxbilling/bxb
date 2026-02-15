@@ -50,4 +50,6 @@ class AppliedTaxResponse(BaseModel):
     taxable_id: UUID
     tax_rate: Decimal | None = None
     tax_amount_cents: Decimal
+    tax_name: str | None = None
+    tax_code: str | None = None
     created_at: datetime

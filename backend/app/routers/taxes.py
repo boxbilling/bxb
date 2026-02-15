@@ -78,8 +78,16 @@ async def list_applied_taxes(
 ) -> list[AppliedTaxResponse]:
     """List applied taxes for a given entity."""
     repo = AppliedTaxRepository(db)
+    tax_repo = TaxRepository(db)
     applied = repo.get_by_taxable(taxable_type, taxable_id)
-    return [AppliedTaxResponse.model_validate(a) for a in applied]
+    results = []
+    for a in applied:
+        response = AppliedTaxResponse.model_validate(a)
+        tax = tax_repo.get_by_id(a.tax_id)  # type: ignore[arg-type]
+        response.tax_name = str(tax.name) if tax else None
+        response.tax_code = str(tax.code) if tax else None
+        results.append(response)
+    return results
 
 
 @router.post(
@@ -107,7 +115,12 @@ async def apply_tax(
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from None
-    return AppliedTaxResponse.model_validate(applied)
+    response = AppliedTaxResponse.model_validate(applied)
+    tax_repo = TaxRepository(db)
+    tax = tax_repo.get_by_id(applied.tax_id)  # type: ignore[arg-type]
+    response.tax_name = str(tax.name) if tax else None
+    response.tax_code = str(tax.code) if tax else None
+    return response
 
 
 @router.delete(
