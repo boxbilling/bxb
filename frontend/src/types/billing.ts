@@ -134,6 +134,12 @@ export type DunningCampaignUpdate = components['schemas']['DunningCampaignUpdate
 export type DunningCampaignThreshold = components['schemas']['DunningCampaignThresholdResponse']
 export type DunningCampaignThresholdCreate = components['schemas']['DunningCampaignThresholdCreate']
 export type DunningCampaignPerformanceStats = components['schemas']['DunningCampaignPerformanceStats']
+export type ExecutionHistoryEntry = components['schemas']['ExecutionHistoryEntry']
+export type ExecutionHistoryInvoice = components['schemas']['ExecutionHistoryInvoice']
+export type CampaignTimelineEvent = components['schemas']['CampaignTimelineEvent']
+export type CampaignTimelineResponse = components['schemas']['CampaignTimelineResponse']
+export type CampaignPreviewResponse = components['schemas']['CampaignPreviewResponse']
+export type CampaignPreviewInvoiceGroup = components['schemas']['CampaignPreviewInvoiceGroup']
 
 // --- Commitments ---
 export type Commitment = components['schemas']['CommitmentResponse']

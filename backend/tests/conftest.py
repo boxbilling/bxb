@@ -11,6 +11,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core import database as db_module
 from app.core.database import Base
+from app.models.billing_entity import BillingEntity  # noqa: F401 — register FK target for Customer
 from app.models.organization import Organization
 
 # Create an in-memory SQLite engine with StaticPool so all connections

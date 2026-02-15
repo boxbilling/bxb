@@ -23,6 +23,7 @@ import {
   CreditNoteFormPage,
   TaxesPage,
   DunningCampaignsPage,
+  DunningCampaignDetailPage,
   IntegrationsPage,
   PaymentRequestsPage,
   DataExportsPage,
@@ -71,6 +72,7 @@ function App() {
         <Route path="credit-notes/:id/edit" element={<CreditNoteFormPage />} />
         <Route path="taxes" element={<TaxesPage />} />
         <Route path="dunning-campaigns" element={<DunningCampaignsPage />} />
+        <Route path="dunning-campaigns/:id" element={<DunningCampaignDetailPage />} />
         <Route path="integrations" element={<IntegrationsPage />} />
         <Route path="payment-requests" element={<PaymentRequestsPage />} />
         <Route path="data-exports" element={<DataExportsPage />} />

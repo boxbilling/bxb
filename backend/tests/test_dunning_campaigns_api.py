@@ -1,6 +1,7 @@
 """Tests for DunningCampaign API router endpoints."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -11,7 +12,9 @@ from app.core.database import get_db
 from app.main import app
 from app.models.customer import Customer
 from app.models.dunning_campaign import DunningCampaign
+from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment_request import PaymentRequest
+from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.schemas.dunning_campaign import (
     DunningCampaignCreate,
@@ -351,3 +354,530 @@ class TestPerformanceStats:
         assert data["recovery_rate"] == 66.7
         assert Decimal(data["total_recovered_amount_cents"]) == Decimal("8000")
         assert Decimal(data["total_outstanding_amount_cents"]) == Decimal("2000")
+
+
+def _create_overdue_invoice(
+    db_session: Session,
+    customer_id: uuid.UUID,
+    total: Decimal = Decimal("5000"),
+    currency: str = "USD",
+    inv_num: str | None = None,
+) -> Invoice:
+    """Helper to create an overdue finalized invoice."""
+    inv = Invoice(
+        organization_id=DEFAULT_ORG_ID,
+        invoice_number=inv_num or f"INV-D-{uuid.uuid4().hex[:8]}",
+        customer_id=customer_id,
+        status=InvoiceStatus.FINALIZED.value,
+        billing_period_start=datetime(2026, 1, 1, tzinfo=UTC),
+        billing_period_end=datetime(2026, 1, 31, tzinfo=UTC),
+        subtotal=total,
+        tax_amount=Decimal("0"),
+        total=total,
+        currency=currency,
+        due_date=datetime.now(UTC) - timedelta(days=10),
+    )
+    db_session.add(inv)
+    db_session.commit()
+    db_session.refresh(inv)
+    return inv
+
+
+class TestExecutionHistory:
+    def test_execution_history_empty(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+    ) -> None:
+        """Test execution history with no payment requests."""
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/execution_history"
+        )
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_execution_history_with_data(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test execution history returns payment requests with customer and invoice info."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-hist",
+            name="History Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        inv = _create_overdue_invoice(db_session, customer.id, inv_num="INV-HIST-001")
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("5000"),
+            amount_currency="USD",
+            payment_status="pending",
+            payment_attempts=1,
+        )
+        db_session.add(pr)
+        db_session.commit()
+        db_session.refresh(pr)
+
+        # Link invoice to payment request
+        pri = PaymentRequestInvoice(
+            payment_request_id=pr.id,
+            invoice_id=inv.id,
+        )
+        db_session.add(pri)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/execution_history"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        entry = data[0]
+        assert entry["customer_name"] == "History Customer"
+        assert entry["payment_status"] == "pending"
+        assert entry["payment_attempts"] == 1
+        assert len(entry["invoices"]) == 1
+        assert entry["invoices"][0]["invoice_number"] == "INV-HIST-001"
+
+    def test_execution_history_not_found(self, client: TestClient) -> None:
+        """Test execution history for non-existent campaign returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(
+            f"/v1/dunning_campaigns/{fake_id}/execution_history"
+        )
+        assert response.status_code == 404
+
+    def test_execution_history_multiple_statuses(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test execution history with mixed payment statuses."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-multi",
+            name="Multi Status Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        for status, amount in [
+            ("succeeded", Decimal("3000")),
+            ("failed", Decimal("2000")),
+            ("pending", Decimal("4000")),
+        ]:
+            pr = PaymentRequest(
+                organization_id=DEFAULT_ORG_ID,
+                customer_id=customer.id,
+                dunning_campaign_id=campaign.id,
+                amount_cents=amount,
+                amount_currency="USD",
+                payment_status=status,
+            )
+            db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/execution_history"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 3
+        statuses = {d["payment_status"] for d in data}
+        assert statuses == {"succeeded", "failed", "pending"}
+
+    def test_execution_history_no_invoices(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test execution history with PR that has no linked invoices."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-noinv",
+            name="No Invoice Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+            payment_status="pending",
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/execution_history"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["customer_name"] == "No Invoice Customer"
+        assert data[0]["invoices"] == []
+
+
+class TestCampaignTimeline:
+    def test_timeline_campaign_only(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+    ) -> None:
+        """Test timeline with just a campaign (no payment requests)."""
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/timeline"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        events = data["events"]
+        assert len(events) >= 1
+        assert events[0]["event_type"] == "campaign_created"
+        assert "Test Campaign" in events[0]["description"]
+
+    def test_timeline_with_payment_requests(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test timeline includes payment request events."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-tl",
+            name="Timeline Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("5000"),
+            amount_currency="USD",
+            payment_status="succeeded",
+            payment_attempts=2,
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/timeline"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        events = data["events"]
+        event_types = [e["event_type"] for e in events]
+        assert "campaign_created" in event_types
+        assert "payment_request_created" in event_types
+        assert "payment_succeeded" in event_types
+
+    def test_timeline_not_found(self, client: TestClient) -> None:
+        """Test timeline for non-existent campaign returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(
+            f"/v1/dunning_campaigns/{fake_id}/timeline"
+        )
+        assert response.status_code == 404
+
+    def test_timeline_failed_payment(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test timeline includes failed payment events."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-tl-fail",
+            name="Failed Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("3000"),
+            amount_currency="EUR",
+            payment_status="failed",
+            payment_attempts=3,
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/timeline"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        events = data["events"]
+        failed_events = [e for e in events if e["event_type"] == "payment_failed"]
+        assert len(failed_events) == 1
+        assert failed_events[0]["attempt_number"] == 3
+        assert "Failed Customer" in failed_events[0]["description"]
+        assert failed_events[0]["amount_currency"] == "EUR"
+
+    def test_timeline_pending_no_outcome(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test timeline with pending PR shows only creation, no outcome."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-tl-pending",
+            name="Pending Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("2000"),
+            amount_currency="USD",
+            payment_status="pending",
+            payment_attempts=0,
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/dunning_campaigns/{campaign.id}/timeline"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        events = data["events"]
+        event_types = [e["event_type"] for e in events]
+        assert "payment_request_created" in event_types
+        # No outcome event for pending with 0 attempts
+        assert "payment_succeeded" not in event_types
+        assert "payment_failed" not in event_types
+
+
+class TestCampaignPreview:
+    def test_preview_no_overdue_invoices(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+    ) -> None:
+        """Test preview with no overdue invoices."""
+        response = client.post(
+            f"/v1/dunning_campaigns/{campaign.id}/preview"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["campaign_name"] == "Test Campaign"
+        assert data["total_overdue_invoices"] == 0
+        assert data["payment_requests_to_create"] == 0
+        assert data["groups"] == []
+
+    def test_preview_with_matching_threshold(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test preview creates groups when invoices exceed threshold."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-prev",
+            name="Preview Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Campaign has USD threshold at 1000 cents
+        _create_overdue_invoice(
+            db_session, customer.id, total=Decimal("2000"), inv_num="INV-PREV-001"
+        )
+
+        response = client.post(
+            f"/v1/dunning_campaigns/{campaign.id}/preview"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_overdue_invoices"] == 1
+        assert data["payment_requests_to_create"] == 1
+        assert len(data["groups"]) == 1
+        group = data["groups"][0]
+        assert group["customer_name"] == "Preview Customer"
+        assert group["currency"] == "USD"
+        assert Decimal(group["total_outstanding_cents"]) == Decimal("2000")
+        assert len(group["invoices"]) == 1
+        assert group["invoices"][0]["invoice_number"] == "INV-PREV-001"
+
+    def test_preview_below_threshold(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test preview shows no groups when below threshold."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-prev-low",
+            name="Low Amount Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Campaign has USD threshold at 1000 cents, invoice is only 500
+        _create_overdue_invoice(
+            db_session, customer.id, total=Decimal("500"), inv_num="INV-PREV-LOW"
+        )
+
+        response = client.post(
+            f"/v1/dunning_campaigns/{campaign.id}/preview"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_overdue_invoices"] == 1
+        assert data["payment_requests_to_create"] == 0
+        assert data["groups"] == []
+
+    def test_preview_not_found(self, client: TestClient) -> None:
+        """Test preview for non-existent campaign returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = client.post(
+            f"/v1/dunning_campaigns/{fake_id}/preview"
+        )
+        assert response.status_code == 404
+
+    def test_preview_excludes_invoices_in_pending_prs(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test preview excludes invoices already in pending payment requests."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-prev-exc",
+            name="Excluded Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        inv = _create_overdue_invoice(
+            db_session, customer.id, total=Decimal("5000"), inv_num="INV-PREV-EXC"
+        )
+
+        # Create a pending PR that already covers this invoice
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            amount_cents=Decimal("5000"),
+            amount_currency="USD",
+            payment_status="pending",
+        )
+        db_session.add(pr)
+        db_session.commit()
+        db_session.refresh(pr)
+
+        pri = PaymentRequestInvoice(
+            payment_request_id=pr.id,
+            invoice_id=inv.id,
+        )
+        db_session.add(pri)
+        db_session.commit()
+
+        response = client.post(
+            f"/v1/dunning_campaigns/{campaign.id}/preview"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_overdue_invoices"] == 1
+        assert data["payment_requests_to_create"] == 0
+
+    def test_preview_wrong_currency(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test preview doesn't match invoices with currencies not in thresholds."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-prev-eur",
+            name="EUR Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Campaign only has USD threshold; invoice is in EUR
+        _create_overdue_invoice(
+            db_session, customer.id, total=Decimal("5000"), currency="EUR", inv_num="INV-PREV-EUR"
+        )
+
+        response = client.post(
+            f"/v1/dunning_campaigns/{campaign.id}/preview"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_overdue_invoices"] == 1
+        assert data["payment_requests_to_create"] == 0
+
+    def test_preview_existing_pending_count(
+        self,
+        client: TestClient,
+        campaign: DunningCampaign,
+        db_session: Session,
+    ) -> None:
+        """Test preview reports existing pending requests for this campaign."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-prev-cnt",
+            name="Count Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        # Add 2 pending PRs linked to this campaign
+        for _i in range(2):
+            pr = PaymentRequest(
+                organization_id=DEFAULT_ORG_ID,
+                customer_id=customer.id,
+                dunning_campaign_id=campaign.id,
+                amount_cents=Decimal("1000"),
+                amount_currency="USD",
+                payment_status="pending",
+            )
+            db_session.add(pr)
+        db_session.commit()
+
+        response = client.post(
+            f"/v1/dunning_campaigns/{campaign.id}/preview"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["existing_pending_requests"] == 2

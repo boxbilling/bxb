@@ -84,3 +84,74 @@ class DunningCampaignResponse(BaseModel):
     thresholds: list[DunningCampaignThresholdResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+
+class ExecutionHistoryInvoice(BaseModel):
+    """Invoice summary within an execution history entry."""
+
+    id: UUID
+    invoice_number: str
+    amount_cents: Decimal
+    currency: str
+    status: str
+
+
+class ExecutionHistoryEntry(BaseModel):
+    """A single payment request in the campaign's execution history."""
+
+    id: UUID
+    customer_id: UUID
+    customer_name: str | None = None
+    amount_cents: Decimal
+    amount_currency: str
+    payment_status: str
+    payment_attempts: int
+    ready_for_payment_processing: bool
+    invoices: list[ExecutionHistoryInvoice] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CampaignTimelineEvent(BaseModel):
+    """A single event in the campaign timeline."""
+
+    event_type: str
+    timestamp: datetime
+    description: str
+    payment_request_id: UUID | None = None
+    customer_name: str | None = None
+    amount_cents: Decimal | None = None
+    amount_currency: str | None = None
+    payment_status: str | None = None
+    attempt_number: int | None = None
+
+
+class CampaignTimelineResponse(BaseModel):
+    """Chronological timeline of campaign events."""
+
+    events: list[CampaignTimelineEvent] = Field(default_factory=list)
+
+
+class CampaignPreviewInvoiceGroup(BaseModel):
+    """A group of invoices for a customer+currency that would trigger a payment request."""
+
+    customer_id: UUID
+    customer_name: str | None = None
+    currency: str
+    total_outstanding_cents: Decimal
+    matching_threshold_cents: Decimal
+    invoice_count: int
+    invoices: list[ExecutionHistoryInvoice] = Field(default_factory=list)
+
+
+class CampaignPreviewResponse(BaseModel):
+    """Preview of what a campaign would do if executed now."""
+
+    campaign_id: UUID
+    campaign_name: str
+    status: str
+    total_overdue_invoices: int
+    total_overdue_amount_cents: Decimal
+    payment_requests_to_create: int
+    groups: list[CampaignPreviewInvoiceGroup] = Field(default_factory=list)
+    existing_pending_requests: int

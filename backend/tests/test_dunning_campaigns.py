@@ -1,6 +1,7 @@
 """Tests for DunningCampaign models, schemas, and repository."""
 
 import uuid
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -11,15 +12,22 @@ from app.core.database import get_db
 from app.models.customer import Customer
 from app.models.dunning_campaign import DunningCampaign
 from app.models.dunning_campaign_threshold import DunningCampaignThreshold
+from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment_request import PaymentRequest
+from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.schemas.dunning_campaign import (
+    CampaignPreviewResponse,
+    CampaignTimelineEvent,
+    CampaignTimelineResponse,
     DunningCampaignCreate,
     DunningCampaignPerformanceStats,
     DunningCampaignResponse,
     DunningCampaignThresholdCreate,
     DunningCampaignThresholdResponse,
     DunningCampaignUpdate,
+    ExecutionHistoryEntry,
+    ExecutionHistoryInvoice,
 )
 from tests.conftest import DEFAULT_ORG_ID
 
@@ -535,3 +543,416 @@ class TestDunningCampaignPerformanceStatsSchema:
         assert stats.total_campaigns == 2
         assert stats.recovery_rate == 70.0
         assert stats.total_recovered_amount_cents == Decimal("50000")
+
+
+class TestNewSchemas:
+    """Test new schemas for execution history, timeline, and preview."""
+
+    def test_execution_history_entry_schema(self) -> None:
+        entry = ExecutionHistoryEntry(
+            id=uuid.uuid4(),
+            customer_id=uuid.uuid4(),
+            customer_name="Test Customer",
+            amount_cents=Decimal("5000"),
+            amount_currency="USD",
+            payment_status="pending",
+            payment_attempts=1,
+            ready_for_payment_processing=True,
+            invoices=[],
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        assert entry.customer_name == "Test Customer"
+        assert entry.payment_status == "pending"
+
+    def test_execution_history_invoice_schema(self) -> None:
+        inv = ExecutionHistoryInvoice(
+            id=uuid.uuid4(),
+            invoice_number="INV-001",
+            amount_cents=Decimal("2000"),
+            currency="USD",
+            status="finalized",
+        )
+        assert inv.invoice_number == "INV-001"
+        assert inv.amount_cents == Decimal("2000")
+
+    def test_campaign_timeline_event_schema(self) -> None:
+        event = CampaignTimelineEvent(
+            event_type="campaign_created",
+            timestamp=datetime.now(UTC),
+            description="Campaign created",
+        )
+        assert event.event_type == "campaign_created"
+        assert event.payment_request_id is None
+        assert event.attempt_number is None
+
+    def test_campaign_timeline_response_schema(self) -> None:
+        resp = CampaignTimelineResponse(events=[])
+        assert resp.events == []
+
+    def test_campaign_preview_response_schema(self) -> None:
+        resp = CampaignPreviewResponse(
+            campaign_id=uuid.uuid4(),
+            campaign_name="Test",
+            status="active",
+            total_overdue_invoices=0,
+            total_overdue_amount_cents=Decimal("0"),
+            payment_requests_to_create=0,
+            groups=[],
+            existing_pending_requests=0,
+        )
+        assert resp.campaign_name == "Test"
+        assert resp.payment_requests_to_create == 0
+
+
+def _make_overdue_invoice(
+    db_session: Session,
+    customer_id: uuid.UUID,
+    total: Decimal = Decimal("5000"),
+    currency: str = "USD",
+    inv_num: str | None = None,
+) -> Invoice:
+    """Helper to create an overdue finalized invoice."""
+    inv = Invoice(
+        organization_id=DEFAULT_ORG_ID,
+        invoice_number=inv_num or f"INV-R-{uuid.uuid4().hex[:8]}",
+        customer_id=customer_id,
+        status=InvoiceStatus.FINALIZED.value,
+        billing_period_start=datetime(2026, 1, 1, tzinfo=UTC),
+        billing_period_end=datetime(2026, 1, 31, tzinfo=UTC),
+        subtotal=total,
+        tax_amount=Decimal("0"),
+        total=total,
+        currency=currency,
+        due_date=datetime.now(UTC) - timedelta(days=10),
+    )
+    db_session.add(inv)
+    db_session.commit()
+    db_session.refresh(inv)
+    return inv
+
+
+class TestExecutionHistoryRepository:
+    """Test execution_history repository method."""
+
+    def test_execution_history_empty(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-eh-empty", name="Empty EH"),
+            DEFAULT_ORG_ID,
+        )
+        result = repo.execution_history(campaign.id, DEFAULT_ORG_ID)
+        assert result == []
+
+    def test_execution_history_with_invoices(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-eh-inv", name="EH With Invoices"),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-eh-inv",
+            name="EH Invoice Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        inv = _make_overdue_invoice(db_session, customer.id, inv_num="INV-EH-001")
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("5000"),
+            amount_currency="USD",
+            payment_status="succeeded",
+            payment_attempts=2,
+        )
+        db_session.add(pr)
+        db_session.commit()
+        db_session.refresh(pr)
+
+        pri = PaymentRequestInvoice(
+            payment_request_id=pr.id,
+            invoice_id=inv.id,
+        )
+        db_session.add(pri)
+        db_session.commit()
+
+        result = repo.execution_history(campaign.id, DEFAULT_ORG_ID)
+        assert len(result) == 1
+        assert result[0].customer_name == "EH Invoice Customer"
+        assert result[0].payment_status == "succeeded"
+        assert result[0].payment_attempts == 2
+        assert len(result[0].invoices) == 1
+        assert result[0].invoices[0].invoice_number == "INV-EH-001"
+
+    def test_execution_history_pagination(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-eh-page", name="EH Pagination"),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-eh-page",
+            name="Page Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        for _i in range(5):
+            pr = PaymentRequest(
+                organization_id=DEFAULT_ORG_ID,
+                customer_id=customer.id,
+                dunning_campaign_id=campaign.id,
+                amount_cents=Decimal("1000"),
+                amount_currency="USD",
+                payment_status="pending",
+            )
+            db_session.add(pr)
+        db_session.commit()
+
+        page = repo.execution_history(campaign.id, DEFAULT_ORG_ID, skip=2, limit=2)
+        assert len(page) == 2
+
+
+class TestCampaignTimelineRepository:
+    """Test campaign_timeline repository method."""
+
+    def test_timeline_empty_campaign(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        result = repo.campaign_timeline(uuid.uuid4(), DEFAULT_ORG_ID)
+        assert result.events == []
+
+    def test_timeline_campaign_only(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-tl-only", name="Timeline Only"),
+            DEFAULT_ORG_ID,
+        )
+        result = repo.campaign_timeline(campaign.id, DEFAULT_ORG_ID)
+        assert len(result.events) >= 1
+        assert result.events[0].event_type == "campaign_created"
+
+    def test_timeline_updated_campaign(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-tl-upd", name="Timeline Updated"),
+            DEFAULT_ORG_ID,
+        )
+        # Manually set updated_at to differ from created_at (onupdate fires
+        # in the same second as created_at in SQLite, so they may be equal).
+        campaign.updated_at = campaign.created_at + timedelta(hours=1)
+        db_session.commit()
+        db_session.refresh(campaign)
+
+        result = repo.campaign_timeline(campaign.id, DEFAULT_ORG_ID)
+        event_types = [e.event_type for e in result.events]
+        assert "campaign_created" in event_types
+        assert "campaign_updated" in event_types
+
+    def test_timeline_with_succeeded_pr(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-tl-succ", name="TL Success"),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-tl-succ",
+            name="Success Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("3000"),
+            amount_currency="USD",
+            payment_status="succeeded",
+            payment_attempts=1,
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        result = repo.campaign_timeline(campaign.id, DEFAULT_ORG_ID)
+        event_types = [e.event_type for e in result.events]
+        assert "campaign_created" in event_types
+        assert "payment_request_created" in event_types
+        assert "payment_succeeded" in event_types
+
+    def test_timeline_with_failed_pr(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(code="dc-tl-fail", name="TL Fail"),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-tl-fail",
+            name="Fail Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            dunning_campaign_id=campaign.id,
+            amount_cents=Decimal("4000"),
+            amount_currency="EUR",
+            payment_status="failed",
+            payment_attempts=3,
+        )
+        db_session.add(pr)
+        db_session.commit()
+
+        result = repo.campaign_timeline(campaign.id, DEFAULT_ORG_ID)
+        failed_events = [e for e in result.events if e.event_type == "payment_failed"]
+        assert len(failed_events) == 1
+        assert failed_events[0].attempt_number == 3
+        assert failed_events[0].amount_currency == "EUR"
+
+
+class TestCampaignPreviewRepository:
+    """Test campaign_preview repository method."""
+
+    def test_preview_not_found(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        result = repo.campaign_preview(uuid.uuid4(), DEFAULT_ORG_ID)
+        assert result is None
+
+    def test_preview_no_overdue(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(
+                code="dc-pv-empty",
+                name="Empty Preview",
+                thresholds=[
+                    DunningCampaignThresholdCreate(currency="USD", amount_cents=Decimal("1000")),
+                ],
+            ),
+            DEFAULT_ORG_ID,
+        )
+        result = repo.campaign_preview(campaign.id, DEFAULT_ORG_ID)
+        assert result is not None
+        assert result.total_overdue_invoices == 0
+        assert result.payment_requests_to_create == 0
+
+    def test_preview_matching_threshold(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(
+                code="dc-pv-match",
+                name="Preview Match",
+                thresholds=[
+                    DunningCampaignThresholdCreate(currency="USD", amount_cents=Decimal("1000")),
+                ],
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-pv-match",
+            name="Preview Match Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        _make_overdue_invoice(db_session, customer.id, total=Decimal("2000"), inv_num="INV-PV-001")
+
+        result = repo.campaign_preview(campaign.id, DEFAULT_ORG_ID)
+        assert result is not None
+        assert result.total_overdue_invoices == 1
+        assert result.payment_requests_to_create == 1
+        assert len(result.groups) == 1
+        assert result.groups[0].customer_name == "Preview Match Customer"
+
+    def test_preview_below_threshold(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(
+                code="dc-pv-low",
+                name="Preview Low",
+                thresholds=[
+                    DunningCampaignThresholdCreate(currency="USD", amount_cents=Decimal("5000")),
+                ],
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-pv-low",
+            name="Low Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        _make_overdue_invoice(db_session, customer.id, total=Decimal("2000"), inv_num="INV-PV-LOW")
+
+        result = repo.campaign_preview(campaign.id, DEFAULT_ORG_ID)
+        assert result is not None
+        assert result.payment_requests_to_create == 0
+
+    def test_preview_excludes_pending_pr_invoices(self, db_session: Session) -> None:
+        repo = DunningCampaignRepository(db_session)
+        campaign = repo.create(
+            DunningCampaignCreate(
+                code="dc-pv-exc",
+                name="Preview Exclude",
+                thresholds=[
+                    DunningCampaignThresholdCreate(currency="USD", amount_cents=Decimal("1000")),
+                ],
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-pv-exc",
+            name="Exclude Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        inv = _make_overdue_invoice(db_session, customer.id, total=Decimal("3000"), inv_num="INV-PV-EXC")
+
+        # Create existing pending PR covering this invoice
+        pr = PaymentRequest(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=customer.id,
+            amount_cents=Decimal("3000"),
+            amount_currency="USD",
+            payment_status="pending",
+        )
+        db_session.add(pr)
+        db_session.commit()
+        db_session.refresh(pr)
+
+        pri = PaymentRequestInvoice(
+            payment_request_id=pr.id,
+            invoice_id=inv.id,
+        )
+        db_session.add(pri)
+        db_session.commit()
+
+        result = repo.campaign_preview(campaign.id, DEFAULT_ORG_ID)
+        assert result is not None
+        assert result.payment_requests_to_create == 0

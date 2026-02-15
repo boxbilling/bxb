@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus,
+  Eye,
   Search,
   MoreHorizontal,
   Pencil,
@@ -667,14 +669,27 @@ export default function DunningCampaignsPage() {
               </TableRow>
             ) : (
               filteredCampaigns.map((campaign) => (
-                <TableRow key={campaign.id}>
+                <TableRow
+                  key={campaign.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                >
                   <TableCell>
-                    <code className="text-sm bg-muted px-1.5 py-0.5 rounded font-medium">
-                      {campaign.code}
-                    </code>
+                    <Link
+                      to={`/admin/dunning-campaigns/${campaign.id}`}
+                      className="text-primary hover:underline"
+                    >
+                      <code className="text-sm bg-muted px-1.5 py-0.5 rounded font-medium">
+                        {campaign.code}
+                      </code>
+                    </Link>
                   </TableCell>
                   <TableCell className="font-medium">
-                    {campaign.name}
+                    <Link
+                      to={`/admin/dunning-campaigns/${campaign.id}`}
+                      className="hover:underline"
+                    >
+                      {campaign.name}
+                    </Link>
                   </TableCell>
                   <TableCell>
                     {campaign.status === 'active' ? (
@@ -716,6 +731,12 @@ export default function DunningCampaignsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link to={`/admin/dunning-campaigns/${campaign.id}`}>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View Details
+                          </Link>
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleEdit(campaign)}
                         >

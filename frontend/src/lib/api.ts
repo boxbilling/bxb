@@ -100,6 +100,9 @@ type DunningCampaignResponse = components['schemas']['DunningCampaignResponse']
 type DunningCampaignCreate = components['schemas']['DunningCampaignCreate']
 type DunningCampaignUpdate = components['schemas']['DunningCampaignUpdate']
 type DunningCampaignPerformanceStats = components['schemas']['DunningCampaignPerformanceStats']
+type ExecutionHistoryEntry = components['schemas']['ExecutionHistoryEntry']
+type CampaignTimelineResponse = components['schemas']['CampaignTimelineResponse']
+type CampaignPreviewResponse = components['schemas']['CampaignPreviewResponse']
 
 type CommitmentResponse = components['schemas']['CommitmentResponse']
 type CommitmentCreateAPI = components['schemas']['CommitmentCreateAPI']
@@ -878,6 +881,12 @@ export const dunningCampaignsApi = {
     request<void>(`/v1/dunning_campaigns/${id}`, { method: 'DELETE' }),
   performanceStats: () =>
     request<DunningCampaignPerformanceStats>('/v1/dunning_campaigns/performance_stats'),
+  executionHistory: (id: string, params?: { skip?: number; limit?: number }) =>
+    request<ExecutionHistoryEntry[]>(`/v1/dunning_campaigns/${id}/execution_history${buildQuery(params)}`),
+  timeline: (id: string) =>
+    request<CampaignTimelineResponse>(`/v1/dunning_campaigns/${id}/timeline`),
+  preview: (id: string) =>
+    request<CampaignPreviewResponse>(`/v1/dunning_campaigns/${id}/preview`, { method: 'POST' }),
 }
 
 // Commitments API
