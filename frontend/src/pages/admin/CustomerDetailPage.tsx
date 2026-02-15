@@ -67,10 +67,12 @@ import {
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
+import { CardBrandIcon } from '@/components/CardBrandIcon'
+import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, PaymentMethodCreate, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -539,27 +541,26 @@ function CustomerActivityTab({ customerId }: { customerId: string }) {
   )
 }
 
-function formatPaymentMethodDetails(method: PaymentMethod): string {
-  const details = method.details as { last4?: string; brand?: string; exp_month?: number; exp_year?: number } | null
-  if (!details) return method.type
-  if (details.brand && details.last4) {
-    const parts = [`${details.brand} **** ${details.last4}`]
-    if (details.exp_month && details.exp_year) {
-      parts.push(`exp ${String(details.exp_month).padStart(2, '0')}/${String(details.exp_year).slice(-2)}`)
-    }
-    return parts.join(', ')
-  }
-  if (details.last4) return `**** ${details.last4}`
-  return method.type
-}
-
-function CustomerPaymentMethodsCard({ customerId }: { customerId: string }) {
+function CustomerPaymentMethodsCard({ customerId, customerName }: { customerId: string; customerName: string }) {
   const queryClient = useQueryClient()
   const [deleteMethod, setDeleteMethod] = useState<PaymentMethod | null>(null)
+  const [addFormOpen, setAddFormOpen] = useState(false)
 
   const { data: paymentMethods, isLoading } = useQuery({
     queryKey: ['customer-payment-methods', customerId],
     queryFn: () => paymentMethodsApi.list({ customer_id: customerId }),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: PaymentMethodCreate) => paymentMethodsApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customer-payment-methods', customerId] })
+      setAddFormOpen(false)
+      toast.success('Payment method added')
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to add payment method')
+    },
   })
 
   const setDefaultMutation = useMutation({
@@ -590,11 +591,9 @@ function CustomerPaymentMethodsCard({ customerId }: { customerId: string }) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
           <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/admin/payment-methods?customer=${customerId}`}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add
-            </Link>
+          <Button variant="outline" size="sm" onClick={() => setAddFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Payment Method
           </Button>
         </CardHeader>
         <CardContent>
@@ -607,55 +606,87 @@ function CustomerPaymentMethodsCard({ customerId }: { customerId: string }) {
             <p className="text-sm text-muted-foreground py-4">No payment methods found</p>
           ) : (
             <div className="space-y-3">
-              {paymentMethods.map((pm) => (
-                <div
-                  key={pm.id}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <div className="flex items-center gap-3">
-                    {pm.type === 'card' ? (
-                      <CreditCard className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <Landmark className="h-5 w-5 text-muted-foreground" />
-                    )}
-                    <div>
-                      <div className="text-sm font-medium">{formatPaymentMethodDetails(pm)}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {pm.provider}
+              {paymentMethods.map((pm) => {
+                const details = pm.details as { last4?: string; brand?: string; exp_month?: number; exp_year?: number } | null
+                const brand = details?.brand
+                const last4 = details?.last4
+                const expMonth = details?.exp_month
+                const expYear = details?.exp_year
+
+                return (
+                  <div
+                    key={pm.id}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      {pm.type === 'card' && brand ? (
+                        <CardBrandIcon brand={brand} size={28} />
+                      ) : pm.type === 'card' ? (
+                        <CreditCard className="h-6 w-6 text-muted-foreground" />
+                      ) : (
+                        <Landmark className="h-6 w-6 text-muted-foreground" />
+                      )}
+                      <div>
+                        {last4 ? (
+                          <div className="font-mono text-sm font-semibold tracking-wider">
+                            {'•••• •••• •••• '}{last4}
+                            {expMonth && expYear && (
+                              <span className="ml-2 text-xs text-muted-foreground font-normal tracking-normal">
+                                {String(expMonth).padStart(2, '0')}/{String(expYear).slice(-2)}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm font-medium">
+                            {pm.type === 'bank_account' ? 'Bank Account' : pm.type === 'direct_debit' ? 'Direct Debit' : 'Card'}
+                          </div>
+                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {pm.provider}
+                        </div>
                       </div>
+                      {pm.is_default && (
+                        <Badge variant="secondary" className="ml-2">Default</Badge>
+                      )}
                     </div>
-                    {pm.is_default && (
-                      <Badge variant="secondary" className="ml-2">Default</Badge>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    {!pm.is_default && (
+                    <div className="flex gap-1">
+                      {!pm.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setDefaultMutation.mutate(pm.id)}
+                          disabled={setDefaultMutation.isPending}
+                          title="Set as default"
+                        >
+                          <Star className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setDefaultMutation.mutate(pm.id)}
-                        disabled={setDefaultMutation.isPending}
-                        title="Set as default"
+                        onClick={() => setDeleteMethod(pm)}
+                        disabled={pm.is_default}
+                        title={pm.is_default ? 'Cannot remove default payment method' : 'Remove'}
                       >
-                        <Star className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setDeleteMethod(pm)}
-                      disabled={pm.is_default}
-                      title={pm.is_default ? 'Cannot remove default payment method' : 'Remove'}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </CardContent>
       </Card>
+
+      <PaymentMethodFormDialog
+        open={addFormOpen}
+        onOpenChange={setAddFormOpen}
+        onSubmit={(data) => createMutation.mutate(data)}
+        isLoading={createMutation.isPending}
+        customers={[{ id: customerId, name: customerName }]}
+        defaultCustomerId={customerId}
+      />
 
       <AlertDialog
         open={!!deleteMethod}
@@ -1226,7 +1257,7 @@ export default function CustomerDetailPage() {
             {/* Payments: Payment Methods + Payments + Wallets */}
             <TabsContent value="payments">
               <div className="space-y-6">
-                <CustomerPaymentMethodsCard customerId={customer.id} />
+                <CustomerPaymentMethodsCard customerId={customer.id} customerName={customer.name} />
                 <div>
                   <h3 className="text-sm font-medium mb-3">Payment History</h3>
                   <CustomerPaymentsTab customerId={customer.id} />

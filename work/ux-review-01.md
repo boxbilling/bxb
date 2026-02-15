@@ -530,10 +530,14 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No way to see payment methods from customer detail (link exists but one-directional)
 
 **Recommendations:**
-- [ ] Add card brand icons (Visa, Mastercard, Amex logos)
-- [ ] Group by customer in table view
-- [ ] Add "Add Payment Method" directly from Customer Detail page
-- [ ] Show masked card number prominently
+- [x] Add card brand icons (Visa, Mastercard, Amex logos)
+  <!-- Completed: Created CardBrandIcon component (src/components/CardBrandIcon.tsx) with inline SVG icons for Visa, Mastercard, Amex, Discover, and a generic fallback using deterministic color based on brand name. Integrated into both PaymentMethodsPage table (Type column) and CustomerDetailPage payment methods card. Card brand icons render at 24px (list) and 28px (detail) sizes. -->
+- [x] Group by customer in table view
+  <!-- Completed: Added "Group" toggle button (Users icon) to PaymentMethodsPage filter bar. When active, payment methods are grouped by customer with section header rows showing customer name (as clickable link to customer detail) and method count. Table hides the Customer column when grouped since customer context comes from section headers. Groups sorted alphabetically by customer name. -->
+- [x] Add "Add Payment Method" directly from Customer Detail page
+  <!-- Completed: Extracted PaymentMethodFormDialog into shared component (src/components/PaymentMethodFormDialog.tsx) with new defaultCustomerId prop that pre-selects and disables the customer selector. Replaced the "Add" link (which navigated to PaymentMethodsPage) with an "Add Payment Method" button that opens the form dialog directly on the CustomerDetailPage. Create mutation invalidates customer-payment-methods query on success. PaymentMethodsPage updated to import from the shared component. -->
+- [x] Show masked card number prominently
+  <!-- Completed: Replaced plain text card details with prominent masked card number display using monospace font, semibold weight, and wider tracking. Card numbers show as "•••• •••• •••• 4242" with expiry date inline. Applied to both PaymentMethodsPage table ("Card Number" column) and CustomerDetailPage payment methods card. Non-card types show descriptive text instead. -->
 
 **Modal vs. Page Decision:**
 - **Create**: MODAL is correct (simple form)

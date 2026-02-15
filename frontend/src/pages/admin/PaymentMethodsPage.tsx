@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, CreditCard, Landmark, Star, Trash2 } from 'lucide-react'
+import { Plus, Search, Landmark, Star, Trash2, Users } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,14 +15,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,9 +32,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { CardBrandIcon } from '@/components/CardBrandIcon'
+import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { customersApi, paymentMethodsApi, ApiError } from '@/lib/api'
 import type { PaymentMethod, PaymentMethodCreate } from '@/types/billing'
 
@@ -57,8 +51,19 @@ const providerVariants: Record<string, 'default' | 'secondary' | 'outline'> = {
   adyen: 'outline',
 }
 
+type PaymentMethodDetails = {
+  last4?: string
+  brand?: string
+  exp_month?: number
+  exp_year?: number
+} | null
+
+function getDetails(method: PaymentMethod): PaymentMethodDetails {
+  return method.details as PaymentMethodDetails
+}
+
 function formatDetails(method: PaymentMethod): string {
-  const details = method.details as { last4?: string; brand?: string; exp_month?: number; exp_year?: number } | null
+  const details = getDetails(method)
   if (!details) return method.type
   if (details.brand && details.last4) {
     const parts = [`${details.brand} ending in ${details.last4}`]
@@ -71,222 +76,11 @@ function formatDetails(method: PaymentMethod): string {
   return method.type
 }
 
-function PaymentMethodFormDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  isLoading,
-  customers,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSubmit: (data: PaymentMethodCreate) => void
-  isLoading: boolean
-  customers: { id: string; name: string }[]
-}) {
-  const [formData, setFormData] = useState<PaymentMethodCreate>({
-    customer_id: '',
-    provider: 'stripe',
-    provider_payment_method_id: '',
-    type: 'card',
-    is_default: false,
-    details: {},
-  })
-  const [last4, setLast4] = useState('')
-  const [brand, setBrand] = useState('')
-  const [expMonth, setExpMonth] = useState('')
-  const [expYear, setExpYear] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const details: Record<string, unknown> = {}
-    if (last4) details.last4 = last4
-    if (brand) details.brand = brand
-    if (expMonth) details.exp_month = Number(expMonth)
-    if (expYear) details.exp_year = Number(expYear)
-    onSubmit({ ...formData, details })
-  }
-
-  const resetForm = () => {
-    setFormData({
-      customer_id: '',
-      provider: 'stripe',
-      provider_payment_method_id: '',
-      type: 'card',
-      is_default: false,
-      details: {},
-    })
-    setLast4('')
-    setBrand('')
-    setExpMonth('')
-    setExpYear('')
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(isOpen) => {
-        if (!isOpen) resetForm()
-        onOpenChange(isOpen)
-      }}
-    >
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Add Payment Method</DialogTitle>
-            <DialogDescription>
-              Register a new payment method for a customer
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="pm-customer">Customer *</Label>
-              <Select
-                value={formData.customer_id}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, customer_id: value })
-                }
-              >
-                <SelectTrigger id="pm-customer">
-                  <SelectValue placeholder="Select a customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pm-provider">Provider *</Label>
-                <Select
-                  value={formData.provider}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, provider: value })
-                  }
-                >
-                  <SelectTrigger id="pm-provider">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="stripe">Stripe</SelectItem>
-                    <SelectItem value="gocardless">GoCardless</SelectItem>
-                    <SelectItem value="adyen">Adyen</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pm-type">Type *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, type: value })
-                  }
-                >
-                  <SelectTrigger id="pm-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="bank_account">Bank Account</SelectItem>
-                    <SelectItem value="direct_debit">Direct Debit</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="pm-provider-id">Provider Payment Method ID *</Label>
-              <Input
-                id="pm-provider-id"
-                value={formData.provider_payment_method_id}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    provider_payment_method_id: e.target.value,
-                  })
-                }
-                placeholder="pm_1234567890"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pm-brand">Card Brand</Label>
-                <Input
-                  id="pm-brand"
-                  value={brand}
-                  onChange={(e) => setBrand(e.target.value)}
-                  placeholder="Visa"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pm-last4">Last 4 Digits</Label>
-                <Input
-                  id="pm-last4"
-                  value={last4}
-                  onChange={(e) => setLast4(e.target.value)}
-                  placeholder="4242"
-                  maxLength={4}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="pm-exp-month">Expiry Month</Label>
-                <Input
-                  id="pm-exp-month"
-                  type="number"
-                  value={expMonth}
-                  onChange={(e) => setExpMonth(e.target.value)}
-                  placeholder="12"
-                  min={1}
-                  max={12}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="pm-exp-year">Expiry Year</Label>
-                <Input
-                  id="pm-exp-year"
-                  type="number"
-                  value={expYear}
-                  onChange={(e) => setExpYear(e.target.value)}
-                  placeholder="2025"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !formData.customer_id || !formData.provider_payment_method_id}
-            >
-              {isLoading ? 'Creating...' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export default function PaymentMethodsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [customerFilter, setCustomerFilter] = useState<string>('all')
+  const [groupByCustomer, setGroupByCustomer] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [deleteMethod, setDeleteMethod] = useState<PaymentMethod | null>(null)
   const [setDefaultMethod, setSetDefaultMethod] = useState<PaymentMethod | null>(null)
@@ -369,6 +163,121 @@ export default function PaymentMethodsPage() {
     return customerName.includes(searchLower) || details.includes(searchLower)
   })
 
+  // Group by customer
+  const groupedMethods = groupByCustomer
+    ? Array.from(
+        filteredMethods.reduce((groups, pm) => {
+          const key = pm.customer_id
+          if (!groups.has(key)) groups.set(key, [])
+          groups.get(key)!.push(pm)
+          return groups
+        }, new Map<string, PaymentMethod[]>())
+      ).sort(([aId], [bId]) => {
+        const aName = customerMap.get(aId)?.name ?? ''
+        const bName = customerMap.get(bId)?.name ?? ''
+        return aName.localeCompare(bName)
+      })
+    : null
+
+  function renderMethodRow(pm: PaymentMethod, showCustomer: boolean) {
+    const customer = customerMap.get(pm.customer_id)
+    const details = getDetails(pm)
+    const brand = details?.brand
+    const last4 = details?.last4
+    const expMonth = details?.exp_month
+    const expYear = details?.exp_year
+
+    return (
+      <TableRow key={pm.id}>
+        {showCustomer && (
+          <TableCell className="font-medium">
+            <Link
+              to={`/admin/customers/${pm.customer_id}`}
+              className="text-blue-600 hover:underline"
+            >
+              {customer?.name ?? pm.customer_id.slice(0, 8)}
+            </Link>
+          </TableCell>
+        )}
+        <TableCell>
+          <div className="flex items-center gap-2">
+            {pm.type === 'card' && brand ? (
+              <CardBrandIcon brand={brand} size={24} />
+            ) : pm.type === 'card' ? (
+              <CardBrandIcon brand="generic" size={24} />
+            ) : (
+              <Landmark className="h-5 w-5 text-muted-foreground" />
+            )}
+            <span className="text-sm text-muted-foreground">
+              {pm.type === 'bank_account'
+                ? 'Bank Account'
+                : pm.type === 'direct_debit'
+                  ? 'Direct Debit'
+                  : 'Card'}
+            </span>
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center gap-2">
+            {last4 ? (
+              <div>
+                <span className="font-mono text-base font-semibold tracking-wider">
+                  {'•••• •••• •••• '}
+                  {last4}
+                </span>
+                {expMonth && expYear && (
+                  <span className="ml-3 text-sm text-muted-foreground">
+                    {String(expMonth).padStart(2, '0')}/{String(expYear).slice(-2)}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {pm.type === 'bank_account' ? 'Bank account' : pm.type === 'direct_debit' ? 'Direct debit' : 'No card details'}
+              </span>
+            )}
+          </div>
+        </TableCell>
+        <TableCell>
+          <Badge variant={providerVariants[pm.provider] ?? 'outline'}>
+            {providerLabels[pm.provider] ?? pm.provider}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {pm.is_default && (
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+          )}
+        </TableCell>
+        <TableCell className="text-muted-foreground">
+          {format(new Date(pm.created_at), 'MMM d, yyyy')}
+        </TableCell>
+        <TableCell>
+          <div className="flex gap-1">
+            {!pm.is_default && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSetDefaultMethod(pm)}
+                title="Set as default"
+              >
+                <Star className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setDeleteMethod(pm)}
+              disabled={pm.is_default}
+              title={pm.is_default ? 'Cannot delete default payment method' : 'Delete'}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -409,6 +318,15 @@ export default function PaymentMethodsPage() {
             ))}
           </SelectContent>
         </Select>
+        <Button
+          variant={groupByCustomer ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setGroupByCustomer(!groupByCustomer)}
+          title="Group by customer"
+        >
+          <Users className="mr-2 h-4 w-4" />
+          Group
+        </Button>
       </div>
 
       {/* Table */}
@@ -416,9 +334,9 @@ export default function PaymentMethodsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Customer</TableHead>
+              {!groupByCustomer && <TableHead>Customer</TableHead>}
               <TableHead>Type</TableHead>
-              <TableHead>Details</TableHead>
+              <TableHead>Card Number</TableHead>
               <TableHead>Provider</TableHead>
               <TableHead>Default</TableHead>
               <TableHead>Created</TableHead>
@@ -429,9 +347,9 @@ export default function PaymentMethodsPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  {!groupByCustomer && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -440,76 +358,35 @@ export default function PaymentMethodsPage() {
               ))
             ) : filteredMethods.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={groupByCustomer ? 6 : 7}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   No payment methods found
                 </TableCell>
               </TableRow>
-            ) : (
-              filteredMethods.map((pm) => {
-                const customer = customerMap.get(pm.customer_id)
-                return (
-                  <TableRow key={pm.id}>
-                    <TableCell className="font-medium">
-                      {customer?.name ?? pm.customer_id.slice(0, 8)}
+            ) : groupByCustomer && groupedMethods ? (
+              groupedMethods.map(([customerId, methods]) => {
+                const customer = customerMap.get(customerId)
+                return [
+                  <TableRow key={`group-${customerId}`} className="bg-muted/50">
+                    <TableCell colSpan={6} className="font-semibold py-2">
+                      <Link
+                        to={`/admin/customers/${customerId}`}
+                        className="text-blue-600 hover:underline"
+                      >
+                        {customer?.name ?? customerId.slice(0, 8)}
+                      </Link>
+                      <span className="ml-2 text-xs text-muted-foreground font-normal">
+                        {methods.length} payment method{methods.length !== 1 ? 's' : ''}
+                      </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1.5">
-                        {pm.type === 'card' ? (
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Landmark className="h-4 w-4 text-muted-foreground" />
-                        )}
-                        <span className="text-sm">
-                          {pm.type === 'bank_account'
-                            ? 'Bank Account'
-                            : pm.type === 'direct_debit'
-                              ? 'Direct Debit'
-                              : 'Card'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">{formatDetails(pm)}</span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={providerVariants[pm.provider] ?? 'outline'}>
-                        {providerLabels[pm.provider] ?? pm.provider}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {pm.is_default && (
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {format(new Date(pm.created_at), 'MMM d, yyyy')}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {!pm.is_default && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSetDefaultMethod(pm)}
-                            title="Set as default"
-                          >
-                            <Star className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDeleteMethod(pm)}
-                          disabled={pm.is_default}
-                          title={pm.is_default ? 'Cannot delete default payment method' : 'Delete'}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
+                  </TableRow>,
+                  ...methods.map((pm) => renderMethodRow(pm, false)),
+                ]
               })
+            ) : (
+              filteredMethods.map((pm) => renderMethodRow(pm, true))
             )}
           </TableBody>
         </Table>
