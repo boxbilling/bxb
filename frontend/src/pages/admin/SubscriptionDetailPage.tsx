@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -49,7 +49,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, usageAlertsApi, billableMetricsApi, featuresApi, ApiError } from '@/lib/api'
+import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, usageAlertsApi, billableMetricsApi, featuresApi, invoicesApi, ApiError } from '@/lib/api'
 import type { UsageThresholdCreateAPI, UsageAlertCreate, SubscriptionUpdate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
@@ -125,6 +125,12 @@ export default function SubscriptionDetailPage() {
   })
 
   const featureMap = new Map(features?.map((f) => [f.id, f]) ?? [])
+
+  const { data: invoices, isLoading: invoicesLoading } = useQuery({
+    queryKey: ['subscription-invoices', id],
+    queryFn: () => invoicesApi.list({ subscription_id: id! }),
+    enabled: !!id,
+  })
 
   const { data: usageAlerts, isLoading: alertsLoading } = useQuery({
     queryKey: ['usage-alerts', id],
@@ -441,6 +447,78 @@ export default function SubscriptionDetailPage() {
                           </TableCell>
                         </TableRow>
                       ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Invoices */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Invoices
+                </CardTitle>
+                <Link
+                  to={`/admin/invoices?subscription_id=${id}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  View all
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {invoicesLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !invoices?.length ? (
+                <p className="text-sm text-muted-foreground">No invoices generated for this subscription</p>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Number</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Issue Date</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoices.map((invoice) => {
+                        const statusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+                          draft: 'secondary',
+                          finalized: 'outline',
+                          paid: 'default',
+                          voided: 'destructive',
+                        }
+                        return (
+                          <TableRow key={invoice.id}>
+                            <TableCell>
+                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                {invoice.invoice_number || '\u2014'}
+                              </code>
+                            </TableCell>
+                            <TableCell className="capitalize">{invoice.invoice_type}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
+                            </TableCell>
+                            <TableCell>{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
+                            <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(Number(invoice.total), invoice.currency)}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                 </div>
