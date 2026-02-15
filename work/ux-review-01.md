@@ -634,10 +634,10 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Tax rate formatting is inconsistent (should show %)
 
 **Recommendations:**
-- [ ] Improve "Apply to Entity" UX: show searchable entity list instead of raw ID input
-- [ ] Add "Applied To" expandable section per tax
-- [ ] Format rate as percentage consistently
-- [ ] Add tax group/category concept
+- [x] Improve "Apply to Entity" UX: show searchable entity list instead of raw ID input
+- [x] Add "Applied To" expandable section per tax
+- [x] Format rate as percentage consistently
+- [x] Add tax group/category concept
 
 **Modal vs. Page Decision:**
 - All MODAL - correct (taxes are simple entities)

@@ -2188,6 +2188,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/taxes/application_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get tax application counts
+         * @description Get the count of applied tax records per tax.
+         */
+        get: operations["get_application_counts_v1_taxes_application_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/{code}/applied_entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get entities a tax is applied to
+         * @description Get all entities a tax is applied to.
+         */
+        get: operations["get_applied_entities_v1_taxes__code__applied_entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/taxes/{code}": {
         parameters: {
             query?: never;
@@ -6327,6 +6367,33 @@ export interface components {
             downgraded_at?: string | null;
             on_termination_action?: components["schemas"]["TerminationAction"] | null;
         };
+        /**
+         * TaxApplicationCountsResponse
+         * @description Response for tax application counts.
+         */
+        TaxApplicationCountsResponse: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * TaxAppliedEntitiesResponse
+         * @description Response for listing entities a tax is applied to.
+         */
+        TaxAppliedEntitiesResponse: {
+            /**
+             * Tax Id
+             * Format: uuid
+             */
+            tax_id: string;
+            /** Tax Code */
+            tax_code: string;
+            /** Entities */
+            entities: {
+                [key: string]: string | null;
+            }[];
+        };
         /** TaxCreate */
         TaxCreate: {
             /** Code */
@@ -6337,6 +6404,8 @@ export interface components {
             rate: number | string;
             /** Description */
             description?: string | null;
+            /** Category */
+            category?: string | null;
             /**
              * Applied To Organization
              * @default false
@@ -6358,6 +6427,8 @@ export interface components {
             rate: string;
             /** Description */
             description?: string | null;
+            /** Category */
+            category?: string | null;
             /** Applied To Organization */
             applied_to_organization: boolean;
             /**
@@ -6379,6 +6450,8 @@ export interface components {
             rate?: number | string | null;
             /** Description */
             description?: string | null;
+            /** Category */
+            category?: string | null;
             /** Applied To Organization */
             applied_to_organization?: boolean | null;
         };
@@ -12998,6 +13071,78 @@ export interface operations {
                 content?: never;
             };
             /** @description Applied tax not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_application_counts_v1_taxes_application_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxApplicationCountsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_applied_entities_v1_taxes__code__applied_entities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxAppliedEntitiesResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax not found */
             404: {
                 headers: {
                     [name: string]: unknown;

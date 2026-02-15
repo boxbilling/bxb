@@ -79,6 +79,8 @@ type TaxCreate = components['schemas']['TaxCreate']
 type TaxUpdate = components['schemas']['TaxUpdate']
 type ApplyTaxRequest = components['schemas']['ApplyTaxRequest']
 type AppliedTaxResponse = components['schemas']['AppliedTaxResponse']
+type TaxAppliedEntitiesResponse = components['schemas']['TaxAppliedEntitiesResponse']
+type TaxApplicationCountsResponse = components['schemas']['TaxApplicationCountsResponse']
 
 type WebhookEndpointResponse = components['schemas']['WebhookEndpointResponse']
 type WebhookEndpointCreate = components['schemas']['WebhookEndpointCreate']
@@ -794,6 +796,10 @@ export const taxesApi = {
     request<void>(`/v1/taxes/applied/${appliedTaxId}`, { method: 'DELETE' }),
   listApplied: (params: { taxable_type: string; taxable_id: string }) =>
     request<AppliedTaxResponse[]>(`/v1/taxes/applied${buildQuery(params)}`),
+  applicationCounts: () =>
+    request<TaxApplicationCountsResponse>('/v1/taxes/application_counts'),
+  appliedEntities: (code: string) =>
+    request<TaxAppliedEntitiesResponse>(`/v1/taxes/${code}/applied_entities`),
 }
 
 // Webhook Endpoints API

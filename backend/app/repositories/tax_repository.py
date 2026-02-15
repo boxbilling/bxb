@@ -69,6 +69,7 @@ class TaxRepository:
             name=data.name,
             rate=data.rate,
             description=data.description,
+            category=data.category,
             applied_to_organization=data.applied_to_organization,
             organization_id=organization_id,
         )

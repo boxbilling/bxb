@@ -8,12 +8,15 @@ from pydantic import ValidationError
 
 from app.core.database import get_db
 from app.models.applied_tax import AppliedTax
+from app.models.billing_entity import BillingEntity  # noqa: F401
 from app.models.tax import Tax
 from app.repositories.applied_tax_repository import AppliedTaxRepository
 from app.repositories.tax_repository import TaxRepository
 from app.schemas.tax import (
     AppliedTaxResponse,
     ApplyTaxRequest,
+    TaxApplicationCountsResponse,
+    TaxAppliedEntitiesResponse,
     TaxCreate,
     TaxResponse,
     TaxUpdate,
@@ -102,6 +105,33 @@ class TestTaxModel:
         assert tax.code == "FULL_TAX"
         assert tax.description == "A tax with all fields set"
         assert tax.applied_to_organization is True
+
+    def test_tax_with_category(self, db_session):
+        """Test Tax model with category field."""
+        tax = Tax(
+            code="CAT_MODEL",
+            name="Category Model Tax",
+            rate=Decimal("0.1000"),
+            category="Excise",
+        )
+        db_session.add(tax)
+        db_session.commit()
+        db_session.refresh(tax)
+
+        assert tax.category == "Excise"
+
+    def test_tax_category_default_none(self, db_session):
+        """Test Tax model category defaults to None."""
+        tax = Tax(
+            code="NO_CAT",
+            name="No Category",
+            rate=Decimal("0.1000"),
+        )
+        db_session.add(tax)
+        db_session.commit()
+        db_session.refresh(tax)
+
+        assert tax.category is None
 
 
 class TestAppliedTaxModel:
@@ -263,6 +293,44 @@ class TestTaxRepository:
         repo = TaxRepository(db_session)
         assert repo.delete("NONEXISTENT", DEFAULT_ORG_ID) is False
 
+    def test_create_with_category(self, db_session):
+        """Test creating a tax with category."""
+        repo = TaxRepository(db_session)
+        tax = repo.create(
+            TaxCreate(
+                code="REPO_CAT",
+                name="Repo Category",
+                rate=Decimal("0.1000"),
+                category="Sales Tax",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        assert tax.category == "Sales Tax"
+
+    def test_update_category(self, db_session, basic_tax):
+        """Test updating a tax category."""
+        repo = TaxRepository(db_session)
+        updated = repo.update("VAT_20", TaxUpdate(category="VAT"), DEFAULT_ORG_ID)
+        assert updated is not None
+        assert updated.category == "VAT"
+
+    def test_update_category_to_none(self, db_session):
+        """Test updating a tax category to None."""
+        repo = TaxRepository(db_session)
+        tax = repo.create(
+            TaxCreate(
+                code="CLR_CAT",
+                name="Clear Category",
+                rate=Decimal("0.1000"),
+                category="Old Category",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        assert tax.category == "Old Category"
+        updated = repo.update("CLR_CAT", TaxUpdate(category=None), DEFAULT_ORG_ID)
+        assert updated is not None
+        assert updated.category is None
+
 
 class TestAppliedTaxRepository:
     """Tests for AppliedTaxRepository."""
@@ -386,6 +454,48 @@ class TestAppliedTaxRepository:
         repo = AppliedTaxRepository(db_session)
         assert repo.delete_by_id(uuid4()) is False
 
+    def test_get_by_tax_id(self, db_session, basic_tax):
+        """Test getting applied taxes by tax ID."""
+        repo = AppliedTaxRepository(db_session)
+        id1 = uuid4()
+        id2 = uuid4()
+        repo.create(tax_id=basic_tax.id, taxable_type="customer", taxable_id=id1)
+        repo.create(tax_id=basic_tax.id, taxable_type="invoice", taxable_id=id2)
+        results = repo.get_by_tax_id(basic_tax.id)
+        assert len(results) == 2
+
+    def test_get_by_tax_id_empty(self, db_session, basic_tax):
+        """Test getting applied taxes by tax ID when none exist."""
+        repo = AppliedTaxRepository(db_session)
+        results = repo.get_by_tax_id(basic_tax.id)
+        assert results == []
+
+    def test_get_by_tax_id_ordering(self, db_session, basic_tax):
+        """Test get_by_tax_id returns results ordered by created_at desc."""
+        repo = AppliedTaxRepository(db_session)
+        repo.create(tax_id=basic_tax.id, taxable_type="customer", taxable_id=uuid4())
+        repo.create(tax_id=basic_tax.id, taxable_type="plan", taxable_id=uuid4())
+        results = repo.get_by_tax_id(basic_tax.id)
+        assert len(results) == 2
+        # Most recent first
+        assert results[0].created_at >= results[1].created_at
+
+    def test_application_counts(self, db_session, basic_tax, org_tax):
+        """Test application_counts returns counts per tax_id."""
+        repo = AppliedTaxRepository(db_session)
+        repo.create(tax_id=basic_tax.id, taxable_type="customer", taxable_id=uuid4())
+        repo.create(tax_id=basic_tax.id, taxable_type="invoice", taxable_id=uuid4())
+        repo.create(tax_id=org_tax.id, taxable_type="plan", taxable_id=uuid4())
+        counts = repo.application_counts()
+        assert counts[str(basic_tax.id)] == 2
+        assert counts[str(org_tax.id)] == 1
+
+    def test_application_counts_empty(self, db_session):
+        """Test application_counts with no applied taxes."""
+        repo = AppliedTaxRepository(db_session)
+        counts = repo.application_counts()
+        assert counts == {}
+
 
 class TestTaxSchema:
     """Tests for Tax Pydantic schemas."""
@@ -505,3 +615,66 @@ class TestTaxSchema:
                 taxable_type="X" * 51,
                 taxable_id=uuid4(),
             )
+
+    def test_tax_create_with_category(self):
+        """Test TaxCreate with category field."""
+        schema = TaxCreate(
+            code="CAT_TAX",
+            name="Categorized Tax",
+            rate=Decimal("0.1000"),
+            category="Sales Tax",
+        )
+        assert schema.category == "Sales Tax"
+
+    def test_tax_create_category_max_length(self):
+        """Test TaxCreate category max length validation."""
+        with pytest.raises(ValidationError):
+            TaxCreate(
+                code="TAX",
+                name="Tax",
+                rate=Decimal("0.1000"),
+                category="X" * 101,
+            )
+
+    def test_tax_update_with_category(self):
+        """Test TaxUpdate with category field."""
+        schema = TaxUpdate(category="VAT")
+        data = schema.model_dump(exclude_unset=True)
+        assert data == {"category": "VAT"}
+
+    def test_tax_response_with_category(self, db_session):
+        """Test TaxResponse includes category field."""
+        repo = TaxRepository(db_session)
+        tax = repo.create(
+            TaxCreate(
+                code="CAT_RESP",
+                name="Category Response",
+                rate=Decimal("0.1500"),
+                category="VAT",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        response = TaxResponse.model_validate(tax)
+        assert response.category == "VAT"
+
+    def test_tax_applied_entities_response(self):
+        """Test TaxAppliedEntitiesResponse schema."""
+        tax_id = uuid4()
+        entity_id = uuid4()
+        resp = TaxAppliedEntitiesResponse(
+            tax_id=tax_id,
+            tax_code="VAT_20",
+            entities=[
+                {"taxable_type": "customer", "taxable_id": str(entity_id)},
+            ],
+        )
+        assert resp.tax_code == "VAT_20"
+        assert len(resp.entities) == 1
+
+    def test_tax_application_counts_response(self):
+        """Test TaxApplicationCountsResponse schema."""
+        resp = TaxApplicationCountsResponse(
+            counts={"tax_id_1": 3, "tax_id_2": 5}
+        )
+        assert resp.counts["tax_id_1"] == 3
+        assert resp.counts["tax_id_2"] == 5

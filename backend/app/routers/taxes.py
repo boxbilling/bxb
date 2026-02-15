@@ -13,6 +13,8 @@ from app.repositories.tax_repository import TaxRepository
 from app.schemas.tax import (
     AppliedTaxResponse,
     ApplyTaxRequest,
+    TaxApplicationCountsResponse,
+    TaxAppliedEntitiesResponse,
     TaxCreate,
     TaxResponse,
     TaxUpdate,
@@ -141,6 +143,57 @@ async def remove_applied_tax(
     repo = AppliedTaxRepository(db)
     if not repo.delete_by_id(applied_tax_id):
         raise HTTPException(status_code=404, detail="Applied tax not found")
+
+
+@router.get(
+    "/application_counts",
+    response_model=TaxApplicationCountsResponse,
+    summary="Get tax application counts",
+    responses={401: {"description": "Unauthorized"}},
+)
+async def get_application_counts(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> TaxApplicationCountsResponse:
+    """Get the count of applied tax records per tax."""
+    repo = AppliedTaxRepository(db)
+    counts = repo.application_counts()
+    return TaxApplicationCountsResponse(counts=counts)
+
+
+@router.get(
+    "/{code}/applied_entities",
+    response_model=TaxAppliedEntitiesResponse,
+    summary="Get entities a tax is applied to",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Tax not found"},
+    },
+)
+async def get_applied_entities(
+    code: str,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> TaxAppliedEntitiesResponse:
+    """Get all entities a tax is applied to."""
+    tax_repo = TaxRepository(db)
+    tax = tax_repo.get_by_code(code, organization_id)
+    if not tax:
+        raise HTTPException(status_code=404, detail="Tax not found")
+    applied_repo = AppliedTaxRepository(db)
+    applied = applied_repo.get_by_tax_id(tax.id)  # type: ignore[arg-type]
+    entities: list[dict[str, str | None]] = [
+        {
+            "taxable_type": str(a.taxable_type),
+            "taxable_id": str(a.taxable_id),
+        }
+        for a in applied
+    ]
+    return TaxAppliedEntitiesResponse(
+        tax_id=tax.id,  # type: ignore[arg-type]
+        tax_code=tax.code,  # type: ignore[arg-type]
+        entities=entities,
+    )
 
 
 @router.get(

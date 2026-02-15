@@ -12,6 +12,7 @@ class TaxCreate(BaseModel):
     name: str = Field(max_length=255)
     rate: Decimal
     description: str | None = None
+    category: str | None = Field(default=None, max_length=100)
     applied_to_organization: bool = False
 
 
@@ -19,6 +20,7 @@ class TaxUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=255)
     rate: Decimal | None = None
     description: str | None = None
+    category: str | None = Field(default=None, max_length=100)
     applied_to_organization: bool | None = None
 
 
@@ -30,6 +32,7 @@ class TaxResponse(BaseModel):
     name: str
     rate: Decimal
     description: str | None = None
+    category: str | None = None
     applied_to_organization: bool
     created_at: datetime
     updated_at: datetime
@@ -53,3 +56,17 @@ class AppliedTaxResponse(BaseModel):
     tax_name: str | None = None
     tax_code: str | None = None
     created_at: datetime
+
+
+class TaxAppliedEntitiesResponse(BaseModel):
+    """Response for listing entities a tax is applied to."""
+
+    tax_id: UUID
+    tax_code: str
+    entities: list[dict[str, str | None]]
+
+
+class TaxApplicationCountsResponse(BaseModel):
+    """Response for tax application counts."""
+
+    counts: dict[str, int]

@@ -842,3 +842,139 @@ class TestTaxRouter:
         codes = {item["tax_code"] for item in items}
         assert names == {"LAM Tax 1", "LAM Tax 2"}
         assert codes == {"LAM1", "LAM2"}
+
+    def test_create_tax_with_category(self, client):
+        """POST /v1/taxes with category field."""
+        resp = client.post(
+            "/v1/taxes/",
+            json={
+                "code": "CAT_TAX",
+                "name": "Categorized Tax",
+                "rate": "0.1000",
+                "category": "VAT",
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["category"] == "VAT"
+
+    def test_create_tax_without_category(self, client):
+        """POST /v1/taxes without category defaults to null."""
+        resp = client.post(
+            "/v1/taxes/",
+            json={
+                "code": "NO_CAT_TAX",
+                "name": "No Category Tax",
+                "rate": "0.1000",
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.json()["category"] is None
+
+    def test_update_tax_category(self, client):
+        """PUT /v1/taxes/{code} updates category."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "UPD_CAT", "name": "Update Cat", "rate": "0.1000"},
+        )
+        resp = client.put(
+            "/v1/taxes/UPD_CAT",
+            json={"category": "Excise"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["category"] == "Excise"
+
+    def test_get_application_counts_empty(self, client):
+        """GET /v1/taxes/application_counts returns empty counts."""
+        resp = client.get("/v1/taxes/application_counts")
+        assert resp.status_code == 200
+        assert resp.json()["counts"] == {}
+
+    def test_get_application_counts_with_data(self, client):
+        """GET /v1/taxes/application_counts returns counts per tax."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "CNT_TAX", "name": "Count Tax", "rate": "0.1000"},
+        )
+        client.post(
+            "/v1/taxes/apply",
+            json={
+                "tax_code": "CNT_TAX",
+                "taxable_type": "customer",
+                "taxable_id": str(uuid4()),
+            },
+        )
+        client.post(
+            "/v1/taxes/apply",
+            json={
+                "tax_code": "CNT_TAX",
+                "taxable_type": "invoice",
+                "taxable_id": str(uuid4()),
+            },
+        )
+        resp = client.get("/v1/taxes/application_counts")
+        assert resp.status_code == 200
+        counts = resp.json()["counts"]
+        # At least the CNT_TAX should have 2 applications
+        assert any(v >= 2 for v in counts.values())
+
+    def test_get_applied_entities(self, client):
+        """GET /v1/taxes/{code}/applied_entities returns entities."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "ENT_TAX", "name": "Entity Tax", "rate": "0.1000"},
+        )
+        entity_id = str(uuid4())
+        client.post(
+            "/v1/taxes/apply",
+            json={
+                "tax_code": "ENT_TAX",
+                "taxable_type": "customer",
+                "taxable_id": entity_id,
+            },
+        )
+        resp = client.get("/v1/taxes/ENT_TAX/applied_entities")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["tax_code"] == "ENT_TAX"
+        assert len(data["entities"]) == 1
+        assert data["entities"][0]["taxable_type"] == "customer"
+        assert data["entities"][0]["taxable_id"] == entity_id
+
+    def test_get_applied_entities_empty(self, client):
+        """GET /v1/taxes/{code}/applied_entities returns empty list."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "EMPTY_ENT", "name": "Empty Entities", "rate": "0.1000"},
+        )
+        resp = client.get("/v1/taxes/EMPTY_ENT/applied_entities")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["entities"] == []
+
+    def test_get_applied_entities_not_found(self, client):
+        """GET /v1/taxes/{code}/applied_entities returns 404 for missing tax."""
+        resp = client.get("/v1/taxes/MISSING_TAX/applied_entities")
+        assert resp.status_code == 404
+
+    def test_get_applied_entities_multiple(self, client):
+        """GET /v1/taxes/{code}/applied_entities returns multiple entities."""
+        client.post(
+            "/v1/taxes/",
+            json={"code": "MULTI_ENT", "name": "Multi Entity Tax", "rate": "0.1000"},
+        )
+        ids = [str(uuid4()) for _ in range(3)]
+        for i, entity_id in enumerate(ids):
+            entity_type = ["customer", "invoice", "plan"][i]
+            client.post(
+                "/v1/taxes/apply",
+                json={
+                    "tax_code": "MULTI_ENT",
+                    "taxable_type": entity_type,
+                    "taxable_id": entity_id,
+                },
+            )
+        resp = client.get("/v1/taxes/MULTI_ENT/applied_entities")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["entities"]) == 3

@@ -108,6 +108,8 @@ export type TaxCreate = components['schemas']['TaxCreate']
 export type TaxUpdate = components['schemas']['TaxUpdate']
 export type ApplyTaxRequest = components['schemas']['ApplyTaxRequest']
 export type AppliedTax = components['schemas']['AppliedTaxResponse']
+export type TaxAppliedEntitiesResponse = components['schemas']['TaxAppliedEntitiesResponse']
+export type TaxApplicationCountsResponse = components['schemas']['TaxApplicationCountsResponse']
 
 // --- Webhooks ---
 export type WebhookEndpoint = components['schemas']['WebhookEndpointResponse']

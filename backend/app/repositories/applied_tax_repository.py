@@ -3,6 +3,7 @@
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.applied_tax import AppliedTax
@@ -66,6 +67,25 @@ class AppliedTaxRepository:
     def get_taxes_for_entity(self, taxable_type: str, taxable_id: UUID) -> list[AppliedTax]:
         """Get applied taxes for a specific entity (alias for get_by_taxable)."""
         return self.get_by_taxable(taxable_type, taxable_id)
+
+    def get_by_tax_id(self, tax_id: UUID) -> list[AppliedTax]:
+        """Get all applied tax records for a given tax."""
+        return (
+            self.db.query(AppliedTax)
+            .filter(AppliedTax.tax_id == tax_id)
+            .order_by(AppliedTax.created_at.desc())
+            .all()
+        )
+
+    def application_counts(self) -> dict[str, int]:
+        """Count applied tax records per tax_id."""
+        count_col = func.count(AppliedTax.id).label("cnt")
+        rows = (
+            self.db.query(AppliedTax.tax_id, count_col)
+            .group_by(AppliedTax.tax_id)
+            .all()
+        )
+        return {str(row[0]): int(row[1]) for row in rows}
 
     def delete_by_id(self, applied_tax_id: UUID) -> bool:
         """Delete an applied tax by ID."""
