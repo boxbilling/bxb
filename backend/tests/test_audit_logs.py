@@ -189,6 +189,135 @@ class TestAuditLogAPI:
         assert "metadata_" in log
         assert "created_at" in log
 
+    def test_list_audit_logs_filter_by_actor_type(self, client, seed_audit_logs):
+        """Test GET /v1/audit_logs/ with actor_type filter."""
+        response = client.get("/v1/audit_logs/", params={"actor_type": "system"})
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert all(log["actor_type"] == "system" for log in data)
+
+    def test_list_audit_logs_filter_by_actor_type_api_key(self, client, seed_audit_logs):
+        """Test GET /v1/audit_logs/ with actor_type=api_key filter."""
+        response = client.get("/v1/audit_logs/", params={"actor_type": "api_key"})
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert all(log["actor_type"] == "api_key" for log in data)
+
+    def test_list_audit_logs_filter_by_actor_type_no_match(self, client, seed_audit_logs):
+        """Test GET /v1/audit_logs/ with actor_type filter that matches nothing."""
+        response = client.get("/v1/audit_logs/", params={"actor_type": "webhook"})
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_audit_logs_filter_by_actor_type_combined(self, client, seed_audit_logs):
+        """Test GET /v1/audit_logs/ with actor_type and action filters combined."""
+        response = client.get(
+            "/v1/audit_logs/",
+            params={"actor_type": "api_key", "action": "created"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["actor_type"] == "api_key"
+        assert data[0]["action"] == "created"
+
+
+# ---------------------------------------------------------------------------
+# Actor type filter tests (repository-level)
+# ---------------------------------------------------------------------------
+
+
+class TestAuditLogActorTypeFilter:
+    """Tests for actor_type filtering on audit logs."""
+
+    def test_repository_actor_type_filter(self, db_session):
+        """Test repository-level actor_type filtering directly."""
+        repo = AuditLogRepository(db_session)
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="invoice",
+            resource_id=uuid4(),
+            action="created",
+            changes={},
+            actor_type="system",
+        )
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="customer",
+            resource_id=uuid4(),
+            action="updated",
+            changes={},
+            actor_type="api_key",
+            actor_id="key_1",
+        )
+        repo.create(
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="subscription",
+            resource_id=uuid4(),
+            action="created",
+            changes={},
+            actor_type="api_key",
+            actor_id="key_2",
+        )
+
+        results = repo.get_all(organization_id=DEFAULT_ORG_ID, actor_type="system")
+        assert len(results) == 1
+        assert results[0].actor_type == "system"
+
+        results = repo.get_all(organization_id=DEFAULT_ORG_ID, actor_type="api_key")
+        assert len(results) == 2
+        assert all(r.actor_type == "api_key" for r in results)
+
+        results = repo.get_all(organization_id=DEFAULT_ORG_ID, actor_type="webhook")
+        assert len(results) == 0
+
+    def test_repository_actor_type_combined_with_date_range(self, db_session):
+        """Test actor_type filter combined with date range."""
+        repo = AuditLogRepository(db_session)
+        log1 = AuditLog(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="invoice",
+            resource_id=generate_uuid(),
+            action="created",
+            changes={},
+            actor_type="system",
+            created_at=datetime(2024, 3, 15, tzinfo=UTC),
+        )
+        log2 = AuditLog(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="invoice",
+            resource_id=generate_uuid(),
+            action="updated",
+            changes={},
+            actor_type="api_key",
+            created_at=datetime(2024, 3, 20, tzinfo=UTC),
+        )
+        log3 = AuditLog(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="invoice",
+            resource_id=generate_uuid(),
+            action="created",
+            changes={},
+            actor_type="system",
+            created_at=datetime(2024, 8, 10, tzinfo=UTC),
+        )
+        db_session.add_all([log1, log2, log3])
+        db_session.commit()
+
+        results = repo.get_all(
+            organization_id=DEFAULT_ORG_ID,
+            actor_type="system",
+            start_date=datetime(2024, 1, 1, tzinfo=UTC),
+            end_date=datetime(2024, 6, 1, tzinfo=UTC),
+        )
+        assert len(results) == 1
+        assert results[0].actor_type == "system"
+
 
 # ---------------------------------------------------------------------------
 # Date range filter tests

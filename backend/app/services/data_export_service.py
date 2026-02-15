@@ -422,6 +422,8 @@ class DataExportService:
             query = query.filter(AuditLog.resource_type == filters["resource_type"])
         if filters.get("action"):
             query = query.filter(AuditLog.action == filters["action"])
+        if filters.get("actor_type"):
+            query = query.filter(AuditLog.actor_type == filters["actor_type"])
 
         audit_logs = query.order_by(AuditLog.created_at.desc()).all()
         total = len(audit_logs)
@@ -513,6 +515,8 @@ class DataExportService:
             query = query.filter(AuditLog.resource_type == filters["resource_type"])
         if filters.get("action"):
             query = query.filter(AuditLog.action == filters["action"])
+        if filters.get("actor_type"):
+            query = query.filter(AuditLog.actor_type == filters["actor_type"])
         return query.count()
 
 

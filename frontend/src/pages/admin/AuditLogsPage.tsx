@@ -161,6 +161,7 @@ export default function AuditLogsPage() {
   const [searchParams] = useSearchParams()
   const [resourceTypeFilter, setResourceTypeFilter] = useState(searchParams.get('resource_type') || 'all')
   const [actionFilter, setActionFilter] = useState('all')
+  const [actorTypeFilter, setActorTypeFilter] = useState('all')
   const [resourceIdSearch, setResourceIdSearch] = useState(searchParams.get('resource_id') || '')
   const [debouncedResourceId, setDebouncedResourceId] = useState(resourceIdSearch)
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
@@ -189,11 +190,12 @@ export default function AuditLogsPage() {
   }, [datePreset, customRange])
 
   const { data: auditLogs, isLoading } = useQuery({
-    queryKey: ['audit-logs', { resourceTypeFilter, actionFilter, debouncedResourceId, dateParams }],
+    queryKey: ['audit-logs', { resourceTypeFilter, actionFilter, actorTypeFilter, debouncedResourceId, dateParams }],
     queryFn: () =>
       auditLogsApi.list({
         resource_type: resourceTypeFilter !== 'all' ? resourceTypeFilter : undefined,
         action: actionFilter !== 'all' ? actionFilter : undefined,
+        actor_type: actorTypeFilter !== 'all' ? actorTypeFilter : undefined,
         resource_id: debouncedResourceId || undefined,
         ...dateParams,
       }),
@@ -204,6 +206,7 @@ export default function AuditLogsPage() {
       const filters: Record<string, string> = {}
       if (resourceTypeFilter !== 'all') filters.resource_type = resourceTypeFilter
       if (actionFilter !== 'all') filters.action = actionFilter
+      if (actorTypeFilter !== 'all') filters.actor_type = actorTypeFilter
       return dataExportsApi.create({
         export_type: 'audit_logs' as const,
         filters: Object.keys(filters).length > 0 ? filters : undefined,
@@ -284,6 +287,17 @@ export default function AuditLogsPage() {
             <SelectItem value="updated">Updated</SelectItem>
             <SelectItem value="status_changed">Status Changed</SelectItem>
             <SelectItem value="deleted">Deleted</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={actorTypeFilter} onValueChange={setActorTypeFilter}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Actor type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All actors</SelectItem>
+            <SelectItem value="system">System</SelectItem>
+            <SelectItem value="api_key">API Key</SelectItem>
+            <SelectItem value="webhook">Webhook</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex items-center gap-2">

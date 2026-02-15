@@ -1247,6 +1247,21 @@ class TestDataExportAuditLogs:
         assert result.status == ExportStatus.COMPLETED.value
         assert result.record_count == 1
 
+    def test_process_export_audit_logs_with_actor_type_filter(
+        self, db_session, audit_logs_mixed
+    ):
+        """Test audit log export with actor_type filter."""
+        service = DataExportService(db_session)
+        export = service.create_export(
+            organization_id=DEFAULT_ORG_ID,
+            export_type=ExportType.AUDIT_LOGS,
+            filters={"actor_type": "system"},
+        )
+        result = service.process_export(export.id)
+
+        assert result.status == ExportStatus.COMPLETED.value
+        assert result.record_count == 1
+
     def test_process_export_audit_logs_no_matches(self, db_session, audit_log):
         """Test audit log export with filter that matches nothing."""
         service = DataExportService(db_session)
@@ -1325,6 +1340,18 @@ class TestDataExportAuditLogEstimate:
         )
         assert count == 1
 
+    def test_estimate_audit_logs_with_actor_type_filter(
+        self, db_session, audit_logs_mixed
+    ):
+        """Test estimate count for audit logs with actor_type filter."""
+        service = DataExportService(db_session)
+        count = service.estimate_count(
+            DEFAULT_ORG_ID,
+            ExportType.AUDIT_LOGS,
+            {"actor_type": "system"},
+        )
+        assert count == 1
+
     def test_estimate_audit_logs_empty(self, db_session):
         """Test estimate count for audit logs with no data."""
         service = DataExportService(db_session)
@@ -1380,6 +1407,33 @@ class TestDataExportAuditLogAPI:
             json={
                 "export_type": "audit_logs",
                 "filters": {"action": "created"},
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["record_count"] == 1
+
+    def test_create_audit_log_export_with_actor_type_filter(self, client, audit_logs_mixed):
+        """Test POST /v1/data_exports with audit_logs type and actor_type filter."""
+        response = client.post(
+            "/v1/data_exports/",
+            json={
+                "export_type": "audit_logs",
+                "filters": {"actor_type": "api_key"},
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["status"] == "completed"
+        assert data["record_count"] == 2
+
+    def test_estimate_audit_log_export_with_actor_type_filter(self, client, audit_logs_mixed):
+        """Test POST /v1/data_exports/estimate with audit_logs type and actor_type filter."""
+        response = client.post(
+            "/v1/data_exports/estimate",
+            json={
+                "export_type": "audit_logs",
+                "filters": {"actor_type": "system"},
             },
         )
         assert response.status_code == 200

@@ -70,6 +70,7 @@ class AuditLogRepository:
         action: str | None = None,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
+        actor_type: str | None = None,
     ) -> list[AuditLog]:
         query = self.db.query(AuditLog).filter(
             AuditLog.organization_id == organization_id
@@ -82,4 +83,6 @@ class AuditLogRepository:
             query = query.filter(AuditLog.created_at >= start_date)
         if end_date is not None:
             query = query.filter(AuditLog.created_at <= end_date)
+        if actor_type is not None:
+            query = query.filter(AuditLog.actor_type == actor_type)
         return query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()

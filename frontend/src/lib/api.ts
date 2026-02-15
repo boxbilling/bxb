@@ -1035,7 +1035,7 @@ export const paymentRequestsApi = {
 
 // Audit Logs API
 export const auditLogsApi = {
-  list: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string }) =>
+  list: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string; actor_type?: string }) =>
     request<AuditLogResponse[]>(`/v1/audit_logs/${buildQuery(params)}`),
   getForResource: (resourceType: string, resourceId: string) =>
     request<AuditLogResponse[]>(`/v1/audit_logs/${resourceType}/${resourceId}`),
