@@ -2656,6 +2656,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payment_requests/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch create payment requests for all customers with overdue invoices
+         * @description Create payment requests for all customers with overdue finalized invoices.
+         */
+        post: operations["batch_create_payment_requests_v1_payment_requests_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payment_requests/{request_id}": {
         parameters: {
             query?: never;
@@ -2668,6 +2688,26 @@ export interface paths {
          * @description Get a payment request by ID.
          */
         get: operations["get_payment_request_v1_payment_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_requests/{request_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get payment attempt history
+         * @description Get the payment attempt history for a payment request.
+         */
+        get: operations["get_payment_attempt_history_v1_payment_requests__request_id__attempts_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3847,6 +3887,45 @@ export interface components {
             wallet_id: string;
             /** Points */
             points: components["schemas"]["BalanceTimelinePoint"][];
+        };
+        /**
+         * BatchPaymentRequestResponse
+         * @description Response for batch payment request creation.
+         */
+        BatchPaymentRequestResponse: {
+            /** Total Customers */
+            total_customers: number;
+            /** Created */
+            created: number;
+            /** Failed */
+            failed: number;
+            /** Results */
+            results: components["schemas"]["BatchPaymentRequestResult"][];
+        };
+        /**
+         * BatchPaymentRequestResult
+         * @description Result for a single customer in a batch payment request creation.
+         */
+        BatchPaymentRequestResult: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Payment Request Id */
+            payment_request_id?: string | null;
+            /** Invoice Count */
+            invoice_count: number;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /** Status */
+            status: string;
+            /** Error */
+            error?: string | null;
         };
         /** BillableMetricCreate */
         BillableMetricCreate: {
@@ -6061,6 +6140,46 @@ export interface components {
             zipcode?: string | null;
             /** Country */
             country?: string | null;
+        };
+        /**
+         * PaymentAttemptEntry
+         * @description A single entry in the payment attempt history.
+         */
+        PaymentAttemptEntry: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Action */
+            action: string;
+            /** Old Status */
+            old_status?: string | null;
+            /** New Status */
+            new_status?: string | null;
+            /** Attempt Number */
+            attempt_number?: number | null;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * PaymentAttemptHistoryResponse
+         * @description Response for payment request attempt history.
+         */
+        PaymentAttemptHistoryResponse: {
+            /**
+             * Payment Request Id
+             * Format: uuid
+             */
+            payment_request_id: string;
+            /** Current Status */
+            current_status: string;
+            /** Total Attempts */
+            total_attempts: number;
+            /** Entries */
+            entries: components["schemas"]["PaymentAttemptEntry"][];
         };
         /** PaymentMethodCreate */
         PaymentMethodCreate: {
@@ -14869,6 +14988,33 @@ export interface operations {
             };
         };
     };
+    batch_create_payment_requests_v1_payment_requests_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchPaymentRequestResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_payment_request_v1_payment_requests__request_id__get: {
         parameters: {
             query?: never;
@@ -14887,6 +15033,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentRequestResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment request not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payment_attempt_history_v1_payment_requests__request_id__attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentAttemptHistoryResponse"];
                 };
             };
             /** @description Unauthorized */

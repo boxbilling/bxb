@@ -70,6 +70,9 @@ interface FormState {
   document_locale: string
   invoice_prefix: string
   next_invoice_number: number
+  invoice_grace_period: number
+  net_payment_term: number
+  invoice_footer: string
   is_default: boolean
 }
 
@@ -90,6 +93,9 @@ const defaultFormState: FormState = {
   document_locale: 'en',
   invoice_prefix: '',
   next_invoice_number: 1,
+  invoice_grace_period: 0,
+  net_payment_term: 30,
+  invoice_footer: '',
   is_default: false,
 }
 
@@ -127,6 +133,9 @@ export default function BillingEntityFormPage() {
         document_locale: entity.document_locale,
         invoice_prefix: entity.invoice_prefix || '',
         next_invoice_number: entity.next_invoice_number,
+        invoice_grace_period: entity.invoice_grace_period ?? 0,
+        net_payment_term: entity.net_payment_term ?? 30,
+        invoice_footer: entity.invoice_footer || '',
         is_default: entity.is_default,
       })
       setInitialized(true)
@@ -178,6 +187,9 @@ export default function BillingEntityFormPage() {
     document_locale: f.document_locale,
     invoice_prefix: f.invoice_prefix || null,
     next_invoice_number: f.next_invoice_number,
+    invoice_grace_period: f.invoice_grace_period,
+    net_payment_term: f.net_payment_term,
+    invoice_footer: f.invoice_footer || null,
     is_default: f.is_default,
   })
 
@@ -197,6 +209,9 @@ export default function BillingEntityFormPage() {
     document_locale: f.document_locale,
     invoice_prefix: f.invoice_prefix || null,
     next_invoice_number: f.next_invoice_number,
+    invoice_grace_period: f.invoice_grace_period,
+    net_payment_term: f.net_payment_term,
+    invoice_footer: f.invoice_footer || null,
     is_default: f.is_default,
   })
 

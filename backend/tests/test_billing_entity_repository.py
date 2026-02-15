@@ -73,6 +73,9 @@ class TestBillingEntityModel:
         assert entity.document_locale == "en"
         assert entity.invoice_prefix is None
         assert entity.next_invoice_number == 1
+        assert entity.invoice_grace_period == 0
+        assert entity.net_payment_term == 30
+        assert entity.invoice_footer is None
         assert entity.is_default is False
         assert entity.created_at is not None
         assert entity.updated_at is not None
@@ -98,6 +101,9 @@ class TestBillingEntityModel:
             document_locale="de",
             invoice_prefix="FE",
             next_invoice_number=42,
+            invoice_grace_period=5,
+            net_payment_term=60,
+            invoice_footer="Thank you for your business",
             is_default=True,
         )
         db_session.add(entity)
@@ -118,6 +124,9 @@ class TestBillingEntityModel:
         assert entity.document_locale == "de"
         assert entity.invoice_prefix == "FE"
         assert entity.next_invoice_number == 42
+        assert entity.invoice_grace_period == 5
+        assert entity.net_payment_term == 60
+        assert entity.invoice_footer == "Thank you for your business"
         assert entity.is_default is True
 
     def test_customer_billing_entity_fk(self, db_session):
@@ -198,6 +207,9 @@ class TestBillingEntityRepository:
             document_locale="en-GB",
             invoice_prefix="FUL",
             next_invoice_number=100,
+            invoice_grace_period=7,
+            net_payment_term=45,
+            invoice_footer="Net 45 days",
             is_default=True,
         )
         entity = repo.create(data, DEFAULT_ORG_ID)
@@ -207,6 +219,9 @@ class TestBillingEntityRepository:
         assert entity.currency == "GBP"
         assert entity.invoice_prefix == "FUL"
         assert entity.next_invoice_number == 100
+        assert entity.invoice_grace_period == 7
+        assert entity.net_payment_term == 45
+        assert entity.invoice_footer == "Net 45 days"
         assert entity.is_default is True
 
     def test_get_by_id(self, db_session):
@@ -482,6 +497,9 @@ class TestBillingEntitySchemas:
         assert schema.timezone == "UTC"
         assert schema.document_locale == "en"
         assert schema.next_invoice_number == 1
+        assert schema.invoice_grace_period == 0
+        assert schema.net_payment_term == 30
+        assert schema.invoice_footer is None
         assert schema.is_default is False
         assert schema.legal_name is None
         assert schema.invoice_prefix is None
@@ -505,11 +523,17 @@ class TestBillingEntitySchemas:
             document_locale="de",
             invoice_prefix="PRE",
             next_invoice_number=50,
+            invoice_grace_period=3,
+            net_payment_term=15,
+            invoice_footer="Pay promptly",
             is_default=True,
         )
         assert schema.code == "full"
         assert schema.legal_name == "Full LLC"
         assert schema.country == "US"
+        assert schema.invoice_grace_period == 3
+        assert schema.net_payment_term == 15
+        assert schema.invoice_footer == "Pay promptly"
         assert schema.is_default is True
 
     def test_update_schema_partial(self):

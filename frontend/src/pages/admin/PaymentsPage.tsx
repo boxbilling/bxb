@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, CreditCard, Check, Trash2, RefreshCw, ExternalLink, MoreHorizontal, Eye, RotateCcw } from 'lucide-react'
+import { Search, CreditCard, Check, Trash2, RefreshCw, ExternalLink, MoreHorizontal, Eye, RotateCcw, Send } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -171,11 +171,20 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Payments</h1>
-        <p className="text-muted-foreground">
-          Track and manage payment transactions
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Payments</h1>
+          <p className="text-muted-foreground">
+            Track and manage payment transactions
+          </p>
+        </div>
+        <Link
+          to="/admin/payment-requests"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Send className="h-4 w-4" />
+          Payment Requests
+        </Link>
       </div>
 
       {/* Stats */}

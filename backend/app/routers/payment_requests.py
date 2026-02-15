@@ -10,6 +10,8 @@ from app.core.database import get_db
 from app.models.payment_request import PaymentRequest
 from app.repositories.payment_request_repository import PaymentRequestRepository
 from app.schemas.payment_request import (
+    BatchPaymentRequestResponse,
+    PaymentAttemptHistoryResponse,
     PaymentRequestCreate,
     PaymentRequestInvoiceResponse,
     PaymentRequestResponse,
@@ -89,6 +91,30 @@ async def list_payment_requests(
     return [_pr_to_response(pr, repo) for pr in prs]
 
 
+@router.post(
+    "/batch",
+    response_model=BatchPaymentRequestResponse,
+    status_code=201,
+    summary="Batch create payment requests for all customers with overdue invoices",
+    responses={401: {"description": "Unauthorized"}},
+)
+async def batch_create_payment_requests(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BatchPaymentRequestResponse:
+    """Create payment requests for all customers with overdue finalized invoices."""
+    service = PaymentRequestService(db)
+    results = service.batch_create_for_overdue(organization_id)
+    created = [r for r in results if r.status == "created"]
+    failed = [r for r in results if r.status == "error"]
+    return BatchPaymentRequestResponse(
+        total_customers=len(results),
+        created=len(created),
+        failed=len(failed),
+        results=results,
+    )
+
+
 @router.get(
     "/{request_id}",
     response_model=PaymentRequestResponse,
@@ -109,3 +135,32 @@ async def get_payment_request(
     if not pr:
         raise HTTPException(status_code=404, detail="Payment request not found")
     return _pr_to_response(pr, repo)
+
+
+@router.get(
+    "/{request_id}/attempts",
+    response_model=PaymentAttemptHistoryResponse,
+    summary="Get payment attempt history",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Payment request not found"},
+    },
+)
+async def get_payment_attempt_history(
+    request_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> PaymentAttemptHistoryResponse:
+    """Get the payment attempt history for a payment request."""
+    repo = PaymentRequestRepository(db)
+    pr = repo.get_by_id(request_id, organization_id)
+    if not pr:
+        raise HTTPException(status_code=404, detail="Payment request not found")
+    service = PaymentRequestService(db)
+    entries = service.get_attempt_history(request_id, organization_id)
+    return PaymentAttemptHistoryResponse(
+        payment_request_id=request_id,
+        current_status=str(pr.payment_status),
+        total_attempts=int(pr.payment_attempts),
+        entries=entries,
+    )

@@ -1,7 +1,7 @@
 """Tests for PaymentRequest API router endpoints."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.main import app
-from app.models.customer import Customer
+from app.models.audit_log import AuditLog
+from app.models.customer import Customer, generate_uuid
 from app.models.invoice import Invoice
 from app.models.payment_request import PaymentRequest
 from app.repositories.payment_request_repository import PaymentRequestRepository
@@ -264,3 +265,271 @@ class TestGetPaymentRequest:
         response = client.get(f"/v1/payment_requests/{fake_id}")
         assert response.status_code == 404
         assert response.json()["detail"] == "Payment request not found"
+
+
+class TestBatchCreatePaymentRequests:
+    """Tests for POST /v1/payment_requests/batch."""
+
+    def test_batch_create_no_overdue(self, client: TestClient) -> None:
+        """Test batch creation with no overdue invoices."""
+        response = client.post("/v1/payment_requests/batch")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total_customers"] == 0
+        assert data["created"] == 0
+        assert data["failed"] == 0
+        assert data["results"] == []
+
+    def test_batch_create_with_overdue_invoices(
+        self,
+        client: TestClient,
+        db_session: Session,
+        customer: Customer,
+    ) -> None:
+        """Test batch creation with overdue finalized invoices."""
+        # Create overdue invoices (due date in the past)
+        past = datetime(2025, 6, 1, tzinfo=UTC)
+        for i in range(2):
+            inv = Invoice(
+                organization_id=DEFAULT_ORG_ID,
+                invoice_number=f"INV-BATCH-{i:04d}",
+                customer_id=customer.id,
+                status="finalized",
+                billing_period_start=datetime(2025, 5, 1, tzinfo=UTC),
+                billing_period_end=datetime(2025, 5, 31, tzinfo=UTC),
+                subtotal=Decimal("150"),
+                tax_amount=Decimal("0"),
+                total=Decimal("150"),
+                currency="USD",
+                due_date=past,
+            )
+            db_session.add(inv)
+        db_session.commit()
+
+        response = client.post("/v1/payment_requests/batch")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total_customers"] == 1
+        assert data["created"] == 1
+        assert data["failed"] == 0
+        assert len(data["results"]) == 1
+        result = data["results"][0]
+        assert result["customer_id"] == str(customer.id)
+        assert result["customer_name"] == customer.name
+        assert result["invoice_count"] == 2
+        assert result["status"] == "created"
+        assert result["payment_request_id"] is not None
+
+    def test_batch_create_excludes_non_overdue(
+        self,
+        client: TestClient,
+        db_session: Session,
+        customer: Customer,
+    ) -> None:
+        """Test batch creation excludes invoices with future due dates."""
+        future = datetime.now(UTC) + timedelta(days=30)
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="INV-BATCH-FUTURE-001",
+            customer_id=customer.id,
+            status="finalized",
+            billing_period_start=datetime(2026, 1, 1, tzinfo=UTC),
+            billing_period_end=datetime(2026, 1, 31, tzinfo=UTC),
+            subtotal=Decimal("100"),
+            tax_amount=Decimal("0"),
+            total=Decimal("100"),
+            currency="USD",
+            due_date=future,
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        response = client.post("/v1/payment_requests/batch")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total_customers"] == 0
+        assert data["created"] == 0
+
+    def test_batch_create_excludes_no_due_date(
+        self,
+        client: TestClient,
+        db_session: Session,
+        customer: Customer,
+    ) -> None:
+        """Test batch creation excludes invoices without a due date."""
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="INV-BATCH-NODUE-001",
+            customer_id=customer.id,
+            status="finalized",
+            billing_period_start=datetime(2026, 1, 1, tzinfo=UTC),
+            billing_period_end=datetime(2026, 1, 31, tzinfo=UTC),
+            subtotal=Decimal("100"),
+            tax_amount=Decimal("0"),
+            total=Decimal("100"),
+            currency="USD",
+            due_date=None,
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        response = client.post("/v1/payment_requests/batch")
+        assert response.status_code == 201
+        assert response.json()["total_customers"] == 0
+
+    def test_batch_create_multiple_customers(
+        self,
+        client: TestClient,
+        db_session: Session,
+        customer: Customer,
+    ) -> None:
+        """Test batch creation groups by customer."""
+        # Create a second customer
+        c2 = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id="cust-batch-002",
+            name="Batch Customer 2",
+        )
+        db_session.add(c2)
+        db_session.commit()
+        db_session.refresh(c2)
+
+        past = datetime(2025, 6, 1, tzinfo=UTC)
+        for cust in [customer, c2]:
+            inv = Invoice(
+                organization_id=DEFAULT_ORG_ID,
+                invoice_number=f"INV-BATCH-MULTI-{cust.external_id}",
+                customer_id=cust.id,
+                status="finalized",
+                billing_period_start=datetime(2025, 5, 1, tzinfo=UTC),
+                billing_period_end=datetime(2025, 5, 31, tzinfo=UTC),
+                subtotal=Decimal("200"),
+                tax_amount=Decimal("0"),
+                total=Decimal("200"),
+                currency="USD",
+                due_date=past,
+            )
+            db_session.add(inv)
+        db_session.commit()
+
+        response = client.post("/v1/payment_requests/batch")
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total_customers"] == 2
+        assert data["created"] == 2
+
+    def test_batch_create_excludes_draft_invoices(
+        self,
+        client: TestClient,
+        db_session: Session,
+        customer: Customer,
+    ) -> None:
+        """Test batch creation excludes draft invoices (only finalized)."""
+        past = datetime(2025, 6, 1, tzinfo=UTC)
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="INV-BATCH-DRAFT-001",
+            customer_id=customer.id,
+            status="draft",
+            billing_period_start=datetime(2025, 5, 1, tzinfo=UTC),
+            billing_period_end=datetime(2025, 5, 31, tzinfo=UTC),
+            subtotal=Decimal("100"),
+            tax_amount=Decimal("0"),
+            total=Decimal("100"),
+            currency="USD",
+            due_date=past,
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        response = client.post("/v1/payment_requests/batch")
+        assert response.status_code == 201
+        assert response.json()["total_customers"] == 0
+
+
+class TestGetPaymentAttemptHistory:
+    """Tests for GET /v1/payment_requests/{id}/attempts."""
+
+    def test_get_attempts_basic(
+        self,
+        client: TestClient,
+        payment_request: PaymentRequest,
+    ) -> None:
+        """Test getting attempt history returns at least the creation entry."""
+        response = client.get(
+            f"/v1/payment_requests/{payment_request.id}/attempts",
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["payment_request_id"] == str(payment_request.id)
+        assert data["current_status"] == "pending"
+        assert data["total_attempts"] == 0
+        assert len(data["entries"]) >= 1
+        # First entry should be "created"
+        assert data["entries"][0]["action"] == "created"
+        assert data["entries"][0]["new_status"] == "pending"
+
+    def test_get_attempts_with_audit_logs(
+        self,
+        client: TestClient,
+        db_session: Session,
+        payment_request: PaymentRequest,
+    ) -> None:
+        """Test attempt history includes audit log entries."""
+        # Add audit log entries simulating status changes
+        log = AuditLog(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="payment_request",
+            resource_id=payment_request.id,
+            action="status_changed",
+            changes={"old_status": "pending", "new_status": "processing"},
+            actor_type="system",
+        )
+        db_session.add(log)
+
+        log2 = AuditLog(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            resource_type="payment_request",
+            resource_id=payment_request.id,
+            action="status_changed",
+            changes={"old_status": "processing", "new_status": "failed", "attempt_number": 1},
+            actor_type="system",
+        )
+        db_session.add(log2)
+        db_session.commit()
+
+        response = client.get(
+            f"/v1/payment_requests/{payment_request.id}/attempts",
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # creation + 2 audit entries
+        assert len(data["entries"]) == 3
+        assert data["entries"][1]["action"] == "status_changed"
+        assert data["entries"][1]["old_status"] == "pending"
+        assert data["entries"][1]["new_status"] == "processing"
+        assert data["entries"][2]["attempt_number"] == 1
+        assert data["entries"][2]["new_status"] == "failed"
+
+    def test_get_attempts_not_found(self, client: TestClient) -> None:
+        """Test getting attempts for non-existent payment request."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(f"/v1/payment_requests/{fake_id}/attempts")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Payment request not found"
+
+    def test_get_attempts_no_audit_logs(
+        self,
+        client: TestClient,
+        payment_request: PaymentRequest,
+    ) -> None:
+        """Test attempt history with no audit logs shows just the creation entry."""
+        response = client.get(
+            f"/v1/payment_requests/{payment_request.id}/attempts",
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["entries"]) == 1
+        assert data["entries"][0]["action"] == "created"

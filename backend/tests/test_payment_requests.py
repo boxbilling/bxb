@@ -16,6 +16,10 @@ from app.models.payment_request import PaymentRequest
 from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.repositories.payment_request_repository import PaymentRequestRepository
 from app.schemas.payment_request import (
+    BatchPaymentRequestResponse,
+    BatchPaymentRequestResult,
+    PaymentAttemptEntry,
+    PaymentAttemptHistoryResponse,
     PaymentRequestCreate,
     PaymentRequestInvoiceResponse,
     PaymentRequestResponse,
@@ -224,6 +228,48 @@ class TestPaymentRequestSchemas:
         resp = PaymentRequestInvoiceResponse.model_validate(join_row)
         assert resp.payment_request_id == pr.id
         assert resp.invoice_id == invoices[0].id
+
+    def test_batch_result_schema(self) -> None:
+        result = BatchPaymentRequestResult(
+            customer_id=uuid.uuid4(),
+            customer_name="Test",
+            invoice_count=2,
+            amount_cents=Decimal("200"),
+            amount_currency="USD",
+            status="created",
+            payment_request_id=uuid.uuid4(),
+        )
+        assert result.status == "created"
+        assert result.error is None
+
+    def test_batch_response_schema(self) -> None:
+        resp = BatchPaymentRequestResponse(
+            total_customers=1,
+            created=1,
+            failed=0,
+            results=[],
+        )
+        assert resp.total_customers == 1
+
+    def test_attempt_entry_schema(self) -> None:
+        entry = PaymentAttemptEntry(
+            timestamp=datetime(2026, 1, 1, tzinfo=UTC),
+            action="created",
+            new_status="pending",
+        )
+        assert entry.action == "created"
+        assert entry.old_status is None
+        assert entry.attempt_number is None
+
+    def test_attempt_history_response_schema(self) -> None:
+        resp = PaymentAttemptHistoryResponse(
+            payment_request_id=uuid.uuid4(),
+            current_status="pending",
+            total_attempts=0,
+            entries=[],
+        )
+        assert resp.total_attempts == 0
+        assert resp.entries == []
 
 
 class TestPaymentRequestRepository:

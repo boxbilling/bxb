@@ -731,10 +731,10 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - Relationship to dunning campaigns is shown but not actionable
 
 **Recommendations:**
-- [ ] Add "Select all overdue invoices" checkbox in create form
-- [ ] Add batch creation: "Create requests for all customers with overdue invoices"
-- [ ] Show payment attempt history in detail modal
-- [ ] Consider merging into Payments page as a tab
+- [x] Add "Select all overdue invoices" checkbox in create form
+- [x] Add batch creation: "Create requests for all customers with overdue invoices"
+- [x] Show payment attempt history in detail modal
+- [x] Consider merging into Payments page as a tab
 
 **Modal vs. Page Decision:**
 - **Create**: MODAL is correct (selection-based form)

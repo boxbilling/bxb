@@ -93,6 +93,9 @@ class TestBillingEntitiesAPI:
         assert data["name"] == "API Created"
         assert data["currency"] == "USD"
         assert data["timezone"] == "UTC"
+        assert data["invoice_grace_period"] == 0
+        assert data["net_payment_term"] == 30
+        assert data["invoice_footer"] is None
         assert data["is_default"] is False
         assert data["id"] is not None
 
@@ -117,6 +120,9 @@ class TestBillingEntitiesAPI:
                 "document_locale": "de",
                 "invoice_prefix": "FE",
                 "next_invoice_number": 100,
+                "invoice_grace_period": 5,
+                "net_payment_term": 60,
+                "invoice_footer": "Thank you for your business",
                 "is_default": True,
             },
         )
@@ -126,6 +132,9 @@ class TestBillingEntitiesAPI:
         assert data["currency"] == "EUR"
         assert data["invoice_prefix"] == "FE"
         assert data["next_invoice_number"] == 100
+        assert data["invoice_grace_period"] == 5
+        assert data["net_payment_term"] == 60
+        assert data["invoice_footer"] == "Thank you for your business"
         assert data["is_default"] is True
 
     def test_create_billing_entity_duplicate_code(self, client):

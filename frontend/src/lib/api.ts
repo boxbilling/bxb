@@ -139,6 +139,8 @@ type SetupSessionResponse = components['schemas']['SetupSessionResponse']
 
 type PaymentRequestResponse = components['schemas']['PaymentRequestResponse']
 type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
+type BatchPaymentRequestResponse = components['schemas']['BatchPaymentRequestResponse']
+type PaymentAttemptHistoryResponse = components['schemas']['PaymentAttemptHistoryResponse']
 
 type AuditLogResponse = components['schemas']['AuditLogResponse']
 
@@ -975,6 +977,12 @@ export const paymentRequestsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  batchCreate: () =>
+    request<BatchPaymentRequestResponse>('/v1/payment_requests/batch', {
+      method: 'POST',
+    }),
+  getAttempts: (id: string) =>
+    request<PaymentAttemptHistoryResponse>(`/v1/payment_requests/${id}/attempts`),
 }
 
 // Audit Logs API

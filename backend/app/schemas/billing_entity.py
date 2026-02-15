@@ -21,6 +21,9 @@ class BillingEntityCreate(BaseModel):
     document_locale: str = Field(default="en", max_length=10)
     invoice_prefix: str | None = Field(default=None, max_length=20)
     next_invoice_number: int = Field(default=1, ge=1)
+    invoice_grace_period: int = Field(default=0, ge=0)
+    net_payment_term: int = Field(default=30, ge=0)
+    invoice_footer: str | None = Field(default=None, max_length=1024)
     is_default: bool = False
 
 
@@ -40,6 +43,9 @@ class BillingEntityUpdate(BaseModel):
     document_locale: str | None = Field(default=None, max_length=10)
     invoice_prefix: str | None = Field(default=None, max_length=20)
     next_invoice_number: int | None = Field(default=None, ge=1)
+    invoice_grace_period: int | None = Field(default=None, ge=0)
+    net_payment_term: int | None = Field(default=None, ge=0)
+    invoice_footer: str | None = Field(default=None, max_length=1024)
     is_default: bool | None = None
 
 
@@ -61,6 +67,9 @@ class BillingEntityResponse(BaseModel):
     document_locale: str
     invoice_prefix: str | None
     next_invoice_number: int
+    invoice_grace_period: int
+    net_payment_term: int
+    invoice_footer: str | None
     is_default: bool
     created_at: datetime
     updated_at: datetime

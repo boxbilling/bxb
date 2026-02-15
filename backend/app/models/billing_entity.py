@@ -32,6 +32,9 @@ class BillingEntity(Base):
     document_locale = Column(String(10), nullable=False, default="en")
     invoice_prefix = Column(String(20), nullable=True)
     next_invoice_number = Column(Integer, nullable=False, default=1)
+    invoice_grace_period = Column(Integer, nullable=False, default=0)
+    net_payment_term = Column(Integer, nullable=False, default=30)
+    invoice_footer = Column(String(1024), nullable=True)
     is_default = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(

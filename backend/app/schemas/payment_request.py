@@ -42,3 +42,45 @@ class PaymentRequestResponse(BaseModel):
     invoices: list[PaymentRequestInvoiceResponse] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
+
+
+class BatchPaymentRequestResult(BaseModel):
+    """Result for a single customer in a batch payment request creation."""
+
+    customer_id: UUID
+    customer_name: str
+    payment_request_id: UUID | None = None
+    invoice_count: int
+    amount_cents: Decimal
+    amount_currency: str
+    status: str  # "created" or "error"
+    error: str | None = None
+
+
+class BatchPaymentRequestResponse(BaseModel):
+    """Response for batch payment request creation."""
+
+    total_customers: int
+    created: int
+    failed: int
+    results: list[BatchPaymentRequestResult]
+
+
+class PaymentAttemptEntry(BaseModel):
+    """A single entry in the payment attempt history."""
+
+    timestamp: datetime
+    action: str
+    old_status: str | None = None
+    new_status: str | None = None
+    attempt_number: int | None = None
+    details: dict[str, object] | None = None
+
+
+class PaymentAttemptHistoryResponse(BaseModel):
+    """Response for payment request attempt history."""
+
+    payment_request_id: UUID
+    current_status: str
+    total_attempts: int
+    entries: list[PaymentAttemptEntry]

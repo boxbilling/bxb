@@ -229,6 +229,9 @@ export type SubscriptionLifecycleResponse = components['schemas']['SubscriptionL
 // --- Payment Requests ---
 export type PaymentRequest = components['schemas']['PaymentRequestResponse']
 export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
+export type BatchPaymentRequestResponse = components['schemas']['BatchPaymentRequestResponse']
+export type PaymentAttemptHistoryResponse = components['schemas']['PaymentAttemptHistoryResponse']
+export type PaymentAttemptEntry = components['schemas']['PaymentAttemptEntry']
 
 // --- Invoice Preview ---
 export type FeePreview = components['schemas']['FeePreview']
