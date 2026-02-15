@@ -55,3 +55,9 @@ class EventVolumePoint(BaseModel):
 
 class EventVolumeResponse(BaseModel):
     data_points: list[EventVolumePoint]
+
+
+class EventReprocessResponse(BaseModel):
+    event_id: UUID
+    status: str
+    subscriptions_checked: int

@@ -983,6 +983,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/{event_id}/reprocess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reprocess an event
+         * @description Re-trigger usage threshold and alert checks for an existing event.
+         *
+         *     This re-enqueues background jobs (usage threshold checks and usage alert
+         *     checks) for all active subscriptions belonging to the event's customer.
+         *     The event data itself is not modified.
+         */
+        post: operations["reprocess_event_v1_events__event_id__reprocess_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/batch": {
         parameters: {
             query?: never;
@@ -4496,6 +4520,18 @@ export interface components {
             properties?: {
                 [key: string]: unknown;
             };
+        };
+        /** EventReprocessResponse */
+        EventReprocessResponse: {
+            /**
+             * Event Id
+             * Format: uuid
+             */
+            event_id: string;
+            /** Status */
+            status: string;
+            /** Subscriptions Checked */
+            subscriptions_checked: number;
         };
         /** EventResponse */
         EventResponse: {
@@ -8990,6 +9026,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Event not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reprocess_event_v1_events__event_id__reprocess_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventReprocessResponse"];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */

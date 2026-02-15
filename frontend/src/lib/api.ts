@@ -108,6 +108,7 @@ type EventCreate = components['schemas']['EventCreate']
 type EventBatchCreate = components['schemas']['EventBatchCreate']
 type EventBatchResponse = components['schemas']['EventBatchResponse']
 type EventVolumeResponse = components['schemas']['EventVolumeResponse']
+type EventReprocessResponse = components['schemas']['EventReprocessResponse']
 
 type InvoicePreviewRequest = components['schemas']['InvoicePreviewRequest']
 type InvoicePreviewResponse = components['schemas']['InvoicePreviewResponse']
@@ -513,6 +514,8 @@ export const eventsApi = {
     }),
   getVolume: (params?: { from_timestamp?: string; to_timestamp?: string }) =>
     request<EventVolumeResponse>(`/v1/events/volume${buildQuery(params)}`),
+  reprocess: (id: string) =>
+    request<EventReprocessResponse>(`/v1/events/${id}/reprocess`, { method: 'POST' }),
 }
 
 // Fees API

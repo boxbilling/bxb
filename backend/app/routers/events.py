@@ -25,6 +25,7 @@ from app.schemas.event import (
     EventBatchCreate,
     EventBatchResponse,
     EventCreate,
+    EventReprocessResponse,
     EventResponse,
     EventVolumePoint,
     EventVolumeResponse,
@@ -370,6 +371,46 @@ async def get_event(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     return event
+
+
+@router.post(
+    "/{event_id}/reprocess",
+    response_model=EventReprocessResponse,
+    summary="Reprocess an event",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Event not found"},
+    },
+)
+async def reprocess_event(
+    event_id: UUID,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> EventReprocessResponse:
+    """Re-trigger usage threshold and alert checks for an existing event.
+
+    This re-enqueues background jobs (usage threshold checks and usage alert
+    checks) for all active subscriptions belonging to the event's customer.
+    The event data itself is not modified.
+    """
+    repo = EventRepository(db)
+    event = repo.get_by_id(event_id, organization_id)
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    sub_ids = _get_active_subscription_ids(
+        str(event.external_customer_id), db, organization_id
+    )
+    if sub_ids:
+        background_tasks.add_task(_enqueue_threshold_checks, sub_ids)
+        background_tasks.add_task(_enqueue_alert_checks, sub_ids)
+
+    return EventReprocessResponse(
+        event_id=event_id,
+        status="reprocessing" if sub_ids else "no_active_subscriptions",
+        subscriptions_checked=len(sub_ids),
+    )
 
 
 @router.post(

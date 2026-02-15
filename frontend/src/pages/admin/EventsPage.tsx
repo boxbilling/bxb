@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query'
-import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon, BarChart2 } from 'lucide-react'
+import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon, BarChart2, RefreshCw } from 'lucide-react'
 import { format, subDays, subMonths, startOfDay, endOfDay } from 'date-fns'
 import { toast } from 'sonner'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -324,6 +324,20 @@ export default function EventsPage() {
     refetchInterval: isPolling ? POLLING_INTERVAL : false,
   })
 
+  const reprocessMutation = useMutation({
+    mutationFn: (eventId: string) => eventsApi.reprocess(eventId),
+    onSuccess: (data) => {
+      if (data.status === 'no_active_subscriptions') {
+        toast.info('No active subscriptions found for this event\'s customer')
+      } else {
+        toast.success(`Reprocessing event across ${data.subscriptions_checked} subscription${data.subscriptions_checked === 1 ? '' : 's'}`)
+      }
+    },
+    onError: () => {
+      toast.error('Failed to reprocess event')
+    },
+  })
+
   const rowVirtualizer = useVirtualizer({
     count: allEvents.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -586,6 +600,7 @@ export default function EventsPage() {
                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Customer ID</th>
                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Code</th>
                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Properties</th>
+                <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground w-[80px]">Actions</th>
               </tr>
             </thead>
           </table>
@@ -607,6 +622,7 @@ export default function EventsPage() {
                     <td className="p-4 align-middle"><Skeleton className="h-5 w-28" /></td>
                     <td className="p-4 align-middle"><Skeleton className="h-5 w-24" /></td>
                     <td className="p-4 align-middle"><Skeleton className="h-5 w-32" /></td>
+                    <td className="p-4 align-middle text-right"><Skeleton className="h-7 w-7 ml-auto" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -685,10 +701,31 @@ export default function EventsPage() {
                               <span className="text-muted-foreground">—</span>
                             )}
                           </td>
+                          <td className="p-4 align-middle text-right">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    disabled={reprocessMutation.isPending}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      reprocessMutation.mutate(event.id)
+                                    }}
+                                  >
+                                    <RefreshCw className={`h-3.5 w-3.5 ${reprocessMutation.isPending && reprocessMutation.variables === event.id ? 'animate-spin' : ''}`} />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Reprocess event</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </td>
                         </tr>
                         {isExpanded && (
                           <tr className="border-b">
-                            <td colSpan={5} className="bg-muted/50 p-4">
+                            <td colSpan={6} className="bg-muted/50 p-4">
                               {Object.keys(event.properties).length > 0 ? (
                                 <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 max-w-lg">
                                   {Object.entries(event.properties).map(([key, value]) => (

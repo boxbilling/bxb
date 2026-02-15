@@ -2051,3 +2051,144 @@ class TestEventVolumeAPI:
         body = response.json()
         assert len(body["data_points"]) == 1
         assert body["data_points"][0]["count"] == 1
+
+
+class TestReprocessEventAPI:
+    """Tests for POST /v1/events/{event_id}/reprocess endpoint."""
+
+    def test_reprocess_event_with_active_subscription(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test reprocessing an event triggers threshold and alert checks."""
+        customer = _create_customer(db_session, "cust-reprocess")
+        plan = _create_plan(db_session, "plan-reprocess")
+        sub = _create_active_subscription(db_session, customer, plan, "sub-reprocess")
+
+        # Create an event
+        create_response = client.post(
+            "/v1/events/",
+            json={
+                "transaction_id": "tx-reprocess-001",
+                "external_customer_id": "cust-reprocess",
+                "code": "api_calls",
+                "timestamp": "2026-01-15T10:30:00Z",
+            },
+        )
+        assert create_response.status_code == 201
+        event_id = create_response.json()["id"]
+
+        with (
+            patch(
+                "app.routers.events.enqueue_check_usage_thresholds",
+                new_callable=AsyncMock,
+            ) as mock_threshold,
+            patch(
+                "app.routers.events.enqueue_check_usage_alerts",
+                new_callable=AsyncMock,
+            ) as mock_alert,
+        ):
+            response = client.post(f"/v1/events/{event_id}/reprocess")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["event_id"] == event_id
+        assert data["status"] == "reprocessing"
+        assert data["subscriptions_checked"] == 1
+        mock_threshold.assert_called_once_with(str(sub.id))
+        mock_alert.assert_called_once_with(str(sub.id))
+
+    def test_reprocess_event_no_active_subscriptions(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test reprocessing an event when customer has no active subscriptions."""
+        # Create event for a customer with no subscriptions
+        create_response = client.post(
+            "/v1/events/",
+            json={
+                "transaction_id": "tx-reprocess-nosub",
+                "external_customer_id": "cust-no-subs",
+                "code": "api_calls",
+                "timestamp": "2026-01-15T10:30:00Z",
+            },
+        )
+        assert create_response.status_code == 201
+        event_id = create_response.json()["id"]
+
+        with (
+            patch(
+                "app.routers.events.enqueue_check_usage_thresholds",
+                new_callable=AsyncMock,
+            ) as mock_threshold,
+            patch(
+                "app.routers.events.enqueue_check_usage_alerts",
+                new_callable=AsyncMock,
+            ) as mock_alert,
+        ):
+            response = client.post(f"/v1/events/{event_id}/reprocess")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["event_id"] == event_id
+        assert data["status"] == "no_active_subscriptions"
+        assert data["subscriptions_checked"] == 0
+        mock_threshold.assert_not_called()
+        mock_alert.assert_not_called()
+
+    def test_reprocess_event_not_found(self, client: TestClient, billable_metric):
+        """Test reprocessing a non-existent event returns 404."""
+        fake_id = str(uuid.uuid4())
+        response = client.post(f"/v1/events/{fake_id}/reprocess")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Event not found"
+
+    def test_reprocess_event_invalid_uuid(self, client: TestClient, billable_metric):
+        """Test reprocessing with invalid UUID returns 422."""
+        response = client.post("/v1/events/not-a-uuid/reprocess")
+        assert response.status_code == 422
+
+    def test_reprocess_event_multiple_subscriptions(
+        self, client: TestClient, db_session, billable_metric
+    ):
+        """Test reprocessing triggers checks for all active subscriptions."""
+        customer = _create_customer(db_session, "cust-reprocess-multi")
+        plan1 = _create_plan(db_session, "plan-reprocess-1")
+        plan2 = _create_plan(db_session, "plan-reprocess-2")
+        sub1 = _create_active_subscription(
+            db_session, customer, plan1, "sub-reprocess-1"
+        )
+        sub2 = _create_active_subscription(
+            db_session, customer, plan2, "sub-reprocess-2"
+        )
+
+        create_response = client.post(
+            "/v1/events/",
+            json={
+                "transaction_id": "tx-reprocess-multi",
+                "external_customer_id": "cust-reprocess-multi",
+                "code": "api_calls",
+                "timestamp": "2026-01-15T10:30:00Z",
+            },
+        )
+        assert create_response.status_code == 201
+        event_id = create_response.json()["id"]
+
+        with (
+            patch(
+                "app.routers.events.enqueue_check_usage_thresholds",
+                new_callable=AsyncMock,
+            ) as mock_threshold,
+            patch(
+                "app.routers.events.enqueue_check_usage_alerts",
+                new_callable=AsyncMock,
+            ) as mock_alert,
+        ):
+            response = client.post(f"/v1/events/{event_id}/reprocess")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "reprocessing"
+        assert data["subscriptions_checked"] == 2
+        assert mock_threshold.call_count == 2
+        assert mock_alert.call_count == 2
+        enqueued_ids = {call.args[0] for call in mock_threshold.call_args_list}
+        assert enqueued_ids == {str(sub1.id), str(sub2.id)}
