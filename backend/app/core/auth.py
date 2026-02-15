@@ -1,12 +1,14 @@
 from datetime import UTC, datetime
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request
+import jwt
+from fastapi import Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.customer import DEFAULT_ORGANIZATION_ID
 from app.repositories.api_key_repository import ApiKeyRepository, hash_api_key
+from app.services.portal_service import PortalService
 
 
 def get_current_organization(
@@ -57,3 +59,13 @@ def get_current_organization(
     repo.update_last_used(api_key, datetime.now(UTC))
 
     return api_key.organization_id  # type: ignore[return-value]
+
+
+def get_portal_customer(token: str = Query(...)) -> tuple[UUID, UUID]:
+    """Validate a portal JWT token and return (customer_id, organization_id)."""
+    try:
+        return PortalService.verify_portal_token(token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Portal token has expired") from None
+    except (jwt.InvalidTokenError, KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid portal token") from None

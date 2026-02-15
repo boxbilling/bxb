@@ -17,7 +17,9 @@ from app.repositories.customer_repository import CustomerRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.coupon import AppliedCouponResponse
 from app.schemas.customer import CustomerCreate, CustomerResponse, CustomerUpdate
+from app.schemas.portal import PortalUrlResponse
 from app.schemas.usage import CurrentUsageResponse
+from app.services.portal_service import PortalService
 from app.services.subscription_dates import SubscriptionDatesService
 from app.services.usage_query_service import UsageQueryService
 
@@ -177,6 +179,26 @@ async def get_past_usage(
         period_end = period_start
 
     return results
+
+
+@router.get(
+    "/{external_id}/portal_url",
+    response_model=PortalUrlResponse,
+    summary="Generate customer portal URL",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
+async def generate_portal_url(
+    external_id: str,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> PortalUrlResponse:
+    """Generate a portal URL for a customer to access their self-service portal."""
+    customer = _get_customer_by_external_id(external_id, db, organization_id)
+    service = PortalService(db)
+    return service.generate_portal_url(UUID(str(customer.id)), organization_id)
 
 
 @router.get(

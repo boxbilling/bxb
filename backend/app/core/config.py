@@ -52,6 +52,9 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
 
+    # Portal
+    PORTAL_JWT_SECRET: str = "portal-secret-change-me"
+
     # Rate limiting
     RATE_LIMIT_EVENTS_PER_MINUTE: int = 1000
 

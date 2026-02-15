@@ -16,6 +16,7 @@ dependencies = [
     "clickhouse-connect>=0.8.0",
     "weasyprint>=62.0",
     "aiosmtplib>=3.0",
+    "pyjwt>=2.8.0",
 ]
 
 [build-system]
