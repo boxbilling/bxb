@@ -231,7 +231,7 @@ function getPresetTimestamps(preset: DatePreset): { from?: string; to?: string }
 }
 
 const ROW_HEIGHT = 41
-const EXPANDED_ROW_HEIGHT = 120
+const EXPANDED_ROW_HEIGHT = 160
 
 export default function EventsPage() {
   const [customerFilter, setCustomerFilter] = useState('')
@@ -593,11 +593,21 @@ export default function EventsPage() {
                           </td>
                           <td className="p-4 align-middle">
                             {Object.keys(event.properties).length > 0 ? (
-                              <code className="text-xs text-muted-foreground">
-                                {JSON.stringify(event.properties).length > 50
-                                  ? JSON.stringify(event.properties).slice(0, 50) + '...'
-                                  : JSON.stringify(event.properties)}
-                              </code>
+                              <div className="flex flex-wrap gap-1 max-w-[300px]">
+                                {Object.entries(event.properties).slice(0, 3).map(([key, value]) => (
+                                  <Badge key={key} variant="outline" className="text-xs font-normal gap-0.5 py-0">
+                                    <span className="font-medium">{key}:</span>{' '}
+                                    <span className="text-muted-foreground truncate max-w-[80px]">
+                                      {String(value)}
+                                    </span>
+                                  </Badge>
+                                ))}
+                                {Object.keys(event.properties).length > 3 && (
+                                  <Badge variant="secondary" className="text-xs font-normal py-0">
+                                    +{Object.keys(event.properties).length - 3}
+                                  </Badge>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}
@@ -606,9 +616,22 @@ export default function EventsPage() {
                         {isExpanded && (
                           <tr className="border-b">
                             <td colSpan={5} className="bg-muted/50 p-4">
-                              <pre className="whitespace-pre-wrap break-all text-xs font-mono">
-                                {JSON.stringify(event.properties, null, 2)}
-                              </pre>
+                              {Object.keys(event.properties).length > 0 ? (
+                                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 max-w-lg">
+                                  {Object.entries(event.properties).map(([key, value]) => (
+                                    <div key={key} className="contents">
+                                      <span className="text-xs font-medium text-muted-foreground">{key}</span>
+                                      <span className="text-xs font-mono break-all">
+                                        {typeof value === 'object' && value !== null
+                                          ? JSON.stringify(value)
+                                          : String(value)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No properties</span>
+                              )}
                             </td>
                           </tr>
                         )}
