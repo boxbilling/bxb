@@ -15,6 +15,8 @@ type BillableMetricFilterResponse = components['schemas']['BillableMetricFilterR
 type PlanResponse = components['schemas']['PlanResponse']
 type PlanCreate = components['schemas']['PlanCreate']
 type PlanUpdate = components['schemas']['PlanUpdate']
+type PlanSimulateRequest = components['schemas']['PlanSimulateRequest']
+type PlanSimulateResponse = components['schemas']['PlanSimulateResponse']
 
 type SubscriptionResponse = components['schemas']['SubscriptionResponse']
 type SubscriptionCreate = components['schemas']['SubscriptionCreate']
@@ -396,6 +398,11 @@ export const plansApi = {
     request<void>(`/v1/plans/${id}`, { method: 'DELETE' }),
   subscriptionCounts: () =>
     request<Record<string, number>>('/v1/plans/subscription_counts'),
+  simulate: (id: string, data: PlanSimulateRequest) =>
+    request<PlanSimulateResponse>(`/v1/plans/${id}/simulate`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Subscriptions API

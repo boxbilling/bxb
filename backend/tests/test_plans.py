@@ -1110,3 +1110,432 @@ class TestPlanSubscriptionCountsAPI:
         assert response.status_code == 200
         data = response.json()
         assert data[str(plan.id)] == 1
+
+
+class TestPlanSimulateAPI:
+    def test_simulate_no_charges(self, client: TestClient):
+        """Test simulate with a plan that has no charges."""
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_no_charges",
+                "name": "Sim No Charges",
+                "interval": "monthly",
+                "amount_cents": 5000,
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 100},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["plan_id"] == plan_id
+        assert data["base_amount_cents"] == 5000
+        assert data["charges"] == []
+        assert data["total_amount_cents"] == 5000
+        assert data["currency"] == "USD"
+
+    def test_simulate_standard_charge(self, client: TestClient):
+        """Test simulate with a standard charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_std_metric", "name": "Sim Std", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_standard",
+                "name": "Sim Standard",
+                "interval": "monthly",
+                "amount_cents": 2000,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "standard",
+                        "properties": {"amount": "0.50"},
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 100},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["base_amount_cents"] == 2000
+        assert len(data["charges"]) == 1
+        assert data["charges"][0]["charge_model"] == "standard"
+        assert data["charges"][0]["units"] == 100
+        # 100 units * $0.50 = $50.00 = 5000 cents
+        assert data["charges"][0]["amount_cents"] == 5000
+        assert data["total_amount_cents"] == 2000 + 5000
+
+    def test_simulate_graduated_charge(self, client: TestClient):
+        """Test simulate with a graduated charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_grad_metric", "name": "Sim Grad", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_graduated",
+                "name": "Sim Graduated",
+                "interval": "monthly",
+                "amount_cents": 1000,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "graduated",
+                        "properties": {
+                            "graduated_ranges": [
+                                {"from_value": 0, "to_value": 10, "per_unit_amount": "1.00", "flat_amount": "0"},
+                                {"from_value": 10, "to_value": None, "per_unit_amount": "0.50", "flat_amount": "0"},
+                            ]
+                        },
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 20},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # First 11 units at $1.00 = $11.00, next 9 at $0.50 = $4.50 => $15.50 = 1550 cents
+        assert data["charges"][0]["amount_cents"] == 1550
+        assert data["total_amount_cents"] == 1000 + 1550
+
+    def test_simulate_volume_charge(self, client: TestClient):
+        """Test simulate with a volume charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_vol_metric", "name": "Sim Vol", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_volume",
+                "name": "Sim Volume",
+                "interval": "monthly",
+                "amount_cents": 0,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "volume",
+                        "properties": {
+                            "volume_ranges": [
+                                {"from_value": 0, "to_value": 100, "per_unit_amount": "1.00", "flat_amount": "0"},
+                                {"from_value": 100, "to_value": None, "per_unit_amount": "0.50", "flat_amount": "0"},
+                            ]
+                        },
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 50},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # 50 units at $1.00 = $50.00 = 5000 cents
+        assert data["charges"][0]["amount_cents"] == 5000
+
+    def test_simulate_package_charge(self, client: TestClient):
+        """Test simulate with a package charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_pkg_metric", "name": "Sim Pkg", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_package",
+                "name": "Sim Package",
+                "interval": "monthly",
+                "amount_cents": 0,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "package",
+                        "properties": {"amount": "10", "package_size": "25", "free_units": "0"},
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 60},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # ceil(60 / 25) = 3 packages * $10 = $30 = 3000 cents
+        assert data["charges"][0]["amount_cents"] == 3000
+
+    def test_simulate_percentage_charge(self, client: TestClient):
+        """Test simulate with a percentage charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_pct_metric", "name": "Sim Pct", "aggregation_type": "sum", "field_name": "amount"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_percentage",
+                "name": "Sim Percentage",
+                "interval": "monthly",
+                "amount_cents": 0,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "percentage",
+                        "properties": {"rate": "2.5"},
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 1000},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # 2.5% of 1000 = 25 => 2500 cents
+        assert data["charges"][0]["amount_cents"] == 2500
+
+    def test_simulate_plan_not_found(self, client: TestClient):
+        """Test simulate with a non-existent plan."""
+        fake_id = str(uuid.uuid4())
+        response = client.post(
+            f"/v1/plans/{fake_id}/simulate",
+            json={"units": 100},
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
+    def test_simulate_zero_units(self, client: TestClient):
+        """Test simulate with zero units."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_zero_metric", "name": "Sim Zero", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_zero",
+                "name": "Sim Zero",
+                "interval": "monthly",
+                "amount_cents": 3000,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "standard",
+                        "properties": {"amount": "1.00"},
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 0},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["charges"][0]["amount_cents"] == 0
+        assert data["total_amount_cents"] == 3000
+
+    def test_simulate_multiple_charges(self, client: TestClient):
+        """Test simulate with multiple charges on one plan."""
+        metric1 = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_multi1", "name": "Sim Multi 1", "aggregation_type": "count"},
+        ).json()
+        metric2 = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_multi2", "name": "Sim Multi 2", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_multi",
+                "name": "Sim Multi",
+                "interval": "monthly",
+                "amount_cents": 1000,
+                "charges": [
+                    {
+                        "billable_metric_id": metric1["id"],
+                        "charge_model": "standard",
+                        "properties": {"amount": "0.10"},
+                    },
+                    {
+                        "billable_metric_id": metric2["id"],
+                        "charge_model": "standard",
+                        "properties": {"amount": "0.20"},
+                    },
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 100},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["charges"]) == 2
+        # 100 * $0.10 = $10 = 1000 cents
+        assert data["charges"][0]["amount_cents"] == 1000
+        # 100 * $0.20 = $20 = 2000 cents
+        assert data["charges"][1]["amount_cents"] == 2000
+        assert data["total_amount_cents"] == 1000 + 1000 + 2000
+
+    def test_simulate_graduated_percentage_charge(self, client: TestClient):
+        """Test simulate with a graduated percentage charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_gp_metric", "name": "Sim GP", "aggregation_type": "sum", "field_name": "amount"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_grad_pct",
+                "name": "Sim Graduated Percentage",
+                "interval": "monthly",
+                "amount_cents": 0,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "graduated_percentage",
+                        "properties": {
+                            "graduated_percentage_ranges": [
+                                {"from_value": 0, "to_value": 100, "rate": "5", "flat_amount": "0"},
+                                {"from_value": 100, "to_value": None, "rate": "2", "flat_amount": "0"},
+                            ]
+                        },
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 200},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # First 100 at 5% = $5, next 100 at 2% = $2 => $7 = 700 cents
+        assert data["charges"][0]["amount_cents"] == 700
+
+    def test_simulate_custom_charge(self, client: TestClient):
+        """Test simulate with a custom charge."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_custom_metric", "name": "Sim Custom", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_custom",
+                "name": "Sim Custom",
+                "interval": "monthly",
+                "amount_cents": 0,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "custom",
+                        "properties": {"custom_amount": "25.00"},
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 999},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Custom amount is always $25.00 = 2500 cents
+        assert data["charges"][0]["amount_cents"] == 2500
+
+    def test_simulate_dynamic_charge(self, client: TestClient):
+        """Test simulate with a dynamic charge returns zero (not event-based)."""
+        metric = client.post(
+            "/v1/billable_metrics/",
+            json={"code": "sim_dyn_metric", "name": "Sim Dyn", "aggregation_type": "count"},
+        ).json()
+
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_dynamic",
+                "name": "Sim Dynamic",
+                "interval": "monthly",
+                "amount_cents": 0,
+                "charges": [
+                    {
+                        "billable_metric_id": metric["id"],
+                        "charge_model": "dynamic",
+                        "properties": {},
+                    }
+                ],
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": 100},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Dynamic charges are event-based, simulation returns 0
+        assert data["charges"][0]["amount_cents"] == 0
+
+    def test_simulate_negative_units_rejected(self, client: TestClient):
+        """Test simulate rejects negative units."""
+        create_response = client.post(
+            "/v1/plans/",
+            json={
+                "code": "sim_neg",
+                "name": "Sim Neg",
+                "interval": "monthly",
+            },
+        )
+        plan_id = create_response.json()["id"]
+
+        response = client.post(
+            f"/v1/plans/{plan_id}/simulate",
+            json={"units": -10},
+        )
+        assert response.status_code == 422

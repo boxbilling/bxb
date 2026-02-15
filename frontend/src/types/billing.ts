@@ -26,6 +26,8 @@ export type Charge = components['schemas']['ChargeOutput']
 export type ChargeInput = components['schemas']['ChargeInput']
 export type ChargeModel = components['schemas']['ChargeModel']
 export type ChargeFilterInput = components['schemas']['ChargeFilterInput']
+export type ChargeSimulationResult = components['schemas']['ChargeSimulationResult']
+export type PlanSimulateResponse = components['schemas']['PlanSimulateResponse']
 
 // --- Subscriptions ---
 export type Subscription = components['schemas']['SubscriptionResponse']

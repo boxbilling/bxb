@@ -58,6 +58,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
+import { ChargeModelVisualizer } from '@/components/ChargeModelVisualizer'
+import { PricingCalculator } from '@/components/PricingCalculator'
 import {
   plansApi,
   billableMetricsApi,
@@ -611,58 +613,80 @@ export default function PlanDetailPage() {
                       No usage charges configured for this plan.
                     </p>
                   ) : (
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Metric</TableHead>
-                            <TableHead>Code</TableHead>
-                            <TableHead>Charge Model</TableHead>
-                            <TableHead>Properties</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {plan.charges.map((charge) => {
-                            const metric = metricMap.get(
-                              charge.billable_metric_id
-                            )
-                            return (
-                              <TableRow key={charge.id}>
-                                <TableCell className="font-medium">
-                                  {metric?.name ?? 'Unknown'}
-                                </TableCell>
-                                <TableCell>
-                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                    {metric?.code ??
-                                      charge.billable_metric_id.slice(0, 8)}
-                                  </code>
-                                </TableCell>
-                                <TableCell>
-                                  <ChargeModelBadge
-                                    model={charge.charge_model}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  {charge.properties &&
-                                  Object.keys(charge.properties).length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="rounded-md border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Metric</TableHead>
+                              <TableHead>Code</TableHead>
+                              <TableHead>Charge Model</TableHead>
+                              <TableHead>Properties</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {plan.charges.map((charge) => {
+                              const metric = metricMap.get(
+                                charge.billable_metric_id
+                              )
+                              return (
+                                <TableRow key={charge.id}>
+                                  <TableCell className="font-medium">
+                                    {metric?.name ?? 'Unknown'}
+                                  </TableCell>
+                                  <TableCell>
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                      {JSON.stringify(charge.properties)}
+                                      {metric?.code ??
+                                        charge.billable_metric_id.slice(0, 8)}
                                     </code>
-                                  ) : (
-                                    <span className="text-muted-foreground">
-                                      —
-                                    </span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
+                                  </TableCell>
+                                  <TableCell>
+                                    <ChargeModelBadge
+                                      model={charge.charge_model}
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    {charge.properties &&
+                                    Object.keys(charge.properties).length >
+                                      0 ? (
+                                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                        {JSON.stringify(charge.properties)}
+                                      </code>
+                                    ) : (
+                                      <span className="text-muted-foreground">
+                                        —
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+
+                      {/* Charge Model Visualizers */}
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {plan.charges.map((charge) => (
+                          <ChargeModelVisualizer
+                            key={charge.id}
+                            charge={charge}
+                          />
+                        ))}
+                      </div>
                     </div>
                   )}
                 </CardContent>
               </Card>
+
+              {/* Pricing Calculator */}
+              {plan.charges && plan.charges.length > 0 && (
+                <PricingCalculator
+                  planId={plan.id}
+                  currency={plan.currency}
+                  metricMap={metricMap}
+                />
+              )}
             </TabsContent>
 
             {/* Commitments Tab */}

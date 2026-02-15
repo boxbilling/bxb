@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Get recent activity feed
-         * @description Get recent billing activity.
+         * @description Get recent billing activity, optionally filtered by type.
          */
         get: operations["get_recent_activity_dashboard_activity_get"];
         put?: never;
@@ -124,6 +124,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/revenue_by_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get revenue breakdown by plan
+         * @description Get revenue breakdown by plan for donut chart visualization.
+         */
+        get: operations["get_revenue_by_plan_dashboard_revenue_by_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/dashboard/recent_invoices": {
         parameters: {
             query?: never;
@@ -156,6 +176,26 @@ export interface paths {
          * @description Get the 5 most recent subscriptions with customer and plan names.
          */
         get: operations["get_recent_subscriptions_dashboard_recent_subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/dashboard/sparklines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get sparkline data for stat cards
+         * @description Get daily data points for sparkline charts in stat cards.
+         */
+        get: operations["get_sparklines_dashboard_sparklines_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -340,6 +380,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{customer_id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get customer health indicator
+         * @description Get customer health indicator based on payment history.
+         */
+        get: operations["get_customer_health_v1_customers__customer_id__health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{customer_id}": {
         parameters: {
             query?: never;
@@ -406,6 +466,46 @@ export interface paths {
          * @description Create a new billable metric.
          */
         post: operations["create_billable_metric_v1_billable_metrics__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billable_metrics/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get billable metrics statistics
+         * @description Get aggregate statistics for billable metrics.
+         */
+        get: operations["get_billable_metrics_stats_v1_billable_metrics_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/billable_metrics/plan_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get plan counts per billable metric
+         * @description Get the number of distinct plans using each billable metric.
+         */
+        get: operations["get_billable_metric_plan_counts_v1_billable_metrics_plan_counts_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -508,6 +608,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/plans/subscription_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get subscription counts per plan
+         * @description Return a mapping of plan_id to subscription count.
+         */
+        get: operations["get_subscription_counts_v1_plans_subscription_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/plans/{plan_id}": {
         parameters: {
             query?: never;
@@ -531,6 +651,26 @@ export interface paths {
          * @description Delete a plan.
          */
         delete: operations["delete_plan_v1_plans__plan_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/plans/{plan_id}/simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Simulate plan pricing
+         * @description Simulate pricing for a plan given a number of usage units.
+         */
+        post: operations["simulate_plan_pricing_v1_plans__plan_id__simulate_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2285,6 +2425,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/billing_entities/customer_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get customer counts per billing entity
+         * @description Return a mapping of billing entity ID to associated customer count.
+         */
+        get: operations["get_customer_counts_v1_billing_entities_customer_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/billing_entities/{code}": {
         parameters: {
             query?: never;
@@ -3033,6 +3193,15 @@ export interface components {
              */
             updated_at: string;
         };
+        /** BillableMetricStats */
+        BillableMetricStats: {
+            /** Total */
+            total: number;
+            /** By Aggregation Type */
+            by_aggregation_type: {
+                [key: string]: number;
+            };
+        };
         /** BillableMetricUpdate */
         BillableMetricUpdate: {
             /** Name */
@@ -3280,6 +3449,31 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * ChargeSimulationResult
+         * @description Result of simulating a single charge.
+         */
+        ChargeSimulationResult: {
+            /**
+             * Charge Id
+             * Format: uuid
+             */
+            charge_id: string;
+            /**
+             * Billable Metric Id
+             * Format: uuid
+             */
+            billable_metric_id: string;
+            charge_model: components["schemas"]["ChargeModel"];
+            /** Units */
+            units: number;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Properties */
+            properties: {
+                [key: string]: unknown;
+            };
         };
         /** ChargeUsage */
         ChargeUsage: {
@@ -3672,6 +3866,27 @@ export interface components {
              */
             net_payment_term: number;
         };
+        /** CustomerHealthResponse */
+        CustomerHealthResponse: {
+            status: components["schemas"]["CustomerHealthStatus"];
+            /** Total Invoices */
+            total_invoices: number;
+            /** Paid Invoices */
+            paid_invoices: number;
+            /** Overdue Invoices */
+            overdue_invoices: number;
+            /** Total Payments */
+            total_payments: number;
+            /** Failed Payments */
+            failed_payments: number;
+            /** Overdue Amount */
+            overdue_amount: number;
+        };
+        /**
+         * CustomerHealthStatus
+         * @enum {string}
+         */
+        CustomerHealthStatus: "good" | "warning" | "critical";
         /** CustomerMetricsResponse */
         CustomerMetricsResponse: {
             /** Total */
@@ -4968,6 +5183,43 @@ export interface components {
              */
             updated_at: string;
         };
+        /** PlanRevenueBreakdown */
+        PlanRevenueBreakdown: {
+            /** Plan Name */
+            plan_name: string;
+            /** Revenue */
+            revenue: number;
+        };
+        /**
+         * PlanSimulateRequest
+         * @description Request body for pricing simulation.
+         */
+        PlanSimulateRequest: {
+            /**
+             * Units
+             * @description Number of usage units to simulate
+             */
+            units: number;
+        };
+        /**
+         * PlanSimulateResponse
+         * @description Response for pricing simulation.
+         */
+        PlanSimulateResponse: {
+            /**
+             * Plan Id
+             * Format: uuid
+             */
+            plan_id: string;
+            /** Base Amount Cents */
+            base_amount_cents: number;
+            /** Currency */
+            currency: string;
+            /** Charges */
+            charges: components["schemas"]["ChargeSimulationResult"][];
+            /** Total Amount Cents */
+            total_amount_cents: number;
+        };
         /** PlanUpdate */
         PlanUpdate: {
             /** Name */
@@ -5036,6 +5288,13 @@ export interface components {
          * @enum {string}
          */
         RefundStatus: "pending" | "succeeded" | "failed";
+        /** RevenueByPlanResponse */
+        RevenueByPlanResponse: {
+            /** By Plan */
+            by_plan: components["schemas"]["PlanRevenueBreakdown"][];
+            /** Currency */
+            currency: string;
+        };
         /** RevenueDataPoint */
         RevenueDataPoint: {
             /** Month */
@@ -5092,6 +5351,22 @@ export interface components {
             provider: string;
             /** Expires At */
             expires_at?: string | null;
+        };
+        /** SparklineData */
+        SparklineData: {
+            /** Mrr */
+            mrr: components["schemas"]["SparklinePoint"][];
+            /** New Customers */
+            new_customers: components["schemas"]["SparklinePoint"][];
+            /** New Subscriptions */
+            new_subscriptions: components["schemas"]["SparklinePoint"][];
+        };
+        /** SparklinePoint */
+        SparklinePoint: {
+            /** Date */
+            date: string;
+            /** Value */
+            value: number;
         };
         /** SubscriptionCreate */
         SubscriptionCreate: {
@@ -5762,7 +6037,10 @@ export interface operations {
     };
     get_recent_activity_dashboard_activity_get: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter by activity type */
+                type?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -5784,6 +6062,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -5951,6 +6238,47 @@ export interface operations {
             };
         };
     };
+    get_revenue_by_plan_dashboard_revenue_by_plan_get: {
+        parameters: {
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueByPlanResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_recent_invoices_dashboard_recent_invoices_get: {
         parameters: {
             query?: never;
@@ -6002,6 +6330,47 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_sparklines_dashboard_sparklines_get: {
+        parameters: {
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SparklineData"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -6477,6 +6846,51 @@ export interface operations {
             };
         };
     };
+    get_customer_health_v1_customers__customer_id__health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerHealthResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_customer_v1_customers__customer_id__get: {
         parameters: {
             query?: never;
@@ -6737,6 +7151,62 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_billable_metrics_stats_v1_billable_metrics_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BillableMetricStats"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_billable_metric_plan_counts_v1_billable_metrics_plan_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -7106,6 +7576,35 @@ export interface operations {
             };
         };
     };
+    get_subscription_counts_v1_plans_subscription_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_plan_v1_plans__plan_id__get: {
         parameters: {
             query?: never;
@@ -7222,6 +7721,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    simulate_plan_pricing_v1_plans__plan_id__simulate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanSimulateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanSimulateResponse"];
+                };
             };
             /** @description Unauthorized – invalid or missing API key */
             401: {
@@ -12728,6 +13276,35 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_customer_counts_v1_billing_entities_customer_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

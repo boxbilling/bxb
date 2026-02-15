@@ -74,3 +74,30 @@ class PlanResponse(BaseModel):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PlanSimulateRequest(BaseModel):
+    """Request body for pricing simulation."""
+
+    units: float = Field(..., ge=0, description="Number of usage units to simulate")
+
+
+class ChargeSimulationResult(BaseModel):
+    """Result of simulating a single charge."""
+
+    charge_id: UUID
+    billable_metric_id: UUID
+    charge_model: ChargeModel
+    units: float
+    amount_cents: int
+    properties: dict[str, Any]
+
+
+class PlanSimulateResponse(BaseModel):
+    """Response for pricing simulation."""
+
+    plan_id: UUID
+    base_amount_cents: int
+    currency: str
+    charges: list[ChargeSimulationResult]
+    total_amount_cents: int
