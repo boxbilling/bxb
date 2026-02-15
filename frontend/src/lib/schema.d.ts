@@ -943,6 +943,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/events/volume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get event volume (events per hour)
+         * @description Get hourly event volume data for charting.
+         */
+        get: operations["get_event_volume_v1_events_volume_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/events/{event_id}": {
         parameters: {
             query?: never;
@@ -4504,6 +4524,18 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** EventVolumePoint */
+        EventVolumePoint: {
+            /** Timestamp */
+            timestamp: string;
+            /** Count */
+            count: number;
+        };
+        /** EventVolumeResponse */
+        EventVolumeResponse: {
+            /** Data Points */
+            data_points: components["schemas"]["EventVolumePoint"][];
         };
         /**
          * ExportType
@@ -8898,6 +8930,45 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    get_event_volume_v1_events_volume_get: {
+        parameters: {
+            query?: {
+                from_timestamp?: string | null;
+                to_timestamp?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventVolumeResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

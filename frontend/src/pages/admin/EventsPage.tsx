@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query'
-import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon } from 'lucide-react'
+import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon, BarChart2 } from 'lucide-react'
 import { format, subDays, subMonths, startOfDay, endOfDay } from 'date-fns'
 import { toast } from 'sonner'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from 'recharts'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -313,6 +314,16 @@ export default function EventsPage() {
 
   const totalCount = data?.pages[0]?.totalCount ?? 0
 
+  const { data: volumeData } = useQuery({
+    queryKey: ['event-volume', dateParams],
+    queryFn: () =>
+      eventsApi.getVolume({
+        from_timestamp: dateParams.from_timestamp,
+        to_timestamp: dateParams.to_timestamp,
+      }),
+    refetchInterval: isPolling ? POLLING_INTERVAL : false,
+  })
+
   const rowVirtualizer = useVirtualizer({
     count: allEvents.length,
     getScrollElement: () => scrollContainerRef.current,
@@ -500,6 +511,68 @@ export default function EventsPage() {
           </p>
         )}
       </div>
+
+      {/* Event Volume Chart */}
+      {volumeData && volumeData.data_points.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-muted-foreground" />
+              Event Volume (events/hour)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[120px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={volumeData.data_points}>
+                  <defs>
+                    <linearGradient id="volumeFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="timestamp"
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    tickFormatter={(v: string) => {
+                      const parts = v.split(' ')
+                      return parts.length > 1 ? parts[1] : v
+                    }}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    className="text-muted-foreground"
+                    allowDecimals={false}
+                    width={40}
+                  />
+                  <RechartsTooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                    }}
+                    formatter={(value: number) => [value.toLocaleString(), 'Events']}
+                    labelFormatter={(label: string) => label}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={1.5}
+                    fill="url(#volumeFill)"
+                    dot={false}
+                    isAnimationActive={false}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Virtualized Table */}
       <div className="rounded-md border">

@@ -26,6 +26,8 @@ from app.schemas.event import (
     EventBatchResponse,
     EventCreate,
     EventResponse,
+    EventVolumePoint,
+    EventVolumeResponse,
 )
 from app.schemas.invoice_preview import EstimateFeesRequest, EstimateFeesResponse
 from app.services.charge_models.factory import get_charge_calculator
@@ -318,6 +320,33 @@ async def list_events(
         code=code,
         from_timestamp=from_timestamp,
         to_timestamp=to_timestamp,
+    )
+
+
+@router.get(
+    "/volume",
+    response_model=EventVolumeResponse,
+    summary="Get event volume (events per hour)",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_event_volume(
+    from_timestamp: datetime | None = None,
+    to_timestamp: datetime | None = None,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> EventVolumeResponse:
+    """Get hourly event volume data for charting."""
+    repo = EventRepository(db)
+    data_points = repo.hourly_volume(
+        organization_id,
+        from_timestamp=from_timestamp,
+        to_timestamp=to_timestamp,
+    )
+    return EventVolumeResponse(
+        data_points=[
+            EventVolumePoint(timestamp=ts, count=cnt)
+            for ts, cnt in data_points
+        ]
     )
 
 

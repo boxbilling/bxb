@@ -46,3 +46,12 @@ class EventBatchResponse(BaseModel):
     ingested: int
     duplicates: int
     events: list[EventResponse]
+
+
+class EventVolumePoint(BaseModel):
+    timestamp: str
+    count: int
+
+
+class EventVolumeResponse(BaseModel):
+    data_points: list[EventVolumePoint]

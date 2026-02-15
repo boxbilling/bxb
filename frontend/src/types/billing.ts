@@ -151,6 +151,8 @@ export type Event = components['schemas']['EventResponse']
 export type EventCreate = components['schemas']['EventCreate']
 export type EventBatchCreate = components['schemas']['EventBatchCreate']
 export type EventBatchResponse = components['schemas']['EventBatchResponse']
+export type EventVolumePoint = components['schemas']['EventVolumePoint']
+export type EventVolumeResponse = components['schemas']['EventVolumeResponse']
 
 // --- Payment Methods ---
 export type PaymentMethod = components['schemas']['PaymentMethodResponse']

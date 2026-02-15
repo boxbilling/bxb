@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy import func
@@ -147,6 +147,45 @@ class EventRepository:
             self._clickhouse_insert_batch(new_event_data, organization_id)
 
         return events, ingested, duplicates
+
+    def hourly_volume(
+        self,
+        organization_id: UUID,
+        from_timestamp: datetime | None = None,
+        to_timestamp: datetime | None = None,
+    ) -> list[tuple[str, int]]:
+        """Return hourly event counts for the given time range.
+
+        Defaults to the last 24 hours if no range is specified.
+        Returns a list of (hour_string, count) tuples ordered chronologically.
+        """
+        now = datetime.now()
+        if to_timestamp is None:
+            to_timestamp = now
+        if from_timestamp is None:
+            from_timestamp = now - timedelta(hours=24)
+
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            hour_expr = func.to_char(Event.timestamp, "YYYY-MM-DD HH24:00")
+        else:
+            hour_expr = func.strftime("%Y-%m-%d %H:00", Event.timestamp)
+
+        rows = (
+            self.db.query(
+                hour_expr.label("hour"),
+                func.count(Event.id).label("cnt"),
+            )
+            .filter(
+                Event.organization_id == organization_id,
+                Event.timestamp >= from_timestamp,
+                Event.timestamp <= to_timestamp,
+            )
+            .group_by(hour_expr)
+            .order_by(hour_expr)
+            .all()
+        )
+        return [(r.hour, int(r.cnt)) for r in rows]
 
     def delete(self, event_id: UUID, organization_id: UUID) -> bool:
         event = self.get_by_id(event_id, organization_id)
