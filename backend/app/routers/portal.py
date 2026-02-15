@@ -10,17 +10,20 @@ from app.core.database import get_db
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment
+from app.models.payment_method import PaymentMethod
 from app.models.wallet import Wallet
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.organization_repository import OrganizationRepository
+from app.repositories.payment_method_repository import PaymentMethodRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas.customer import CustomerResponse, PortalProfileUpdate
 from app.schemas.invoice import InvoiceResponse
 from app.schemas.organization import PortalBrandingResponse
 from app.schemas.payment import PaymentResponse
+from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse
 from app.schemas.usage import CurrentUsageResponse
 from app.schemas.wallet import WalletResponse
 from app.services.pdf_service import PdfService
@@ -281,3 +284,100 @@ async def get_portal_wallet(
         organization_id=organization_id,
         customer_id=customer_id,
     )
+
+
+@router.get(
+    "/payment_methods",
+    response_model=list[PaymentMethodResponse],
+    summary="List customer payment methods",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def list_portal_payment_methods(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[PaymentMethod]:
+    """List payment methods for the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    repo = PaymentMethodRepository(db)
+    return repo.get_by_customer_id(customer_id, organization_id)
+
+
+@router.post(
+    "/payment_methods",
+    response_model=PaymentMethodResponse,
+    status_code=201,
+    summary="Add a payment method",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        422: {"description": "Validation error"},
+    },
+)
+async def add_portal_payment_method(
+    data: PaymentMethodCreate,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PaymentMethod:
+    """Add a new payment method for the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    if data.customer_id != customer_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot add payment method for another customer",
+        )
+    repo = PaymentMethodRepository(db)
+    return repo.create(data, organization_id)
+
+
+@router.delete(
+    "/payment_methods/{payment_method_id}",
+    status_code=204,
+    summary="Remove a payment method",
+    responses={
+        400: {"description": "Cannot delete default payment method"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Payment method not found"},
+    },
+)
+async def remove_portal_payment_method(
+    payment_method_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> None:
+    """Remove a payment method. Cannot remove the default payment method."""
+    customer_id, organization_id = portal_auth
+    repo = PaymentMethodRepository(db)
+    pm = repo.get_by_id(payment_method_id, organization_id)
+    if not pm or UUID(str(pm.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+    if pm.is_default:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete the default payment method",
+        )
+    repo.delete(payment_method_id, organization_id)
+
+
+@router.post(
+    "/payment_methods/{payment_method_id}/set_default",
+    response_model=PaymentMethodResponse,
+    summary="Set default payment method",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Payment method not found"},
+    },
+)
+async def set_portal_default_payment_method(
+    payment_method_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PaymentMethod:
+    """Set a payment method as the default for the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    repo = PaymentMethodRepository(db)
+    pm = repo.get_by_id(payment_method_id, organization_id)
+    if not pm or UUID(str(pm.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Payment method not found")
+    result = repo.set_default(payment_method_id)
+    if not result:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Payment method not found")
+    return result

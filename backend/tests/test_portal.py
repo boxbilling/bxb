@@ -16,6 +16,7 @@ from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.organization import Organization
 from app.models.payment import Payment, PaymentStatus
+from app.models.payment_method import PaymentMethod
 from app.models.plan import Plan
 from app.models.subscription import Subscription
 from app.models.wallet import Wallet
@@ -616,6 +617,250 @@ class TestPortalProfileUpdateEndpoint:
         assert response.json()["detail"] == "Customer not found"
 
 
+class TestPortalPaymentMethodsEndpoint:
+    """Tests for portal payment method management endpoints."""
+
+    @pytest.fixture
+    def payment_method(self, db_session, customer):
+        pm = PaymentMethod(
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            provider="stripe",
+            provider_payment_method_id=f"pm_{uuid.uuid4().hex[:12]}",
+            type="card",
+            is_default=True,
+            details={"brand": "visa", "last4": "4242", "exp_month": 12, "exp_year": 2026},
+        )
+        db_session.add(pm)
+        db_session.commit()
+        db_session.refresh(pm)
+        return pm
+
+    @pytest.fixture
+    def second_payment_method(self, db_session, customer):
+        pm = PaymentMethod(
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            provider="stripe",
+            provider_payment_method_id=f"pm_{uuid.uuid4().hex[:12]}",
+            type="card",
+            is_default=False,
+            details={"brand": "mastercard", "last4": "5555", "exp_month": 6, "exp_year": 2027},
+        )
+        db_session.add(pm)
+        db_session.commit()
+        db_session.refresh(pm)
+        return pm
+
+    @pytest.fixture
+    def other_customer_pm(self, db_session, other_customer):
+        pm = PaymentMethod(
+            customer_id=other_customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            provider="stripe",
+            provider_payment_method_id=f"pm_{uuid.uuid4().hex[:12]}",
+            type="card",
+            is_default=True,
+            details={"brand": "amex", "last4": "0001"},
+        )
+        db_session.add(pm)
+        db_session.commit()
+        db_session.refresh(pm)
+        return pm
+
+    # --- GET /portal/payment_methods ---
+
+    def test_list_payment_methods(self, client: TestClient, customer, payment_method):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/payment_methods?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["id"] == str(payment_method.id)
+        assert data[0]["is_default"] is True
+        assert data[0]["details"]["brand"] == "visa"
+
+    def test_list_payment_methods_empty(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/payment_methods?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_excludes_other_customers(
+        self, client: TestClient, customer, payment_method, other_customer, other_customer_pm
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/payment_methods?token={token}")
+        assert response.status_code == 200
+        ids = [d["id"] for d in response.json()]
+        assert str(payment_method.id) in ids
+        assert str(other_customer_pm.id) not in ids
+
+    def test_list_expired_token_returns_401(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/payment_methods?token={token}")
+        assert response.status_code == 401
+
+    # --- POST /portal/payment_methods ---
+
+    def test_add_payment_method(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/payment_methods?token={token}",
+            json={
+                "customer_id": str(customer.id),
+                "provider": "stripe",
+                "provider_payment_method_id": "pm_new_123",
+                "type": "card",
+                "is_default": False,
+                "details": {"brand": "visa", "last4": "1234"},
+            },
+        )
+        assert response.status_code == 201
+        data = response.json()
+        assert data["provider"] == "stripe"
+        assert data["type"] == "card"
+        assert data["is_default"] is False
+        assert data["details"]["last4"] == "1234"
+
+    def test_add_payment_method_as_default(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/payment_methods?token={token}",
+            json={
+                "customer_id": str(customer.id),
+                "provider": "adyen",
+                "provider_payment_method_id": "pm_adyen_001",
+                "type": "bank_account",
+                "is_default": True,
+                "details": {},
+            },
+        )
+        assert response.status_code == 201
+        assert response.json()["is_default"] is True
+
+    def test_add_for_other_customer_returns_403(
+        self, client: TestClient, customer, other_customer
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/payment_methods?token={token}",
+            json={
+                "customer_id": str(other_customer.id),
+                "provider": "stripe",
+                "provider_payment_method_id": "pm_bad",
+                "type": "card",
+            },
+        )
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Cannot add payment method for another customer"
+
+    def test_add_expired_token_returns_401(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.post(
+            f"/portal/payment_methods?token={token}",
+            json={
+                "customer_id": str(customer.id),
+                "provider": "stripe",
+                "provider_payment_method_id": "pm_fail",
+                "type": "card",
+            },
+        )
+        assert response.status_code == 401
+
+    # --- DELETE /portal/payment_methods/{id} ---
+
+    def test_delete_payment_method(
+        self, client: TestClient, customer, payment_method, second_payment_method
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.delete(
+            f"/portal/payment_methods/{second_payment_method.id}?token={token}"
+        )
+        assert response.status_code == 204
+
+    def test_delete_default_returns_400(self, client: TestClient, customer, payment_method):
+        token = _make_portal_token(customer.id)
+        response = client.delete(
+            f"/portal/payment_methods/{payment_method.id}?token={token}"
+        )
+        assert response.status_code == 400
+        assert "default" in response.json()["detail"].lower()
+
+    def test_delete_not_found(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.delete(
+            f"/portal/payment_methods/{uuid.uuid4()}?token={token}"
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Payment method not found"
+
+    def test_delete_other_customers_pm_returns_404(
+        self, client: TestClient, customer, other_customer, other_customer_pm
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.delete(
+            f"/portal/payment_methods/{other_customer_pm.id}?token={token}"
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Payment method not found"
+
+    def test_delete_expired_token_returns_401(self, client: TestClient, customer, payment_method):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.delete(
+            f"/portal/payment_methods/{payment_method.id}?token={token}"
+        )
+        assert response.status_code == 401
+
+    # --- POST /portal/payment_methods/{id}/set_default ---
+
+    def test_set_default(
+        self, client: TestClient, customer, payment_method, second_payment_method
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/payment_methods/{second_payment_method.id}/set_default?token={token}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(second_payment_method.id)
+        assert data["is_default"] is True
+
+        # Verify old default was unset
+        list_resp = client.get(f"/portal/payment_methods?token={token}")
+        methods = list_resp.json()
+        defaults = [m for m in methods if m["is_default"]]
+        assert len(defaults) == 1
+        assert defaults[0]["id"] == str(second_payment_method.id)
+
+    def test_set_default_not_found(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/payment_methods/{uuid.uuid4()}/set_default?token={token}"
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Payment method not found"
+
+    def test_set_default_other_customers_pm_returns_404(
+        self, client: TestClient, customer, other_customer, other_customer_pm
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/payment_methods/{other_customer_pm.id}/set_default?token={token}"
+        )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Payment method not found"
+
+    def test_set_default_expired_token_returns_401(
+        self, client: TestClient, customer, payment_method
+    ):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.post(
+            f"/portal/payment_methods/{payment_method.id}/set_default?token={token}"
+        )
+        assert response.status_code == 401
+
+
 class TestPortalCrossCutting:
     """Cross-cutting tests for portal auth and scoping."""
 
@@ -629,6 +874,7 @@ class TestPortalCrossCutting:
             f"/portal/invoices/{uuid.uuid4()}/download_pdf",
             "/portal/payments",
             "/portal/wallet",
+            "/portal/payment_methods",
         ]
         for endpoint in endpoints:
             response = client.get(f"{endpoint}?token={token}")
@@ -644,6 +890,7 @@ class TestPortalCrossCutting:
             f"/portal/invoices/{uuid.uuid4()}/download_pdf",
             "/portal/payments",
             "/portal/wallet",
+            "/portal/payment_methods",
         ]
         for endpoint in endpoints:
             response = client.get(f"{endpoint}?token={token}")

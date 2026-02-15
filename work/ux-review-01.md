@@ -945,8 +945,10 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 <!-- Implemented: Added `portal_accent_color` and `portal_welcome_message` fields to Organization model/schema, new `GET /portal/branding` endpoint, updated PortalLayout with logo + org name in header, accent color tinting, PortalBrandingContext, custom welcome message on dashboard, and new branding fields in Settings page. -->
 
 **Self-Service Actions:**
-- [ ] Allow customer to update their profile (name, email, timezone)
-- [ ] Allow customer to manage payment methods (add/remove/set default)
+- [x] Allow customer to update their profile (name, email, timezone)
+<!-- Implemented: Added PortalProfileUpdate schema, PATCH /portal/profile endpoint, PortalProfilePage.tsx with editable name/email/timezone fields, SearchableSelect for timezone, Profile nav link in portal layout, 11 new backend tests. -->
+- [x] Allow customer to manage payment methods (add/remove/set default)
+<!-- Implemented: Added 4 portal endpoints (GET/POST/DELETE /portal/payment_methods, POST /portal/payment_methods/{id}/set_default) with customer-scoped auth. Created PortalPaymentMethodsPage.tsx with card brand icons, default management, add/remove dialogs. Added portal nav link and route. 20 new backend tests, all 3816 tests pass at 100% coverage. -->
 - [ ] Allow customer to view and upgrade/downgrade subscription
 - [ ] Allow customer to purchase add-ons
 - [ ] Allow customer to apply coupon codes

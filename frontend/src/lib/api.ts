@@ -423,6 +423,21 @@ export const portalApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  listPaymentMethods: (token: string) =>
+    portalRequest<PaymentMethodResponse[]>('/portal/payment_methods', token),
+  addPaymentMethod: (token: string, data: PaymentMethodCreate) =>
+    portalRequest<PaymentMethodResponse>('/portal/payment_methods', token, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deletePaymentMethod: (token: string, id: string) =>
+    portalRequest<void>(`/portal/payment_methods/${id}`, token, {
+      method: 'DELETE',
+    }),
+  setDefaultPaymentMethod: (token: string, id: string) =>
+    portalRequest<PaymentMethodResponse>(`/portal/payment_methods/${id}/set_default`, token, {
+      method: 'POST',
+    }),
 }
 
 // Customers API

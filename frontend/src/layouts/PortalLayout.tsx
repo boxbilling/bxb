@@ -10,6 +10,7 @@ import {
   ShieldX,
   Menu,
   UserCog,
+  CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { portalApi } from '@/lib/api'
@@ -34,6 +35,7 @@ const portalNavItems = [
   { name: 'Usage', href: '/portal/usage', icon: BarChart3 },
   { name: 'Payments', href: '/portal/payments', icon: ArrowLeftRight },
   { name: 'Wallet', href: '/portal/wallet', icon: Wallet },
+  { name: 'Payment Methods', href: '/portal/payment-methods', icon: CreditCard },
   { name: 'Profile', href: '/portal/profile', icon: UserCog },
 ]
 
