@@ -15,7 +15,9 @@ from app.routers import (
     dashboard,
     data_exports,
     dunning_campaigns,
+    entitlements,
     events,
+    features,
     fees,
     integrations,
     invoices,
@@ -61,6 +63,8 @@ OPENAPI_TAGS = [
         "name": "Billing Entities",
         "description": "Manage billing entities for multi-entity invoicing.",
     },
+    {"name": "Features", "description": "Manage feature flags and entitlement definitions."},
+    {"name": "Entitlements", "description": "Manage plan entitlements for feature access control."},
 ]
 
 app = FastAPI(
@@ -175,6 +179,8 @@ app.include_router(
     prefix="/v1/billing_entities",
     tags=["Billing Entities"],
 )
+app.include_router(features.router, prefix="/v1/features", tags=["Features"])
+app.include_router(entitlements.router, prefix="/v1/entitlements", tags=["Entitlements"])
 
 
 @app.get("/")

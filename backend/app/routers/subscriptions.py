@@ -7,10 +7,13 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
+from app.models.entitlement import Entitlement
 from app.models.subscription import Subscription, TerminationAction
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.entitlement_repository import EntitlementRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.schemas.entitlement import EntitlementResponse
 from app.schemas.subscription import SubscriptionCreate, SubscriptionResponse, SubscriptionUpdate
 from app.services.audit_service import AuditService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
@@ -260,3 +263,29 @@ async def cancel_subscription(
     repo = SubscriptionRepository(db)
     subscription = repo.get_by_id(subscription_id, organization_id)
     return subscription  # type: ignore[return-value]
+
+
+@router.get(
+    "/{external_id}/entitlements",
+    response_model=list[EntitlementResponse],
+    summary="Get subscription entitlements",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_subscription_entitlements(
+    external_id: str,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[Entitlement]:
+    """Return all entitlements for the subscription's plan."""
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_external_id(external_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    entitlement_repo = EntitlementRepository(db)
+    return entitlement_repo.get_by_plan_id(
+        UUID(str(subscription.plan_id)), organization_id
+    )
