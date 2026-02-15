@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3, Landmark, Star, Trash2, Plus, ExternalLink, Copy, Check, Pencil } from 'lucide-react'
+import { FileText, CreditCard, Wallet2, Tag, ScrollText, Landmark, Star, Trash2, Plus, ExternalLink, Copy, Check, Pencil, History } from 'lucide-react'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { toast } from 'sonner'
 
@@ -65,8 +65,9 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
-import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, taxesApi, paymentMethodsApi, ApiError } from '@/lib/api'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, AppliedTax, CustomerCurrentUsageResponse, PaymentMethod, CustomerUpdate } from '@/types/billing'
+import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
+import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, ApiError } from '@/lib/api'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, CustomerUpdate } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100)
@@ -462,15 +463,11 @@ function CustomerCreditNotesTab({ customerId }: { customerId: string }) {
   )
 }
 
-function formatTaxRate(rate: string | number): string {
-  const num = typeof rate === 'string' ? parseFloat(rate) : rate
-  return `${(num * 100).toFixed(2)}%`
-}
 
-function CustomerTaxesTab({ customerId }: { customerId: string }) {
-  const { data: appliedTaxes, isLoading } = useQuery({
-    queryKey: ['customer-taxes', customerId],
-    queryFn: () => taxesApi.listApplied({ taxable_type: 'customer', taxable_id: customerId }),
+function CustomerFeesTab({ customerId }: { customerId: string }) {
+  const { data: fees, isLoading } = useQuery({
+    queryKey: ['customer-fees', customerId],
+    queryFn: () => feesApi.list({ customer_id: customerId }),
   })
 
   if (isLoading) {
@@ -483,8 +480,15 @@ function CustomerTaxesTab({ customerId }: { customerId: string }) {
     )
   }
 
-  if (!appliedTaxes?.length) {
-    return <p className="text-sm text-muted-foreground py-4">No taxes applied</p>
+  if (!fees?.length) {
+    return <p className="text-sm text-muted-foreground py-4">No fees found</p>
+  }
+
+  const statusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+    pending: 'secondary',
+    succeeded: 'default',
+    failed: 'destructive',
+    refunded: 'outline',
   }
 
   return (
@@ -492,27 +496,42 @@ function CustomerTaxesTab({ customerId }: { customerId: string }) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Tax ID</TableHead>
-            <TableHead>Rate</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Payment Status</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Created At</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {appliedTaxes.map((at) => (
-            <TableRow key={at.id}>
+          {fees.map((fee) => (
+            <TableRow key={fee.id}>
               <TableCell>
-                <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                  {at.tax_id.substring(0, 8)}...
-                </code>
+                <Badge variant="outline">{fee.fee_type}</Badge>
               </TableCell>
-              <TableCell>{at.tax_rate ? formatTaxRate(at.tax_rate) : '\u2014'}</TableCell>
-              <TableCell className="font-mono">{formatCurrency(Number(at.tax_amount_cents))}</TableCell>
-              <TableCell>{format(new Date(at.created_at), 'MMM d, yyyy')}</TableCell>
+              <TableCell>{fee.description || fee.metric_code || '\u2014'}</TableCell>
+              <TableCell>
+                <Badge variant={statusVariant[fee.payment_status] ?? 'outline'}>{fee.payment_status}</Badge>
+              </TableCell>
+              <TableCell className="font-mono">{formatCurrency(Number(fee.total_amount_cents))}</TableCell>
+              <TableCell>{format(new Date(fee.created_at), 'MMM d, yyyy')}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+    </div>
+  )
+}
+
+function CustomerActivityTab({ customerId }: { customerId: string }) {
+  return (
+    <div className="space-y-4">
+      <AuditTrailTimeline
+        resourceType="customer"
+        resourceId={customerId}
+        limit={50}
+        showViewAll
+      />
     </div>
   )
 }
@@ -1104,68 +1123,86 @@ export default function CustomerDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Payment Methods */}
-          <CustomerPaymentMethodsCard customerId={customer.id} />
-
           {/* Related Data Tabs */}
-          <Tabs defaultValue="subscriptions">
+          <Tabs defaultValue="overview">
             <TabsList>
-              <TabsTrigger value="subscriptions">
+              <TabsTrigger value="overview">
                 <ScrollText className="mr-2 h-4 w-4" />
-                Subscriptions
+                Overview
               </TabsTrigger>
-              <TabsTrigger value="invoices">
+              <TabsTrigger value="billing">
                 <FileText className="mr-2 h-4 w-4" />
-                Invoices
+                Billing
               </TabsTrigger>
               <TabsTrigger value="payments">
                 <CreditCard className="mr-2 h-4 w-4" />
                 Payments
               </TabsTrigger>
-              <TabsTrigger value="wallets">
-                <Wallet2 className="mr-2 h-4 w-4" />
-                Wallets
-              </TabsTrigger>
               <TabsTrigger value="coupons">
                 <Tag className="mr-2 h-4 w-4" />
                 Coupons
               </TabsTrigger>
-              <TabsTrigger value="credit-notes">
-                <Receipt className="mr-2 h-4 w-4" />
-                Credit Notes
-              </TabsTrigger>
-              <TabsTrigger value="taxes">
-                <Calculator className="mr-2 h-4 w-4" />
-                Taxes
-              </TabsTrigger>
-              <TabsTrigger value="usage">
-                <BarChart3 className="mr-2 h-4 w-4" />
-                Usage
+              <TabsTrigger value="activity">
+                <History className="mr-2 h-4 w-4" />
+                Activity
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="subscriptions">
-              <CustomerSubscriptionsTab customerId={customer.id} />
+
+            {/* Overview: Subscriptions + Usage */}
+            <TabsContent value="overview">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Subscriptions</h3>
+                  <CustomerSubscriptionsTab customerId={customer.id} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Usage</h3>
+                  <CustomerUsageTab customerId={customer.id} externalId={customer.external_id} />
+                </div>
+              </div>
             </TabsContent>
-            <TabsContent value="invoices">
-              <CustomerInvoicesTab customerId={customer.id} />
+
+            {/* Billing: Invoices + Fees + Credit Notes */}
+            <TabsContent value="billing">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Invoices</h3>
+                  <CustomerInvoicesTab customerId={customer.id} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Fees</h3>
+                  <CustomerFeesTab customerId={customer.id} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Credit Notes</h3>
+                  <CustomerCreditNotesTab customerId={customer.id} />
+                </div>
+              </div>
             </TabsContent>
+
+            {/* Payments: Payment Methods + Payments + Wallets */}
             <TabsContent value="payments">
-              <CustomerPaymentsTab customerId={customer.id} />
+              <div className="space-y-6">
+                <CustomerPaymentMethodsCard customerId={customer.id} />
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Payment History</h3>
+                  <CustomerPaymentsTab customerId={customer.id} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium mb-3">Wallets</h3>
+                  <CustomerWalletsTab customerId={customer.id} />
+                </div>
+              </div>
             </TabsContent>
-            <TabsContent value="wallets">
-              <CustomerWalletsTab customerId={customer.id} />
-            </TabsContent>
+
+            {/* Coupons */}
             <TabsContent value="coupons">
               <CustomerCouponsTab customerId={customer.id} />
             </TabsContent>
-            <TabsContent value="credit-notes">
-              <CustomerCreditNotesTab customerId={customer.id} />
-            </TabsContent>
-            <TabsContent value="taxes">
-              <CustomerTaxesTab customerId={customer.id} />
-            </TabsContent>
-            <TabsContent value="usage">
-              <CustomerUsageTab customerId={customer.id} externalId={customer.external_id} />
+
+            {/* Activity: Audit Trail */}
+            <TabsContent value="activity">
+              <CustomerActivityTab customerId={customer.id} />
             </TabsContent>
           </Tabs>
 
