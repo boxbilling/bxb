@@ -7,8 +7,9 @@ import {
   Trash2,
   Copy,
   RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, differenceInDays } from 'date-fns'
 import { toast } from 'sonner'
 
 import {
@@ -143,6 +144,7 @@ export default function ApiKeysPage() {
               <TableHead>Name</TableHead>
               <TableHead>Key Prefix</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead>Last Used</TableHead>
               <TableHead>Expires</TableHead>
               <TableHead className="w-[50px]"></TableHead>
@@ -157,13 +159,14 @@ export default function ApiKeysPage() {
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
             ) : apiKeys.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <Key className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -189,14 +192,36 @@ export default function ApiKeysPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
+                    {format(new Date(key.created_at), 'MMM d, yyyy')}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
                     {key.last_used_at
                       ? format(new Date(key.last_used_at), 'MMM d, yyyy')
                       : 'Never'}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {key.expires_at
-                      ? format(new Date(key.expires_at), 'MMM d, yyyy')
-                      : 'Never'}
+                  <TableCell className="text-sm">
+                    {(() => {
+                      if (!key.expires_at) return <span className="text-muted-foreground">Never</span>
+                      const expiresDate = new Date(key.expires_at)
+                      const daysUntil = differenceInDays(expiresDate, new Date())
+                      if (daysUntil < 0) {
+                        return (
+                          <span className="flex items-center gap-1 text-destructive">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Expired
+                          </span>
+                        )
+                      }
+                      if (daysUntil <= 30) {
+                        return (
+                          <span className="flex items-center gap-1 text-amber-600">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {format(expiresDate, 'MMM d, yyyy')}
+                          </span>
+                        )
+                      }
+                      return <span className="text-muted-foreground">{format(expiresDate, 'MMM d, yyyy')}</span>
+                    })()}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
