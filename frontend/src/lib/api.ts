@@ -198,6 +198,39 @@ type UsageAlertResponse = components['schemas']['UsageAlertResponse']
 type UsageAlertCreate = components['schemas']['UsageAlertCreate']
 type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
 
+// Portal-specific types (not generated from OpenAPI schema)
+export type PortalPlanSummary = {
+  id: string
+  name: string
+  code: string
+  interval: string
+  amount_cents: number
+  currency: string
+}
+
+export type PortalSubscriptionResponse = {
+  id: string
+  external_id: string
+  status: string
+  started_at: string | null
+  canceled_at: string | null
+  paused_at: string | null
+  downgraded_at: string | null
+  created_at: string
+  plan: PortalPlanSummary
+  pending_downgrade_plan: PortalPlanSummary | null
+}
+
+export type PortalPlanResponse = {
+  id: string
+  name: string
+  code: string
+  description: string | null
+  interval: string
+  amount_cents: number
+  currency: string
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const ORG_STORAGE_KEY = 'bxb_organization_id'
@@ -437,6 +470,22 @@ export const portalApi = {
   setDefaultPaymentMethod: (token: string, id: string) =>
     portalRequest<PaymentMethodResponse>(`/portal/payment_methods/${id}/set_default`, token, {
       method: 'POST',
+    }),
+  listSubscriptions: (token: string) =>
+    portalRequest<PortalSubscriptionResponse[]>('/portal/subscriptions', token),
+  getSubscription: (token: string, id: string) =>
+    portalRequest<PortalSubscriptionResponse>(`/portal/subscriptions/${id}`, token),
+  listPlans: (token: string) =>
+    portalRequest<PortalPlanResponse[]>('/portal/plans', token),
+  changePlanPreview: (token: string, subscriptionId: string, newPlanId: string) =>
+    portalRequest<ChangePlanPreviewResponse>(`/portal/subscriptions/${subscriptionId}/change_plan_preview`, token, {
+      method: 'POST',
+      body: JSON.stringify({ new_plan_id: newPlanId }),
+    }),
+  changePlan: (token: string, subscriptionId: string, newPlanId: string) =>
+    portalRequest<SubscriptionResponse>(`/portal/subscriptions/${subscriptionId}/change_plan`, token, {
+      method: 'POST',
+      body: JSON.stringify({ new_plan_id: newPlanId }),
     }),
 }
 

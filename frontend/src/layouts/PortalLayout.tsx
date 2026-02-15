@@ -5,6 +5,7 @@ import {
   FileText,
   BarChart3,
   ArrowLeftRight,
+  ArrowUpDown,
   Wallet,
   LayoutDashboard,
   ShieldX,
@@ -31,6 +32,7 @@ export function usePortalBranding() {
 
 const portalNavItems = [
   { name: 'Overview', href: '/portal', icon: LayoutDashboard },
+  { name: 'Subscriptions', href: '/portal/subscriptions', icon: ArrowUpDown },
   { name: 'Invoices', href: '/portal/invoices', icon: FileText },
   { name: 'Usage', href: '/portal/usage', icon: BarChart3 },
   { name: 'Payments', href: '/portal/payments', icon: ArrowLeftRight },

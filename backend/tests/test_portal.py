@@ -861,6 +861,377 @@ class TestPortalPaymentMethodsEndpoint:
         assert response.status_code == 401
 
 
+class TestPortalSubscriptionsEndpoint:
+    """Tests for portal subscription management endpoints."""
+
+    @pytest.fixture
+    def plan(self, db_session):
+        p = Plan(
+            code=f"plan_{uuid.uuid4().hex[:8]}",
+            name="Basic Plan",
+            interval="monthly",
+            amount_cents=2000,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def premium_plan(self, db_session):
+        p = Plan(
+            code=f"premium_{uuid.uuid4().hex[:8]}",
+            name="Premium Plan",
+            description="Premium features",
+            interval="monthly",
+            amount_cents=5000,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def budget_plan(self, db_session):
+        p = Plan(
+            code=f"budget_{uuid.uuid4().hex[:8]}",
+            name="Budget Plan",
+            interval="monthly",
+            amount_cents=1000,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def subscription(self, db_session, customer, plan):
+        s = Subscription(
+            external_id=f"sub_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            subscription_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+        return s
+
+    # ---- GET /portal/subscriptions ----
+
+    def test_list_subscriptions(self, client: TestClient, customer, subscription, plan):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["id"] == str(subscription.id)
+        assert data[0]["status"] == "active"
+        assert data[0]["plan"]["name"] == "Basic Plan"
+        assert data[0]["plan"]["amount_cents"] == 2000
+
+    def test_list_subscriptions_empty(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_subscriptions_excludes_other_customer(
+        self, client: TestClient, customer, other_customer, db_session, plan
+    ):
+        other_sub = Subscription(
+            external_id=f"other_sub_{uuid.uuid4().hex[:8]}",
+            customer_id=other_customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(other_sub)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_expired_token_returns_401(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/subscriptions?token={token}")
+        assert response.status_code == 401
+
+    # ---- GET /portal/subscriptions/{id} ----
+
+    def test_get_subscription_detail(self, client: TestClient, customer, subscription, plan):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions/{subscription.id}?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == str(subscription.id)
+        assert data["plan"]["name"] == "Basic Plan"
+        assert data["pending_downgrade_plan"] is None
+
+    def test_get_subscription_not_found(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions/{uuid.uuid4()}?token={token}")
+        assert response.status_code == 404
+
+    def test_get_other_customers_subscription_returns_404(
+        self, client: TestClient, customer, other_customer, db_session, plan
+    ):
+        other_sub = Subscription(
+            external_id=f"other_sub_{uuid.uuid4().hex[:8]}",
+            customer_id=other_customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(other_sub)
+        db_session.commit()
+        db_session.refresh(other_sub)
+
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions/{other_sub.id}?token={token}")
+        assert response.status_code == 404
+
+    # ---- GET /portal/plans ----
+
+    def test_list_plans(self, client: TestClient, customer, plan, premium_plan):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/plans?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) >= 2
+        names = [p["name"] for p in data]
+        assert "Basic Plan" in names
+        assert "Premium Plan" in names
+
+    def test_list_plans_expired_token_returns_401(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/plans?token={token}")
+        assert response.status_code == 401
+
+    # ---- POST /portal/subscriptions/{id}/change_plan_preview ----
+
+    def test_change_plan_preview(
+        self, client: TestClient, customer, subscription, plan, premium_plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan_preview?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["current_plan"]["name"] == "Basic Plan"
+        assert data["new_plan"]["name"] == "Premium Plan"
+        assert "proration" in data
+        assert data["proration"]["total_days"] == 30
+
+    def test_change_plan_preview_same_plan_returns_400(
+        self, client: TestClient, customer, subscription, plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan_preview?token={token}",
+            json={"new_plan_id": str(plan.id)},
+        )
+        assert response.status_code == 400
+        assert "different" in response.json()["detail"]
+
+    def test_change_plan_preview_plan_not_found(
+        self, client: TestClient, customer, subscription
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan_preview?token={token}",
+            json={"new_plan_id": str(uuid.uuid4())},
+        )
+        assert response.status_code == 404
+
+    def test_change_plan_preview_subscription_not_found(
+        self, client: TestClient, customer, premium_plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{uuid.uuid4()}/change_plan_preview?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 404
+
+    def test_change_plan_preview_other_customers_sub(
+        self, client: TestClient, customer, other_customer, db_session, plan, premium_plan
+    ):
+        other_sub = Subscription(
+            external_id=f"other_{uuid.uuid4().hex[:8]}",
+            customer_id=other_customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(other_sub)
+        db_session.commit()
+        db_session.refresh(other_sub)
+
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{other_sub.id}/change_plan_preview?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 404
+
+    def test_change_plan_preview_expired_token(
+        self, client: TestClient, customer, subscription, premium_plan
+    ):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan_preview?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 401
+
+    # ---- POST /portal/subscriptions/{id}/change_plan ----
+
+    def test_change_plan_upgrade(
+        self, client: TestClient, customer, subscription, plan, premium_plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["plan_id"] == str(premium_plan.id)
+
+    def test_change_plan_downgrade(
+        self, client: TestClient, customer, subscription, plan, budget_plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan?token={token}",
+            json={"new_plan_id": str(budget_plan.id)},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["plan_id"] == str(budget_plan.id)
+
+    def test_change_plan_same_plan_returns_400(
+        self, client: TestClient, customer, subscription, plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan?token={token}",
+            json={"new_plan_id": str(plan.id)},
+        )
+        assert response.status_code == 400
+        assert "different" in response.json()["detail"]
+
+    def test_change_plan_inactive_subscription_returns_400(
+        self, client: TestClient, customer, db_session, plan, premium_plan
+    ):
+        s = Subscription(
+            external_id=f"canceled_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="canceled",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{s.id}/change_plan?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 400
+        assert "active" in response.json()["detail"]
+
+    def test_change_plan_not_found_plan(
+        self, client: TestClient, customer, subscription
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan?token={token}",
+            json={"new_plan_id": str(uuid.uuid4())},
+        )
+        assert response.status_code == 404
+
+    def test_change_plan_subscription_not_found(
+        self, client: TestClient, customer, premium_plan
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{uuid.uuid4()}/change_plan?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 404
+
+    def test_change_plan_other_customers_sub(
+        self, client: TestClient, customer, other_customer, db_session, plan, premium_plan
+    ):
+        other_sub = Subscription(
+            external_id=f"other_{uuid.uuid4().hex[:8]}",
+            customer_id=other_customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(other_sub)
+        db_session.commit()
+        db_session.refresh(other_sub)
+
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/subscriptions/{other_sub.id}/change_plan?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 404
+
+    def test_change_plan_expired_token(
+        self, client: TestClient, customer, subscription, premium_plan
+    ):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.post(
+            f"/portal/subscriptions/{subscription.id}/change_plan?token={token}",
+            json={"new_plan_id": str(premium_plan.id)},
+        )
+        assert response.status_code == 401
+
+    # ---- Pending downgrade display ----
+
+    def test_subscription_with_pending_downgrade(
+        self, client: TestClient, customer, db_session, plan, budget_plan
+    ):
+        s = Subscription(
+            external_id=f"dg_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            downgraded_at=datetime(2025, 6, 1, tzinfo=UTC),
+            previous_plan_id=budget_plan.id,
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/subscriptions/{s.id}?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["pending_downgrade_plan"] is not None
+        assert data["pending_downgrade_plan"]["name"] == "Budget Plan"
+
+
 class TestPortalCrossCutting:
     """Cross-cutting tests for portal auth and scoping."""
 
@@ -875,6 +1246,8 @@ class TestPortalCrossCutting:
             "/portal/payments",
             "/portal/wallet",
             "/portal/payment_methods",
+            "/portal/subscriptions",
+            "/portal/plans",
         ]
         for endpoint in endpoints:
             response = client.get(f"{endpoint}?token={token}")
@@ -891,6 +1264,8 @@ class TestPortalCrossCutting:
             "/portal/payments",
             "/portal/wallet",
             "/portal/payment_methods",
+            "/portal/subscriptions",
+            "/portal/plans",
         ]
         for endpoint in endpoints:
             response = client.get(f"{endpoint}?token={token}")

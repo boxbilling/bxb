@@ -105,3 +105,36 @@ class NextBillingDateResponse(BaseModel):
     current_period_started_at: datetime
     interval: str
     days_until_next_billing: int
+
+
+class PortalSubscriptionResponse(BaseModel):
+    """Subscription response enriched with plan details for portal display."""
+
+    id: UUID
+    external_id: str
+    status: SubscriptionStatus
+    started_at: datetime | None
+    canceled_at: datetime | None
+    paused_at: datetime | None
+    downgraded_at: datetime | None
+    created_at: datetime
+    plan: PlanSummary
+    pending_downgrade_plan: PlanSummary | None = None
+
+
+class PortalPlanResponse(BaseModel):
+    """Plan info suitable for portal display."""
+
+    id: UUID
+    name: str
+    code: str
+    description: str | None
+    interval: str
+    amount_cents: int
+    currency: str
+
+
+class PortalChangePlanRequest(BaseModel):
+    """Request body for portal plan change."""
+
+    new_plan_id: UUID

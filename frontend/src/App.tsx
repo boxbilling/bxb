@@ -44,6 +44,7 @@ import {
   PortalWalletPage,
   PortalProfilePage,
   PortalPaymentMethodsPage,
+  PortalSubscriptionsPage,
 } from './pages/portal'
 import SettingsPage from './pages/admin/SettingsPage'
 import ApiKeysPage from './pages/admin/ApiKeysPage'
@@ -99,6 +100,7 @@ function App() {
         <Route path="usage" element={<PortalUsagePage />} />
         <Route path="payments" element={<PortalPaymentsPage />} />
         <Route path="wallet" element={<PortalWalletPage />} />
+        <Route path="subscriptions" element={<PortalSubscriptionsPage />} />
         <Route path="payment-methods" element={<PortalPaymentMethodsPage />} />
         <Route path="profile" element={<PortalProfilePage />} />
       </Route>

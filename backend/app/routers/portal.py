@@ -1,5 +1,6 @@
 """Customer self-service portal API endpoints."""
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -11,6 +12,7 @@ from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
+from app.models.subscription import Subscription
 from app.models.wallet import Wallet
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.fee_repository import FeeRepository
@@ -18,15 +20,27 @@ from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.payment_method_repository import PaymentMethodRepository
 from app.repositories.payment_repository import PaymentRepository
+from app.repositories.plan_repository import PlanRepository
+from app.repositories.subscription_repository import SubscriptionRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas.customer import CustomerResponse, PortalProfileUpdate
 from app.schemas.invoice import InvoiceResponse
 from app.schemas.organization import PortalBrandingResponse
 from app.schemas.payment import PaymentResponse
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse
+from app.schemas.subscription import (
+    ChangePlanPreviewResponse,
+    PlanSummary,
+    PortalChangePlanRequest,
+    PortalPlanResponse,
+    PortalSubscriptionResponse,
+    ProrationDetail,
+    SubscriptionResponse,
+)
 from app.schemas.usage import CurrentUsageResponse
 from app.schemas.wallet import WalletResponse
 from app.services.pdf_service import PdfService
+from app.services.subscription_lifecycle import SubscriptionLifecycleService
 from app.services.usage_query_service import UsageQueryService
 
 router = APIRouter()
@@ -381,3 +395,263 @@ async def set_portal_default_payment_method(
     if not result:  # pragma: no cover
         raise HTTPException(status_code=404, detail="Payment method not found")
     return result
+
+
+# ---------------------------------------------------------------------------
+# Subscription management
+# ---------------------------------------------------------------------------
+
+INTERVAL_DAYS = {
+    "weekly": 7,
+    "monthly": 30,
+    "quarterly": 90,
+    "yearly": 365,
+}
+
+
+def _build_portal_subscription(
+    subscription: Subscription,
+    plan_repo: PlanRepository,
+    organization_id: UUID,
+) -> PortalSubscriptionResponse:
+    """Build a PortalSubscriptionResponse from a Subscription ORM object."""
+    plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)), organization_id)
+    plan_summary = PlanSummary(
+        id=plan.id,  # type: ignore[union-attr, arg-type]
+        name=str(plan.name),  # type: ignore[union-attr]
+        code=str(plan.code),  # type: ignore[union-attr]
+        interval=str(plan.interval),  # type: ignore[union-attr]
+        amount_cents=int(plan.amount_cents),  # type: ignore[union-attr]
+        currency=str(plan.currency),  # type: ignore[union-attr]
+    )
+
+    pending_downgrade_plan: PlanSummary | None = None
+    if subscription.downgraded_at and subscription.previous_plan_id:
+        target_plan = plan_repo.get_by_id(
+            UUID(str(subscription.previous_plan_id)),
+            organization_id,
+        )
+        if target_plan:  # pragma: no branch – FK guarantees plan exists
+            pending_downgrade_plan = PlanSummary(
+                id=target_plan.id,  # type: ignore[arg-type]
+                name=str(target_plan.name),
+                code=str(target_plan.code),
+                interval=str(target_plan.interval),
+                amount_cents=int(target_plan.amount_cents),
+                currency=str(target_plan.currency),
+            )
+
+    return PortalSubscriptionResponse(
+        id=subscription.id,  # type: ignore[arg-type]
+        external_id=str(subscription.external_id),
+        status=subscription.status,  # type: ignore[arg-type]
+        started_at=subscription.started_at,  # type: ignore[arg-type]
+        canceled_at=subscription.canceled_at,  # type: ignore[arg-type]
+        paused_at=subscription.paused_at,  # type: ignore[arg-type]
+        downgraded_at=subscription.downgraded_at,  # type: ignore[arg-type]
+        created_at=subscription.created_at,  # type: ignore[arg-type]
+        plan=plan_summary,
+        pending_downgrade_plan=pending_downgrade_plan,
+    )
+
+
+@router.get(
+    "/subscriptions",
+    response_model=list[PortalSubscriptionResponse],
+    summary="List customer subscriptions",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def list_portal_subscriptions(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[PortalSubscriptionResponse]:
+    """List subscriptions for the authenticated customer with plan details."""
+    customer_id, organization_id = portal_auth
+    sub_repo = SubscriptionRepository(db)
+    plan_repo = PlanRepository(db)
+    subscriptions = sub_repo.get_by_customer_id(customer_id, organization_id)
+    return [
+        _build_portal_subscription(s, plan_repo, organization_id)
+        for s in subscriptions
+    ]
+
+
+@router.get(
+    "/subscriptions/{subscription_id}",
+    response_model=PortalSubscriptionResponse,
+    summary="Get subscription detail",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_portal_subscription(
+    subscription_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalSubscriptionResponse:
+    """Get a specific subscription for the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription or UUID(str(subscription.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    plan_repo = PlanRepository(db)
+    return _build_portal_subscription(subscription, plan_repo, organization_id)
+
+
+@router.get(
+    "/plans",
+    response_model=list[PortalPlanResponse],
+    summary="List available plans",
+    responses={401: {"description": "Invalid or expired portal token"}},
+)
+async def list_portal_plans(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[PortalPlanResponse]:
+    """List all available plans for the organization."""
+    _customer_id, organization_id = portal_auth
+    plan_repo = PlanRepository(db)
+    plans = plan_repo.get_all(organization_id)
+    return [
+        PortalPlanResponse(
+            id=p.id,  # type: ignore[arg-type]
+            name=str(p.name),
+            code=str(p.code),
+            description=p.description,  # type: ignore[arg-type]
+            interval=str(p.interval),
+            amount_cents=int(p.amount_cents),
+            currency=str(p.currency),
+        )
+        for p in plans
+    ]
+
+
+@router.post(
+    "/subscriptions/{subscription_id}/change_plan_preview",
+    response_model=ChangePlanPreviewResponse,
+    summary="Preview plan change with proration",
+    responses={
+        400: {"description": "Invalid plan or same plan"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Subscription or plan not found"},
+    },
+)
+async def portal_change_plan_preview(
+    subscription_id: UUID,
+    data: PortalChangePlanRequest,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> ChangePlanPreviewResponse:
+    """Preview a plan change showing price comparison and proration details."""
+    customer_id, organization_id = portal_auth
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription or UUID(str(subscription.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    plan_repo = PlanRepository(db)
+    current_plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)), organization_id)
+    if not current_plan:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Current plan not found")
+
+    new_plan = plan_repo.get_by_id(data.new_plan_id, organization_id)
+    if not new_plan:
+        raise HTTPException(status_code=404, detail="New plan not found")
+
+    if str(subscription.plan_id) == str(data.new_plan_id):
+        raise HTTPException(status_code=400, detail="New plan must be different from current plan")
+
+    effective = datetime.now(UTC)
+    interval_str = str(current_plan.interval)
+    total_days = INTERVAL_DAYS.get(interval_str, 30)
+
+    period_anchor = subscription.started_at or subscription.created_at
+    if period_anchor:
+        anchor = period_anchor if period_anchor.tzinfo else period_anchor.replace(tzinfo=UTC)
+        elapsed = (effective - anchor).days % total_days
+        days_remaining = max(total_days - elapsed, 0)
+    else:  # pragma: no cover — created_at always set by DB
+        days_remaining = total_days
+
+    current_amount: int = current_plan.amount_cents  # type: ignore[assignment]
+    new_amount: int = new_plan.amount_cents  # type: ignore[assignment]
+    credit_cents = int(current_amount * days_remaining / total_days)
+    charge_cents = int(new_amount * days_remaining / total_days)
+    net_cents = charge_cents - credit_cents
+
+    return ChangePlanPreviewResponse(
+        current_plan=PlanSummary(
+            id=current_plan.id,  # type: ignore[arg-type]
+            name=str(current_plan.name),
+            code=str(current_plan.code),
+            interval=interval_str,
+            amount_cents=current_amount,
+            currency=str(current_plan.currency),
+        ),
+        new_plan=PlanSummary(
+            id=new_plan.id,  # type: ignore[arg-type]
+            name=str(new_plan.name),
+            code=str(new_plan.code),
+            interval=str(new_plan.interval),
+            amount_cents=new_amount,
+            currency=str(new_plan.currency),
+        ),
+        effective_date=effective,
+        proration=ProrationDetail(
+            days_remaining=days_remaining,
+            total_days=total_days,
+            current_plan_credit_cents=credit_cents,
+            new_plan_charge_cents=charge_cents,
+            net_amount_cents=net_cents,
+        ),
+    )
+
+
+@router.post(
+    "/subscriptions/{subscription_id}/change_plan",
+    response_model=SubscriptionResponse,
+    summary="Change subscription plan",
+    responses={
+        400: {"description": "Invalid plan change"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def portal_change_plan(
+    subscription_id: UUID,
+    data: PortalChangePlanRequest,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> SubscriptionResponse:
+    """Change a subscription's plan (upgrade or downgrade)."""
+    customer_id, organization_id = portal_auth
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription or UUID(str(subscription.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    if subscription.status != "active":
+        raise HTTPException(status_code=400, detail="Can only change plan for active subscriptions")
+
+    if str(subscription.plan_id) == str(data.new_plan_id):
+        raise HTTPException(status_code=400, detail="New plan must be different from current plan")
+
+    plan_repo = PlanRepository(db)
+    new_plan = plan_repo.get_by_id(data.new_plan_id, organization_id)
+    if not new_plan:
+        raise HTTPException(status_code=404, detail="New plan not found")
+
+    current_plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)), organization_id)
+    current_amount = int(current_plan.amount_cents) if current_plan else 0
+    new_amount = int(new_plan.amount_cents)
+
+    lifecycle = SubscriptionLifecycleService(db)
+    if new_amount >= current_amount:
+        lifecycle.upgrade_plan(subscription_id, data.new_plan_id)
+    else:
+        lifecycle.downgrade_plan(subscription_id, data.new_plan_id, effective_at="immediate")
+
+    db.refresh(subscription)
+    return SubscriptionResponse.model_validate(subscription)
