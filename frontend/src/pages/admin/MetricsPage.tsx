@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, BarChart3 } from 'lucide-react'
+import { Plus, MoreHorizontal, Pencil, Trash2, Code, Hash, ArrowUp, CircleDot, BarChart3, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -227,6 +227,7 @@ export default function MetricsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingMetric, setEditingMetric] = useState<BillableMetric | null>(null)
   const [deleteMetric, setDeleteMetric] = useState<BillableMetric | null>(null)
+  const [search, setSearch] = useState('')
 
   // Fetch metrics from API
   const { data: metrics, isLoading, error } = useQuery({
@@ -239,6 +240,16 @@ export default function MetricsPage() {
     queryKey: ['billable-metrics-stats'],
     queryFn: () => billableMetricsApi.stats(),
   })
+
+  const filteredMetrics = metrics?.filter((m) => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return (
+      m.name.toLowerCase().includes(q) ||
+      m.code.toLowerCase().includes(q) ||
+      m.description?.toLowerCase().includes(q)
+    )
+  }) ?? []
 
   // Create mutation
   const createMutation = useMutation({
@@ -357,6 +368,19 @@ export default function MetricsPage() {
         ))}
       </div>
 
+      {/* Search Filter */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search metrics..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
       {/* Metrics Grid */}
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -372,23 +396,29 @@ export default function MetricsPage() {
             </Card>
           ))}
         </div>
-      ) : !metrics || metrics.length === 0 ? (
+      ) : filteredMetrics.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Code className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No billable metrics</h3>
+            <h3 className="text-lg font-semibold">
+              {search ? 'No metrics match your search' : 'No billable metrics'}
+            </h3>
             <p className="text-muted-foreground text-center max-w-sm mt-1">
-              Create your first billable metric to start tracking usage
+              {search
+                ? 'Try adjusting your search terms'
+                : 'Create your first billable metric to start tracking usage'}
             </p>
-            <Button onClick={() => setFormOpen(true)} className="mt-4">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Metric
-            </Button>
+            {!search && (
+              <Button onClick={() => setFormOpen(true)} className="mt-4">
+                <Plus className="mr-2 h-4 w-4" />
+                Create Metric
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {metrics.map((metric) => (
+          {filteredMetrics.map((metric) => (
             <Card key={metric.id}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">

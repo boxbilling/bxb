@@ -247,7 +247,8 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 **Recommendations:**
 - [x] Add stat cards: Total Metrics, By Aggregation Type breakdown
   <!-- Completed: Added GET /v1/billable_metrics/stats backend endpoint returning total metric count and breakdown by aggregation type (count, sum, max, unique_count, etc.). Added counts_by_aggregation_type() repository method using GROUP BY query. Frontend MetricsPage now displays 5 stat cards in a responsive grid: Total Metrics (with BarChart3 icon) plus one card per aggregation type (Count, Sum, Max, Unique Count) with matching icons and descriptions. Stats query invalidated on create/update/delete mutations. BillableMetricStats schema added. 8 new backend tests added (3 repository + 2 schema + 3 API). 100% coverage maintained. -->
-- [ ] Add search filter
+- [x] Add search filter
+  <!-- Completed: Added client-side search filter to MetricsPage matching the BillingEntitiesPage pattern. Search input with Search icon filters metrics by name, code, and description (case-insensitive). Empty state is context-aware: shows "No metrics match your search" with "Try adjusting your search terms" when filtering yields no results, vs "No billable metrics" with create button when no metrics exist at all. Uses filteredMetrics array for rendering the card grid. TypeScript compiles clean, all 3325 backend tests pass with 100% coverage. -->
 - [ ] Show "Used in X plans" count on each card
 - [ ] Add aggregation type filter (count/sum/max/unique_count)
 - [ ] Consider table layout instead of cards (metrics are simple objects)
