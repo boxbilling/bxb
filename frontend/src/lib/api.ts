@@ -92,6 +92,7 @@ type EndpointDeliveryStats = components['schemas']['EndpointDeliveryStats']
 type OrganizationResponse = components['schemas']['OrganizationResponse']
 type OrganizationCreate = components['schemas']['OrganizationCreate']
 type OrganizationUpdate = components['schemas']['OrganizationUpdate']
+type PortalBrandingResponse = components['schemas']['PortalBrandingResponse']
 type ApiKeyCreate = components['schemas']['ApiKeyCreate']
 type ApiKeyCreateResponse = components['schemas']['ApiKeyCreateResponse']
 type ApiKeyListResponse = components['schemas']['ApiKeyListResponse']
@@ -403,6 +404,8 @@ async function portalRequestBlob(
 export const portalApi = {
   getCustomer: (token: string) =>
     portalRequest<CustomerResponse>('/portal/customer', token),
+  getBranding: (token: string) =>
+    portalRequest<PortalBrandingResponse>('/portal/branding', token),
   listInvoices: (token: string) =>
     portalRequest<InvoiceResponse[]>('/portal/invoices', token),
   getInvoice: (token: string, id: string) =>

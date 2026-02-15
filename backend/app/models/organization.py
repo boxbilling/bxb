@@ -23,6 +23,8 @@ class Organization(Base):
     net_payment_term = Column(Integer, nullable=False, default=30)
     logo_url = Column(String(2048), nullable=True)
     email = Column(String(255), nullable=True)
+    portal_accent_color = Column(String(7), nullable=True)
+    portal_welcome_message = Column(String(500), nullable=True)
     legal_name = Column(String(255), nullable=True)
     address_line1 = Column(String(255), nullable=True)
     address_line2 = Column(String(255), nullable=True)

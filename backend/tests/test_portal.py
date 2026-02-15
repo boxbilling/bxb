@@ -14,6 +14,7 @@ from app.core.database import get_db
 from app.main import app
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
+from app.models.organization import Organization
 from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription
@@ -468,6 +469,48 @@ class TestPortalCurrentUsageEndpoint:
         assert response.status_code == 422
 
 
+class TestPortalBrandingEndpoint:
+    """Tests for GET /portal/branding."""
+
+    def test_get_branding_defaults(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/branding?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Default Test Organization"
+        assert data["logo_url"] is None
+        assert data["accent_color"] is None
+        assert data["welcome_message"] is None
+
+    def test_get_branding_with_custom_values(self, client: TestClient, customer, db_session):
+        org = db_session.query(Organization).filter(Organization.id == DEFAULT_ORG_ID).first()
+        org.logo_url = "https://example.com/logo.png"
+        org.portal_accent_color = "#ff6600"
+        org.portal_welcome_message = "Welcome to Acme Billing!"
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/branding?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["name"] == "Default Test Organization"
+        assert data["logo_url"] == "https://example.com/logo.png"
+        assert data["accent_color"] == "#ff6600"
+        assert data["welcome_message"] == "Welcome to Acme Billing!"
+
+    def test_expired_token_returns_401(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/branding?token={token}")
+        assert response.status_code == 401
+
+    def test_org_not_found_returns_404(self, client: TestClient):
+        other_org_id = uuid.UUID("00000000-0000-0000-0000-000000000099")
+        token = _make_portal_token(uuid.uuid4(), organization_id=other_org_id)
+        response = client.get(f"/portal/branding?token={token}")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Organization not found"
+
+
 class TestPortalCrossCutting:
     """Cross-cutting tests for portal auth and scoping."""
 
@@ -475,6 +518,7 @@ class TestPortalCrossCutting:
         token = _make_portal_token(customer.id, expired=True)
         endpoints = [
             "/portal/customer",
+            "/portal/branding",
             "/portal/invoices",
             f"/portal/invoices/{uuid.uuid4()}",
             f"/portal/invoices/{uuid.uuid4()}/download_pdf",
@@ -489,6 +533,7 @@ class TestPortalCrossCutting:
         token = "invalid-jwt"
         endpoints = [
             "/portal/customer",
+            "/portal/branding",
             "/portal/invoices",
             f"/portal/invoices/{uuid.uuid4()}",
             f"/portal/invoices/{uuid.uuid4()}/download_pdf",

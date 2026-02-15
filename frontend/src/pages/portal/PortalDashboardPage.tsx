@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { portalApi } from '@/lib/api'
-import { usePortalToken } from '@/layouts/PortalLayout'
+import { usePortalToken, usePortalBranding } from '@/layouts/PortalLayout'
 
 function formatCurrency(amount: string | number, currency: string): string {
   const value = typeof amount === 'number' ? amount / 100 : parseFloat(amount)
@@ -18,6 +18,7 @@ function formatCurrency(amount: string | number, currency: string): string {
 
 export default function PortalDashboardPage() {
   const token = usePortalToken()
+  const branding = usePortalBranding()
 
   const { data: customer, isLoading: customerLoading } = useQuery({
     queryKey: ['portal-customer', token],
@@ -52,7 +53,7 @@ export default function PortalDashboardPage() {
       <div>
         <h1 className="text-3xl font-bold">Overview</h1>
         <p className="text-muted-foreground">
-          Welcome to your billing portal
+          {branding?.welcome_message || 'Welcome to your billing portal'}
         </p>
       </div>
 

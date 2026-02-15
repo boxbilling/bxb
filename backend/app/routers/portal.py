@@ -19,6 +19,7 @@ from app.repositories.payment_repository import PaymentRepository
 from app.repositories.wallet_repository import WalletRepository
 from app.schemas.customer import CustomerResponse
 from app.schemas.invoice import InvoiceResponse
+from app.schemas.organization import PortalBrandingResponse
 from app.schemas.payment import PaymentResponse
 from app.schemas.usage import CurrentUsageResponse
 from app.schemas.wallet import WalletResponse
@@ -48,6 +49,33 @@ async def get_portal_customer_profile(
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
+
+
+@router.get(
+    "/branding",
+    response_model=PortalBrandingResponse,
+    summary="Get organization branding for portal",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Organization not found"},
+    },
+)
+async def get_portal_branding(
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalBrandingResponse:
+    """Get the organization's branding information for portal display."""
+    _customer_id, organization_id = portal_auth
+    repo = OrganizationRepository(db)
+    org = repo.get_by_id(organization_id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return PortalBrandingResponse(
+        name=org.name,  # type: ignore[arg-type]
+        logo_url=org.logo_url,  # type: ignore[arg-type]
+        accent_color=org.portal_accent_color,  # type: ignore[arg-type]
+        welcome_message=org.portal_welcome_message,  # type: ignore[arg-type]
+    )
 
 
 @router.get(

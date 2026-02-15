@@ -123,6 +123,7 @@ export type EndpointDeliveryStats = components['schemas']['EndpointDeliveryStats
 export type Organization = components['schemas']['OrganizationResponse']
 export type OrganizationCreate = components['schemas']['OrganizationCreate']
 export type OrganizationUpdate = components['schemas']['OrganizationUpdate']
+export type PortalBranding = components['schemas']['PortalBrandingResponse']
 export type ApiKeyCreate = components['schemas']['ApiKeyCreate']
 export type ApiKeyCreateResponse = components['schemas']['ApiKeyCreateResponse']
 export type ApiKey = components['schemas']['ApiKeyListResponse']

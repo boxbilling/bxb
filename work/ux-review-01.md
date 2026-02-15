@@ -844,9 +844,9 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 
 **Recommendations:**
 - [x] Add "Rotate Key" action (revoke old, create new with same config)
-- [ ] Add last-used timestamp display (already in model)
-- [ ] Add key creation date display
-- [ ] Add expiration warning indicators
+- [x] Add last-used timestamp display (already in model) — was already implemented in the table
+- [x] Add key creation date display — added "Created" column showing `created_at` formatted as `MMM d, yyyy`
+- [x] Add expiration warning indicators — amber AlertTriangle for keys expiring within 30 days, red "Expired" label for already-expired keys
 
 **Modal vs. Page Decision:**
 - All MODAL - correct (API keys are simple entities)
@@ -938,10 +938,11 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 ### Recommendations
 
 **Branding & Identity:**
-- [ ] Add organization logo (from Settings) to portal header
-- [ ] Add customizable portal accent color
-- [ ] Add organization name in header
-- [ ] Support custom welcome message
+- [x] Add organization logo (from Settings) to portal header
+- [x] Add customizable portal accent color
+- [x] Add organization name in header
+- [x] Support custom welcome message
+<!-- Implemented: Added `portal_accent_color` and `portal_welcome_message` fields to Organization model/schema, new `GET /portal/branding` endpoint, updated PortalLayout with logo + org name in header, accent color tinting, PortalBrandingContext, custom welcome message on dashboard, and new branding fields in Settings page. -->
 
 **Self-Service Actions:**
 - [ ] Allow customer to update their profile (name, email, timezone)

@@ -107,6 +107,9 @@ function validateSection(
     if (formData.email && !validateEmail(formData.email)) {
       errors.email = 'Please enter a valid email address'
     }
+    if (formData.portal_accent_color && !/^#[0-9a-fA-F]{6}$/.test(formData.portal_accent_color)) {
+      errors.portal_accent_color = 'Please enter a valid hex color (e.g. #ff6600)'
+    }
   }
 
   return errors
@@ -238,6 +241,8 @@ export default function SettingsPage() {
       hmac_key: org.hmac_key,
       logo_url: org.logo_url,
       email: org.email,
+      portal_accent_color: org.portal_accent_color,
+      portal_welcome_message: org.portal_welcome_message,
       legal_name: org.legal_name,
       address_line1: org.address_line1,
       address_line2: org.address_line2,
@@ -307,7 +312,7 @@ export default function SettingsPage() {
           'document_number_prefix',
           'hmac_key',
         ],
-        branding: ['logo_url', 'email'],
+        branding: ['logo_url', 'email', 'portal_accent_color', 'portal_welcome_message'],
         legal: [
           'legal_name',
           'address_line1',
@@ -594,6 +599,46 @@ export default function SettingsPage() {
                       ? brandingErrors.email
                       : undefined
                   }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="portal-accent-color">Portal Accent Color</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="portal-accent-color"
+                    value={formData.portal_accent_color ?? ''}
+                    onChange={(e) =>
+                      updateField('portal_accent_color', e.target.value || null)
+                    }
+                    placeholder="#4f46e5"
+                    className="flex-1"
+                    aria-invalid={!!hasError('portal_accent_color', brandingErrors)}
+                  />
+                  {formData.portal_accent_color && /^#[0-9a-fA-F]{6}$/.test(formData.portal_accent_color) ? (
+                    <div
+                      className="h-9 w-9 rounded border shrink-0"
+                      style={{ backgroundColor: formData.portal_accent_color }}
+                    />
+                  ) : null}
+                </div>
+                <FieldError
+                  message={
+                    hasError('portal_accent_color', brandingErrors)
+                      ? brandingErrors.portal_accent_color
+                      : undefined
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="portal-welcome-message">Portal Welcome Message</Label>
+                <Input
+                  id="portal-welcome-message"
+                  value={formData.portal_welcome_message ?? ''}
+                  onChange={(e) =>
+                    updateField('portal_welcome_message', e.target.value || null)
+                  }
+                  placeholder="Welcome to your billing portal"
+                  maxLength={500}
                 />
               </div>
             </div>

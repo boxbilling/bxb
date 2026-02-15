@@ -5436,6 +5436,10 @@ export interface components {
             logo_url?: string | null;
             /** Email */
             email?: string | null;
+            /** Portal Accent Color */
+            portal_accent_color?: string | null;
+            /** Portal Welcome Message */
+            portal_welcome_message?: string | null;
             /** Legal Name */
             legal_name?: string | null;
             /** Address Line1 */
@@ -5530,6 +5534,10 @@ export interface components {
             logo_url: string | null;
             /** Email */
             email: string | null;
+            /** Portal Accent Color */
+            portal_accent_color: string | null;
+            /** Portal Welcome Message */
+            portal_welcome_message: string | null;
             /** Legal Name */
             legal_name: string | null;
             /** Address Line1 */
@@ -5575,6 +5583,10 @@ export interface components {
             logo_url?: string | null;
             /** Email */
             email?: string | null;
+            /** Portal Accent Color */
+            portal_accent_color?: string | null;
+            /** Portal Welcome Message */
+            portal_welcome_message?: string | null;
             /** Legal Name */
             legal_name?: string | null;
             /** Address Line1 */
@@ -5589,6 +5601,17 @@ export interface components {
             zipcode?: string | null;
             /** Country */
             country?: string | null;
+        };
+        /** PortalBrandingResponse */
+        PortalBrandingResponse: {
+            /** Name */
+            name: string;
+            /** Logo Url */
+            logo_url: string | null;
+            /** Accent Color */
+            accent_color: string | null;
+            /** Welcome Message */
+            welcome_message: string | null;
         };
         /** PaymentMethodCreate */
         PaymentMethodCreate: {
