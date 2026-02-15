@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3, Landmark, Star, Trash2, Plus } from 'lucide-react'
+import { FileText, CreditCard, Wallet2, Tag, ScrollText, Receipt, Calculator, BarChart3, Landmark, Star, Trash2, Plus, ExternalLink, Copy, Check } from 'lucide-react'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { toast } from 'sonner'
 
@@ -50,6 +50,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import {
   ChartContainer,
   ChartTooltip,
@@ -902,6 +910,69 @@ function CustomerUsageTab({ customerId, externalId }: { customerId: string; exte
   )
 }
 
+function PortalLinkDialog({ externalId }: { externalId: string }) {
+  const [open, setOpen] = useState(false)
+  const [portalUrl, setPortalUrl] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const mutation = useMutation({
+    mutationFn: () => customersApi.getPortalUrl(externalId),
+    onSuccess: (data) => {
+      setPortalUrl(data.portal_url)
+      setCopied(false)
+    },
+    onError: (error) => {
+      toast.error(error instanceof ApiError ? error.message : 'Failed to generate portal link')
+    },
+  })
+
+  const handleOpen = () => {
+    setOpen(true)
+    setPortalUrl(null)
+    setCopied(false)
+    mutation.mutate()
+  }
+
+  const handleCopy = async () => {
+    if (!portalUrl) return
+    await navigator.clipboard.writeText(portalUrl)
+    setCopied(true)
+    toast.success('Portal link copied to clipboard')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={handleOpen}>
+        <ExternalLink className="mr-2 h-4 w-4" />
+        Generate Portal Link
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Customer Portal Link</DialogTitle>
+            <DialogDescription>
+              Share this link with the customer. Link expires in 12 hours.
+            </DialogDescription>
+          </DialogHeader>
+          {mutation.isPending ? (
+            <Skeleton className="h-10 w-full" />
+          ) : portalUrl ? (
+            <div className="flex items-center gap-2">
+              <Input readOnly value={portalUrl} className="font-mono text-xs" />
+              <Button variant="outline" size="icon" onClick={handleCopy}>
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+          ) : mutation.isError ? (
+            <p className="text-sm text-destructive">Failed to generate portal link.</p>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
 
@@ -949,11 +1020,14 @@ export default function CustomerDetailPage() {
       ) : customer ? (
         <>
           {/* Header */}
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
-            </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
+              </p>
+            </div>
+            <PortalLinkDialog externalId={customer.external_id} />
           </div>
 
           {/* Outstanding Balance */}

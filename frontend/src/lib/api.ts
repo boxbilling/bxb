@@ -235,6 +235,85 @@ function buildQuery(params?: Record<string, string | number | undefined>): strin
   return query ? `?${query}` : ''
 }
 
+// Portal request helper — uses token query param instead of org ID header
+async function portalRequest<T>(
+  endpoint: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const separator = endpoint.includes('?') ? '&' : '?'
+  const url = `${API_BASE_URL}${endpoint}${separator}token=${encodeURIComponent(token)}`
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new ApiError(response.status, error.message || error.detail || 'Request failed', error)
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return response.json()
+}
+
+async function portalRequestBlob(
+  endpoint: string,
+  token: string,
+  options: RequestInit = {}
+): Promise<Blob> {
+  const separator = endpoint.includes('?') ? '&' : '?'
+  const url = `${API_BASE_URL}${endpoint}${separator}token=${encodeURIComponent(token)}`
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  }
+
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...headers,
+      ...options.headers,
+    },
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new ApiError(response.status, error.message || error.detail || 'Request failed', error)
+  }
+
+  return response.blob()
+}
+
+// Portal API — customer-facing, authenticated via JWT token
+export const portalApi = {
+  getCustomer: (token: string) =>
+    portalRequest<CustomerResponse>('/portal/customer', token),
+  listInvoices: (token: string) =>
+    portalRequest<InvoiceResponse[]>('/portal/invoices', token),
+  getInvoice: (token: string, id: string) =>
+    portalRequest<InvoiceResponse>(`/portal/invoices/${id}`, token),
+  downloadInvoicePdf: (token: string, id: string) =>
+    portalRequestBlob(`/portal/invoices/${id}/download_pdf`, token),
+  getCurrentUsage: (token: string, subscriptionId: string) =>
+    portalRequest<CustomerCurrentUsageResponse>(`/portal/current_usage?subscription_id=${subscriptionId}`, token),
+  listPayments: (token: string) =>
+    portalRequest<PaymentResponse[]>('/portal/payments', token),
+  getWallet: (token: string) =>
+    portalRequest<WalletResponse>('/portal/wallet', token),
+}
+
 // Customers API
 export const customersApi = {
   list: (params?: { skip?: number; limit?: number }) =>
@@ -260,6 +339,8 @@ export const customersApi = {
     request<CustomerCurrentUsageResponse>(`/v1/customers/${externalId}/projected_usage${buildQuery({ subscription_id: subscriptionId })}`),
   getPastUsage: (externalId: string, externalSubscriptionId: string, periodsCount?: number) =>
     request<CustomerCurrentUsageResponse[]>(`/v1/customers/${externalId}/past_usage${buildQuery({ external_subscription_id: externalSubscriptionId, periods_count: periodsCount })}`),
+  getPortalUrl: (externalId: string) =>
+    request<{ portal_url: string }>(`/v1/customers/${externalId}/portal_url`),
 }
 
 // Billable Metrics API
