@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -37,7 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
-import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
+import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, featuresApi, ApiError } from '@/lib/api'
 import type { UsageThresholdCreateAPI } from '@/types/billing'
 
 function formatCurrency(cents: number, currency: string = 'USD') {
@@ -90,6 +90,20 @@ export default function SubscriptionDetailPage() {
     queryFn: () => usageThresholdsApi.listForSubscription(id!),
     enabled: !!id,
   })
+
+  const { data: entitlements, isLoading: entitlementsLoading } = useQuery({
+    queryKey: ['subscription-entitlements', subscription?.external_id],
+    queryFn: () => subscriptionsApi.getEntitlements(subscription!.external_id),
+    enabled: !!subscription?.external_id,
+  })
+
+  const { data: features } = useQuery({
+    queryKey: ['features'],
+    queryFn: () => featuresApi.list(),
+    enabled: !!entitlements && entitlements.length > 0,
+  })
+
+  const featureMap = new Map(features?.map((f) => [f.id, f]) ?? [])
 
   const deleteMutation = useMutation({
     mutationFn: (thresholdId: string) => usageThresholdsApi.delete(thresholdId),
@@ -441,6 +455,78 @@ export default function SubscriptionDetailPage() {
               </form>
             )}
           </div>
+
+          <Separator />
+
+          {/* Entitlements */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <ToggleLeft className="h-4 w-4" />
+                  Entitlements
+                </CardTitle>
+                <Link
+                  to="/admin/features"
+                  className="text-sm text-primary hover:underline"
+                >
+                  Manage Features
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {entitlementsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              ) : !entitlements?.length ? (
+                <p className="text-sm text-muted-foreground">No features configured for this plan.</p>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Feature</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {entitlements.map((entitlement) => {
+                        const feature = featureMap.get(entitlement.feature_id)
+                        return (
+                          <TableRow key={entitlement.id}>
+                            <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
+                            <TableCell>
+                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                                {feature?.code ?? entitlement.feature_id}
+                              </code>
+                            </TableCell>
+                            <TableCell>
+                              {feature ? (
+                                <Badge variant={feature.feature_type === 'boolean' ? 'default' : feature.feature_type === 'quantity' ? 'secondary' : 'outline'}>
+                                  {feature.feature_type}
+                                </Badge>
+                              ) : (
+                                '\u2014'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {feature?.feature_type === 'boolean'
+                                ? entitlement.value === 'true' ? 'Enabled' : 'Disabled'
+                                : entitlement.value}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Separator />
 
