@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -21,6 +21,7 @@ from app.schemas.entitlement import EntitlementResponse
 from app.schemas.subscription import (
     ChangePlanPreviewRequest,
     ChangePlanPreviewResponse,
+    NextBillingDateResponse,
     PlanSummary,
     ProrationDetail,
     SubscriptionCreate,
@@ -208,6 +209,76 @@ INTERVAL_DAYS = {
     "quarterly": 90,
     "yearly": 365,
 }
+
+
+@router.get(
+    "/{subscription_id}/next_billing_date",
+    response_model=NextBillingDateResponse,
+    summary="Get next billing date for a subscription",
+    responses={
+        400: {"description": "Subscription is not in a billable state"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription or plan not found"},
+    },
+)
+async def get_next_billing_date(
+    subscription_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> NextBillingDateResponse:
+    """Calculate the next billing date for a subscription."""
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    if subscription.status not in ("active", "pending"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Subscription is {subscription.status}, not in a billable state",
+        )
+
+    plan_repo = PlanRepository(db)
+    plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)), organization_id)
+    if not plan:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    interval_str = str(plan.interval)
+    total_days = INTERVAL_DAYS.get(interval_str, 30)
+
+    # Determine the period anchor
+    period_anchor = subscription.started_at or subscription.created_at
+    anchor: datetime
+    if period_anchor:
+        anchor = period_anchor if period_anchor.tzinfo else period_anchor.replace(tzinfo=UTC)  # type: ignore[assignment]
+    else:  # pragma: no cover — created_at always set by DB
+        anchor = datetime.now(UTC)
+
+    now = datetime.now(UTC)
+
+    # If the subscription hasn't started yet, next billing is at started_at
+    if anchor > now:
+        return NextBillingDateResponse(
+            next_billing_date=anchor,
+            current_period_started_at=anchor,
+            interval=interval_str,
+            days_until_next_billing=(anchor - now).days,
+        )
+
+    # Calculate how many full periods have elapsed since anchor
+    elapsed_days = (now - anchor).days
+    periods_elapsed = elapsed_days // total_days
+    current_period_start = anchor + timedelta(days=periods_elapsed * total_days)
+    next_billing = anchor + timedelta(days=(periods_elapsed + 1) * total_days)
+
+    days_until = (next_billing - now).days
+
+    return NextBillingDateResponse(
+        next_billing_date=next_billing,
+        current_period_started_at=current_period_start,
+        interval=interval_str,
+        days_until_next_billing=days_until,
+    )
 
 
 @router.post(

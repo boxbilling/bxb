@@ -24,6 +24,7 @@ type SubscriptionUpdate = components['schemas']['SubscriptionUpdate']
 type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']
 type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest']
 type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
+type NextBillingDateResponse = components['schemas']['NextBillingDateResponse']
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
 type InvoiceUpdate = components['schemas']['InvoiceUpdate']
@@ -442,6 +443,8 @@ export const subscriptionsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getNextBillingDate: (id: string) =>
+    request<NextBillingDateResponse>(`/v1/subscriptions/${id}/next_billing_date`),
 }
 
 // Events API

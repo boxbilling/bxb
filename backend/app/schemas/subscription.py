@@ -96,3 +96,12 @@ class ChangePlanPreviewResponse(BaseModel):
     new_plan: PlanSummary
     effective_date: datetime
     proration: ProrationDetail
+
+
+class NextBillingDateResponse(BaseModel):
+    """Response for next billing date calculation."""
+
+    next_billing_date: datetime
+    current_period_started_at: datetime
+    interval: str
+    days_until_next_billing: int

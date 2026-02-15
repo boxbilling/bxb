@@ -728,6 +728,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/{subscription_id}/next_billing_date": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get next billing date for a subscription
+         * @description Calculate the next billing date for a subscription.
+         */
+        get: operations["get_next_billing_date_v1_subscriptions__subscription_id__next_billing_date_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{subscription_id}/change_plan_preview": {
         parameters: {
             query?: never;
@@ -4910,6 +4930,26 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
+        /**
+         * NextBillingDateResponse
+         * @description Response for next billing date calculation.
+         */
+        NextBillingDateResponse: {
+            /**
+             * Next Billing Date
+             * Format: date-time
+             */
+            next_billing_date: string;
+            /**
+             * Current Period Started At
+             * Format: date-time
+             */
+            current_period_started_at: string;
+            /** Interval */
+            interval: string;
+            /** Days Until Next Billing */
+            days_until_next_billing: number;
+        };
         /** OrganizationCreate */
         OrganizationCreate: {
             /** Name */
@@ -8250,6 +8290,58 @@ export interface operations {
                 content?: never;
             };
             /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_next_billing_date_v1_subscriptions__subscription_id__next_billing_date_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextBillingDateResponse"];
+                };
+            };
+            /** @description Subscription is not in a billable state */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription or plan not found */
             404: {
                 headers: {
                     [name: string]: unknown;

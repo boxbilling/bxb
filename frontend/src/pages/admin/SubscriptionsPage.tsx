@@ -70,6 +70,29 @@ function StatusBadge({ status }: { status: SubscriptionStatus }) {
   return <Badge variant={config.variant}>{config.label}</Badge>
 }
 
+function NextBillingCell({ sub }: { sub: Subscription }) {
+  const { data } = useQuery({
+    queryKey: ['next-billing-date', sub.id],
+    queryFn: () => subscriptionsApi.getNextBillingDate(sub.id),
+    enabled: sub.status === 'active' || sub.status === 'pending',
+  })
+
+  if (sub.status !== 'active' && sub.status !== 'pending') {
+    return <span className="text-muted-foreground">{'\u2014'}</span>
+  }
+
+  if (!data) {
+    return <Skeleton className="h-5 w-20" />
+  }
+
+  return (
+    <div>
+      <div className="text-sm">{format(new Date(data.next_billing_date), 'MMM d, yyyy')}</div>
+      <div className="text-xs text-muted-foreground">{data.days_until_next_billing}d away</div>
+    </div>
+  )
+}
+
 function TrialBadge({ sub }: { sub: Subscription }) {
   if (!sub.trial_period_days || sub.trial_period_days === 0) return null
   const trialEnded = sub.trial_ended_at && new Date(sub.trial_ended_at) <= new Date()
@@ -730,6 +753,7 @@ export default function SubscriptionsPage() {
               <TableHead>Trial</TableHead>
               <TableHead>Billing</TableHead>
               <TableHead>Started</TableHead>
+              <TableHead>Next Billing</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -744,11 +768,12 @@ export default function SubscriptionsPage() {
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                 </TableRow>
               ))
             ) : filteredSubscriptions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   No subscriptions found
                 </TableCell>
               </TableRow>
@@ -798,6 +823,9 @@ export default function SubscriptionsPage() {
                       {sub.started_at
                         ? format(new Date(sub.started_at), 'MMM d, yyyy')
                         : '\u2014'}
+                    </TableCell>
+                    <TableCell>
+                      <NextBillingCell sub={sub} />
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">

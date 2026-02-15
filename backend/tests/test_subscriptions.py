@@ -1631,3 +1631,304 @@ class TestChangePlanPreviewSchemas:
         assert resp.current_plan.name == "A"
         assert resp.new_plan.name == "B"
         assert resp.proration.net_amount_cents == 2000
+
+
+class TestNextBillingDateSchema:
+    def test_schema_fields(self):
+        """Test NextBillingDateResponse schema."""
+        from app.schemas.subscription import NextBillingDateResponse
+
+        now = datetime.now(UTC)
+        resp = NextBillingDateResponse(
+            next_billing_date=now + timedelta(days=15),
+            current_period_started_at=now - timedelta(days=15),
+            interval="monthly",
+            days_until_next_billing=15,
+        )
+        assert resp.interval == "monthly"
+        assert resp.days_until_next_billing == 15
+
+
+class TestNextBillingDateAPI:
+    def test_next_billing_date_active_subscription(self, client: TestClient, db_session):
+        """Test getting next billing date for an active subscription."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd", "name": "NBD Customer"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_plan", "name": "NBD Plan", "interval": "monthly"},
+        ).json()
+
+        # Create subscription with started_at 10 days ago
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": started_at,
+            },
+        ).json()
+
+        # Set to active
+        client.put(
+            f"/v1/subscriptions/{sub['id']}",
+            json={"status": "active"},
+        )
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 200
+        data = response.json()
+        assert "next_billing_date" in data
+        assert "current_period_started_at" in data
+        assert data["interval"] == "monthly"
+        assert data["days_until_next_billing"] in (19, 20)
+
+    def test_next_billing_date_pending_subscription(self, client: TestClient, db_session):
+        """Test getting next billing date for a pending subscription (future start)."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_pend", "name": "NBD Pending"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_pend_plan", "name": "NBD Pending Plan", "interval": "weekly"},
+        ).json()
+
+        # Create pending subscription with future started_at
+        started_at = (datetime.now(UTC) + timedelta(days=5)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_pend",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": started_at,
+            },
+        ).json()
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["interval"] == "weekly"
+        # For a future subscription, days_until should be around 5 (±1 for timing)
+        assert 4 <= data["days_until_next_billing"] <= 5
+
+    def test_next_billing_date_terminated_subscription(self, client: TestClient, db_session):
+        """Test getting next billing date for a terminated subscription returns 400."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_term", "name": "NBD Terminated"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_term_plan", "name": "NBD Term Plan", "interval": "monthly"},
+        ).json()
+
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_term",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        # Set to active then terminate
+        client.put(
+            f"/v1/subscriptions/{sub['id']}",
+            json={"status": "active"},
+        )
+        client.delete(f"/v1/subscriptions/{sub['id']}")
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 400
+        assert "terminated" in response.json()["detail"]
+
+    def test_next_billing_date_paused_subscription(self, client: TestClient, db_session):
+        """Test getting next billing date for a paused subscription returns 400."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_pause", "name": "NBD Paused"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_pause_plan", "name": "NBD Pause Plan", "interval": "monthly"},
+        ).json()
+
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_pause",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        # Set to active then pause
+        client.put(
+            f"/v1/subscriptions/{sub['id']}",
+            json={"status": "active"},
+        )
+        client.post(f"/v1/subscriptions/{sub['id']}/pause")
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 400
+        assert "paused" in response.json()["detail"]
+
+    def test_next_billing_date_not_found(self, client: TestClient):
+        """Test getting next billing date for a non-existent subscription."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(f"/v1/subscriptions/{fake_id}/next_billing_date")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Subscription not found"
+
+    def test_next_billing_date_yearly_interval(self, client: TestClient, db_session):
+        """Test next billing date with yearly interval."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_yr", "name": "NBD Yearly"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_yr_plan", "name": "NBD Yearly Plan", "interval": "yearly"},
+        ).json()
+
+        started_at = (datetime.now(UTC) - timedelta(days=100)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_yr",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": started_at,
+            },
+        ).json()
+
+        client.put(
+            f"/v1/subscriptions/{sub['id']}",
+            json={"status": "active"},
+        )
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["interval"] == "yearly"
+        assert data["days_until_next_billing"] in (264, 265)
+
+    def test_next_billing_date_quarterly_interval(self, client: TestClient, db_session):
+        """Test next billing date with quarterly interval."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_qt", "name": "NBD Quarterly"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_qt_plan", "name": "NBD Quarterly Plan", "interval": "quarterly"},
+        ).json()
+
+        started_at = (datetime.now(UTC) - timedelta(days=20)).isoformat()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_qt",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": started_at,
+            },
+        ).json()
+
+        client.put(
+            f"/v1/subscriptions/{sub['id']}",
+            json={"status": "active"},
+        )
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["interval"] == "quarterly"
+        assert data["days_until_next_billing"] in (69, 70)
+
+    def test_next_billing_date_no_started_at_uses_created_at(self, client: TestClient, db_session):
+        """Test next billing date falls back to created_at when started_at is null."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_fb", "name": "NBD Fallback"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_fb_plan", "name": "NBD Fallback Plan", "interval": "monthly"},
+        ).json()
+
+        # Create without started_at - pending status still allows calculation
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_fb",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["interval"] == "monthly"
+        # created_at is just now, so next billing should be ~30 days away
+        assert 29 <= data["days_until_next_billing"] <= 30
+
+    def test_next_billing_date_canceled_subscription(self, client: TestClient, db_session):
+        """Test getting next billing date for a canceled subscription returns 400."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_nbd_cancel", "name": "NBD Canceled"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "nbd_cancel_plan", "name": "NBD Cancel Plan", "interval": "monthly"},
+        ).json()
+
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_nbd_cancel",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        client.put(
+            f"/v1/subscriptions/{sub['id']}",
+            json={"status": "active"},
+        )
+        client.post(f"/v1/subscriptions/{sub['id']}/cancel")
+
+        response = client.get(f"/v1/subscriptions/{sub['id']}/next_billing_date")
+        assert response.status_code == 400
+        assert "canceled" in response.json()["detail"]
+
+    def test_next_billing_date_naive_started_at(self, client: TestClient, db_session):
+        """Test next billing date with a naive (no timezone) started_at."""
+        customer = create_test_customer(db_session, "cust_nbd_naive")
+        plan = create_test_plan(db_session, "nbd_naive_plan")
+
+        # Create subscription with naive datetime directly in DB
+        sub = Subscription(
+            external_id="sub_nbd_naive",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status=SubscriptionStatus.ACTIVE.value,
+            started_at=datetime(2025, 1, 1, 0, 0, 0),  # naive
+        )
+        db_session.add(sub)
+        db_session.commit()
+        db_session.refresh(sub)
+
+        response = client.get(f"/v1/subscriptions/{sub.id}/next_billing_date")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["interval"] == "monthly"
+        assert data["days_until_next_billing"] >= 0

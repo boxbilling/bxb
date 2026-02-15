@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText, Pause, Play } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText, Pause, Play, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -80,6 +80,12 @@ export default function SubscriptionDetailPage() {
     queryKey: ['subscription', id],
     queryFn: () => subscriptionsApi.get(id!),
     enabled: !!id,
+  })
+
+  const { data: nextBillingDate } = useQuery({
+    queryKey: ['next-billing-date', id],
+    queryFn: () => subscriptionsApi.getNextBillingDate(id!),
+    enabled: !!id && (subscription?.status === 'active' || subscription?.status === 'pending'),
   })
 
   const { data: customer } = useQuery({
@@ -342,6 +348,31 @@ export default function SubscriptionDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Next Billing Date */}
+          {nextBillingDate && (subscription.status === 'active' || subscription.status === 'pending') && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-full bg-primary/10 p-2">
+                    <Clock className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-muted-foreground">Next Billing Date</p>
+                    <p className="text-lg font-semibold">
+                      {format(new Date(nextBillingDate.next_billing_date), 'MMMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-primary">
+                      {nextBillingDate.days_until_next_billing}
+                    </p>
+                    <p className="text-xs text-muted-foreground">days away</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Subscription Info */}
           <Card>
