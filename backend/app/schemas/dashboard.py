@@ -59,6 +59,16 @@ class SubscriptionMetricsResponse(BaseModel):
     canceled_trend: TrendIndicator | None = None
 
 
+class PlanRevenueBreakdown(BaseModel):
+    plan_name: str
+    revenue: float
+
+
+class RevenueByPlanResponse(BaseModel):
+    by_plan: list[PlanRevenueBreakdown]
+    currency: str
+
+
 class UsageMetricVolume(BaseModel):
     metric_name: str
     metric_code: str

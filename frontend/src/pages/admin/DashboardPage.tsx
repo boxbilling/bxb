@@ -22,6 +22,9 @@ import {
   LineChart,
   Bar,
   BarChart,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -318,6 +321,23 @@ const usageChartConfig = {
   },
 } satisfies ChartConfig
 
+const PLAN_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--chart-2, 160 60% 45%))',
+  'hsl(var(--chart-3, 30 80% 55%))',
+  'hsl(var(--chart-4, 280 65% 60%))',
+  'hsl(var(--chart-5, 340 75% 55%))',
+  'hsl(200 70% 50%)',
+  'hsl(45 90% 50%)',
+  'hsl(120 40% 50%)',
+]
+
+const revenueByPlanChartConfig = {
+  revenue: {
+    label: 'Revenue',
+  },
+} satisfies ChartConfig
+
 export default function DashboardPage() {
   const [preset, setPreset] = useState<PeriodPreset>('30d')
   const [customRange, setCustomRange] = useState<DateRange | undefined>()
@@ -382,6 +402,11 @@ export default function DashboardPage() {
   const { data: recentSubscriptions, isLoading: recentSubscriptionsLoading } = useQuery({
     queryKey: ['dashboard-recent-subscriptions'],
     queryFn: () => dashboardApi.getRecentSubscriptions(),
+  })
+
+  const { data: revenueByPlan, isLoading: revenueByPlanLoading } = useQuery({
+    queryKey: ['dashboard-revenue-by-plan', dateParams],
+    queryFn: () => dashboardApi.getRevenueByPlan(dateParams),
   })
 
   const periodLabel = preset === 'custom'
@@ -744,7 +769,78 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Revenue by Plan (Donut) */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Revenue by Plan ({PERIOD_LABELS[preset]})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {revenueByPlanLoading ? (
+              <div className="h-[250px] flex items-center justify-center">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : revenueByPlan && revenueByPlan.by_plan.length > 0 ? (
+              <ChartContainer config={revenueByPlanChartConfig} className="h-[250px] w-full">
+                <PieChart accessibilityLayer>
+                  <Pie
+                    data={revenueByPlan.by_plan}
+                    dataKey="revenue"
+                    nameKey="plan_name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={90}
+                    paddingAngle={2}
+                  >
+                    {revenueByPlan.by_plan.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={PLAN_COLORS[index % PLAN_COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <ChartTooltip
+                    content={
+                      <ChartTooltipContent
+                        nameKey="plan_name"
+                        formatter={(value) =>
+                          formatCurrencyDollars(Number(value), revenueByPlan.currency)
+                        }
+                      />
+                    }
+                  />
+                </PieChart>
+              </ChartContainer>
+            ) : (
+              <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <DollarSign className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No revenue data yet</p>
+                </div>
+              </div>
+            )}
+            {revenueByPlan && revenueByPlan.by_plan.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {revenueByPlan.by_plan.map((plan, index) => (
+                  <div key={plan.plan_name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className="h-2.5 w-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: PLAN_COLORS[index % PLAN_COLORS.length] }}
+                      />
+                      <span className="text-muted-foreground truncate max-w-[120px]">{plan.plan_name}</span>
+                    </div>
+                    <span className="font-mono font-medium">
+                      {formatCurrencyDollars(plan.revenue, revenueByPlan.currency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Subscriptions by Plan */}
         <Card>
           <CardHeader className="pb-2">

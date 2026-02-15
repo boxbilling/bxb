@@ -45,6 +45,12 @@ class PlanSubscriptionCount:
 
 
 @dataclass
+class PlanRevenue:
+    plan_name: str
+    revenue: float
+
+
+@dataclass
 class MetricUsage:
     metric_name: str
     metric_code: str
@@ -414,6 +420,39 @@ class DashboardRepository:
                 metric_code=row.metric_code,
                 event_count=row.event_count,
             )
+            for row in rows
+        ]
+
+    # --- Revenue by plan ---
+
+    def revenue_by_plan(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list[PlanRevenue]:
+        """Revenue grouped by plan from finalized/paid invoices linked via subscriptions."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        rows = (
+            self.db.query(
+                Plan.name.label("plan_name"),
+                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+            )
+            .join(Subscription, Invoice.subscription_id == Subscription.id)
+            .join(Plan, Subscription.plan_id == Plan.id)
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status.in_(["finalized", "paid"]),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .group_by(Plan.name)
+            .order_by(sa_func.sum(Invoice.total).desc())
+            .all()
+        )
+        return [
+            PlanRevenue(plan_name=row.plan_name, revenue=float(row.revenue))
             for row in rows
         ]
 

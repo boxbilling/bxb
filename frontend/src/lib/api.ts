@@ -951,6 +951,11 @@ export const dashboardApi = {
     request<{
       top_metrics: { metric_name: string; metric_code: string; event_count: number }[]
     }>(`/dashboard/usage${buildQuery(params)}`),
+  getRevenueByPlan: (params?: DashboardDateRange) =>
+    request<{
+      by_plan: { plan_name: string; revenue: number }[]
+      currency: string
+    }>(`/dashboard/revenue_by_plan${buildQuery(params)}`),
   getRecentInvoices: () =>
     request<{
       id: string

@@ -10,9 +10,11 @@ from app.repositories.dashboard_repository import DashboardRepository
 from app.schemas.dashboard import (
     CustomerMetricsResponse,
     DashboardStatsResponse,
+    PlanRevenueBreakdown,
     RecentActivityResponse,
     RecentInvoiceItem,
     RecentSubscriptionItem,
+    RevenueByPlanResponse,
     RevenueDataPoint,
     RevenueResponse,
     SubscriptionMetricsResponse,
@@ -287,6 +289,32 @@ async def get_usage_metrics(
             )
             for m in top
         ],
+    )
+
+
+@router.get(
+    "/revenue_by_plan",
+    response_model=RevenueByPlanResponse,
+    summary="Get revenue breakdown by plan",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_revenue_by_plan(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
+) -> RevenueByPlanResponse:
+    """Get revenue breakdown by plan for donut chart visualization."""
+    repo = DashboardRepository(db)
+    by_plan = repo.revenue_by_plan(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    return RevenueByPlanResponse(
+        by_plan=[
+            PlanRevenueBreakdown(plan_name=p.plan_name, revenue=p.revenue)
+            for p in by_plan
+        ],
+        currency="USD",
     )
 
 

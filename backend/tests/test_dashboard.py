@@ -1059,6 +1059,152 @@ class TestTrendIndicatorsInResponses:
         assert data["new_trend"]["change_percent"] == 0.0
 
 
+class TestDashboardRevenueByPlan:
+    def test_revenue_by_plan_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/revenue_by_plan")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["by_plan"] == []
+        assert data["currency"] == "USD"
+
+    def test_revenue_by_plan_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue_by_plan")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["by_plan"]) == 1
+        assert data["by_plan"][0]["plan_name"] == "Dashboard Plan"
+        # Both invoices (108 + 54) are linked to Dashboard Plan
+        assert data["by_plan"][0]["revenue"] == 162.0
+        assert data["currency"] == "USD"
+
+    def test_revenue_by_plan_multiple_plans(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Revenue is grouped correctly across multiple plans."""
+        plan_repo = PlanRepository(db_session)
+        sub_repo = SubscriptionRepository(db_session)
+
+        plan2 = plan_repo.create(
+            PlanCreate(code="plan_b", name="Plan B", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
+        sub3 = sub_repo.create(
+            SubscriptionCreate(
+                external_id="rev_sub_3",
+                customer_id=seeded_data["customers"][0].id,
+                plan_id=plan2.id,
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        now = datetime.now(UTC)
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="DASH-REV-PLAN2",
+            customer_id=seeded_data["customers"][0].id,
+            subscription_id=sub3.id,
+            status=InvoiceStatus.PAID.value,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("200.00"),
+            tax_amount=Decimal("0.00"),
+            total=Decimal("200.00"),
+            currency="USD",
+            issued_at=now - timedelta(days=1),
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_by_plan")
+        data = response.json()
+        assert len(data["by_plan"]) == 2
+        # Ordered by revenue descending
+        assert data["by_plan"][0]["plan_name"] == "Plan B"
+        assert data["by_plan"][0]["revenue"] == 200.0
+        assert data["by_plan"][1]["plan_name"] == "Dashboard Plan"
+        assert data["by_plan"][1]["revenue"] == 162.0
+
+    def test_revenue_by_plan_excludes_draft_invoices(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Draft invoices are excluded from revenue breakdown."""
+        now = datetime.now(UTC)
+        draft_inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="DASH-DRAFT-REV",
+            customer_id=seeded_data["customers"][0].id,
+            subscription_id=seeded_data["subscriptions"][0].id,
+            status=InvoiceStatus.DRAFT.value,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("999.00"),
+            tax_amount=Decimal("0.00"),
+            total=Decimal("999.00"),
+            currency="USD",
+            issued_at=now,
+            line_items=[],
+        )
+        db_session.add(draft_inv)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_by_plan")
+        data = response.json()
+        assert len(data["by_plan"]) == 1
+        # Draft invoice excluded, still 162
+        assert data["by_plan"][0]["revenue"] == 162.0
+
+    def test_revenue_by_plan_with_date_range(self, client: TestClient, seeded_data):
+        """Revenue by plan respects date range parameters."""
+        today = datetime.now(UTC).strftime("%Y-%m-%d")
+        week_ago = (datetime.now(UTC) - timedelta(days=7)).strftime("%Y-%m-%d")
+        response = client.get(
+            f"/dashboard/revenue_by_plan?start_date={week_ago}&end_date={today}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["by_plan"]) == 1
+        assert data["by_plan"][0]["revenue"] == 162.0
+
+    def test_revenue_by_plan_narrow_range_excludes(self, client: TestClient, seeded_data):
+        """Date range that excludes all invoices returns empty."""
+        response = client.get(
+            "/dashboard/revenue_by_plan?start_date=2020-01-01&end_date=2020-01-02"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["by_plan"] == []
+
+    def test_revenue_by_plan_excludes_no_subscription(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Invoices without a subscription_id are excluded."""
+        now = datetime.now(UTC)
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="DASH-NO-SUB",
+            customer_id=seeded_data["customers"][0].id,
+            subscription_id=None,
+            status=InvoiceStatus.PAID.value,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("500.00"),
+            tax_amount=Decimal("0.00"),
+            total=Decimal("500.00"),
+            currency="USD",
+            issued_at=now - timedelta(days=1),
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_by_plan")
+        data = response.json()
+        # No-sub invoice excluded from plan breakdown, still 162 for Dashboard Plan
+        assert len(data["by_plan"]) == 1
+        assert data["by_plan"][0]["revenue"] == 162.0
+
+
 class TestDashboardRecentInvoices:
     def test_recent_invoices_empty_db(self, client: TestClient):
         response = client.get("/dashboard/recent_invoices")
