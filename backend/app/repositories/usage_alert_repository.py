@@ -12,23 +12,28 @@ class UsageAlertRepository:
         self.db = db
 
     def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+        subscription_id: UUID | None = None,
     ) -> list[UsageAlert]:
-        return (
-            self.db.query(UsageAlert)
-            .filter(UsageAlert.organization_id == organization_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
+        query = self.db.query(UsageAlert).filter(
+            UsageAlert.organization_id == organization_id
         )
+        if subscription_id is not None:
+            query = query.filter(UsageAlert.subscription_id == subscription_id)
+        return query.offset(skip).limit(limit).all()
 
-    def count(self, organization_id: UUID) -> int:
-        return (
-            self.db.query(func.count(UsageAlert.id))
-            .filter(UsageAlert.organization_id == organization_id)
-            .scalar()
-            or 0
+    def count(
+        self, organization_id: UUID, subscription_id: UUID | None = None
+    ) -> int:
+        query = self.db.query(func.count(UsageAlert.id)).filter(
+            UsageAlert.organization_id == organization_id
         )
+        if subscription_id is not None:
+            query = query.filter(UsageAlert.subscription_id == subscription_id)
+        return query.scalar() or 0
 
     def get_by_id(
         self, alert_id: UUID, organization_id: UUID | None = None

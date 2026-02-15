@@ -16,6 +16,7 @@ from app.services.daily_usage_service import DailyUsageService
 from app.services.data_export_service import DataExportService
 from app.services.subscription_dates import SubscriptionDatesService
 from app.services.subscription_lifecycle import SubscriptionLifecycleService
+from app.services.usage_alert_service import UsageAlertService
 from app.services.usage_threshold_service import UsageThresholdService
 from app.services.webhook_service import WebhookService
 from app.tasks import redis_settings
@@ -249,6 +250,65 @@ async def check_usage_thresholds_task(ctx: dict[str, Any], subscription_id: str)
         db.close()
 
 
+async def check_usage_alerts_task(ctx: dict[str, Any], subscription_id: str) -> int:
+    """Background task: check usage alerts for a subscription after event ingestion.
+
+    Looks up the subscription, determines its billing period, and checks
+    whether any usage alerts should fire.
+
+    Args:
+        ctx: ARQ worker context.
+        subscription_id: UUID string of the subscription to check.
+
+    Returns:
+        Number of triggered alerts.
+    """
+    db = SessionLocal()
+    try:
+        sub_uuid = UUID(subscription_id)
+        sub_repo = SubscriptionRepository(db)
+        subscription = sub_repo.get_by_id(sub_uuid)
+        if not subscription:
+            logger.warning("Subscription %s not found for alert check", subscription_id)
+            return 0
+
+        if subscription.status != SubscriptionStatus.ACTIVE.value:
+            return 0
+
+        plan_repo = PlanRepository(db)
+        plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)))
+        if not plan:
+            return 0
+
+        customer_repo = CustomerRepository(db)
+        customer = customer_repo.get_by_id(UUID(str(subscription.customer_id)))
+        if not customer:
+            return 0
+
+        dates_service = SubscriptionDatesService()
+        interval = str(plan.interval)
+        now = datetime.now(UTC)
+        period_start, period_end = dates_service.calculate_billing_period(
+            subscription, interval, now
+        )
+
+        service = UsageAlertService(db)
+        triggered = service.check_alerts(
+            subscription_id=sub_uuid,
+            external_customer_id=str(customer.external_id),
+            billing_period_start=period_start,
+            billing_period_end=period_end,
+        )
+
+        if triggered:
+            logger.info(
+                "Subscription %s triggered %d usage alert(s)", subscription_id, len(triggered)
+            )
+        return len(triggered)
+    finally:
+        db.close()
+
+
 async def process_data_export_task(ctx: dict[str, Any], export_id: str) -> str:
     """Background task: process a data export and generate CSV file.
 
@@ -312,6 +372,7 @@ class WorkerSettings:
         process_trial_expirations_task,
         generate_periodic_invoices_task,
         check_usage_thresholds_task,
+        check_usage_alerts_task,
         process_data_export_task,
         aggregate_daily_usage_task,
         cleanup_idempotency_records_task,

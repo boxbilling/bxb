@@ -30,7 +30,7 @@ from app.schemas.event import (
 from app.schemas.invoice_preview import EstimateFeesRequest, EstimateFeesResponse
 from app.services.charge_models.factory import get_charge_calculator
 from app.services.usage_aggregation import UsageAggregationService
-from app.tasks import enqueue_check_usage_thresholds
+from app.tasks import enqueue_check_usage_alerts, enqueue_check_usage_thresholds
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +95,15 @@ async def _enqueue_threshold_checks(subscription_ids: list[str]) -> None:
             await enqueue_check_usage_thresholds(sub_id)
         except Exception:
             logger.exception("Failed to enqueue threshold check for subscription %s", sub_id)
+
+
+async def _enqueue_alert_checks(subscription_ids: list[str]) -> None:
+    """Enqueue usage alert check tasks for the given subscription IDs."""
+    for sub_id in subscription_ids:
+        try:
+            await enqueue_check_usage_alerts(sub_id)
+        except Exception:
+            logger.exception("Failed to enqueue alert check for subscription %s", sub_id)
 
 
 @router.post(
@@ -371,6 +380,7 @@ async def create_event(
         sub_ids = _get_active_subscription_ids(data.external_customer_id, db, organization_id)
         if sub_ids:
             background_tasks.add_task(_enqueue_threshold_checks, sub_ids)
+            background_tasks.add_task(_enqueue_alert_checks, sub_ids)
 
     if isinstance(idempotency, IdempotencyResult):
         body = EventResponse.model_validate(event).model_dump(mode="json")
@@ -419,6 +429,7 @@ async def create_events_batch(
         unique_sub_ids = list(set(all_sub_ids))
         if unique_sub_ids:
             background_tasks.add_task(_enqueue_threshold_checks, unique_sub_ids)
+            background_tasks.add_task(_enqueue_alert_checks, unique_sub_ids)
 
     return EventBatchResponse(
         ingested=ingested,
