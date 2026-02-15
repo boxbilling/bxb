@@ -2365,3 +2365,194 @@ class TestPaymentRepositoryCount:
         result = repo.count()
         assert isinstance(result, int)
         assert result >= 0
+
+
+class TestRetryPayment:
+    """Tests for retry payment functionality."""
+
+    def test_retry_failed_payment(self, client, payment, db_session):
+        """Test retrying a failed payment resets it to pending."""
+        repo = PaymentRepository(db_session)
+        repo.mark_failed(payment.id, reason="Card declined")
+
+        response = client.post(f"/v1/payments/{payment.id}/retry")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "pending"
+        assert data["failure_reason"] is None
+
+    def test_retry_payment_not_found(self, client):
+        """Test retrying non-existent payment returns 404."""
+        response = client.post(f"/v1/payments/{uuid4()}/retry")
+        assert response.status_code == 404
+
+    def test_retry_pending_payment_fails(self, client, payment):
+        """Test retrying a pending payment fails with 400."""
+        response = client.post(f"/v1/payments/{payment.id}/retry")
+        assert response.status_code == 400
+        assert "Only failed payments" in response.json()["detail"]
+
+    def test_retry_succeeded_payment_fails(self, client, payment, db_session):
+        """Test retrying a succeeded payment fails with 400."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(f"/v1/payments/{payment.id}/retry")
+        assert response.status_code == 400
+
+    def test_retry_creates_audit_log(self, client, payment, db_session):
+        """Test that retry creates an audit log entry."""
+        repo = PaymentRepository(db_session)
+        repo.mark_failed(payment.id)
+
+        response = client.post(f"/v1/payments/{payment.id}/retry")
+        assert response.status_code == 200
+
+        db_session.expire_all()
+        logs = (
+            db_session.query(AuditLog)
+            .filter(
+                AuditLog.resource_id == payment.id,
+                AuditLog.action == "status_changed",
+            )
+            .all()
+        )
+        assert any(
+            log.changes.get("status", {}).get("new") == "pending"
+            for log in logs
+        )
+
+    def test_repo_retry_not_found(self, db_session):
+        """Test repository retry returns None for non-existent payment."""
+        repo = PaymentRepository(db_session)
+        result = repo.retry(uuid4())
+        assert result is None
+
+    def test_repo_retry_non_failed_raises(self, db_session, payment):
+        """Test repository retry raises ValueError for non-failed payment."""
+        repo = PaymentRepository(db_session)
+        with pytest.raises(ValueError, match="Only failed payments"):
+            repo.retry(payment.id)
+
+
+class TestPartialRefund:
+    """Tests for partial refund functionality."""
+
+    def test_full_refund_no_body(self, client, payment, db_session):
+        """Test full refund with no request body (backward compatible)."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(f"/v1/payments/{payment.id}/refund")
+        assert response.status_code == 200
+        assert response.json()["status"] == "refunded"
+
+    def test_full_refund_explicit(self, client, payment, db_session):
+        """Test full refund with explicit null amount."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(
+            f"/v1/payments/{payment.id}/refund",
+            json={},
+        )
+        assert response.status_code == 200
+        assert response.json()["status"] == "refunded"
+
+    def test_partial_refund(self, client, payment, db_session):
+        """Test partial refund with specific amount."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+        original_amount = float(payment.amount)
+
+        response = client.post(
+            f"/v1/payments/{payment.id}/refund",
+            json={"amount": 25.00},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "refunded"
+        assert float(data["amount"]) == original_amount - 25.00
+        assert float(data["payment_metadata"]["refunded_amount"]) == 25.0
+        assert data["payment_metadata"]["partial_refund"] is True
+
+    def test_partial_refund_exceeds_amount(self, client, payment, db_session):
+        """Test partial refund exceeding payment amount fails."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(
+            f"/v1/payments/{payment.id}/refund",
+            json={"amount": 99999.00},
+        )
+        assert response.status_code == 400
+        assert "cannot exceed" in response.json()["detail"]
+
+    def test_partial_refund_zero_amount_fails(self, client, payment, db_session):
+        """Test partial refund with zero amount fails validation."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(
+            f"/v1/payments/{payment.id}/refund",
+            json={"amount": 0},
+        )
+        assert response.status_code == 422
+
+    def test_partial_refund_negative_amount_fails(self, client, payment, db_session):
+        """Test partial refund with negative amount fails validation."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(
+            f"/v1/payments/{payment.id}/refund",
+            json={"amount": -10},
+        )
+        assert response.status_code == 422
+
+    def test_refund_creates_audit_log(self, client, payment, db_session):
+        """Test that refund creates an audit log entry."""
+        repo = PaymentRepository(db_session)
+        repo.mark_succeeded(payment.id)
+
+        response = client.post(f"/v1/payments/{payment.id}/refund")
+        assert response.status_code == 200
+
+        db_session.expire_all()
+        logs = (
+            db_session.query(AuditLog)
+            .filter(
+                AuditLog.resource_id == payment.id,
+                AuditLog.action == "status_changed",
+            )
+            .all()
+        )
+        assert any(
+            log.changes.get("status", {}).get("new") == "refunded"
+            for log in logs
+        )
+
+    def test_repo_partial_refund(self, db_session, payment):
+        """Test repository partial refund updates amount and metadata."""
+        repo = PaymentRepository(db_session)
+        original_amount = float(payment.amount)
+        repo.mark_succeeded(payment.id)
+
+        result = repo.mark_refunded(payment.id, Decimal("30.00"))
+        assert result is not None
+        assert result.status == PaymentStatus.REFUNDED.value
+        assert float(result.amount) == original_amount - 30.0
+        assert result.payment_metadata["partial_refund"] is True
+        assert float(result.payment_metadata["refunded_amount"]) == 30.0
+
+    def test_refund_schema_validation(self):
+        """Test RefundRequest schema validation."""
+        from app.schemas.payment import RefundRequest
+
+        # Valid with amount
+        req = RefundRequest(amount=Decimal("50.00"))
+        assert req.amount == Decimal("50.00")
+
+        # Valid without amount (full refund)
+        req = RefundRequest()
+        assert req.amount is None

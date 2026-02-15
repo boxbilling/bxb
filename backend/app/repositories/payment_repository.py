@@ -1,6 +1,7 @@
 """Payment repository for data access."""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
@@ -197,8 +198,10 @@ class PaymentRepository:
         self.db.refresh(payment)
         return payment
 
-    def mark_refunded(self, payment_id: UUID) -> Payment | None:
-        """Mark a payment as refunded."""
+    def mark_refunded(
+        self, payment_id: UUID, refund_amount: Decimal | None = None
+    ) -> Payment | None:
+        """Mark a payment as refunded. Optionally specify a partial refund amount."""
         payment = self.get_by_id(payment_id)
         if not payment:
             return None
@@ -206,6 +209,27 @@ class PaymentRepository:
             raise ValueError("Only succeeded payments can be refunded")
 
         payment.status = PaymentStatus.REFUNDED.value  # type: ignore[assignment]
+        if refund_amount is not None:
+            payment.amount = payment.amount - refund_amount  # type: ignore[assignment]
+            payment.payment_metadata = {  # type: ignore[assignment]
+                **(payment.payment_metadata or {}),
+                "refunded_amount": str(refund_amount),
+                "partial_refund": True,
+            }
+        self.db.commit()
+        self.db.refresh(payment)
+        return payment
+
+    def retry(self, payment_id: UUID) -> Payment | None:
+        """Retry a failed payment by resetting to pending status."""
+        payment = self.get_by_id(payment_id)
+        if not payment:
+            return None
+        if payment.status != PaymentStatus.FAILED.value:
+            raise ValueError("Only failed payments can be retried")
+
+        payment.status = PaymentStatus.PENDING.value  # type: ignore[assignment]
+        payment.failure_reason = None  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(payment)
         return payment

@@ -1463,9 +1463,29 @@ export interface paths {
         put?: never;
         /**
          * Refund payment
-         * @description Refund a succeeded payment.
+         * @description Refund a succeeded payment. Optionally specify an amount for partial refund.
          */
         post: operations["refund_payment_v1_payments__payment_id__refund_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{payment_id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Retry failed payment
+         * @description Retry a failed payment by resetting it to pending status.
+         */
+        post: operations["retry_payment_v1_payments__payment_id__retry_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5784,6 +5804,17 @@ export interface components {
             status: string;
             /** Created At */
             created_at: string;
+        };
+        /**
+         * RefundRequest
+         * @description Schema for refund request with optional partial amount.
+         */
+        RefundRequest: {
+            /**
+             * Amount
+             * @description Amount to refund. If not provided, full refund is issued.
+             */
+            amount?: number | string | null;
         };
         /**
          * RefundStatus
@@ -10478,7 +10509,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RefundRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -10490,6 +10525,58 @@ export interface operations {
                 };
             };
             /** @description Only succeeded payments can be refunded */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_payment_v1_payments__payment_id__retry_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                payment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Only failed payments can be retried */
             400: {
                 headers: {
                     [name: string]: unknown;

@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, CreditCard, Check, X, RefreshCw, ExternalLink } from 'lucide-react'
+import { Search, CreditCard, Check, Trash2, RefreshCw, ExternalLink, MoreHorizontal, Eye, RotateCcw } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -21,6 +23,13 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -67,7 +76,9 @@ export default function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'all'>('all')
   const [providerFilter, setProviderFilter] = useState<PaymentProvider | 'all'>('all')
   const [selectedPayment, setSelectedPayment] = useState<PaymentResponse | null>(null)
-  const [confirmAction, setConfirmAction] = useState<{ type: 'refund' | 'markPaid' | 'delete'; payment: PaymentResponse } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: 'refund' | 'markPaid' | 'delete' | 'retry'; payment: PaymentResponse } | null>(null)
+  const [refundAmount, setRefundAmount] = useState<string>('')
+  const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
 
   // Fetch payments
   const { data: payments = [], isLoading } = useQuery({
@@ -101,7 +112,18 @@ export default function PaymentsPage() {
   })
 
   const refundMutation = useMutation({
-    mutationFn: (id: string) => paymentsApi.refund(id),
+    mutationFn: ({ id, amount }: { id: string; amount?: number }) =>
+      paymentsApi.refund(id, amount),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      setConfirmAction(null)
+      setRefundAmount('')
+      setRefundType('full')
+    },
+  })
+
+  const retryMutation = useMutation({
+    mutationFn: (id: string) => paymentsApi.retry(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['payments'] })
       setConfirmAction(null)
@@ -143,6 +165,8 @@ export default function PaymentsPage() {
     succeeded: payments.filter(p => p.status === 'succeeded').length,
     failed: payments.filter(p => p.status === 'failed').length,
   }
+
+  const isActionPending = markPaidMutation.isPending || refundMutation.isPending || deleteMutation.isPending || retryMutation.isPending
 
   return (
     <div className="space-y-6">
@@ -253,7 +277,7 @@ export default function PaymentsPage() {
               <TableHead>Provider</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Created</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[60px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -266,7 +290,7 @@ export default function PaymentsPage() {
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                 </TableRow>
               ))
             ) : filteredPayments.length === 0 ? (
@@ -301,46 +325,57 @@ export default function PaymentsPage() {
                     {format(new Date(payment.created_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSelectedPayment(payment)}
-                        title="View details"
-                      >
-                        <CreditCard className="h-4 w-4" />
-                      </Button>
-                      {payment.status === 'pending' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setConfirmAction({ type: 'markPaid', payment })}
-                          title="Mark as paid"
-                        >
-                          <Check className="h-4 w-4 text-green-600" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
                         </Button>
-                      )}
-                      {payment.status === 'succeeded' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setConfirmAction({ type: 'refund', payment })}
-                          title="Refund"
-                        >
-                          <RefreshCw className="h-4 w-4 text-orange-600" />
-                        </Button>
-                      )}
-                      {payment.status === 'pending' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setConfirmAction({ type: 'delete', payment })}
-                          title="Delete"
-                        >
-                          <X className="h-4 w-4 text-red-600" />
-                        </Button>
-                      )}
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setSelectedPayment(payment)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        {payment.status === 'pending' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: 'markPaid', payment })}>
+                              <Check className="mr-2 h-4 w-4 text-green-600" />
+                              Mark as Paid
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => setConfirmAction({ type: 'delete', payment })}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {payment.status === 'succeeded' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => {
+                              setRefundType('full')
+                              setRefundAmount('')
+                              setConfirmAction({ type: 'refund', payment })
+                            }}>
+                              <RefreshCw className="mr-2 h-4 w-4 text-orange-600" />
+                              Refund
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {payment.status === 'failed' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: 'retry', payment })}>
+                              <RotateCcw className="mr-2 h-4 w-4 text-blue-600" />
+                              Retry Payment
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -353,7 +388,13 @@ export default function PaymentsPage() {
       <Dialog open={!!selectedPayment} onOpenChange={() => setSelectedPayment(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Payment Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Payment Details
+            </DialogTitle>
+            <DialogDescription>
+              View payment information and related entities.
+            </DialogDescription>
           </DialogHeader>
           {selectedPayment && (
             <div className="space-y-4">
@@ -376,11 +417,25 @@ export default function PaymentsPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Customer</p>
-                  <p>{getCustomerName(selectedPayment.customer_id)}</p>
+                  <Link
+                    to={`/admin/customers/${selectedPayment.customer_id}`}
+                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                    onClick={() => setSelectedPayment(null)}
+                  >
+                    {getCustomerName(selectedPayment.customer_id)}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Invoice</p>
-                  <p>{getInvoiceNumber(selectedPayment.invoice_id)}</p>
+                  <Link
+                    to={`/admin/invoices/${selectedPayment.invoice_id}`}
+                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                    onClick={() => setSelectedPayment(null)}
+                  >
+                    {getInvoiceNumber(selectedPayment.invoice_id)}
+                    <ExternalLink className="h-3 w-3" />
+                  </Link>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Created</p>
@@ -428,40 +483,100 @@ export default function PaymentsPage() {
       </Dialog>
 
       {/* Confirmation Dialog */}
-      <Dialog open={!!confirmAction} onOpenChange={() => setConfirmAction(null)}>
+      <Dialog open={!!confirmAction} onOpenChange={() => {
+        setConfirmAction(null)
+        setRefundAmount('')
+        setRefundType('full')
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {confirmAction?.type === 'markPaid' && 'Mark Payment as Paid'}
               {confirmAction?.type === 'refund' && 'Refund Payment'}
               {confirmAction?.type === 'delete' && 'Delete Payment'}
+              {confirmAction?.type === 'retry' && 'Retry Payment'}
             </DialogTitle>
             <DialogDescription>
               {confirmAction?.type === 'markPaid' && (
                 <>Are you sure you want to mark this payment as paid? This will also update the invoice status.</>
               )}
               {confirmAction?.type === 'refund' && (
-                <>Are you sure you want to refund this payment? This action cannot be undone.</>
+                <>Choose a full or partial refund. This action cannot be undone.</>
               )}
               {confirmAction?.type === 'delete' && (
                 <>Are you sure you want to delete this pending payment?</>
               )}
+              {confirmAction?.type === 'retry' && (
+                <>Are you sure you want to retry this failed payment? It will be reset to pending status.</>
+              )}
             </DialogDescription>
           </DialogHeader>
           {confirmAction && (
-            <div className="py-4">
-              <p className="text-sm">
-                <span className="text-muted-foreground">Amount:</span>{' '}
-                {formatAmount(confirmAction.payment.amount, confirmAction.payment.currency)}
-              </p>
-              <p className="text-sm">
-                <span className="text-muted-foreground">Customer:</span>{' '}
-                {getCustomerName(confirmAction.payment.customer_id)}
-              </p>
+            <div className="space-y-4 py-4">
+              <div className="space-y-1">
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Amount:</span>{' '}
+                  {formatAmount(confirmAction.payment.amount, confirmAction.payment.currency)}
+                </p>
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Customer:</span>{' '}
+                  {getCustomerName(confirmAction.payment.customer_id)}
+                </p>
+              </div>
+
+              {/* Partial Refund UI */}
+              {confirmAction.type === 'refund' && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="refundType"
+                        checked={refundType === 'full'}
+                        onChange={() => {
+                          setRefundType('full')
+                          setRefundAmount('')
+                        }}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Full refund</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="refundType"
+                        checked={refundType === 'partial'}
+                        onChange={() => setRefundType('partial')}
+                        className="accent-primary"
+                      />
+                      <span className="text-sm">Partial refund</span>
+                    </label>
+                  </div>
+                  {refundType === 'partial' && (
+                    <div className="space-y-1">
+                      <Label htmlFor="refundAmount">Refund amount ({confirmAction.payment.currency})</Label>
+                      <Input
+                        id="refundAmount"
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        max={confirmAction.payment.amount}
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(e.target.value)}
+                        placeholder={`Max ${formatAmount(confirmAction.payment.amount, confirmAction.payment.currency)}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+            <Button variant="outline" onClick={() => {
+              setConfirmAction(null)
+              setRefundAmount('')
+              setRefundType('full')
+            }}>
               Cancel
             </Button>
             <Button
@@ -471,14 +586,19 @@ export default function PaymentsPage() {
                 if (confirmAction.type === 'markPaid') {
                   markPaidMutation.mutate(confirmAction.payment.id)
                 } else if (confirmAction.type === 'refund') {
-                  refundMutation.mutate(confirmAction.payment.id)
+                  const amount = refundType === 'partial' && refundAmount
+                    ? parseFloat(refundAmount)
+                    : undefined
+                  refundMutation.mutate({ id: confirmAction.payment.id, amount })
+                } else if (confirmAction.type === 'retry') {
+                  retryMutation.mutate(confirmAction.payment.id)
                 } else if (confirmAction.type === 'delete') {
                   deleteMutation.mutate(confirmAction.payment.id)
                 }
               }}
-              disabled={markPaidMutation.isPending || refundMutation.isPending || deleteMutation.isPending}
+              disabled={isActionPending || (confirmAction?.type === 'refund' && refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0 || parseFloat(refundAmount) > parseFloat(confirmAction.payment.amount)))}
             >
-              {(markPaidMutation.isPending || refundMutation.isPending || deleteMutation.isPending) ? 'Processing...' : 'Confirm'}
+              {isActionPending ? 'Processing...' : 'Confirm'}
             </Button>
           </DialogFooter>
         </DialogContent>

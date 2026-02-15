@@ -70,6 +70,16 @@ class CheckoutSessionResponse(BaseModel):
     expires_at: datetime | None = None
 
 
+class RefundRequest(BaseModel):
+    """Schema for refund request with optional partial amount."""
+
+    amount: Decimal | None = Field(
+        default=None,
+        description="Amount to refund. If not provided, full refund is issued.",
+        gt=0,
+    )
+
+
 class WebhookEvent(BaseModel):
     """Schema for incoming webhook events."""
 

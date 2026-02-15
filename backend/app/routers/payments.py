@@ -21,6 +21,7 @@ from app.schemas.payment import (
     CheckoutSessionCreate,
     CheckoutSessionResponse,
     PaymentResponse,
+    RefundRequest,
 )
 from app.services.audit_service import AuditService
 from app.services.payment_provider import get_payment_provider
@@ -443,23 +444,87 @@ async def mark_payment_paid(
 )
 async def refund_payment(
     payment_id: UUID,
+    data: RefundRequest | None = None,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> Payment:
-    """Refund a succeeded payment."""
+    """Refund a succeeded payment. Optionally specify an amount for partial refund."""
     payment_repo = PaymentRepository(db)
     payment = payment_repo.get_by_id(payment_id, organization_id)
 
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
 
+    refund_amount = data.amount if data and data.amount is not None else None
+    if refund_amount is not None and refund_amount > payment.amount:
+        raise HTTPException(
+            status_code=400,
+            detail="Refund amount cannot exceed payment amount",
+        )
+
     try:
-        updated_payment = payment_repo.mark_refunded(payment_id)
+        updated_payment = payment_repo.mark_refunded(payment_id, refund_amount)
         if not updated_payment:  # pragma: no cover - race condition
             raise HTTPException(status_code=404, detail="Payment not found")
+
+        audit_service = AuditService(db)
+        audit_service.log_status_change(
+            resource_type="payment",
+            resource_id=payment_id,
+            organization_id=organization_id,
+            old_status="succeeded",
+            new_status="refunded",
+            actor_type="api_key",
+        )
+
         return updated_payment
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+
+@router.post(
+    "/{payment_id}/retry",
+    response_model=PaymentResponse,
+    summary="Retry failed payment",
+    responses={
+        400: {"description": "Only failed payments can be retried"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Payment not found"},
+    },
+)
+async def retry_payment(
+    payment_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Payment:
+    """Retry a failed payment by resetting it to pending status."""
+    payment_repo = PaymentRepository(db)
+    payment = payment_repo.get_by_id(payment_id, organization_id)
+
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    if payment.status != PaymentStatus.FAILED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Only failed payments can be retried",
+        )
+
+    updated_payment = payment_repo.retry(payment_id)
+    if not updated_payment:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="payment",
+        resource_id=payment_id,
+        organization_id=organization_id,
+        old_status="failed",
+        new_status="pending",
+        actor_type="api_key",
+    )
+
+    return updated_payment
 
 
 @router.delete(

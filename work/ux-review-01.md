@@ -474,11 +474,16 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No payment timeline (attempt history)
 
 **Recommendations:**
-- [ ] Use dropdown menu with labeled actions instead of icon-only buttons
-- [ ] Add partial refund support in refund dialog (amount input)
-- [ ] Add links to invoice and customer in detail modal
-- [ ] Add retry failed payment action
-- [ ] Show checkout URL as clickable link in detail
+- [x] Use dropdown menu with labeled actions instead of icon-only buttons
+  <!-- Completed: Replaced icon-only action buttons (CreditCard, Check, RefreshCw, X) with a DropdownMenu triggered by a MoreHorizontal icon. Dropdown items show labeled actions with icons: "View Details" (Eye), "Mark as Paid" (Check, green), "Refund" (RefreshCw, orange), "Retry Payment" (RotateCcw, blue), and "Delete" (Trash2, destructive variant). Actions are conditionally shown based on payment status: pending shows Mark as Paid + Delete, succeeded shows Refund, failed shows Retry. Separators group view actions from state-change actions. -->
+- [x] Add partial refund support in refund dialog (amount input)
+  <!-- Completed: Extended refund confirmation dialog with full/partial refund toggle (radio buttons). Partial refund mode shows a currency-labeled amount input with min/max validation. Backend POST /v1/payments/{id}/refund endpoint now accepts optional RefundRequest body with amount field (Decimal, gt=0). Repository mark_refunded() accepts optional refund_amount and adjusts the payment amount (amount - refund_amount) and records partial_refund=true + refunded_amount in payment_metadata. Amount exceeding payment total returns 400. Audit log entry created on refund. 9 new backend tests added covering: full refund (no body), full refund (empty body), partial refund, exceeds amount, zero amount, negative amount, audit log, repo partial refund, schema validation. OpenAPI schema and frontend types regenerated. 100% coverage maintained across all 3495 tests. -->
+- [x] Add links to invoice and customer in detail modal
+  <!-- Completed: Replaced plain text customer name and invoice number in the Payment Details dialog with clickable Link components (react-router-dom). Customer links navigate to /admin/customers/:id and invoice links navigate to /admin/invoices/:id. Both styled with blue text, underline-on-hover, and ExternalLink icon. Dialog closes on link click for clean navigation. Added DialogDescription for accessibility. -->
+- [x] Add retry failed payment action
+  <!-- Completed: Added full retry payment lifecycle. Backend: POST /v1/payments/{id}/retry endpoint validates payment is in "failed" status and resets to "pending" (clears failure_reason). Repository retry() method enforces status constraint. Audit log entry created with status_changed action (failed → pending). Frontend: "Retry Payment" dropdown item (RotateCcw icon, blue) appears for failed payments. Confirmation dialog explains the action. retryMutation calls paymentsApi.retry() and invalidates queries on success. 7 new backend tests added covering: retry success, not found, pending fails, succeeded fails, audit log, repo not found, repo non-failed raises. OpenAPI schema and frontend types regenerated. 100% coverage maintained. -->
+- [x] Show checkout URL as clickable link in detail
+  <!-- Verified: Checkout URL was already implemented as a clickable external link in the Payment Details dialog (lines 453-465). The provider_checkout_url field renders as a styled anchor tag with target="_blank", rel="noopener noreferrer", and an ExternalLink icon. No changes needed. -->
 
 **Modal vs. Page Decision:**
 - **Detail view**: MODAL is correct (payments are transactional, no sub-entities)

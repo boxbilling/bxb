@@ -602,8 +602,13 @@ export const paymentsApi = {
     }),
   markPaid: (id: string) =>
     request<PaymentResponse>(`/v1/payments/${id}/mark-paid`, { method: 'POST' }),
-  refund: (id: string) =>
-    request<PaymentResponse>(`/v1/payments/${id}/refund`, { method: 'POST' }),
+  refund: (id: string, amount?: number) =>
+    request<PaymentResponse>(`/v1/payments/${id}/refund`, {
+      method: 'POST',
+      body: amount !== undefined ? JSON.stringify({ amount }) : undefined,
+    }),
+  retry: (id: string) =>
+    request<PaymentResponse>(`/v1/payments/${id}/retry`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/v1/payments/${id}`, { method: 'DELETE' }),
 }
 
