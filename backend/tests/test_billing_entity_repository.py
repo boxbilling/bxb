@@ -546,3 +546,144 @@ class TestBillingEntitySchemas:
         assert response.is_default is False
         assert response.created_at is not None
         assert response.updated_at is not None
+
+
+class TestBillingEntityCustomerCounts:
+    """Tests for the customer_counts repository method."""
+
+    def test_customer_counts_empty(self, db_session):
+        """Test customer_counts with no entities or customers."""
+        repo = BillingEntityRepository(db_session)
+        counts = repo.customer_counts(DEFAULT_ORG_ID)
+        assert counts == {}
+
+    def test_customer_counts_no_customers(self, db_session):
+        """Test customer_counts when entities exist but no customers."""
+        entity = BillingEntity(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            code="cc-no-cust",
+            name="No Customers",
+        )
+        db_session.add(entity)
+        db_session.commit()
+
+        repo = BillingEntityRepository(db_session)
+        counts = repo.customer_counts(DEFAULT_ORG_ID)
+        assert counts == {}
+
+    def test_customer_counts_with_customers(self, db_session):
+        """Test customer_counts with customers linked to entities."""
+        entity = BillingEntity(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            code="cc-with-cust",
+            name="With Customers",
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        for i in range(3):
+            c = Customer(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                external_id=f"cc-cust-{i}",
+                name=f"Customer {i}",
+                billing_entity_id=entity.id,
+            )
+            db_session.add(c)
+        db_session.commit()
+
+        repo = BillingEntityRepository(db_session)
+        counts = repo.customer_counts(DEFAULT_ORG_ID)
+        assert counts[str(entity.id)] == 3
+
+    def test_customer_counts_multiple_entities(self, db_session):
+        """Test customer_counts with multiple entities having different counts."""
+        entity1 = BillingEntity(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            code="cc-multi-1",
+            name="Entity 1",
+        )
+        entity2 = BillingEntity(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            code="cc-multi-2",
+            name="Entity 2",
+        )
+        db_session.add_all([entity1, entity2])
+        db_session.commit()
+        db_session.refresh(entity1)
+        db_session.refresh(entity2)
+
+        # 2 customers for entity1
+        for i in range(2):
+            db_session.add(
+                Customer(
+                    id=generate_uuid(),
+                    organization_id=DEFAULT_ORG_ID,
+                    external_id=f"cc-m1-{i}",
+                    name=f"Cust E1 {i}",
+                    billing_entity_id=entity1.id,
+                )
+            )
+        # 1 customer for entity2
+        db_session.add(
+            Customer(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                external_id="cc-m2-0",
+                name="Cust E2",
+                billing_entity_id=entity2.id,
+            )
+        )
+        # 1 customer with no billing entity (should be excluded)
+        db_session.add(
+            Customer(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                external_id="cc-m-none",
+                name="No Entity Cust",
+            )
+        )
+        db_session.commit()
+
+        repo = BillingEntityRepository(db_session)
+        counts = repo.customer_counts(DEFAULT_ORG_ID)
+        assert counts[str(entity1.id)] == 2
+        assert counts[str(entity2.id)] == 1
+        assert len(counts) == 2
+
+    def test_customer_counts_org_scoped(self, db_session, second_org):
+        """Test customer_counts only returns counts for the given org."""
+        entity = BillingEntity(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            code="cc-org-scope",
+            name="Org Scoped",
+        )
+        db_session.add(entity)
+        db_session.commit()
+        db_session.refresh(entity)
+
+        db_session.add(
+            Customer(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                external_id="cc-org-cust",
+                name="Org Customer",
+                billing_entity_id=entity.id,
+            )
+        )
+        db_session.commit()
+
+        repo = BillingEntityRepository(db_session)
+        # Query with the correct org
+        counts = repo.customer_counts(DEFAULT_ORG_ID)
+        assert counts[str(entity.id)] == 1
+
+        # Query with a different org returns empty
+        counts_other = repo.customer_counts(second_org.id)
+        assert counts_other == {}

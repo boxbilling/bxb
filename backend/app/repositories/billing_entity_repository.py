@@ -4,6 +4,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.billing_entity import BillingEntity
+from app.models.customer import Customer
 from app.schemas.billing_entity import BillingEntityCreate, BillingEntityUpdate
 
 
@@ -101,3 +102,19 @@ class BillingEntityRepository:
 
     def code_exists(self, code: str, organization_id: UUID) -> bool:
         return self.get_by_code(code, organization_id) is not None
+
+    def customer_counts(self, organization_id: UUID) -> dict[str, int]:
+        """Return a mapping of billing_entity_id -> customer count."""
+        rows = (
+            self.db.query(
+                Customer.billing_entity_id,
+                func.count(Customer.id),
+            )
+            .filter(
+                Customer.organization_id == organization_id,
+                Customer.billing_entity_id.isnot(None),
+            )
+            .group_by(Customer.billing_entity_id)
+            .all()
+        )
+        return {str(entity_id): cnt for entity_id, cnt in rows}

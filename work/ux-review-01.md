@@ -216,11 +216,16 @@ No way to quickly jump to a customer, invoice, or subscription by ID/name.
 - No search or filter
 
 **Recommendations:**
-- [ ] Switch to table layout for scalability (cards fine for < 5 entities, table for more)
-- [ ] Use **separate page** instead of modal for create/edit - the form has 15+ fields including full address, locale settings, invoice configuration. This is too complex for a modal.
-- [ ] Route: `/admin/billing-entities/:id/edit` and `/admin/billing-entities/new`
-- [ ] Add "Associated Customers" count on each entity card/row
-- [ ] Add search filter
+- [x] Switch to table layout for scalability (cards fine for < 5 entities, table for more)
+  <!-- Completed: Replaced card grid layout with a full Table component (TableHeader/TableBody/TableRow pattern matching CustomersPage). Table columns: Entity (name + legal name + default badge), Code, Location (city/state/country), Currency, Timezone, Customers (count), Actions (Edit/Delete). Includes loading skeletons, empty state with Building2 icon, and context-aware empty message (search vs no data). -->
+- [x] Use **separate page** instead of modal for create/edit - the form has 15+ fields including full address, locale settings, invoice configuration. This is too complex for a modal.
+  <!-- Completed: Created BillingEntityFormPage.tsx as a dedicated full-page form. Form is organized into 4 Card sections in a 2-column grid: Basic Information (code, name, legal name, tax ID, email, default toggle), Address (address lines, city, state, country, zip), Locale & Currency (currency, timezone, document locale), and Invoice Settings (prefix, next number). Removed the EntityFormDialog modal entirely from BillingEntitiesPage. The form loads entity data via useQuery when in edit mode. -->
+- [x] Route: `/admin/billing-entities/:id/edit` and `/admin/billing-entities/new`
+  <!-- Completed: Added two new routes in App.tsx: `/admin/billing-entities/new` and `/admin/billing-entities/:code/edit`, both rendering BillingEntityFormPage. The form page uses useParams to detect edit mode. BillingEntityFormPage exported from pages/admin/index.ts. Note: routes use :code (not :id) since the API uses code as the primary identifier. -->
+- [x] Add "Associated Customers" count on each entity card/row
+  <!-- Completed: Added GET /v1/billing_entities/customer_counts backend endpoint returning a dict of billing_entity_id → customer count. Added customer_counts() repository method using a GROUP BY query on Customer.billing_entity_id. Frontend fetches counts via billingEntitiesApi.customerCounts() and displays in a "Customers" table column with Users icon. 8 new backend tests added (5 repository + 3 API). 100% coverage maintained. -->
+- [x] Add search filter
+  <!-- Completed: Added search input with Search icon matching the CustomersPage pattern. Filters entities client-side by name, code, legal_name, and email. Shows "No entities match your search" when filter has no results vs "No billing entities found" when no entities exist at all. -->
 
 **Modal vs. Page Decision:**
 - **Create/Edit**: Should be a **FULL PAGE** (15+ fields, address block, multiple sections)

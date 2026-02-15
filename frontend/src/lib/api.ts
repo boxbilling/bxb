@@ -842,6 +842,8 @@ export const billingEntitiesApi = {
     }),
   delete: (code: string) =>
     request<void>(`/v1/billing_entities/${code}`, { method: 'DELETE' }),
+  customerCounts: () =>
+    request<Record<string, number>>('/v1/billing_entities/customer_counts'),
 }
 
 // Features API

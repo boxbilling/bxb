@@ -26,6 +26,7 @@ import {
   PaymentMethodsPage,
   AuditLogsPage,
   BillingEntitiesPage,
+  BillingEntityFormPage,
   FeaturesPage,
   UsageAlertsPage,
 } from './pages/admin'
@@ -67,6 +68,8 @@ function App() {
         <Route path="payment-methods" element={<PaymentMethodsPage />} />
         <Route path="webhooks" element={<WebhooksPage />} />
         <Route path="billing-entities" element={<BillingEntitiesPage />} />
+        <Route path="billing-entities/new" element={<BillingEntityFormPage />} />
+        <Route path="billing-entities/:code/edit" element={<BillingEntityFormPage />} />
         <Route path="features" element={<FeaturesPage />} />
         <Route path="usage-alerts" element={<UsageAlertsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />

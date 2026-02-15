@@ -39,6 +39,21 @@ async def list_billing_entities(
 
 
 @router.get(
+    "/customer_counts",
+    response_model=dict[str, int],
+    summary="Get customer counts per billing entity",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_customer_counts(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> dict[str, int]:
+    """Return a mapping of billing entity ID to associated customer count."""
+    repo = BillingEntityRepository(db)
+    return repo.customer_counts(organization_id)
+
+
+@router.get(
     "/{code}",
     response_model=BillingEntityResponse,
     summary="Get billing entity by code",

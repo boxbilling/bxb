@@ -257,6 +257,51 @@ class TestBillingEntitiesAPI:
         assert resp.status_code == 400
         assert "existing invoices" in resp.json()["detail"]
 
+    def test_customer_counts_empty(self, client):
+        """Test customer counts endpoint with no entities."""
+        resp = client.get("/v1/billing_entities/customer_counts")
+        assert resp.status_code == 200
+        assert resp.json() == {}
+
+    def test_customer_counts_with_data(self, client, db_session):
+        """Test customer counts endpoint returns correct counts."""
+        entity = _create_billing_entity(
+            db_session, code="cc-api-test", name="Count Test"
+        )
+        for i in range(2):
+            customer = Customer(
+                id=generate_uuid(),
+                organization_id=DEFAULT_ORG_ID,
+                external_id=f"cc-api-{uuid.uuid4().hex[:8]}",
+                name=f"Customer {i}",
+                billing_entity_id=entity.id,
+            )
+            db_session.add(customer)
+        db_session.commit()
+
+        resp = client.get("/v1/billing_entities/customer_counts")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data[str(entity.id)] == 2
+
+    def test_customer_counts_excludes_unlinked(self, client, db_session):
+        """Test customer counts excludes customers without billing entity."""
+        _create_billing_entity(
+            db_session, code="cc-excl-test", name="Exclusion Test"
+        )
+        customer = Customer(
+            id=generate_uuid(),
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"cc-no-be-{uuid.uuid4().hex[:8]}",
+            name="Unlinked Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+
+        resp = client.get("/v1/billing_entities/customer_counts")
+        assert resp.status_code == 200
+        assert resp.json() == {}
+
     def test_create_idempotency(self, client):
         """Test idempotent creation with Idempotency-Key header."""
         key = str(uuid.uuid4())
