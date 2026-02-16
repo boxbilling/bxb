@@ -116,6 +116,7 @@ function SectionSaveButton({
       <Button
         type="button"
         size="sm"
+        className="w-full md:w-auto"
         onClick={onClick}
         disabled={isPending || disabled}
       >
@@ -341,7 +342,7 @@ export default function SettingsPage() {
               }
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="currency">Default Currency</Label>
               <SearchableSelect
