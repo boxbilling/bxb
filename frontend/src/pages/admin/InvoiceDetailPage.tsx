@@ -16,6 +16,7 @@ import {
   User,
   CreditCard,
   Receipt,
+  MoreHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -47,7 +48,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { invoicesApi, feesApi, taxesApi, creditNotesApi, customersApi } from '@/lib/api'
 import { formatCurrency, formatCents } from '@/lib/utils'
 
@@ -79,6 +88,7 @@ export default function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const isMobile = useIsMobile()
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
@@ -246,119 +256,198 @@ export default function InvoiceDetailPage() {
       </Breadcrumb>
 
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold tracking-tight">
-                Invoice {invoice.invoice_number}
-              </h2>
-              <StatusBadge status={invoice.status} />
-              <Badge variant="outline" className="capitalize text-xs">
-                {invoice.invoice_type.replace(/_/g, ' ')}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground mt-1">
-              Created {format(new Date(invoice.created_at), 'MMM d, yyyy h:mm a')}
-            </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-2xl font-bold tracking-tight">
+              Invoice {invoice.invoice_number}
+            </h2>
+            <StatusBadge status={invoice.status} />
+            <Badge variant="outline" className="capitalize text-xs">
+              {invoice.invoice_type.replace(/_/g, ' ')}
+            </Badge>
           </div>
+          <p className="text-muted-foreground mt-1">
+            Created {format(new Date(invoice.created_at), 'MMM d, yyyy h:mm a')}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          {canFinalize && (
-            <Button
-              disabled={finalizeMutation.isPending}
-              onClick={() => finalizeMutation.mutate()}
-            >
-              {finalizeMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle className="mr-2 h-4 w-4" />
+        {isMobile ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <MoreHorizontal className="mr-2 h-4 w-4" />
+                Actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {canFinalize && (
+                <DropdownMenuItem
+                  disabled={finalizeMutation.isPending}
+                  onClick={() => finalizeMutation.mutate()}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Finalize
+                </DropdownMenuItem>
               )}
-              Finalize
-            </Button>
-          )}
-          {canSendReminder && (
-            <Button
-              variant="outline"
-              disabled={sendReminderMutation.isPending}
-              onClick={() => sendReminderMutation.mutate()}
-            >
-              {sendReminderMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Bell className="mr-2 h-4 w-4" />
+              {canSendReminder && (
+                <DropdownMenuItem
+                  disabled={sendReminderMutation.isPending}
+                  onClick={() => sendReminderMutation.mutate()}
+                >
+                  <Bell className="mr-2 h-4 w-4" />
+                  Send Reminder
+                </DropdownMenuItem>
               )}
-              Send Reminder
-            </Button>
-          )}
-          {canDownloadOrEmail && (
-            <>
+              {canDownloadOrEmail && (
+                <>
+                  <DropdownMenuItem
+                    disabled={previewPdfMutation.isPending}
+                    onClick={() => previewPdfMutation.mutate()}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Preview PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={downloadPdfMutation.isPending}
+                    onClick={() => downloadPdfMutation.mutate()}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={sendEmailMutation.isPending}
+                    onClick={() => sendEmailMutation.mutate()}
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Email
+                  </DropdownMenuItem>
+                </>
+              )}
+              {invoice.status === 'finalized' && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigate('/admin/credit-notes/new', {
+                      state: { invoiceId: invoice.id, customerId: invoice.customer_id },
+                    })
+                  }}
+                >
+                  <FileMinus className="mr-2 h-4 w-4" />
+                  Create Credit Note
+                </DropdownMenuItem>
+              )}
+              {canVoid && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={voidMutation.isPending}
+                    onClick={() => voidMutation.mutate()}
+                  >
+                    <Ban className="mr-2 h-4 w-4" />
+                    Void
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <div className="flex items-center gap-2">
+            {canFinalize && (
               <Button
-                variant="outline"
-                disabled={previewPdfMutation.isPending}
-                onClick={() => previewPdfMutation.mutate()}
+                disabled={finalizeMutation.isPending}
+                onClick={() => finalizeMutation.mutate()}
               >
-                {previewPdfMutation.isPending ? (
+                {finalizeMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <FileText className="mr-2 h-4 w-4" />
+                  <CheckCircle className="mr-2 h-4 w-4" />
                 )}
-                Preview PDF
+                Finalize
               </Button>
+            )}
+            {canSendReminder && (
               <Button
                 variant="outline"
-                disabled={downloadPdfMutation.isPending}
-                onClick={() => downloadPdfMutation.mutate()}
+                disabled={sendReminderMutation.isPending}
+                onClick={() => sendReminderMutation.mutate()}
               >
-                {downloadPdfMutation.isPending ? (
+                {sendReminderMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Download className="mr-2 h-4 w-4" />
+                  <Bell className="mr-2 h-4 w-4" />
                 )}
-                Download PDF
+                Send Reminder
               </Button>
+            )}
+            {canDownloadOrEmail && (
+              <>
+                <Button
+                  variant="outline"
+                  disabled={previewPdfMutation.isPending}
+                  onClick={() => previewPdfMutation.mutate()}
+                >
+                  {previewPdfMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  Preview PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={downloadPdfMutation.isPending}
+                  onClick={() => downloadPdfMutation.mutate()}
+                >
+                  {downloadPdfMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  Download PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={sendEmailMutation.isPending}
+                  onClick={() => sendEmailMutation.mutate()}
+                >
+                  {sendEmailMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  Send Email
+                </Button>
+              </>
+            )}
+            {invoice.status === 'finalized' && (
               <Button
                 variant="outline"
-                disabled={sendEmailMutation.isPending}
-                onClick={() => sendEmailMutation.mutate()}
+                onClick={() => {
+                  navigate('/admin/credit-notes/new', {
+                    state: { invoiceId: invoice.id, customerId: invoice.customer_id },
+                  })
+                }}
               >
-                {sendEmailMutation.isPending ? (
+                <FileMinus className="mr-2 h-4 w-4" />
+                Create Credit Note
+              </Button>
+            )}
+            {canVoid && (
+              <Button
+                variant="destructive"
+                disabled={voidMutation.isPending}
+                onClick={() => voidMutation.mutate()}
+              >
+                {voidMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Mail className="mr-2 h-4 w-4" />
+                  <Ban className="mr-2 h-4 w-4" />
                 )}
-                Send Email
+                Void
               </Button>
-            </>
-          )}
-          {invoice.status === 'finalized' && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                navigate('/admin/credit-notes/new', {
-                  state: { invoiceId: invoice.id, customerId: invoice.customer_id },
-                })
-              }}
-            >
-              <FileMinus className="mr-2 h-4 w-4" />
-              Create Credit Note
-            </Button>
-          )}
-          {canVoid && (
-            <Button
-              variant="destructive"
-              disabled={voidMutation.isPending}
-              onClick={() => voidMutation.mutate()}
-            >
-              {voidMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Ban className="mr-2 h-4 w-4" />
-              )}
-              Void
-            </Button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Invoice Info Cards */}
@@ -442,7 +531,7 @@ export default function InvoiceDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="fees">
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto">
           <TabsTrigger value="fees">
             <Receipt className="mr-2 h-4 w-4" />
             Fees ({fees.length})
@@ -470,12 +559,12 @@ export default function InvoiceDetailPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Description</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Metric</TableHead>
+                      <TableHead className="hidden md:table-cell">Type</TableHead>
+                      <TableHead className="hidden md:table-cell">Metric</TableHead>
                       <TableHead className="text-right">Units</TableHead>
-                      <TableHead className="text-right">Events</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead className="text-right">Tax</TableHead>
+                      <TableHead className="hidden md:table-cell text-right">Events</TableHead>
+                      <TableHead className="hidden md:table-cell text-right">Amount</TableHead>
+                      <TableHead className="hidden md:table-cell text-right">Tax</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -483,20 +572,20 @@ export default function InvoiceDetailPage() {
                     {fees.map((fee) => (
                       <TableRow key={fee.id}>
                         <TableCell className="font-medium">{fee.description || '\u2014'}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Badge variant="outline" className="text-xs">{fee.fee_type}</Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           {fee.metric_code ? (
                             <code className="text-xs">{fee.metric_code}</code>
                           ) : '\u2014'}
                         </TableCell>
                         <TableCell className="text-right">{fee.units}</TableCell>
-                        <TableCell className="text-right">{fee.events_count}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="hidden md:table-cell text-right">{fee.events_count}</TableCell>
+                        <TableCell className="hidden md:table-cell text-right">
                           {formatCents(fee.amount_cents, invoice.currency)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="hidden md:table-cell text-right">
                           {formatCents(fee.taxes_amount_cents, invoice.currency)}
                         </TableCell>
                         <TableCell className="text-right font-medium">
@@ -518,7 +607,7 @@ export default function InvoiceDetailPage() {
               <CardTitle>Invoice Totals</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 max-w-md">
+              <div className="space-y-3 w-full md:max-w-md md:ml-auto">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
                   <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
