@@ -22,6 +22,7 @@ import type {
   ApiKey,
 } from '@/types/billing'
 
+import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -124,18 +125,16 @@ export default function ApiKeysPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">API Keys</h2>
-          <p className="text-muted-foreground">
-            Manage API keys for accessing the billing API
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create API Key
-        </Button>
-      </div>
+      <PageHeader
+        title="API Keys"
+        description="Manage API keys for accessing the billing API"
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create API Key
+          </Button>
+        }
+      />
 
       <div className="rounded-md border">
         <Table>

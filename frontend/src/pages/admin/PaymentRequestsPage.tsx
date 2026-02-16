@@ -53,6 +53,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { paymentRequestsApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { PaymentRequest, PaymentRequestCreate, PaymentAttemptEntry } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -659,33 +660,33 @@ export default function PaymentRequestsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-2xl font-bold tracking-tight">Payment Requests</h2>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-3">
+            Payment Requests
+          </span>
+        }
+        description="Manage payment collection requests"
+        actions={
+          <>
             <Link
               to="/admin/payments"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="inline-flex items-center gap-1 text-sm font-normal text-muted-foreground hover:text-foreground transition-colors"
             >
               View Payments
               <ExternalLink className="h-3 w-3" />
             </Link>
-          </div>
-          <p className="text-muted-foreground">
-            Manage payment collection requests
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setBatchOpen(true)}>
-            <Zap className="mr-2 h-4 w-4" />
-            Batch Create
-          </Button>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Payment Request
-          </Button>
-        </div>
-      </div>
+            <Button variant="outline" onClick={() => setBatchOpen(true)}>
+              <Zap className="mr-2 h-4 w-4" />
+              Batch Create
+            </Button>
+            <Button onClick={() => setCreateOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Payment Request
+            </Button>
+          </>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

@@ -54,6 +54,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
+import PageHeader from '@/components/PageHeader'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { TablePagination } from '@/components/TablePagination'
@@ -799,18 +800,16 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Subscriptions</h2>
-          <p className="text-muted-foreground">
-            Manage customer subscriptions
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Subscription
-        </Button>
-      </div>
+      <PageHeader
+        title="Subscriptions"
+        description="Manage customer subscriptions"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Subscription
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-4">

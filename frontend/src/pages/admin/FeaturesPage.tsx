@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/table'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { featuresApi, entitlementsApi, plansApi, ApiError } from '@/lib/api'
 import type { Feature, FeatureCreate, Entitlement } from '@/types/billing'
 
@@ -341,21 +342,16 @@ export default function FeaturesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <ToggleLeft className="h-5 w-5" />
-            Features & Entitlements
-          </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Manage feature flags and plan entitlements
-          </p>
-        </div>
-        <Button onClick={openCreateFeature}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Feature
-        </Button>
-      </div>
+      <PageHeader
+        title={"Features and Entitlements"}
+        description="Manage feature flags and plan entitlements"
+        actions={
+          <Button onClick={openCreateFeature}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Feature
+          </Button>
+        }
+      />
 
       {/* Tabbed Layout */}
       <Tabs defaultValue="features">

@@ -49,6 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
 import type { DataExport, DataExportEstimate, ExportType } from '@/types/billing'
 
@@ -590,18 +591,16 @@ export default function DataExportsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Data Exports</h2>
-          <p className="text-muted-foreground">
-            Export your billing data
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Export
-        </Button>
-      </div>
+      <PageHeader
+        title="Data Exports"
+        description="Export your billing data"
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Export
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

@@ -10,6 +10,7 @@ import {
 import { useOrganization } from '@/hooks/use-organization'
 import type { OrganizationUpdate } from '@/types/billing'
 
+import PageHeader from '@/components/PageHeader'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -313,14 +314,10 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">
-          Organization Settings
-        </h2>
-        <p className="text-muted-foreground">
-          Configure your organization's general settings and branding
-        </p>
-      </div>
+      <PageHeader
+        title="Organization Settings"
+        description="Configure your organization's general settings and branding"
+      />
 
       {/* General */}
       <Card>

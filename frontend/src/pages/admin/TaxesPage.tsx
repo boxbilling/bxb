@@ -79,6 +79,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { cn } from '@/lib/utils'
+import PageHeader from '@/components/PageHeader'
 import { taxesApi, customersApi, invoicesApi, plansApi, ApiError } from '@/lib/api'
 import type {
   Tax,
@@ -761,18 +762,16 @@ export default function TaxesPage() {
     <TaxPageContext.Provider value={pageContext}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Taxes</h2>
-            <p className="text-muted-foreground">
-              Manage tax rates and apply them to entities
-            </p>
-          </div>
-          <Button onClick={() => setFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create Tax
-          </Button>
-        </div>
+        <PageHeader
+          title="Taxes"
+          description="Manage tax rates and apply them to entities"
+          actions={
+            <Button onClick={() => setFormOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Tax
+            </Button>
+          }
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">

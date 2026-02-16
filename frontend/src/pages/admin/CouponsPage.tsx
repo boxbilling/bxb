@@ -69,6 +69,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { couponsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Coupon,
@@ -871,18 +872,16 @@ export default function CouponsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Coupons</h2>
-          <p className="text-muted-foreground">
-            Manage discount coupons for customers
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Coupon
-        </Button>
-      </div>
+      <PageHeader
+        title="Coupons"
+        description="Manage discount coupons for customers"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Coupon
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

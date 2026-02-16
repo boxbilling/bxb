@@ -283,9 +283,9 @@ export default function CreditNoteFormPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h2 className="text-2xl font-bold tracking-tight">
             {isEdit ? 'Edit Credit Note' : 'Create Credit Note'}
-          </h1>
+          </h2>
           <p className="text-muted-foreground">
             {isEdit
               ? 'Update the amounts, reason, or description for this draft credit note.'

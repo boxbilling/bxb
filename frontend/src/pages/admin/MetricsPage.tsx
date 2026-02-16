@@ -51,6 +51,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { billableMetricsApi, ApiError } from '@/lib/api'
 import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/types/billing'
 
@@ -359,18 +360,16 @@ export default function MetricsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Billable Metrics</h2>
-          <p className="text-muted-foreground">
-            Define how usage events are aggregated for billing
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Metric
-        </Button>
-      </div>
+      <PageHeader
+        title="Billable Metrics"
+        description="Define how usage events are aggregated for billing"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Metric
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">

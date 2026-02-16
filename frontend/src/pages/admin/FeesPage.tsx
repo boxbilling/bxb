@@ -51,6 +51,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { feesApi, taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -239,12 +240,10 @@ export default function FeesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Fees</h2>
-        <p className="text-muted-foreground">
-          View and manage billing fees
-        </p>
-      </div>
+      <PageHeader
+        title="Fees"
+        description="View and manage billing fees"
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

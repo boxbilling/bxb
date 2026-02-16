@@ -52,6 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import PageHeader from '@/components/PageHeader'
 import { integrationsApi, ApiError } from '@/lib/api'
 import type { Integration, IntegrationCreate, IntegrationUpdate } from '@/types/billing'
 
@@ -304,18 +305,16 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Integrations</h2>
-          <p className="text-muted-foreground">
-            Connect external services to your billing platform
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Integration
-        </Button>
-      </div>
+      <PageHeader
+        title="Integrations"
+        description="Connect external services to your billing platform"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Integration
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

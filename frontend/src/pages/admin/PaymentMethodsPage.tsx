@@ -43,6 +43,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { CardBrandIcon } from '@/components/CardBrandIcon'
 import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { customersApi, paymentMethodsApi, ApiError } from '@/lib/api'
@@ -303,18 +304,16 @@ export default function PaymentMethodsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Payment Methods</h1>
-          <p className="text-muted-foreground">
-            Manage customer payment methods
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Payment Method
-        </Button>
-      </div>
+      <PageHeader
+        title="Payment Methods"
+        description="Manage customer payment methods"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Payment Method
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-4">

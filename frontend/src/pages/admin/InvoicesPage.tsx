@@ -37,6 +37,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { invoicesApi, customersApi, subscriptionsApi } from '@/lib/api'
 import { formatCurrency, formatCents } from '@/lib/utils'
 import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
@@ -553,24 +554,22 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Invoices</h2>
-          <p className="text-muted-foreground">
-            View and manage customer invoices
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setPreviewOpen(true)}>
-            <Eye className="mr-2 h-4 w-4" />
-            Preview Invoice
-          </Button>
-          <Button onClick={() => setOneOffOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Create One-Off Invoice
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Invoices"
+        description="View and manage customer invoices"
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Preview Invoice
+            </Button>
+            <Button onClick={() => setOneOffOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create One-Off Invoice
+            </Button>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">

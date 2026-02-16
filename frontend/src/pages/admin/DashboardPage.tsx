@@ -63,6 +63,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import PageHeader from '@/components/PageHeader'
 import { dashboardApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
@@ -476,20 +477,18 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight">Dashboard</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Overview of your billing platform
-          </p>
-        </div>
-        <PeriodSelector
-          preset={preset}
-          onPresetChange={setPreset}
-          customRange={customRange}
-          onCustomRangeChange={setCustomRange}
-        />
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your billing platform"
+        actions={
+          <PeriodSelector
+            preset={preset}
+            onPresetChange={setPreset}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
+          />
+        }
+      />
 
       {/* Revenue Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

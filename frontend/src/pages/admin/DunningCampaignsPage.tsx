@@ -65,6 +65,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { dunningCampaignsApi, ApiError } from '@/lib/api'
 import type {
   DunningCampaign,
@@ -504,20 +505,16 @@ export default function DunningCampaignsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            Dunning Campaigns
-          </h2>
-          <p className="text-muted-foreground">
-            Manage automated payment collection campaigns
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Campaign
-        </Button>
-      </div>
+      <PageHeader
+        title="Dunning Campaigns"
+        description="Manage automated payment collection campaigns"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Campaign
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -36,6 +36,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { ChangesDisplay } from '@/components/JsonDiffDisplay'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { auditLogsApi, dataExportsApi, ApiError } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
 
@@ -218,22 +219,20 @@ export default function AuditLogsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Audit Logs</h2>
-          <p className="text-muted-foreground">
-            Track changes across all resources
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => exportMutation.mutate()}
-          disabled={exportMutation.isPending}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {exportMutation.isPending ? 'Exporting...' : 'Export to CSV'}
-        </Button>
-      </div>
+      <PageHeader
+        title="Audit Logs"
+        description="Track changes across all resources"
+        actions={
+          <Button
+            variant="outline"
+            onClick={() => exportMutation.mutate()}
+            disabled={exportMutation.isPending}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {exportMutation.isPending ? 'Exporting...' : 'Export to CSV'}
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-4">

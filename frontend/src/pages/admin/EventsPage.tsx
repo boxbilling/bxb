@@ -41,6 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import PageHeader from '@/components/PageHeader'
 import { eventsApi, subscriptionsApi, billableMetricsApi } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 import type { EstimateFeesResponse } from '@/types/billing'
@@ -382,50 +383,48 @@ export default function EventsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Events Stream</h2>
-          <p className="text-muted-foreground">
-            Monitor incoming billing events in real-time
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={() => setFeeEstimatorOpen(true)}>
-            <Calculator className="mr-2 h-4 w-4" />
-            Fee Estimator
-          </Button>
-          {isPolling ? (
-            <Badge variant="outline" className="gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
-              </span>
-              Live
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="gap-1.5 text-muted-foreground">
-              <Pause className="h-3 w-3" />
-              Paused
-            </Badge>
-          )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsPolling(!isPolling)}
-                >
-                  {isPolling ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isPolling ? 'Pause live updates' : 'Resume live updates'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
+      <PageHeader
+        title="Events Stream"
+        description="Monitor incoming billing events in real-time"
+        actions={
+          <>
+            {isPolling ? (
+              <Badge variant="outline" className="gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
+                </span>
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1.5 text-muted-foreground">
+                <Pause className="h-3 w-3" />
+                Paused
+              </Badge>
+            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsPolling(!isPolling)}
+                  >
+                    {isPolling ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isPolling ? 'Pause live updates' : 'Resume live updates'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button onClick={() => setFeeEstimatorOpen(true)}>
+              <Calculator className="mr-2 h-4 w-4" />
+              Fee Estimator
+            </Button>
+          </>
+        }
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-4 flex-wrap">

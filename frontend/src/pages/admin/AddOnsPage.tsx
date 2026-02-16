@@ -64,6 +64,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { addOnsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   AddOn,
@@ -622,18 +623,16 @@ export default function AddOnsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Add-ons</h2>
-          <p className="text-muted-foreground">
-            Manage one-time add-on charges
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Add-on
-        </Button>
-      </div>
+      <PageHeader
+        title="Add-ons"
+        description="Manage one-time add-on charges"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Add-on
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

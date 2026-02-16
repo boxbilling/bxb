@@ -62,6 +62,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { creditNotesApi, customersApi, ApiError } from '@/lib/api'
 import type { CreditNote, Customer } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -415,18 +416,16 @@ export default function CreditNotesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Credit Notes</h2>
-          <p className="text-muted-foreground">
-            Manage credit notes for customer invoices
-          </p>
-        </div>
-        <Button onClick={() => navigate('/admin/credit-notes/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Credit Note
-        </Button>
-      </div>
+      <PageHeader
+        title="Credit Notes"
+        description="Manage credit notes for customer invoices"
+        actions={
+          <Button onClick={() => navigate('/admin/credit-notes/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Credit Note
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

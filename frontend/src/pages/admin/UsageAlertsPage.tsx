@@ -67,6 +67,7 @@ import {
 } from '@/components/ui/tooltip'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { usageAlertsApi, subscriptionsApi, billableMetricsApi, ApiError } from '@/lib/api'
 import type {
   UsageAlert,
@@ -581,18 +582,16 @@ export default function UsageAlertsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Usage Alerts</h2>
-          <p className="text-muted-foreground">
-            Monitor usage thresholds for subscription metrics
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Alert
-        </Button>
-      </div>
+      <PageHeader
+        title="Usage Alerts"
+        description="Monitor usage thresholds for subscription metrics"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Alert
+          </Button>
+        }
+      />
 
       {/* Filter */}
       <div className="flex items-center gap-4">

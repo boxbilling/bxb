@@ -243,9 +243,9 @@ export default function BillingEntityFormPage() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h2 className="text-2xl font-bold tracking-tight">
             {isEdit ? 'Edit Billing Entity' : 'Create Billing Entity'}
-          </h1>
+          </h2>
           <p className="text-muted-foreground">
             {isEdit ? 'Update the billing entity details.' : 'Add a new billing entity for multi-entity billing.'}
           </p>

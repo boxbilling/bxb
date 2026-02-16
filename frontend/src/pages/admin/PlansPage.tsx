@@ -42,6 +42,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import PageHeader from '@/components/PageHeader'
 import { plansApi, billableMetricsApi, commitmentsApi, usageThresholdsApi, ApiError } from '@/lib/api'
 import type { Plan, PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, BillableMetric, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThreshold, UsageThresholdCreateAPI } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -1041,18 +1042,16 @@ export default function PlansPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Plans</h2>
-          <p className="text-muted-foreground">
-            Create and manage pricing plans for your customers
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Plan
-        </Button>
-      </div>
+      <PageHeader
+        title="Plans"
+        description="Create and manage pricing plans for your customers"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Plan
+          </Button>
+        }
+      />
 
       {/* Plans Grid */}
       {isLoading ? (

@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/tooltip'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { billingEntitiesApi, ApiError } from '@/lib/api'
 import type { BillingEntity } from '@/types/billing'
 
@@ -99,16 +100,16 @@ export default function BillingEntitiesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Billing Entities</h1>
-          <p className="text-muted-foreground">Manage billing entities for multi-entity billing.</p>
-        </div>
-        <Button onClick={() => navigate('/admin/billing-entities/new')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Entity
-        </Button>
-      </div>
+      <PageHeader
+        title="Billing Entities"
+        description="Manage billing entities for multi-entity billing."
+        actions={
+          <Button onClick={() => navigate('/admin/billing-entities/new')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Entity
+          </Button>
+        }
+      />
 
       {/* Search Filter */}
       <div className="flex items-center gap-4">

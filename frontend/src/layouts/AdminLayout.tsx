@@ -1,4 +1,4 @@
-import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
+import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -49,17 +49,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
 import OrgSwitcher from '@/components/OrgSwitcher'
 import NotificationBell from '@/components/NotificationBell'
 import { CommandPalette } from '@/components/CommandPalette'
+import HeaderBreadcrumb, { BreadcrumbProvider } from '@/components/HeaderBreadcrumb'
 
 const navigationGroups = [
   {
@@ -351,128 +344,57 @@ function SettingsSection({ collapsed }: { collapsed: boolean }) {
   )
 }
 
-const ROUTE_LABELS: Record<string, string> = {
-  '/admin': 'Dashboard',
-  '/admin/customers': 'Customers',
-  '/admin/billing-entities': 'Billing Entities',
-  '/admin/metrics': 'Billable Metrics',
-  '/admin/plans': 'Plans',
-  '/admin/features': 'Features',
-  '/admin/subscriptions': 'Subscriptions',
-  '/admin/events': 'Events',
-  '/admin/invoices': 'Invoices',
-  '/admin/fees': 'Fees',
-  '/admin/payments': 'Payments',
-  '/admin/credit-notes': 'Credit Notes',
-  '/admin/payment-methods': 'Payment Methods',
-  '/admin/wallets': 'Wallets',
-  '/admin/coupons': 'Coupons',
-  '/admin/add-ons': 'Add-ons',
-  '/admin/taxes': 'Taxes',
-  '/admin/webhooks': 'Webhooks',
-  '/admin/dunning-campaigns': 'Dunning Campaigns',
-  '/admin/usage-alerts': 'Usage Alerts',
-  '/admin/payment-requests': 'Payment Requests',
-  '/admin/data-exports': 'Data Exports',
-  '/admin/integrations': 'Integrations',
-  '/admin/audit-logs': 'Audit Logs',
-  '/admin/settings': 'Settings',
-  '/admin/api-keys': 'API Keys',
-}
-
-function HeaderBreadcrumb() {
-  const location = useLocation()
-  const crumbs = useMemo(() => {
-    const path = location.pathname
-    if (path === '/admin') return []
-
-    // Build breadcrumb segments
-    const segments = path.replace(/^\/admin\/?/, '').split('/')
-    const result: { label: string; href?: string }[] = []
-
-    // Find the parent list page
-    const parentPath = '/admin/' + segments[0]
-    const parentLabel = ROUTE_LABELS[parentPath]
-    if (parentLabel) {
-      if (segments.length > 1) {
-        result.push({ label: parentLabel, href: parentPath })
-        // Detail page — show ID or action
-        const sub = segments.slice(1).join('/')
-        const subLabel = sub === 'new' ? 'New' : sub === 'edit' ? 'Edit' : 'Detail'
-        result.push({ label: subLabel })
-      } else {
-        result.push({ label: parentLabel })
-      }
-    }
-
-    return result
-  }, [location.pathname])
-
-  if (crumbs.length === 0) return null
-
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link to="/admin">Home</Link>
-          </BreadcrumbLink>
-        </BreadcrumbItem>
-        {crumbs.map((crumb, i) => (
-          <span key={i} className="contents">
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              {crumb.href ? (
-                <BreadcrumbLink asChild>
-                  <Link to={crumb.href}>{crumb.label}</Link>
-                </BreadcrumbLink>
-              ) : (
-                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-              )}
-            </BreadcrumbItem>
-          </span>
-        ))}
-      </BreadcrumbList>
-    </Breadcrumb>
-  )
-}
-
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false)
 
+  const routeLabels = useMemo(() => {
+    const labels: Record<string, string> = {}
+    for (const group of navigationGroups) {
+      for (const item of group.items) {
+        labels[item.href] = item.name
+      }
+    }
+    for (const item of settingsNavItems) {
+      labels[item.href] = item.name
+    }
+    return labels
+  }, [])
+
   return (
-    <div className="flex h-screen bg-background">
-      <div className="hidden md:flex">
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+    <BreadcrumbProvider routeLabels={routeLabels}>
+      <div className="flex h-screen bg-background">
+        <div className="hidden md:flex">
+          <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
+        </div>
+
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <header className="flex h-14 items-center border-b px-4 md:px-6 gap-4">
+            <MobileSidebar />
+            <div className="flex-1 hidden md:block">
+              <HeaderBreadcrumb />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="hidden md:flex items-center gap-2 text-muted-foreground"
+              onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span className="text-xs">Search...</span>
+              <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+                <span className="text-xs">&#8984;</span>K
+              </kbd>
+            </Button>
+            <NotificationBell />
+          </header>
+
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <Outlet />
+          </main>
+        </div>
+
+        <CommandPalette />
       </div>
-
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center border-b px-4 md:px-6 gap-4">
-          <MobileSidebar />
-          <div className="flex-1 hidden md:block">
-            <HeaderBreadcrumb />
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden md:flex items-center gap-2 text-muted-foreground"
-            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span className="text-xs">Search...</span>
-            <kbd className="pointer-events-none ml-2 inline-flex h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-              <span className="text-xs">&#8984;</span>K
-            </kbd>
-          </Button>
-          <NotificationBell />
-        </header>
-
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <Outlet />
-        </main>
-      </div>
-
-      <CommandPalette />
-    </div>
+    </BreadcrumbProvider>
   )
 }

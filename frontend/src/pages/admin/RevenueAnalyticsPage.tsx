@@ -53,6 +53,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import PageHeader from '@/components/PageHeader'
 import { dashboardApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
@@ -161,66 +162,57 @@ export default function RevenueAnalyticsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <Link to="/admin">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Revenue Analytics</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Deep-dive into revenue trends, customer spending, and collection efficiency
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select
-            value={preset}
-            onValueChange={(v) => {
-              const p = v as PeriodPreset
-              setPreset(p)
-              if (p === 'custom') setCalendarOpen(true)
-            }}
-          >
-            <SelectTrigger size="sm" className="w-[160px]">
-              <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(PERIOD_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <PageHeader
+        title="Revenue Analytics"
+        description="Deep-dive into revenue trends, customer spending, and collection efficiency"
+        actions={
+          <>
+            <Select
+              value={preset}
+              onValueChange={(v) => {
+                const p = v as PeriodPreset
+                setPreset(p)
+                if (p === 'custom') setCalendarOpen(true)
+              }}
+            >
+              <SelectTrigger size="sm" className="w-[160px]">
+                <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PERIOD_LABELS).map(([key, label]) => (
+                  <SelectItem key={key} value={key}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          {preset === 'custom' && (
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="font-normal">
-                  {customRange?.from
-                    ? customRange.to
-                      ? `${format(customRange.from, 'MMM d, yyyy')} - ${format(customRange.to, 'MMM d, yyyy')}`
-                      : format(customRange.from, 'MMM d, yyyy')
-                    : 'Pick dates'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={customRange}
-                  onSelect={setCustomRange}
-                  numberOfMonths={2}
-                  disabled={{ after: new Date() }}
-                />
-              </PopoverContent>
-            </Popover>
-          )}
-        </div>
-      </div>
+            {preset === 'custom' && (
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="font-normal">
+                    {customRange?.from
+                      ? customRange.to
+                        ? `${format(customRange.from, 'MMM d, yyyy')} - ${format(customRange.to, 'MMM d, yyyy')}`
+                        : format(customRange.from, 'MMM d, yyyy')
+                      : 'Pick dates'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="range"
+                    selected={customRange}
+                    onSelect={setCustomRange}
+                    numberOfMonths={2}
+                    disabled={{ after: new Date() }}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </>
+        }
+      />
 
       {/* Summary Stat Cards */}
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">

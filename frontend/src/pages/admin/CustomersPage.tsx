@@ -29,6 +29,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { customersApi, ApiError } from '@/lib/api'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
+import PageHeader from '@/components/PageHeader'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import { TablePagination } from '@/components/TablePagination'
@@ -140,18 +141,16 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Customers</h2>
-          <p className="text-muted-foreground">
-            Manage your customers and their billing information
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Customer
-        </Button>
-      </div>
+      <PageHeader
+        title="Customers"
+        description="Manage your customers and their billing information"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Customer
+          </Button>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

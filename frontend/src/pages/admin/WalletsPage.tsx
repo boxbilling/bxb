@@ -61,6 +61,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { walletsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Wallet,
@@ -549,18 +550,16 @@ export default function WalletsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Wallets</h2>
-          <p className="text-muted-foreground">
-            Manage customer prepaid credit wallets
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Wallet
-        </Button>
-      </div>
+      <PageHeader
+        title="Wallets"
+        description="Manage customer prepaid credit wallets"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Wallet
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">

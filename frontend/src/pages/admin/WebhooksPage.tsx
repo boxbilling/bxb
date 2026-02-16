@@ -68,6 +68,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
+import PageHeader from '@/components/PageHeader'
 import { webhookEndpointsApi, ApiError } from '@/lib/api'
 
 const PAGE_SIZE = 20
@@ -695,18 +696,16 @@ export default function WebhooksPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Webhooks</h2>
-          <p className="text-muted-foreground">
-            Manage webhook endpoints and monitor delivery status
-          </p>
-        </div>
-        <Button onClick={() => setFormOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Endpoint
-        </Button>
-      </div>
+      <PageHeader
+        title="Webhooks"
+        description="Manage webhook endpoints and monitor delivery status"
+        actions={
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Endpoint
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
