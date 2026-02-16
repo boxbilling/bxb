@@ -41,7 +41,10 @@ from app.routers import (
 OPENAPI_TAGS = [
     {"name": "Dashboard", "description": "Analytics dashboard and overview statistics."},
     {"name": "Customers", "description": "Create, read, update, and delete customers."},
-    {"name": "Billable Metrics", "description": "Define how usage events are aggregated for billing."},
+    {
+        "name": "Billable Metrics",
+        "description": "Define how usage events are aggregated for billing."
+    },
     {"name": "Plans", "description": "Create, read, update, and delete billing plans."},
     {"name": "Subscriptions", "description": "Manage customer subscriptions to plans."},
     {"name": "Events", "description": "Ingest and query usage events."},
@@ -74,6 +77,21 @@ OPENAPI_TAGS = [
     {"name": "Portal", "description": "Customer self-service portal endpoints."},
     {"name": "Notifications", "description": "In-app notification management."},
 ]
+
+def init_sentry() -> None:
+    if settings.SENTRY_DSN:
+        import sentry_sdk
+        sentry_sdk.init(
+            dsn=str(settings.SENTRY_DSN),
+            enable_tracing=True,
+            traces_sample_rate=0.1,  # Sample 10% of transactions
+            send_default_pii=True,
+            environment=settings.BXB_ENVIRONMENT,
+            max_breadcrumbs=50,  # Limit breadcrumb buffer (default is 100)
+        )
+
+
+init_sentry()
 
 app = FastAPI(
     title=settings.APP_NAME,

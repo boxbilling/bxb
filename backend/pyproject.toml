@@ -17,6 +17,7 @@ dependencies = [
     "weasyprint>=62.0",
     "aiosmtplib>=3.0",
     "pyjwt>=2.8.0",
+    "sentry-sdk[fastapi]",
 ]
 
 [build-system]

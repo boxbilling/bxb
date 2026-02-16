@@ -74,6 +74,40 @@ class TestConfig:
         assert s.clickhouse_enabled is True
 
 
+class TestSentryInit:
+    def test_sentry_init_called_when_dsn_set(self):
+        """Test that sentry_sdk.init is called when SENTRY_DSN is configured."""
+        import sys
+
+        from app.main import init_sentry
+
+        mock_sentry = MagicMock()
+        with (
+            patch("app.core.config.settings.SENTRY_DSN", "https://key@o0.ingest.sentry.io/0"),
+            patch("app.core.config.settings.BXB_ENVIRONMENT", "staging"),
+            patch.dict(sys.modules, {"sentry_sdk": mock_sentry}),
+        ):
+            init_sentry()
+
+        mock_sentry.init.assert_called_once_with(
+            dsn="https://key@o0.ingest.sentry.io/0",
+            enable_tracing=True,
+            traces_sample_rate=0.1,
+            send_default_pii=True,
+            environment="staging",
+            max_breadcrumbs=50,
+        )
+
+    def test_sentry_not_init_when_dsn_empty(self):
+        """Test that sentry_sdk.init is NOT called when SENTRY_DSN is empty."""
+        from app.main import init_sentry
+
+        with patch("app.core.config.settings.SENTRY_DSN", ""):
+            with patch("sentry_sdk.init") as mock_init:
+                init_sentry()
+                mock_init.assert_not_called()
+
+
 class TestDashboardEndpoints:
     def test_get_stats(self, client: TestClient):
         response = client.get("/dashboard/stats")

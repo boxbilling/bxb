@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,12 +8,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     DEBUG: bool = False
+    BXB_ENVIRONMENT: Literal["local", "staging", "production"] = "production"
     APP_NAME: str = "bxb API"
     APP_DOMAIN: str = "example.com"
     APP_DATA_PATH: str = "/tmp"
     APP_DATABASE_DSN: str = "sqlite:///./bxb.db"
     REDIS_URL: str = "redis://localhost:6379"
     OPENROUTER_API_KEY: str = ""
+    SENTRY_DSN: str = ""
 
     # Payment providers
     stripe_api_key: str = ""
