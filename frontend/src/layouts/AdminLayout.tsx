@@ -136,7 +136,7 @@ function NavItem({
     <NavLink
       to={item.href}
       className={cn(
-        'flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
+        'flex items-center gap-2.5 rounded-md px-2.5 py-3 md:py-1.5 text-[13px] font-medium transition-colors',
         isActive
           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
           : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
@@ -186,7 +186,7 @@ function Sidebar({
         </TooltipProvider>
       </div>
 
-      <nav className="flex-1 overflow-y-auto space-y-0.5 px-2 pb-2 pt-1">
+      <nav className="flex-1 overflow-y-auto space-y-1 md:space-y-0.5 px-2 pb-2 pt-1">
         <TooltipProvider delayDuration={0}>
           {navigationGroups.map((group, groupIndex) => (
             <div key={groupIndex}>
@@ -268,7 +268,7 @@ function SettingsSection({ collapsed }: { collapsed: boolean }) {
     <button
       onClick={() => setExpanded(!expanded)}
       className={cn(
-        'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
+        'flex w-full items-center gap-2.5 rounded-md px-2.5 py-3 md:py-1.5 text-[13px] font-medium transition-colors',
         isSettingsActive
           ? 'bg-sidebar-accent text-sidebar-accent-foreground'
           : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
@@ -330,13 +330,13 @@ function SettingsSection({ collapsed }: { collapsed: boolean }) {
     <div>
       {toggleButton}
       {expanded && (
-        <div className="mt-0.5 space-y-0.5">
+        <div className="mt-0.5 space-y-1 md:space-y-0.5">
           {settingsNavItems.map((item) => (
             <NavItem key={item.href} item={item} collapsed={false} />
           ))}
           <button
             onClick={toggle}
-            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-sidebar-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-3 md:py-1.5 text-[13px] font-medium text-sidebar-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
             {theme === 'light' ? (
               <Moon className="h-4 w-4 shrink-0" />
