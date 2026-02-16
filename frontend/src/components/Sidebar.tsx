@@ -347,7 +347,7 @@ export function MobileSidebar() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden h-11 w-11">
+        <Button variant="ghost" size="icon" className="md:hidden h-11 w-11 min-h-[44px] min-w-[44px]">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>

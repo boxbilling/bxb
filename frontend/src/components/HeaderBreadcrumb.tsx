@@ -27,6 +27,36 @@ export function BreadcrumbProvider({
   )
 }
 
+export function MobilePageTitle() {
+  const routeLabels = useContext(BreadcrumbContext)
+  const location = useLocation()
+
+  const label = useMemo(() => {
+    const path = location.pathname
+    if (path === '/admin') return null
+
+    const segments = path.replace(/^\/admin\/?/, '').split('/')
+    const parentPath = '/admin/' + segments[0]
+    const parentLabel = routeLabels[parentPath]
+    if (!parentLabel) return null
+
+    if (segments.length > 1) {
+      const sub = segments.slice(1).join('/')
+      const subLabel = sub === 'new' ? 'New' : sub === 'edit' ? 'Edit' : 'Detail'
+      return `${parentLabel} — ${subLabel}`
+    }
+    return parentLabel
+  }, [location.pathname, routeLabels])
+
+  if (!label) return null
+
+  return (
+    <span className="text-sm font-medium truncate text-foreground">
+      {label}
+    </span>
+  )
+}
+
 export default function HeaderBreadcrumb() {
   const routeLabels = useContext(BreadcrumbContext)
   const location = useLocation()

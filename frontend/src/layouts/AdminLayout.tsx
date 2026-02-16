@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import NotificationBell from '@/components/NotificationBell'
 import { CommandPalette } from '@/components/CommandPalette'
-import HeaderBreadcrumb, { BreadcrumbProvider } from '@/components/HeaderBreadcrumb'
+import HeaderBreadcrumb, { BreadcrumbProvider, MobilePageTitle } from '@/components/HeaderBreadcrumb'
 import Sidebar, { MobileSidebar, navigationGroups, settingsNavItems } from '@/components/Sidebar'
 
 export default function AdminLayout() {
@@ -35,6 +35,9 @@ export default function AdminLayout() {
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex h-14 items-center border-b px-4 md:px-6 gap-4">
             <MobileSidebar />
+            <div className="flex-1 min-w-0 md:hidden">
+              <MobilePageTitle />
+            </div>
             <div className="flex-1 hidden md:block">
               <HeaderBreadcrumb />
             </div>
