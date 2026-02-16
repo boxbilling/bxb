@@ -80,6 +80,22 @@ class RefundRequest(BaseModel):
     )
 
 
+class ManualPaymentCreate(BaseModel):
+    """Schema for recording a manual/offline payment."""
+
+    invoice_id: UUID = Field(..., description="Invoice this payment is for")
+    amount: Decimal = Field(..., description="Payment amount", gt=0)
+    currency: str = Field(default="USD", description="Payment currency (3-letter ISO code)")
+    reference: str | None = Field(
+        default=None,
+        description="External reference (e.g. check number, wire transfer ID)",
+    )
+    notes: str | None = Field(
+        default=None,
+        description="Optional notes about this payment",
+    )
+
+
 class WebhookEvent(BaseModel):
     """Schema for incoming webhook events."""
 

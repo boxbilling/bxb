@@ -40,6 +40,7 @@ type PaymentStatus = components['schemas']['PaymentStatus']
 type PaymentProvider = components['schemas']['PaymentProvider']
 type CheckoutSessionCreate = components['schemas']['CheckoutSessionCreate']
 type CheckoutSessionResponse = components['schemas']['CheckoutSessionResponse']
+type ManualPaymentCreate = components['schemas']['ManualPaymentCreate']
 
 type FeeResponse = components['schemas']['FeeResponse']
 type FeeUpdate = components['schemas']['FeeUpdate']
@@ -863,6 +864,11 @@ export const paymentsApi = {
   retry: (id: string) =>
     request<PaymentResponse>(`/v1/payments/${id}/retry`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/v1/payments/${id}`, { method: 'DELETE' }),
+  recordManual: (data: ManualPaymentCreate) =>
+    request<PaymentResponse>('/v1/payments/record', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Payment Methods API

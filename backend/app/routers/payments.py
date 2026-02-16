@@ -20,6 +20,7 @@ from app.schemas.invoice_settlement import InvoiceSettlementCreate
 from app.schemas.payment import (
     CheckoutSessionCreate,
     CheckoutSessionResponse,
+    ManualPaymentCreate,
     PaymentResponse,
     RefundRequest,
 )
@@ -109,6 +110,93 @@ async def get_payment(
     payment = repo.get_by_id(payment_id, organization_id)
     if not payment:
         raise HTTPException(status_code=404, detail="Payment not found")
+    return payment
+
+
+@router.post(
+    "/record",
+    response_model=PaymentResponse,
+    summary="Record manual payment",
+    responses={
+        400: {"description": "Only finalized invoices can have payments recorded"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def record_manual_payment(
+    data: ManualPaymentCreate,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Payment:
+    """Record a manual/offline payment (e.g. check, wire transfer, cash).
+
+    Creates a payment record with status 'succeeded', records a settlement,
+    and auto-marks the invoice as paid if fully settled.
+    """
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(data.invoice_id, organization_id)
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status != InvoiceStatus.FINALIZED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Only finalized invoices can have payments recorded",
+        )
+
+    metadata: dict[str, Any] = {"manual": True}
+    if data.reference:
+        metadata["reference"] = data.reference
+    if data.notes:
+        metadata["notes"] = data.notes
+
+    payment_repo = PaymentRepository(db)
+    payment = payment_repo.create(
+        invoice_id=invoice.id,  # type: ignore[arg-type]
+        customer_id=invoice.customer_id,  # type: ignore[arg-type]
+        amount=float(data.amount),
+        currency=data.currency,
+        provider=PaymentProvider.MANUAL,
+        metadata=metadata,
+        organization_id=organization_id,
+    )
+
+    # Immediately mark as succeeded since this is a manual recording
+    payment_repo.mark_succeeded(payment.id)  # type: ignore[arg-type]
+
+    # Record settlement and auto-mark invoice as paid if fully settled
+    _record_settlement_and_maybe_mark_paid(
+        db,
+        invoice_id=invoice.id,  # type: ignore[arg-type]
+        settlement_type=SettlementType.PAYMENT,
+        source_id=payment.id,  # type: ignore[arg-type]
+        amount_cents=float(data.amount),
+    )
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="payment",
+        resource_id=payment.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "invoice_id": str(data.invoice_id),
+            "provider": "manual",
+            "amount": str(data.amount),
+            "reference": data.reference,
+        },
+    )
+
+    webhook_service = WebhookService(db)
+    webhook_service.send_webhook(
+        webhook_type="payment.succeeded",
+        object_type="payment",
+        object_id=payment.id,  # type: ignore[arg-type]
+        payload={"payment_id": str(payment.id)},
+    )
+
+    # Refresh to get the updated status
+    db.refresh(payment)
     return payment
 
 

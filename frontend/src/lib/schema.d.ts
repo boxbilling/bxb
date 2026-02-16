@@ -1386,6 +1386,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payments/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record manual payment
+         * @description Record a manual/offline payment (e.g. check, wire transfer, cash).
+         *
+         *     Creates a payment record with status 'succeeded', records a settlement,
+         *     and auto-marks the invoice as paid if fully settled.
+         */
+        post: operations["record_manual_payment_v1_payments_record_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payments/checkout": {
         parameters: {
             query?: never;
@@ -4099,6 +4122,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/search/": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Global search across customers, invoices, subscriptions, and plans
+         * @description Search across customers, invoices, subscriptions, and plans.
+         */
+        get: operations["global_search_v1_search__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -6224,6 +6267,18 @@ export interface components {
             /** Total Amount Cents */
             total_amount_cents?: number | string | null;
         };
+        /**
+         * GlobalSearchResponse
+         * @description Response for global search endpoint.
+         */
+        GlobalSearchResponse: {
+            /** Query */
+            query: string;
+            /** Results */
+            results?: components["schemas"]["SearchResult"][];
+            /** Total Count */
+            total_count: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -6644,6 +6699,39 @@ export interface components {
             metadata?: {
                 [key: string]: string;
             } | null;
+        };
+        /**
+         * ManualPaymentCreate
+         * @description Schema for recording a manual/offline payment.
+         */
+        ManualPaymentCreate: {
+            /**
+             * Invoice Id
+             * Format: uuid
+             * @description Invoice this payment is for
+             */
+            invoice_id: string;
+            /**
+             * Amount
+             * @description Payment amount
+             */
+            amount: number | string;
+            /**
+             * Currency
+             * @description Payment currency (3-letter ISO code)
+             * @default USD
+             */
+            currency: string;
+            /**
+             * Reference
+             * @description External reference (e.g. check number, wire transfer ID)
+             */
+            reference?: string | null;
+            /**
+             * Notes
+             * @description Optional notes about this payment
+             */
+            notes?: string | null;
         };
         /**
          * NextBillingDateResponse
@@ -7867,6 +7955,34 @@ export interface components {
             /** Monthly Trend */
             monthly_trend: components["schemas"]["RevenueDataPoint"][];
             mrr_trend?: components["schemas"]["TrendIndicator"] | null;
+        };
+        /**
+         * SearchResult
+         * @description Individual search result across all resource types.
+         */
+        SearchResult: {
+            /**
+             * Type
+             * @description Resource type (customer, invoice, subscription, plan)
+             */
+            type: string;
+            /** Id */
+            id: string;
+            /**
+             * Title
+             * @description Primary display title
+             */
+            title: string;
+            /**
+             * Subtitle
+             * @description Secondary display info
+             */
+            subtitle?: string | null;
+            /**
+             * Url
+             * @description Resource URL path for navigation
+             */
+            url: string;
         };
         /** SendReminderResponse */
         SendReminderResponse: {
@@ -12460,6 +12576,60 @@ export interface operations {
                 content?: never;
             };
             /** @description Payment not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    record_manual_payment_v1_payments_record_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualPaymentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"];
+                };
+            };
+            /** @description Only finalized invoices can have payments recorded */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -20152,6 +20322,47 @@ export interface operations {
             };
             /** @description Subscription not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    global_search_v1_search__get: {
+        parameters: {
+            query: {
+                /** @description Search query string */
+                q: string;
+                /** @description Maximum results per type */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalSearchResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

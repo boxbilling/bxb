@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, CreditCard, Check, Trash2, RefreshCw, ExternalLink, MoreHorizontal, Eye, RotateCcw, Send } from 'lucide-react'
+import { Search, CreditCard, Check, Trash2, RefreshCw, ExternalLink, MoreHorizontal, Eye, RotateCcw, Send, Plus, Loader2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -77,6 +77,12 @@ export default function PaymentsPage() {
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const [showRecordDialog, setShowRecordDialog] = useState(false)
+  const [recordInvoiceId, setRecordInvoiceId] = useState('')
+  const [recordAmount, setRecordAmount] = useState('')
+  const [recordCurrency, setRecordCurrency] = useState('USD')
+  const [recordReference, setRecordReference] = useState('')
+  const [recordNotes, setRecordNotes] = useState('')
 
   // Fetch payments
   const { data: paginatedData, isLoading } = useQuery({
@@ -141,6 +147,21 @@ export default function PaymentsPage() {
     },
   })
 
+  const recordManualMutation = useMutation({
+    mutationFn: (data: { invoice_id: string; amount: number; currency: string; reference?: string; notes?: string }) =>
+      paymentsApi.recordManual(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      setShowRecordDialog(false)
+      setRecordInvoiceId('')
+      setRecordAmount('')
+      setRecordCurrency('USD')
+      setRecordReference('')
+      setRecordNotes('')
+    },
+  })
+
   // Helpers
   const getCustomerName = (customerId: string) => {
     const customer = customers.find(c => c.id === customerId)
@@ -181,13 +202,19 @@ export default function PaymentsPage() {
             Track and manage payment transactions
           </p>
         </div>
-        <Link
-          to="/admin/payment-requests"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <Send className="h-4 w-4" />
-          Payment Requests
-        </Link>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => setShowRecordDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Record Payment
+          </Button>
+          <Link
+            to="/admin/payment-requests"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Send className="h-4 w-4" />
+            Payment Requests
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -618,6 +645,132 @@ export default function PaymentsPage() {
               disabled={isActionPending || (confirmAction?.type === 'refund' && refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0 || parseFloat(refundAmount) > parseFloat(confirmAction.payment.amount)))}
             >
               {isActionPending ? 'Processing...' : 'Confirm'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Manual Payment Dialog */}
+      <Dialog open={showRecordDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowRecordDialog(false)
+          setRecordInvoiceId('')
+          setRecordAmount('')
+          setRecordCurrency('USD')
+          setRecordReference('')
+          setRecordNotes('')
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Record Manual Payment
+            </DialogTitle>
+            <DialogDescription>
+              Record an offline payment such as a check, wire transfer, or cash payment.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="recordInvoice">Invoice</Label>
+              <Select value={recordInvoiceId} onValueChange={(id) => {
+                setRecordInvoiceId(id)
+                const inv = invoices.find(i => i.id === id)
+                if (inv) {
+                  setRecordAmount(String(inv.total))
+                  setRecordCurrency(inv.currency)
+                }
+              }}>
+                <SelectTrigger id="recordInvoice">
+                  <SelectValue placeholder="Select an invoice..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {invoices
+                    .filter(inv => inv.status === 'finalized')
+                    .map(inv => (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.invoice_number || inv.id.slice(0, 8)} — {formatCurrency(inv.total, inv.currency)}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="recordAmount">Amount</Label>
+                <Input
+                  id="recordAmount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={recordAmount}
+                  onChange={(e) => setRecordAmount(e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="recordCurrency">Currency</Label>
+                <Input
+                  id="recordCurrency"
+                  value={recordCurrency}
+                  onChange={(e) => setRecordCurrency(e.target.value.toUpperCase())}
+                  maxLength={3}
+                  placeholder="USD"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recordReference">Reference (optional)</Label>
+              <Input
+                id="recordReference"
+                value={recordReference}
+                onChange={(e) => setRecordReference(e.target.value)}
+                placeholder="e.g. Check #1234, Wire transfer ID"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recordNotes">Notes (optional)</Label>
+              <Input
+                id="recordNotes"
+                value={recordNotes}
+                onChange={(e) => setRecordNotes(e.target.value)}
+                placeholder="Additional notes about this payment"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRecordDialog(false)
+              setRecordInvoiceId('')
+              setRecordAmount('')
+              setRecordCurrency('USD')
+              setRecordReference('')
+              setRecordNotes('')
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!recordInvoiceId || !recordAmount) return
+                recordManualMutation.mutate({
+                  invoice_id: recordInvoiceId,
+                  amount: parseFloat(recordAmount),
+                  currency: recordCurrency,
+                  reference: recordReference || undefined,
+                  notes: recordNotes || undefined,
+                })
+              }}
+              disabled={!recordInvoiceId || !recordAmount || parseFloat(recordAmount) <= 0 || recordManualMutation.isPending}
+            >
+              {recordManualMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Recording...
+                </>
+              ) : (
+                'Record Payment'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

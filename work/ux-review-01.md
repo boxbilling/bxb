@@ -996,15 +996,22 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 - [x] Add Cmd+K command palette for global search
 
 ### Phase 2: Modal → Page Conversions (High Impact, Medium Effort)
-- [ ] Create Plan detail page (`/admin/plans/:id`)
-- [ ] Create Invoice detail page (`/admin/invoices/:id`)
-- [ ] Create Wallet detail page (`/admin/wallets/:id`)
-- [ ] Convert Billing Entity form to full page
-- [ ] Convert Credit Note creation to full page
+- [x] Create Plan detail page (`/admin/plans/:id`)
+  <!-- Already completed in section 3.5 — PlanDetailPage.tsx exists with charges, commitments, thresholds, entitlements, subscriptions, and activity tabs. Route at /admin/plans/:id in App.tsx. -->
+- [x] Create Invoice detail page (`/admin/invoices/:id`)
+  <!-- Already completed in section 3.9 — InvoiceDetailPage.tsx exists with fees, totals, settlements, credit notes, and activity tabs. Route at /admin/invoices/:id in App.tsx. -->
+- [x] Create Wallet detail page (`/admin/wallets/:id`)
+  <!-- Already completed in section 3.14 — WalletDetailPage.tsx exists with transactions, balance timeline, and activity tabs. Route at /admin/wallets/:id in App.tsx. -->
+- [x] Convert Billing Entity form to full page
+  <!-- Already completed in section 3.3 — BillingEntityFormPage.tsx exists with 4-section card layout. Routes at /admin/billing-entities/new and /admin/billing-entities/:code/edit in App.tsx. -->
+- [x] Convert Credit Note creation to full page
+  <!-- Already completed in section 3.12 — CreditNoteFormPage.tsx exists with cascading customer→invoice→fees form. Routes at /admin/credit-notes/new and /admin/credit-notes/:id/edit in App.tsx. -->
 
 ### Phase 3: Missing CRUD Operations (Medium Impact, Low Effort)
-- [ ] Add subscription field editing
-- [ ] Add "Record Manual Payment" action
+- [x] Add subscription field editing
+  <!-- Already completed in section 3.7 — EditSubscriptionDialog component exists at src/components/EditSubscriptionDialog.tsx, integrated into both SubscriptionDetailPage and SubscriptionsPage. Supports editing billing_time, pay_in_advance, on_termination_action, and trial_period_days. -->
+- [x] Add "Record Manual Payment" action
+  <!-- Completed: Added POST /v1/payments/record backend endpoint that accepts invoice_id, amount, currency, optional reference (e.g. check number, wire transfer ID), and optional notes. Validates invoice exists and is finalized, creates a payment record with provider=manual and status=succeeded, records an invoice settlement, auto-marks invoice as paid if fully settled, creates an audit log entry, and sends a payment.succeeded webhook. Added ManualPaymentCreate Pydantic schema. Frontend PaymentsPage now has a "Record Payment" button in the header that opens a dialog with invoice selector (filtered to finalized invoices), amount/currency inputs (auto-filled from selected invoice), reference, and notes fields. Frontend API client extended with paymentsApi.recordManual(). OpenAPI schema and frontend types regenerated. 10 new backend tests added covering: success with all fields, minimal fields, invoice not found, draft invoice (400), zero amount (422), negative amount (422), audit log creation, invoice auto-paid on full settlement, and 2 schema validation tests. All 3976 backend tests pass with 100% coverage. -->
 - [ ] Add "Create One-Off Invoice" action
 - [ ] Add "Remove Applied Coupon" action
 - [ ] Standardize row actions (dropdown menus instead of icon-only buttons)

@@ -2556,3 +2556,163 @@ class TestPartialRefund:
         # Valid without amount (full refund)
         req = RefundRequest()
         assert req.amount is None
+
+
+class TestRecordManualPayment:
+    """Tests for the POST /v1/payments/record endpoint."""
+
+    def test_record_manual_payment_success(self, client, finalized_invoice):
+        """Test recording a manual payment for a finalized invoice."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "amount": 100.00,
+                "currency": "USD",
+                "reference": "Check #1234",
+                "notes": "Received via mail",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "succeeded"
+        assert data["provider"] == "manual"
+        assert float(data["amount"]) == 100.00
+        assert data["currency"] == "USD"
+        assert data["payment_metadata"]["manual"] is True
+        assert data["payment_metadata"]["reference"] == "Check #1234"
+        assert data["payment_metadata"]["notes"] == "Received via mail"
+        assert data["completed_at"] is not None
+
+    def test_record_manual_payment_minimal(self, client, finalized_invoice):
+        """Test recording a manual payment with only required fields."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "amount": 50.00,
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "succeeded"
+        assert data["provider"] == "manual"
+        assert data["currency"] == "USD"
+        assert data["payment_metadata"]["manual"] is True
+        assert "reference" not in data["payment_metadata"]
+        assert "notes" not in data["payment_metadata"]
+
+    def test_record_manual_payment_invoice_not_found(self, client):
+        """Test recording payment for non-existent invoice returns 404."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(uuid4()),
+                "amount": 100.00,
+            },
+        )
+        assert response.status_code == 404
+        assert "Invoice not found" in response.json()["detail"]
+
+    def test_record_manual_payment_draft_invoice(self, client, draft_invoice):
+        """Test recording payment for a draft invoice returns 400."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(draft_invoice.id),
+                "amount": 50.00,
+            },
+        )
+        assert response.status_code == 400
+        assert "finalized" in response.json()["detail"].lower()
+
+    def test_record_manual_payment_zero_amount(self, client, finalized_invoice):
+        """Test recording payment with zero amount returns 422."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "amount": 0,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_record_manual_payment_negative_amount(self, client, finalized_invoice):
+        """Test recording payment with negative amount returns 422."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "amount": -10.00,
+            },
+        )
+        assert response.status_code == 422
+
+    def test_record_manual_payment_creates_audit_log(self, client, finalized_invoice, db_session):
+        """Test that recording a manual payment creates an audit log entry."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "amount": 100.00,
+                "reference": "Wire TX-9876",
+            },
+        )
+        assert response.status_code == 200
+        payment_id = response.json()["id"]
+
+        audit_log = (
+            db_session.query(AuditLog)
+            .filter(
+                AuditLog.resource_type == "payment",
+                AuditLog.resource_id == payment_id,
+            )
+            .first()
+        )
+        assert audit_log is not None
+        assert audit_log.action == "created"
+
+    def test_record_manual_payment_marks_invoice_paid(self, client, finalized_invoice, db_session):
+        """Test that recording full payment amount marks the invoice as paid."""
+        response = client.post(
+            "/v1/payments/record",
+            json={
+                "invoice_id": str(finalized_invoice.id),
+                "amount": float(finalized_invoice.total),
+            },
+        )
+        assert response.status_code == 200
+
+        invoice_repo = InvoiceRepository(db_session)
+        db_session.expire_all()
+        updated_invoice = invoice_repo.get_by_id(finalized_invoice.id)
+        assert updated_invoice is not None
+        assert updated_invoice.status == "paid"
+
+    def test_record_manual_payment_schema_validation(self):
+        """Test ManualPaymentCreate schema validation."""
+        from app.schemas.payment import ManualPaymentCreate
+
+        req = ManualPaymentCreate(
+            invoice_id=uuid4(),
+            amount=Decimal("99.99"),
+            currency="EUR",
+            reference="REF-001",
+            notes="Test note",
+        )
+        assert req.amount == Decimal("99.99")
+        assert req.currency == "EUR"
+        assert req.reference == "REF-001"
+        assert req.notes == "Test note"
+
+    def test_record_manual_payment_schema_defaults(self):
+        """Test ManualPaymentCreate schema defaults."""
+        from app.schemas.payment import ManualPaymentCreate
+
+        req = ManualPaymentCreate(
+            invoice_id=uuid4(),
+            amount=Decimal("10.00"),
+        )
+        assert req.currency == "USD"
+        assert req.reference is None
+        assert req.notes is None
