@@ -572,7 +572,7 @@ export default function InvoicesPage() {
       />
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -612,8 +612,8 @@ export default function InvoicesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="relative flex-1 max-w-none md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search invoices..."
@@ -623,7 +623,7 @@ export default function InvoicesPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full md:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -697,8 +697,8 @@ export default function InvoicesPage() {
               <SortableTableHead label="Invoice #" sortKey="invoice_number" sort={sort} onSort={setSort} />
               <SortableTableHead label="Type" sortKey="invoice_type" sort={sort} onSort={setSort} />
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Issue Date" sortKey="issuing_date" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Due Date" sortKey="payment_due_date" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Issue Date" sortKey="issuing_date" sort={sort} onSort={setSort} className="hidden md:table-cell" />
+              <SortableTableHead label="Due Date" sortKey="payment_due_date" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <SortableTableHead label="Amount" sortKey="total_amount_cents" sort={sort} onSort={setSort} className="text-right" />
             </TableRow>
           </TableHeader>
@@ -710,8 +710,8 @@ export default function InvoicesPage() {
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24 ml-auto" /></TableCell>
                 </TableRow>
               ))
@@ -747,10 +747,10 @@ export default function InvoicesPage() {
                   <TableCell>
                     <StatusBadge status={invoice.status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
