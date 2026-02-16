@@ -51,8 +51,6 @@ const DEFAULT_FORM: OrganizationCreate = {
   name: '',
   default_currency: 'USD',
   timezone: 'UTC',
-  invoice_grace_period: 0,
-  net_payment_term: 30,
 }
 
 function getInitials(name?: string) {

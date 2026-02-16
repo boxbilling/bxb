@@ -204,6 +204,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/dashboard/revenue_analytics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get revenue analytics deep-dive
+         * @description Get comprehensive revenue analytics: daily trend, by type, top customers,
+         *     collection metrics, and net revenue.
+         */
+        get: operations["get_revenue_analytics_dashboard_revenue_analytics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/items/update-prices": {
         parameters: {
             query?: never;
@@ -5387,6 +5408,21 @@ export interface components {
             /** Expires At */
             expires_at?: string | null;
         };
+        /** CollectionMetrics */
+        CollectionMetrics: {
+            /** Total Invoiced */
+            total_invoiced: number;
+            /** Total Collected */
+            total_collected: number;
+            /** Collection Rate */
+            collection_rate: number;
+            /** Average Days To Payment */
+            average_days_to_payment: number | null;
+            /** Overdue Count */
+            overdue_count: number;
+            /** Overdue Amount */
+            overdue_amount: number;
+        };
         /** CommitmentCreateAPI */
         CommitmentCreateAPI: {
             /**
@@ -5823,6 +5859,13 @@ export interface components {
             invoice_grace_period?: number | null;
             /** Net Payment Term */
             net_payment_term?: number | null;
+        };
+        /** DailyRevenuePoint */
+        DailyRevenuePoint: {
+            /** Date */
+            date: string;
+            /** Revenue */
+            revenue: number;
         };
         /** DashboardStatsResponse */
         DashboardStatsResponse: {
@@ -6952,6 +6995,19 @@ export interface components {
              */
             notes?: string | null;
         };
+        /** NetRevenueMetrics */
+        NetRevenueMetrics: {
+            /** Gross Revenue */
+            gross_revenue: number;
+            /** Refunds */
+            refunds: number;
+            /** Credit Notes */
+            credit_notes: number;
+            /** Net Revenue */
+            net_revenue: number;
+            /** Currency */
+            currency: string;
+        };
         /**
          * NextBillingDateResponse
          * @description Response for next billing date calculation.
@@ -7042,40 +7098,12 @@ export interface components {
             timezone: string;
             /** Hmac Key */
             hmac_key?: string | null;
-            /** Document Number Prefix */
-            document_number_prefix?: string | null;
-            /**
-             * Invoice Grace Period
-             * @default 0
-             */
-            invoice_grace_period: number;
-            /**
-             * Net Payment Term
-             * @default 30
-             */
-            net_payment_term: number;
             /** Logo Url */
             logo_url?: string | null;
-            /** Email */
-            email?: string | null;
             /** Portal Accent Color */
             portal_accent_color?: string | null;
             /** Portal Welcome Message */
             portal_welcome_message?: string | null;
-            /** Legal Name */
-            legal_name?: string | null;
-            /** Address Line1 */
-            address_line1?: string | null;
-            /** Address Line2 */
-            address_line2?: string | null;
-            /** City */
-            city?: string | null;
-            /** State */
-            state?: string | null;
-            /** Zipcode */
-            zipcode?: string | null;
-            /** Country */
-            country?: string | null;
         };
         /**
          * OrganizationCreateResponse
@@ -7095,34 +7123,12 @@ export interface components {
             timezone: string;
             /** Hmac Key */
             hmac_key: string | null;
-            /** Document Number Prefix */
-            document_number_prefix: string | null;
-            /** Invoice Grace Period */
-            invoice_grace_period: number;
-            /** Net Payment Term */
-            net_payment_term: number;
             /** Logo Url */
             logo_url: string | null;
-            /** Email */
-            email: string | null;
             /** Portal Accent Color */
             portal_accent_color: string | null;
             /** Portal Welcome Message */
             portal_welcome_message: string | null;
-            /** Legal Name */
-            legal_name: string | null;
-            /** Address Line1 */
-            address_line1: string | null;
-            /** Address Line2 */
-            address_line2: string | null;
-            /** City */
-            city: string | null;
-            /** State */
-            state: string | null;
-            /** Zipcode */
-            zipcode: string | null;
-            /** Country */
-            country: string | null;
             /**
              * Created At
              * Format: date-time
@@ -7150,34 +7156,12 @@ export interface components {
             timezone: string;
             /** Hmac Key */
             hmac_key: string | null;
-            /** Document Number Prefix */
-            document_number_prefix: string | null;
-            /** Invoice Grace Period */
-            invoice_grace_period: number;
-            /** Net Payment Term */
-            net_payment_term: number;
             /** Logo Url */
             logo_url: string | null;
-            /** Email */
-            email: string | null;
             /** Portal Accent Color */
             portal_accent_color: string | null;
             /** Portal Welcome Message */
             portal_welcome_message: string | null;
-            /** Legal Name */
-            legal_name: string | null;
-            /** Address Line1 */
-            address_line1: string | null;
-            /** Address Line2 */
-            address_line2: string | null;
-            /** City */
-            city: string | null;
-            /** State */
-            state: string | null;
-            /** Zipcode */
-            zipcode: string | null;
-            /** Country */
-            country: string | null;
             /**
              * Created At
              * Format: date-time
@@ -7199,34 +7183,12 @@ export interface components {
             timezone?: string | null;
             /** Hmac Key */
             hmac_key?: string | null;
-            /** Document Number Prefix */
-            document_number_prefix?: string | null;
-            /** Invoice Grace Period */
-            invoice_grace_period?: number | null;
-            /** Net Payment Term */
-            net_payment_term?: number | null;
             /** Logo Url */
             logo_url?: string | null;
-            /** Email */
-            email?: string | null;
             /** Portal Accent Color */
             portal_accent_color?: string | null;
             /** Portal Welcome Message */
             portal_welcome_message?: string | null;
-            /** Legal Name */
-            legal_name?: string | null;
-            /** Address Line1 */
-            address_line1?: string | null;
-            /** Address Line2 */
-            address_line2?: string | null;
-            /** City */
-            city?: string | null;
-            /** State */
-            state?: string | null;
-            /** Zipcode */
-            zipcode?: string | null;
-            /** Country */
-            country?: string | null;
         };
         /**
          * PaymentAttemptEntry
@@ -8131,6 +8093,10 @@ export interface components {
             description: string;
             /** Timestamp */
             timestamp: string;
+            /** Resource Type */
+            resource_type?: string | null;
+            /** Resource Id */
+            resource_id?: string | null;
         };
         /** RecentInvoiceItem */
         RecentInvoiceItem: {
@@ -8180,12 +8146,34 @@ export interface components {
          * @enum {string}
          */
         RefundStatus: "pending" | "succeeded" | "failed";
+        /** RevenueAnalyticsResponse */
+        RevenueAnalyticsResponse: {
+            /** Daily Revenue */
+            daily_revenue: components["schemas"]["DailyRevenuePoint"][];
+            /** Revenue By Type */
+            revenue_by_type: components["schemas"]["RevenueByTypeBreakdown"][];
+            /** Top Customers */
+            top_customers: components["schemas"]["TopCustomerRevenue"][];
+            collection: components["schemas"]["CollectionMetrics"];
+            net_revenue: components["schemas"]["NetRevenueMetrics"];
+            /** Currency */
+            currency: string;
+        };
         /** RevenueByPlanResponse */
         RevenueByPlanResponse: {
             /** By Plan */
             by_plan: components["schemas"]["PlanRevenueBreakdown"][];
             /** Currency */
             currency: string;
+        };
+        /** RevenueByTypeBreakdown */
+        RevenueByTypeBreakdown: {
+            /** Invoice Type */
+            invoice_type: string;
+            /** Revenue */
+            revenue: number;
+            /** Count */
+            count: number;
         };
         /** RevenueDataPoint */
         RevenueDataPoint: {
@@ -8538,6 +8526,17 @@ export interface components {
          * @enum {string}
          */
         TerminationAction: "generate_invoice" | "generate_credit_note" | "skip";
+        /** TopCustomerRevenue */
+        TopCustomerRevenue: {
+            /** Customer Id */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Revenue */
+            revenue: number;
+            /** Invoice Count */
+            invoice_count: number;
+        };
         /** TrendIndicator */
         TrendIndicator: {
             /** Previous Value */
@@ -9467,6 +9466,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SparklineData"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_revenue_analytics_dashboard_revenue_analytics_get: {
+        parameters: {
+            query?: {
+                /** @description Period start date (YYYY-MM-DD) */
+                start_date?: string | null;
+                /** @description Period end date (YYYY-MM-DD) */
+                end_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevenueAnalyticsResponse"];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */
