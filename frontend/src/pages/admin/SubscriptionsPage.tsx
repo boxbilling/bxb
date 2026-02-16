@@ -812,8 +812,8 @@ export default function SubscriptionsPage() {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="relative flex-1 max-w-none md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search subscriptions..."
@@ -823,7 +823,7 @@ export default function SubscriptionsPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full md:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -912,10 +912,10 @@ export default function SubscriptionsPage() {
               <TableHead>Customer</TableHead>
               <TableHead>Plan</TableHead>
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
-              <TableHead>Trial</TableHead>
-              <TableHead>Billing</TableHead>
-              <SortableTableHead label="Started" sortKey="started_at" sort={sort} onSort={setSort} />
-              <TableHead>Next Billing</TableHead>
+              <TableHead className="hidden md:table-cell">Trial</TableHead>
+              <TableHead className="hidden md:table-cell">Billing</TableHead>
+              <SortableTableHead className="hidden md:table-cell" label="Started" sortKey="started_at" sort={sort} onSort={setSort} />
+              <TableHead className="hidden md:table-cell">Next Billing</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -927,10 +927,10 @@ export default function SubscriptionsPage() {
                   <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                 </TableRow>
               ))
@@ -975,7 +975,7 @@ export default function SubscriptionsPage() {
                     <TableCell>
                       <StatusBadge status={sub.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <TrialBadge sub={sub} />
                       {sub.trial_ended_at && (
                         <div className="text-xs text-muted-foreground mt-0.5">
@@ -983,7 +983,7 @@ export default function SubscriptionsPage() {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="text-xs">
                         <span className="capitalize">{sub.billing_time}</span>
                         {sub.pay_in_advance && (
@@ -991,12 +991,12 @@ export default function SubscriptionsPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {sub.started_at
                         ? format(new Date(sub.started_at), 'MMM d, yyyy')
                         : '\u2014'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <NextBillingCell sub={sub} />
                     </TableCell>
                     <TableCell>
