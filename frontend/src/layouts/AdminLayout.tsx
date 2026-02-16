@@ -36,6 +36,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
+import { useTheme } from '@/hooks/use-theme.ts'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -230,23 +231,6 @@ function MobileSidebar() {
       </SheetContent>
     </Sheet>
   )
-}
-
-function useTheme() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light')
-
-  useEffect(() => {
-    const isDark = document.documentElement.classList.contains('dark')
-    setTheme(isDark ? 'dark' : 'light')
-  }, [])
-
-  const toggle = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light'
-    setTheme(newTheme)
-    document.documentElement.classList.toggle('dark')
-  }
-
-  return { theme, toggle }
 }
 
 function SettingsSection({ collapsed }: { collapsed: boolean }) {
