@@ -59,6 +59,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { walletsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Wallet,
@@ -67,6 +68,8 @@ import type {
   WalletTopUp,
 } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
+
+const PAGE_SIZE = 20
 
 function formatCredits(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value
@@ -393,16 +396,21 @@ export default function WalletsPage() {
   const [editingWallet, setEditingWallet] = useState<Wallet | null>(null)
   const [topUpWallet, setTopUpWallet] = useState<Wallet | null>(null)
   const [terminateWallet, setTerminateWallet] = useState<Wallet | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch wallets
   const {
-    data: wallets = [],
+    data: paginatedData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['wallets'],
-    queryFn: () => walletsApi.list(),
+    queryKey: ['wallets', page, pageSize],
+    queryFn: () => walletsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+
+  const wallets = paginatedData?.data ?? []
+  const totalCount = paginatedData?.totalCount ?? 0
 
   // Fetch customers for display and form
   const { data: customers = [] } = useQuery({
@@ -777,6 +785,13 @@ export default function WalletsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

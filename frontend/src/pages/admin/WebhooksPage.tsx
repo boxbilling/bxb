@@ -66,7 +66,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { TablePagination } from '@/components/TablePagination'
 import { webhookEndpointsApi, ApiError } from '@/lib/api'
+
+const PAGE_SIZE = 20
 import type {
   WebhookEndpoint,
   WebhookEndpointCreate,
@@ -525,25 +528,35 @@ export default function WebhooksPage() {
   const [editingEndpoint, setEditingEndpoint] = useState<WebhookEndpoint | null>(null)
   const [deleteEndpoint, setDeleteEndpoint] = useState<WebhookEndpoint | null>(null)
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookType | null>(null)
+  const [endpointsPage, setEndpointsPage] = useState(1)
+  const [endpointsPageSize, setEndpointsPageSize] = useState(PAGE_SIZE)
+  const [webhooksPage, setWebhooksPage] = useState(1)
+  const [webhooksPageSize, setWebhooksPageSize] = useState(PAGE_SIZE)
 
   // Fetch webhook endpoints
   const {
-    data: endpoints = [],
+    data: endpointsData,
     isLoading: endpointsLoading,
     error: endpointsError,
   } = useQuery({
-    queryKey: ['webhook-endpoints'],
-    queryFn: () => webhookEndpointsApi.list(),
+    queryKey: ['webhook-endpoints', endpointsPage, endpointsPageSize],
+    queryFn: () => webhookEndpointsApi.listPaginated({ skip: (endpointsPage - 1) * endpointsPageSize, limit: endpointsPageSize }),
   })
+
+  const endpoints = endpointsData?.data ?? []
+  const endpointsTotalCount = endpointsData?.totalCount ?? 0
 
   // Fetch recent webhooks
   const {
-    data: webhooks = [],
+    data: webhooksData,
     isLoading: webhooksLoading,
   } = useQuery({
-    queryKey: ['webhooks'],
-    queryFn: () => webhookEndpointsApi.listWebhooks({ limit: 100 }),
+    queryKey: ['webhooks', webhooksPage, webhooksPageSize],
+    queryFn: () => webhookEndpointsApi.listWebhooksPaginated({ skip: (webhooksPage - 1) * webhooksPageSize, limit: webhooksPageSize }),
   })
+
+  const webhooks = webhooksData?.data ?? []
+  const webhooksTotalCount = webhooksData?.totalCount ?? 0
 
   // Fetch delivery stats per endpoint
   const { data: deliveryStats = [] } = useQuery({
@@ -902,6 +915,13 @@ export default function WebhooksPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              page={endpointsPage}
+              pageSize={endpointsPageSize}
+              totalCount={endpointsTotalCount}
+              onPageChange={setEndpointsPage}
+              onPageSizeChange={(size) => { setEndpointsPageSize(size); setEndpointsPage(1) }}
+            />
           </div>
         </TabsContent>
 
@@ -1038,6 +1058,13 @@ export default function WebhooksPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              page={webhooksPage}
+              pageSize={webhooksPageSize}
+              totalCount={webhooksTotalCount}
+              onPageChange={setWebhooksPage}
+              onPageSizeChange={(size) => { setWebhooksPageSize(size); setWebhooksPage(1) }}
+            />
           </div>
         </TabsContent>
       </Tabs>

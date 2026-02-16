@@ -28,6 +28,7 @@ from app.routers import (
     payments,
     plans,
     portal,
+    search,
     subscriptions,
     taxes,
     usage_alerts,
@@ -189,6 +190,7 @@ app.include_router(
     usage_alerts.router, prefix="/v1/usage_alerts", tags=["Usage Alerts"]
 )
 app.include_router(portal.router, prefix="/portal", tags=["Portal"])
+app.include_router(search.router, prefix="/v1/search", tags=["Search"])
 
 
 @app.get("/")

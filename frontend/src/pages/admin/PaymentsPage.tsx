@@ -40,6 +40,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { paymentsApi, customersApi, invoicesApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { components } from '@/lib/schema'
@@ -57,6 +58,8 @@ const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
   canceled: 'outline',
 }
 
+const PAGE_SIZE = 20
+
 const providerLabels: Record<string, string> = {
   stripe: 'Stripe',
   ucp: 'UCP',
@@ -72,15 +75,22 @@ export default function PaymentsPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: 'refund' | 'markPaid' | 'delete' | 'retry'; payment: PaymentResponse } | null>(null)
   const [refundAmount, setRefundAmount] = useState<string>('')
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch payments
-  const { data: payments = [], isLoading } = useQuery({
-    queryKey: ['payments', statusFilter, providerFilter],
-    queryFn: () => paymentsApi.list({
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['payments', statusFilter, providerFilter, page, pageSize],
+    queryFn: () => paymentsApi.listPaginated({
+      skip: (page - 1) * pageSize,
+      limit: pageSize,
       status: statusFilter === 'all' ? undefined : statusFilter,
       provider: providerFilter === 'all' ? undefined : providerFilter,
     }),
   })
+
+  const payments = paginatedData?.data ?? []
+  const totalCount = paginatedData?.totalCount ?? 0
 
   // Fetch customers for display
   const { data: customers = [] } = useQuery({
@@ -384,6 +394,13 @@ export default function PaymentsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Payment Details Dialog */}

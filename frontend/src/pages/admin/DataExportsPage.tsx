@@ -47,8 +47,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
+import { TablePagination } from '@/components/TablePagination'
 import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
 import type { DataExport, DataExportEstimate, ExportType } from '@/types/billing'
+
+const PAGE_SIZE = 20
 
 const EXPORT_TYPES: ExportType[] = [
   'invoices',
@@ -516,28 +519,33 @@ export default function DataExportsPage() {
   const queryClient = useQueryClient()
   const [createOpen, setCreateOpen] = useState(false)
   const [viewExport, setViewExport] = useState<DataExport | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch exports with auto-refresh when exports are in progress
   const {
-    data: allExports = [],
+    data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['data-exports'],
-    queryFn: () => dataExportsApi.list(),
+    queryKey: ['data-exports', page, pageSize],
+    queryFn: () => dataExportsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
     refetchInterval: (query) => {
-      const data = query.state.data
+      const qData = query.state.data
       const hasInProgress =
-        data?.some(
-          (e) => e.status === 'pending' || e.status === 'processing'
+        qData?.data?.some(
+          (e: DataExport) => e.status === 'pending' || e.status === 'processing'
         ) ?? false
       return hasInProgress ? 5000 : false
     },
   })
 
+  const allExports = data?.data ?? []
+  const totalCount = data?.totalCount ?? 0
+
   // Stats
   const stats = {
-    total: allExports.length,
+    total: totalCount,
     completed: allExports.filter((e) => e.status === 'completed').length,
     inProgress: allExports.filter(
       (e) => e.status === 'processing' || e.status === 'pending'
@@ -771,6 +779,13 @@ export default function DataExportsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* New Export Dialog */}

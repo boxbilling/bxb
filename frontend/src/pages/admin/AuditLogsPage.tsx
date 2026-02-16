@@ -34,8 +34,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { ChangesDisplay } from '@/components/JsonDiffDisplay'
+import { TablePagination } from '@/components/TablePagination'
 import { auditLogsApi, dataExportsApi, ApiError } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
+
+const PAGE_SIZE = 20
 
 const RESOURCE_TYPE_ROUTES: Record<string, string> = {
   customer: '/admin/customers',
@@ -142,11 +145,18 @@ export default function AuditLogsPage() {
   const [datePreset, setDatePreset] = useState<DatePreset>('all')
   const [customRange, setCustomRange] = useState<DateRange | undefined>()
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedResourceId(resourceIdSearch), 300)
     return () => clearTimeout(timer)
   }, [resourceIdSearch])
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [resourceTypeFilter, actionFilter, actorTypeFilter, debouncedResourceId, datePreset, customRange])
 
   const dateParams = useMemo(() => {
     if (datePreset === 'custom' && customRange?.from) {
@@ -163,10 +173,12 @@ export default function AuditLogsPage() {
     }
   }, [datePreset, customRange])
 
-  const { data: auditLogs, isLoading } = useQuery({
-    queryKey: ['audit-logs', { resourceTypeFilter, actionFilter, actorTypeFilter, debouncedResourceId, dateParams }],
+  const { data, isLoading } = useQuery({
+    queryKey: ['audit-logs', page, pageSize, { resourceTypeFilter, actionFilter, actorTypeFilter, debouncedResourceId, dateParams }],
     queryFn: () =>
-      auditLogsApi.list({
+      auditLogsApi.listPaginated({
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
         resource_type: resourceTypeFilter !== 'all' ? resourceTypeFilter : undefined,
         action: actionFilter !== 'all' ? actionFilter : undefined,
         actor_type: actorTypeFilter !== 'all' ? actorTypeFilter : undefined,
@@ -174,6 +186,9 @@ export default function AuditLogsPage() {
         ...dateParams,
       }),
   })
+
+  const auditLogs = data?.data
+  const totalCount = data?.totalCount ?? 0
 
   const exportMutation = useMutation({
     mutationFn: () => {
@@ -436,6 +451,13 @@ export default function AuditLogsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
     </div>
   )

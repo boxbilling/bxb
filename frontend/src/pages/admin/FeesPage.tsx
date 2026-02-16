@@ -49,6 +49,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { feesApi, taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -104,6 +105,8 @@ function AppliedTaxesSection({ feeId }: { feeId: string }) {
   )
 }
 
+const PAGE_SIZE = 20
+
 const feeTypes: FeeType[] = ['charge', 'subscription', 'add_on', 'credit', 'commitment']
 const paymentStatuses: FeePaymentStatus[] = ['pending', 'succeeded', 'failed', 'refunded']
 
@@ -120,19 +123,26 @@ export default function FeesPage() {
     taxes_amount_cents: string
     total_amount_cents: string
   }>({ payment_status: '', description: '', taxes_amount_cents: '', total_amount_cents: '' })
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   const {
-    data: fees = [],
+    data: paginatedData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['fees', feeTypeFilter, paymentStatusFilter],
+    queryKey: ['fees', feeTypeFilter, paymentStatusFilter, page, pageSize],
     queryFn: () =>
-      feesApi.list({
+      feesApi.listPaginated({
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
         fee_type: feeTypeFilter !== 'all' ? (feeTypeFilter as FeeType) : undefined,
         payment_status: paymentStatusFilter !== 'all' ? (paymentStatusFilter as FeePaymentStatus) : undefined,
       }),
   })
+
+  const fees = paginatedData?.data ?? []
+  const totalCount = paginatedData?.totalCount ?? 0
 
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
@@ -437,6 +447,13 @@ export default function FeesPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Edit Dialog */}

@@ -43,8 +43,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { TablePagination } from '@/components/TablePagination'
 import { featuresApi, entitlementsApi, plansApi, ApiError } from '@/lib/api'
 import type { Feature, FeatureCreate, Entitlement } from '@/types/billing'
+
+const PAGE_SIZE = 20
 
 interface FeatureFormState {
   code: string
@@ -105,11 +108,18 @@ export default function FeaturesPage() {
   // Expandable rows state
   const [expandedFeatureIds, setExpandedFeatureIds] = useState<Set<string>>(new Set())
 
+  // Pagination state
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
+
   // Queries
-  const { data: features, isLoading: featuresLoading } = useQuery({
-    queryKey: ['features'],
-    queryFn: () => featuresApi.list(),
+  const { data: featuresData, isLoading: featuresLoading } = useQuery({
+    queryKey: ['features', page, pageSize],
+    queryFn: () => featuresApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+
+  const features = featuresData?.data
+  const featuresTotalCount = featuresData?.totalCount ?? 0
 
   const { data: plans } = useQuery({
     queryKey: ['plans'],
@@ -405,6 +415,13 @@ export default function FeaturesPage() {
                 )}
               </TableBody>
             </Table>
+            <TablePagination
+              page={page}
+              pageSize={pageSize}
+              totalCount={featuresTotalCount}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+            />
           </div>
         </TabsContent>
 

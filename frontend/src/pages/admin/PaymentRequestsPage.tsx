@@ -51,9 +51,12 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { paymentRequestsApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { PaymentRequest, PaymentRequestCreate, PaymentAttemptEntry } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
+
+const PAGE_SIZE = 20
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -575,16 +578,21 @@ export default function PaymentRequestsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [batchOpen, setBatchOpen] = useState(false)
   const [viewingPR, setViewingPR] = useState<PaymentRequest | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch payment requests
   const {
-    data: paymentRequests = [],
+    data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['payment-requests'],
-    queryFn: () => paymentRequestsApi.list(),
+    queryKey: ['payment-requests', page, pageSize],
+    queryFn: () => paymentRequestsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+
+  const paymentRequests = data?.data ?? []
+  const totalCount = data?.totalCount ?? 0
 
   // Fetch customers for lookups
   const { data: customers = [] } = useQuery({
@@ -853,6 +861,13 @@ export default function PaymentRequestsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* View Details Dialog */}

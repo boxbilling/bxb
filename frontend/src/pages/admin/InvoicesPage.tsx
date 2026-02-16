@@ -35,9 +35,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { TablePagination } from '@/components/TablePagination'
 import { invoicesApi, customersApi, subscriptionsApi } from '@/lib/api'
 import { formatCurrency, formatCents } from '@/lib/utils'
 import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
+
+const PAGE_SIZE = 20
 
 type StatusKey = 'draft' | 'finalized' | 'paid' | 'voided'
 
@@ -442,14 +445,21 @@ export default function InvoicesPage() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [oneOffOpen, setOneOffOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
-  const { data: invoices, isLoading } = useQuery({
-    queryKey: ['invoices', { statusFilter }],
+  const { data: paginatedData, isLoading } = useQuery({
+    queryKey: ['invoices', { statusFilter }, page, pageSize],
     queryFn: () =>
-      invoicesApi.list({
+      invoicesApi.listPaginated({
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
         status: statusFilter !== 'all' ? (statusFilter as InvoiceStatus) : undefined,
       }),
   })
+
+  const invoices = paginatedData?.data
+  const totalCount = paginatedData?.totalCount ?? 0
 
   const bulkFinalizeMutation = useMutation({
     mutationFn: () =>
@@ -578,7 +588,7 @@ export default function InvoicesPage() {
             className="pl-9"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
           <SelectTrigger className="w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -686,6 +696,13 @@ export default function InvoicesPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Invoice Preview Dialog */}

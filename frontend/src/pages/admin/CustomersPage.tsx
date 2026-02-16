@@ -32,7 +32,10 @@ import { customersApi, ApiError } from '@/lib/api'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
+import { TablePagination } from '@/components/TablePagination'
 import type { Customer, CustomerCreate, CustomerUpdate } from '@/types/billing'
+
+const PAGE_SIZE = 20
 
 export default function CustomersPage() {
   const navigate = useNavigate()
@@ -42,17 +45,22 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [deleteCustomer, setDeleteCustomer] = useState<Customer | null>(null)
   const [currencyFilter, setCurrencyFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
-  // Fetch customers from API
-  const { data: customers, isLoading, error } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => customersApi.list(),
+  // Fetch customers from API with pagination
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['customers', page, pageSize],
+    queryFn: () => customersApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
 
-  // Derive unique currencies
+  const customers = data?.data
+  const totalCount = data?.totalCount ?? 0
+
+  // Derive unique currencies from current page
   const uniqueCurrencies = [...new Set(customers?.map(c => c.currency) ?? [])]
 
-  // Filter customers by search and currency (client-side)
+  // Filter customers by search and currency (client-side, within current page)
   const filteredCustomers = customers?.filter((c) => {
     const matchesSearch = !search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -275,6 +283,13 @@ export default function CustomersPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

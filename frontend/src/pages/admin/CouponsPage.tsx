@@ -67,6 +67,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { couponsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Coupon,
@@ -76,6 +77,8 @@ import type {
   AppliedCoupon,
 } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
+
+const PAGE_SIZE = 20
 
 // --- Create/Edit Coupon Dialog ---
 function CouponFormDialog({
@@ -699,16 +702,25 @@ export default function CouponsPage() {
   const [viewApplied, setViewApplied] = useState<Coupon | null>(null)
   const [terminateCoupon, setTerminateCoupon] = useState<Coupon | null>(null)
   const [analyticsCoupon, setAnalyticsCoupon] = useState<Coupon | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch coupons
   const {
-    data: coupons = [],
+    data: paginatedData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['coupons'],
-    queryFn: () => couponsApi.list(),
+    queryKey: ['coupons', statusFilter, page, pageSize],
+    queryFn: () => couponsApi.listPaginated({
+      skip: (page - 1) * pageSize,
+      limit: pageSize,
+      status: statusFilter !== 'all' ? (statusFilter as 'active' | 'terminated') : undefined,
+    }),
   })
+
+  const coupons = paginatedData?.data ?? []
+  const totalCount = paginatedData?.totalCount ?? 0
 
   // Fetch customers for apply dialog
   const { data: customers = [] } = useQuery({
@@ -1078,6 +1090,13 @@ export default function CouponsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

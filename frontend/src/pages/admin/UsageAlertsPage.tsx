@@ -65,6 +65,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { TablePagination } from '@/components/TablePagination'
 import { usageAlertsApi, subscriptionsApi, billableMetricsApi, ApiError } from '@/lib/api'
 import type {
   UsageAlert,
@@ -448,9 +449,13 @@ function TestAlertDialog({
   )
 }
 
+const PAGE_SIZE = 20
+
 export default function UsageAlertsPage() {
   const queryClient = useQueryClient()
   const [subscriptionFilter, setSubscriptionFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [formOpen, setFormOpen] = useState(false)
   const [editingAlert, setEditingAlert] = useState<UsageAlert | null>(null)
   const [deleteAlert, setDeleteAlert] = useState<UsageAlert | null>(null)
@@ -458,13 +463,15 @@ export default function UsageAlertsPage() {
   const [testAlert, setTestAlert] = useState<UsageAlert | null>(null)
 
   const {
-    data: alerts = [],
+    data: alertsData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['usage-alerts'],
-    queryFn: () => usageAlertsApi.list(),
+    queryKey: ['usage-alerts', page, pageSize],
+    queryFn: () => usageAlertsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+  const alerts = alertsData?.data ?? []
+  const totalCount = alertsData?.totalCount ?? 0
 
   const { data: subscriptions = [] } = useQuery({
     queryKey: ['subscriptions'],
@@ -587,7 +594,7 @@ export default function UsageAlertsPage() {
 
       {/* Filter */}
       <div className="flex items-center gap-4">
-        <Select value={subscriptionFilter} onValueChange={setSubscriptionFilter}>
+        <Select value={subscriptionFilter} onValueChange={(v) => { setSubscriptionFilter(v); setPage(1) }}>
           <SelectTrigger className="w-[280px]">
             <SelectValue placeholder="Filter by subscription" />
           </SelectTrigger>
@@ -716,6 +723,13 @@ export default function UsageAlertsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

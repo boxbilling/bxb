@@ -42,6 +42,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { billableMetricsApi, ApiError } from '@/lib/api'
 import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/types/billing'
 
@@ -224,19 +225,25 @@ function MetricFormDialog({
   )
 }
 
+const PAGE_SIZE = 20
+
 export default function MetricsPage() {
   const queryClient = useQueryClient()
   const [formOpen, setFormOpen] = useState(false)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [editingMetric, setEditingMetric] = useState<BillableMetric | null>(null)
   const [deleteMetric, setDeleteMetric] = useState<BillableMetric | null>(null)
   const [search, setSearch] = useState('')
   const [aggregationFilter, setAggregationFilter] = useState<string>('all')
 
   // Fetch metrics from API
-  const { data: metrics, isLoading, error } = useQuery({
-    queryKey: ['billable-metrics'],
-    queryFn: () => billableMetricsApi.list(),
+  const { data: metricsData, isLoading, error } = useQuery({
+    queryKey: ['billable-metrics', page, pageSize],
+    queryFn: () => billableMetricsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+  const metrics = metricsData?.data
+  const totalCount = metricsData?.totalCount ?? 0
 
   // Fetch stats
   const { data: stats } = useQuery({
@@ -515,6 +522,13 @@ export default function MetricsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

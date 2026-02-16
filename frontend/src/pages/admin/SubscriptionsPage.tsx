@@ -47,9 +47,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
+import { TablePagination } from '@/components/TablePagination'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
 import type { Subscription, SubscriptionCreate, SubscriptionUpdate, SubscriptionStatus, Plan, TerminationAction, UsageThresholdCreateAPI, ChangePlanPreviewResponse } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
+
+const PAGE_SIZE = 20
 
 function StatusBadge({ status }: { status: SubscriptionStatus }) {
   const variants: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string }> = {
@@ -566,12 +569,17 @@ export default function SubscriptionsPage() {
   const [terminateSub, setTerminateSub] = useState<Subscription | null>(null)
   const [thresholdsSub, setThresholdsSub] = useState<Subscription | null>(null)
   const [editSub, setEditSub] = useState<Subscription | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch subscriptions from API
-  const { data: subscriptions, isLoading, error } = useQuery({
-    queryKey: ['subscriptions'],
-    queryFn: () => subscriptionsApi.list(),
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['subscriptions', page, pageSize],
+    queryFn: () => subscriptionsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+
+  const subscriptions = data?.data
+  const totalCount = data?.totalCount ?? 0
 
   // Fetch customers for the form and display
   const { data: customers } = useQuery({
@@ -897,6 +905,13 @@ export default function SubscriptionsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create Dialog */}

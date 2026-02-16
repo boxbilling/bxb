@@ -62,6 +62,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { addOnsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   AddOn,
@@ -463,9 +464,13 @@ function ApplicationHistoryDialog({
   )
 }
 
+const PAGE_SIZE = 20
+
 export default function AddOnsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [formOpen, setFormOpen] = useState(false)
   const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null)
   const [applyAddOn, setApplyAddOn] = useState<AddOn | null>(null)
@@ -474,13 +479,15 @@ export default function AddOnsPage() {
 
   // Fetch add-ons
   const {
-    data: addOns = [],
+    data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['add-ons'],
-    queryFn: () => addOnsApi.list(),
+    queryKey: ['add-ons', page, pageSize],
+    queryFn: () => addOnsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+  const addOns = data?.data ?? []
+  const totalCount = data?.totalCount ?? 0
 
   // Fetch customers for apply dialog
   const { data: customers = [] } = useQuery({
@@ -793,6 +800,13 @@ export default function AddOnsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Create/Edit Dialog */}

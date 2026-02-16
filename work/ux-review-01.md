@@ -989,11 +989,11 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 ## 7. Implementation Priority
 
 ### Phase 1: Fix Critical Issues (High Impact, Low Effort)
-- [ ] Fix Finalize Invoice mutation (broken functionality)
-- [ ] Add Edit button to CustomerDetailPage
-- [ ] Add pagination to all table views
-- [ ] Add global header with breadcrumbs
-- [ ] Add Cmd+K command palette for global search
+- [x] Fix Finalize Invoice mutation (broken functionality)
+- [x] Add Edit button to CustomerDetailPage
+- [x] Add pagination to all table views
+- [x] Add global header with breadcrumbs
+- [x] Add Cmd+K command palette for global search
 
 ### Phase 2: Modal → Page Conversions (High Impact, Medium Effort)
 - [ ] Create Plan detail page (`/admin/plans/:id`)

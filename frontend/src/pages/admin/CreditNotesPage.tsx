@@ -60,9 +60,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { TablePagination } from '@/components/TablePagination'
 import { creditNotesApi, customersApi, ApiError } from '@/lib/api'
 import type { CreditNote, Customer } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
+
+const PAGE_SIZE = 20
 
 const REASON_LABELS: Record<string, string> = {
   duplicated_charge: 'Duplicated Charge',
@@ -317,16 +320,21 @@ export default function CreditNotesPage() {
   const [detailCreditNote, setDetailCreditNote] = useState<CreditNote | null>(null)
   const [finalizeCreditNote, setFinalizeCreditNote] = useState<CreditNote | null>(null)
   const [voidCreditNote, setVoidCreditNote] = useState<CreditNote | null>(null)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
 
   // Fetch credit notes
   const {
-    data: creditNotes = [],
+    data: paginatedData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['credit-notes'],
-    queryFn: () => creditNotesApi.list(),
+    queryKey: ['credit-notes', page, pageSize],
+    queryFn: () => creditNotesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+
+  const creditNotes = paginatedData?.data ?? []
+  const totalCount = paginatedData?.totalCount ?? 0
 
   // Fetch customers for display
   const { data: customers = [] } = useQuery({
@@ -605,6 +613,13 @@ export default function CreditNotesPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Detail Dialog */}

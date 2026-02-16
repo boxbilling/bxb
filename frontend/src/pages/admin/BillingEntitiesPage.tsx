@@ -26,19 +26,26 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { TablePagination } from '@/components/TablePagination'
 import { billingEntitiesApi, ApiError } from '@/lib/api'
 import type { BillingEntity } from '@/types/billing'
+
+const PAGE_SIZE = 20
 
 export default function BillingEntitiesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [deleteEntity, setDeleteEntity] = useState<BillingEntity | undefined>()
 
-  const { data: entities, isLoading } = useQuery({
-    queryKey: ['billing-entities'],
-    queryFn: () => billingEntitiesApi.list(),
+  const { data, isLoading } = useQuery({
+    queryKey: ['billing-entities', page, pageSize],
+    queryFn: () => billingEntitiesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+  const entities = data?.data
+  const totalCount = data?.totalCount ?? 0
 
   const { data: customerCounts } = useQuery({
     queryKey: ['billing-entity-customer-counts'],
@@ -213,6 +220,13 @@ export default function BillingEntitiesPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Delete Confirmation */}

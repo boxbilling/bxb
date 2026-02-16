@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { TablePagination } from '@/components/TablePagination'
 import { CardBrandIcon } from '@/components/CardBrandIcon'
 import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { customersApi, paymentMethodsApi, ApiError } from '@/lib/api'
@@ -76,23 +77,31 @@ function formatDetails(method: PaymentMethod): string {
   return method.type
 }
 
+const PAGE_SIZE = 20
+
 export default function PaymentMethodsPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [customerFilter, setCustomerFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [groupByCustomer, setGroupByCustomer] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [deleteMethod, setDeleteMethod] = useState<PaymentMethod | null>(null)
   const [setDefaultMethod, setSetDefaultMethod] = useState<PaymentMethod | null>(null)
 
   // Fetch payment methods
-  const { data: paymentMethods = [], isLoading } = useQuery({
-    queryKey: ['payment-methods', customerFilter],
+  const { data, isLoading } = useQuery({
+    queryKey: ['payment-methods', customerFilter, page, pageSize],
     queryFn: () =>
-      paymentMethodsApi.list(
-        customerFilter !== 'all' ? { customer_id: customerFilter } : undefined
-      ),
+      paymentMethodsApi.listPaginated({
+        skip: (page - 1) * pageSize,
+        limit: pageSize,
+        ...(customerFilter !== 'all' ? { customer_id: customerFilter } : {}),
+      }),
   })
+  const paymentMethods = data?.data ?? []
+  const totalCount = data?.totalCount ?? 0
 
   // Fetch customers for display and filtering
   const { data: customers = [] } = useQuery({
@@ -305,7 +314,7 @@ export default function PaymentMethodsPage() {
             className="pl-9"
           />
         </div>
-        <Select value={customerFilter} onValueChange={setCustomerFilter}>
+        <Select value={customerFilter} onValueChange={(v) => { setCustomerFilter(v); setPage(1) }}>
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Filter by customer" />
           </SelectTrigger>
@@ -390,6 +399,13 @@ export default function PaymentMethodsPage() {
             )}
           </TableBody>
         </Table>
+        <TablePagination
+          page={page}
+          pageSize={pageSize}
+          totalCount={totalCount}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+        />
       </div>
 
       {/* Add Payment Method Dialog */}

@@ -76,6 +76,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TablePagination } from '@/components/TablePagination'
 import { cn } from '@/lib/utils'
 import { taxesApi, customersApi, invoicesApi, plansApi, ApiError } from '@/lib/api'
 import type {
@@ -576,11 +577,15 @@ function useTaxPageContext() {
   return useContext(TaxPageContext)
 }
 
+const PAGE_SIZE = 20
+
 export default function TaxesPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [orgFilter, setOrgFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [formOpen, setFormOpen] = useState(false)
   const [editingTax, setEditingTax] = useState<Tax | null>(null)
   const [applyTax, setApplyTax] = useState<Tax | null>(null)
@@ -588,13 +593,15 @@ export default function TaxesPage() {
 
   // Fetch taxes
   const {
-    data: taxes = [],
+    data,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['taxes'],
-    queryFn: () => taxesApi.list(),
+    queryKey: ['taxes', page, pageSize],
+    queryFn: () => taxesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
   })
+  const taxes = data?.data ?? []
+  const totalCount = data?.totalCount ?? 0
 
   // Fetch customers for apply dialog
   const { data: customers = [] } = useQuery({
@@ -896,6 +903,13 @@ export default function TaxesPage() {
               )}
             </TableBody>
           </Table>
+          <TablePagination
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
+          />
         </div>
 
         {/* Create/Edit Dialog */}
