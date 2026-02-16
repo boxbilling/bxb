@@ -246,7 +246,7 @@ export default function FeesPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -296,8 +296,8 @@ export default function FeesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by description or metric code..."
@@ -307,7 +307,7 @@ export default function FeesPage() {
           />
         </div>
         <Select value={feeTypeFilter} onValueChange={setFeeTypeFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[180px]">
             <SelectValue placeholder="Fee Type" />
           </SelectTrigger>
           <SelectContent>
@@ -320,7 +320,7 @@ export default function FeesPage() {
           </SelectContent>
         </Select>
         <Select value={paymentStatusFilter} onValueChange={setPaymentStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[180px]">
             <SelectValue placeholder="Payment Status" />
           </SelectTrigger>
           <SelectContent>
@@ -340,14 +340,14 @@ export default function FeesPage() {
           <TableHeader>
             <TableRow>
               <SortableTableHead label="Fee Type" sortKey="fee_type" sort={sort} onSort={setSort} />
-              <TableHead>Description</TableHead>
-              <TableHead>Customer</TableHead>
+              <TableHead className="hidden md:table-cell">Description</TableHead>
+              <TableHead className="hidden md:table-cell">Customer</TableHead>
               <TableHead>Invoice</TableHead>
               <SortableTableHead label="Amount" sortKey="amount_cents" sort={sort} onSort={setSort} />
-              <TableHead>Tax</TableHead>
+              <TableHead className="hidden md:table-cell">Tax</TableHead>
               <TableHead>Total</TableHead>
               <SortableTableHead label="Payment Status" sortKey="payment_status" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -356,14 +356,14 @@ export default function FeesPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
@@ -388,10 +388,10 @@ export default function FeesPage() {
                         {fee.fee_type}
                       </Badge>
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
+                    <TableCell className="hidden md:table-cell max-w-[200px] truncate">
                       {fee.description || fee.metric_code || '—'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Link
                         to={`/admin/customers/${fee.customer_id}`}
                         className="flex items-center gap-1 text-sm text-primary hover:underline"
@@ -414,14 +414,14 @@ export default function FeesPage() {
                       )}
                     </TableCell>
                     <TableCell>{formatCents(parseInt(fee.amount_cents))}</TableCell>
-                    <TableCell>{formatCents(parseInt(fee.taxes_amount_cents))}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatCents(parseInt(fee.taxes_amount_cents))}</TableCell>
                     <TableCell>{formatCents(parseInt(fee.total_amount_cents))}</TableCell>
                     <TableCell>
                       <Badge variant={statusBadge.variant} className={statusBadge.className}>
                         {fee.payment_status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                       {format(new Date(fee.created_at), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
