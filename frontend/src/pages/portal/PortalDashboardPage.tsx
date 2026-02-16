@@ -13,7 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -121,17 +121,15 @@ function QuickActionCard({
   title,
   description,
   href,
-  token,
 }: {
   icon: React.ComponentType<{ className?: string }>
   title: string
   description: string
   href: string
-  token: string
 }) {
   return (
-    <a
-      href={`${href}${href.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`}
+    <Link
+      to={href}
       className="group flex items-center gap-3 rounded-lg border p-4 transition-colors hover:border-primary hover:bg-primary/5"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -142,15 +140,13 @@ function QuickActionCard({
         <p className="text-xs text-muted-foreground truncate">{description}</p>
       </div>
       <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
-    </a>
+    </Link>
   )
 }
 
 export default function PortalDashboardPage() {
   const token = usePortalToken()
   const branding = usePortalBranding()
-  const [searchParams] = useSearchParams()
-  const tokenParam = searchParams.get('token') || token
 
   const { data: customer, isLoading: customerLoading } = useQuery({
     queryKey: ['portal-customer', token],
@@ -374,7 +370,6 @@ export default function PortalDashboardPage() {
                 title="Pay Invoice"
                 description={`${dashboardSummary.quick_actions.outstanding_invoice_count} outstanding (${formatCents(dashboardSummary.quick_actions.outstanding_amount_cents, dashboardSummary.quick_actions.currency)})`}
                 href="/portal/invoices"
-                token={tokenParam}
               />
             ) : !summaryLoading && (
               <QuickActionCard
@@ -382,7 +377,6 @@ export default function PortalDashboardPage() {
                 title="View Invoices"
                 description="No outstanding invoices"
                 href="/portal/invoices"
-                token={tokenParam}
               />
             )}
           <QuickActionCard
@@ -394,7 +388,6 @@ export default function PortalDashboardPage() {
                 : 'Manage your wallet'
             }
             href="/portal/wallet"
-            token={tokenParam}
           />
           <QuickActionCard
             icon={BarChart3}
@@ -405,7 +398,6 @@ export default function PortalDashboardPage() {
                 : 'No active subscriptions'
             }
             href="/portal/usage"
-            token={tokenParam}
           />
         </div>
       </div>

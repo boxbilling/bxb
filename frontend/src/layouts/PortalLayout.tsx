@@ -1,5 +1,5 @@
-import { Outlet, NavLink, useSearchParams, useLocation } from 'react-router-dom'
-import { useState, useEffect, useMemo, createContext, useContext } from 'react'
+import { Outlet, NavLink, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useMemo, createContext, useContext, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   FileText,
@@ -21,6 +21,8 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/s
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
 import type { PortalBranding } from '@/types/billing'
+
+const PORTAL_TOKEN_KEY = 'bxb_portal_token'
 
 const PortalTokenContext = createContext<string>('')
 const PortalBrandingContext = createContext<PortalBranding | null>(null)
@@ -183,9 +185,37 @@ function AccessDeniedPage() {
 
 export default function PortalLayout() {
   const [searchParams] = useSearchParams()
-  const token = searchParams.get('token') || ''
+  const navigate = useNavigate()
+  const location = useLocation()
+
+  const token = useMemo(() => {
+    const urlToken = searchParams.get('token')
+    if (urlToken) {
+      localStorage.setItem(PORTAL_TOKEN_KEY, urlToken)
+      return urlToken
+    }
+    return localStorage.getItem(PORTAL_TOKEN_KEY) || ''
+  }, [searchParams])
+
+  // Strip token from URL to keep it clean after storing in localStorage
+  useEffect(() => {
+    if (searchParams.has('token')) {
+      const params = new URLSearchParams(searchParams)
+      params.delete('token')
+      const search = params.toString()
+      navigate(
+        { pathname: location.pathname, search: search ? `?${search}` : '' },
+        { replace: true }
+      )
+    }
+  }, [searchParams, navigate, location.pathname])
+
   const [authorized, setAuthorized] = useState<boolean | null>(null)
   const isMobile = useIsMobile()
+
+  const clearToken = useCallback(() => {
+    localStorage.removeItem(PORTAL_TOKEN_KEY)
+  }, [])
 
   const { data: customer, error } = useQuery({
     queryKey: ['portal-customer', token],
@@ -207,13 +237,14 @@ export default function PortalLayout() {
       return
     }
     if (error) {
+      clearToken()
       setAuthorized(false)
       return
     }
     if (customer) {
       setAuthorized(true)
     }
-  }, [token, customer, error])
+  }, [token, customer, error, clearToken])
 
   const accentStyle = useMemo(() => {
     if (!branding?.accent_color) return undefined
