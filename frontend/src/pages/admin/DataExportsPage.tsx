@@ -499,15 +499,16 @@ function NewExportDialog({
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !exportType}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={isLoading || !exportType}>
               {isLoading ? 'Creating...' : 'Create Export'}
             </Button>
           </DialogFooter>
@@ -603,7 +604,7 @@ export default function DataExportsPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -661,8 +662,8 @@ export default function DataExportsPage() {
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Record Count</TableHead>
               <TableHead>Started At</TableHead>
-              <TableHead>Completed At</TableHead>
-              <TableHead>Error</TableHead>
+              <TableHead className="hidden md:table-cell">Completed At</TableHead>
+              <TableHead className="hidden md:table-cell">Error</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -682,10 +683,10 @@ export default function DataExportsPage() {
                   <TableCell>
                     <Skeleton className="h-5 w-24" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-24" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-16" />
                   </TableCell>
                   <TableCell>
@@ -728,7 +729,7 @@ export default function DataExportsPage() {
                         )
                       : '—'}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     {exportItem.completed_at
                       ? format(
                           new Date(exportItem.completed_at),
@@ -736,7 +737,7 @@ export default function DataExportsPage() {
                         )
                       : '—'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {exportItem.error_message ? (
                       <span className="text-destructive text-sm max-w-[150px] truncate block">
                         {exportItem.error_message}
