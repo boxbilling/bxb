@@ -222,8 +222,8 @@ function MobileSidebar() {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
-          <Menu className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="md:hidden h-11 w-11">
+          <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-56 p-0">

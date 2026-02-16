@@ -502,6 +502,7 @@ export default function SettingsPage() {
                     <img
                       src={formData.logo_url}
                       alt="Logo preview"
+                      loading="lazy"
                       className="h-8 w-8 rounded object-contain"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none'

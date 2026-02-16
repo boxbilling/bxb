@@ -94,7 +94,7 @@ export default function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" className="relative h-8 w-8">
+        <Button variant="outline" size="icon" className="relative h-11 w-11">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
@@ -110,7 +110,7 @@ export default function NotificationBell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs"
+              className="min-h-[44px] text-xs"
               onClick={() => markAllReadMutation.mutate()}
               disabled={markAllReadMutation.isPending}
             >
@@ -166,7 +166,7 @@ export default function NotificationBell() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 shrink-0"
+                        className="h-11 w-11 shrink-0"
                         onClick={(e) => {
                           e.stopPropagation()
                           markReadMutation.mutate(notification.id)
