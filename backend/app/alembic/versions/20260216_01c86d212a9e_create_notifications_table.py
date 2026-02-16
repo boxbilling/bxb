@@ -1,6 +1,6 @@
 """Create notifications table.
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: 01c86d212a9e
 Revises: e1f2g3h4i5j6
 Create Date: 2026-02-16
 """
@@ -8,7 +8,7 @@ Create Date: 2026-02-16
 import sqlalchemy as sa
 from alembic import op
 
-revision = "a1b2c3d4e5f6"
+revision = "01c86d212a9e"
 down_revision = "e1f2g3h4i5j6"
 branch_labels = None
 depends_on = None
