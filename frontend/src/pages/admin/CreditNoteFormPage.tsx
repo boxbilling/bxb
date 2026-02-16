@@ -278,8 +278,8 @@ export default function CreditNoteFormPage() {
       </Breadcrumb>
 
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/credit-notes')}>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+        <Button variant="ghost" size="icon" className="self-start" onClick={() => navigate('/admin/credit-notes')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -369,7 +369,7 @@ export default function CreditNoteFormPage() {
               </div>
 
               {!isEdit && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="cn_number">Number *</Label>
                     <Input
@@ -464,7 +464,7 @@ export default function CreditNoteFormPage() {
               <CardDescription>Specify the credit, refund, tax, and total amounts in cents.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cn_credit_amount">Credit Amount (cents)</Label>
                   <Input
@@ -493,7 +493,7 @@ export default function CreditNoteFormPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cn_total_amount">Total Amount (cents) *</Label>
                   <Input
@@ -535,7 +535,7 @@ export default function CreditNoteFormPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -594,16 +594,18 @@ export default function CreditNoteFormPage() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-4 mt-6">
+        <div className="flex flex-col-reverse gap-3 md:flex-row md:items-center md:justify-end md:gap-4 mt-6">
           <Button
             type="button"
             variant="outline"
+            className="w-full md:w-auto"
             onClick={() => navigate('/admin/credit-notes')}
           >
             Cancel
           </Button>
           <Button
             type="submit"
+            className="w-full md:w-auto"
             disabled={
               isPending ||
               (!isEdit && (!form.number || !form.customer_id || !form.invoice_id))
