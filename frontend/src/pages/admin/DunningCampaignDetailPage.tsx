@@ -111,9 +111,9 @@ function ExecutionHistoryTab({ campaignId }: { campaignId: string }) {
             <TableHead>Customer</TableHead>
             <TableHead>Amount</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Attempts</TableHead>
-            <TableHead>Invoices</TableHead>
-            <TableHead>Created</TableHead>
+            <TableHead className="hidden md:table-cell">Attempts</TableHead>
+            <TableHead className="hidden md:table-cell">Invoices</TableHead>
+            <TableHead className="hidden md:table-cell">Created</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -134,8 +134,8 @@ function ExecutionHistoryTab({ campaignId }: { campaignId: string }) {
               <TableCell>
                 <PaymentStatusBadge status={entry.payment_status} />
               </TableCell>
-              <TableCell>{entry.payment_attempts}</TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">{entry.payment_attempts}</TableCell>
+              <TableCell className="hidden md:table-cell">
                 <div className="flex flex-col gap-0.5">
                   {entry.invoices.map((inv) => (
                     <Link
@@ -155,7 +155,7 @@ function ExecutionHistoryTab({ campaignId }: { campaignId: string }) {
                   )}
                 </div>
               </TableCell>
-              <TableCell className="text-muted-foreground text-sm">
+              <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                 {format(new Date(entry.created_at), 'MMM d, yyyy HH:mm')}
               </TableCell>
             </TableRow>
@@ -279,7 +279,7 @@ function PreviewTab({ campaignId }: { campaignId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">
             Simulate what this campaign would do if executed right now.
@@ -573,24 +573,26 @@ export default function DunningCampaignDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="execution-history">
-        <TabsList>
-          <TabsTrigger value="execution-history">
-            <FileText className="mr-1.5 h-3.5 w-3.5" />
-            Execution History
-          </TabsTrigger>
-          <TabsTrigger value="timeline">
-            <Clock className="mr-1.5 h-3.5 w-3.5" />
-            Timeline
-          </TabsTrigger>
-          <TabsTrigger value="preview">
-            <Eye className="mr-1.5 h-3.5 w-3.5" />
-            Preview
-          </TabsTrigger>
-          <TabsTrigger value="activity">
-            <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
-            Activity
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="execution-history">
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              Execution History
+            </TabsTrigger>
+            <TabsTrigger value="timeline">
+              <Clock className="mr-1.5 h-3.5 w-3.5" />
+              Timeline
+            </TabsTrigger>
+            <TabsTrigger value="preview">
+              <Eye className="mr-1.5 h-3.5 w-3.5" />
+              Preview
+            </TabsTrigger>
+            <TabsTrigger value="activity">
+              <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+              Activity
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="execution-history" className="mt-4">
           <ExecutionHistoryTab campaignId={id!} />
@@ -620,7 +622,7 @@ export default function DunningCampaignDetailPage() {
           <CardTitle className="text-sm font-medium">Campaign Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Created</span>
               <p className="font-medium">{format(new Date(campaign.created_at), 'MMM d, yyyy HH:mm')}</p>

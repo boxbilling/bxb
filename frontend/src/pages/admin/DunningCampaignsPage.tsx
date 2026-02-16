@@ -190,7 +190,7 @@ function DunningCampaignFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
@@ -228,7 +228,7 @@ function DunningCampaignFormDialog({
                 placeholder="Optional description"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="max_attempts">Max Attempts</Label>
                 <Input
@@ -301,14 +301,14 @@ function DunningCampaignFormDialog({
                 </Button>
               </div>
               {formData.thresholds.map((threshold, index) => (
-                <div key={index} className="flex items-center gap-2">
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <Select
                     value={threshold.currency}
                     onValueChange={(value) =>
                       updateThreshold(index, 'currency', value)
                     }
                   >
-                    <SelectTrigger className="w-[100px]">
+                    <SelectTrigger className="w-full sm:w-[100px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -331,6 +331,7 @@ function DunningCampaignFormDialog({
                     variant="ghost"
                     size="icon"
                     onClick={() => removeThreshold(index)}
+                    className="self-end sm:self-auto"
                   >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
@@ -338,11 +339,12 @@ function DunningCampaignFormDialog({
               ))}
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
@@ -352,6 +354,7 @@ function DunningCampaignFormDialog({
                 isLoading ||
                 (!campaign && (!formData.code || !formData.name))
               }
+              className="w-full sm:w-auto"
             >
               {isLoading
                 ? 'Saving...'
@@ -591,8 +594,8 @@ export default function DunningCampaignsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by code or name..."
@@ -602,7 +605,7 @@ export default function DunningCampaignsPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[180px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -622,11 +625,11 @@ export default function DunningCampaignsPage() {
               <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
               <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
-              <TableHead>Max Attempts</TableHead>
-              <TableHead>Days Between</TableHead>
-              <TableHead>BCC Emails</TableHead>
-              <TableHead>Thresholds</TableHead>
-              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
+              <TableHead className="hidden md:table-cell">Max Attempts</TableHead>
+              <TableHead className="hidden md:table-cell">Days Between</TableHead>
+              <TableHead className="hidden md:table-cell">BCC Emails</TableHead>
+              <TableHead className="hidden md:table-cell">Thresholds</TableHead>
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -643,19 +646,19 @@ export default function DunningCampaignsPage() {
                   <TableCell>
                     <Skeleton className="h-5 w-16" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-12" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-12" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-16" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-12" />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Skeleton className="h-5 w-20" />
                   </TableCell>
                   <TableCell>
@@ -709,9 +712,9 @@ export default function DunningCampaignsPage() {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell>{campaign.max_attempts}</TableCell>
-                  <TableCell>{campaign.days_between_attempts}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">{campaign.max_attempts}</TableCell>
+                  <TableCell className="hidden md:table-cell">{campaign.days_between_attempts}</TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {campaign.bcc_emails.length > 0 ? (
                       <div className="flex items-center gap-1">
                         <Mail className="h-3.5 w-3.5 text-muted-foreground" />
@@ -721,12 +724,12 @@ export default function DunningCampaignsPage() {
                       <span className="text-muted-foreground">None</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="secondary">
                       {campaign.thresholds?.length ?? 0}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     {format(new Date(campaign.created_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>
