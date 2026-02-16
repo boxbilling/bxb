@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, CalendarIcon, ArrowRight, TrendingUp, TrendingDown, Minus, Pause, Play } from 'lucide-react'
+import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, CalendarIcon, ArrowRight, TrendingUp, TrendingDown, Minus, Pause, Play, MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -35,6 +35,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -830,74 +837,54 @@ export default function SubscriptionsPage() {
                       <NextBillingCell sub={sub} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        {sub.status === 'active' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Pause subscription"
-                            onClick={() => pauseMutation.mutate(sub.id)}
-                            disabled={pauseMutation.isPending}
-                          >
-                            <Pause className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {sub.status === 'paused' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            title="Resume subscription"
-                            onClick={() => resumeMutation.mutate(sub.id)}
-                            disabled={resumeMutation.isPending}
-                          >
-                            <Play className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        {(sub.status === 'active' || sub.status === 'pending' || sub.status === 'paused') && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Edit subscription"
-                              onClick={() => setEditSub(sub)}
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
+                      {(sub.status === 'active' || sub.status === 'pending' || sub.status === 'paused') ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setEditSub(sub)}>
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
                             {sub.status !== 'paused' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                title="Change plan"
-                                onClick={() => setChangePlanSub(sub)}
-                              >
-                                <ArrowUpDown className="h-3.5 w-3.5" />
-                              </Button>
+                              <DropdownMenuItem onClick={() => setChangePlanSub(sub)}>
+                                <ArrowUpDown className="mr-2 h-4 w-4" />
+                                Change Plan
+                              </DropdownMenuItem>
                             )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              title="Usage thresholds"
-                              onClick={() => setThresholdsSub(sub)}
-                            >
-                              <Target className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive"
-                              title="Terminate"
+                            <DropdownMenuItem onClick={() => setThresholdsSub(sub)}>
+                              <Target className="mr-2 h-4 w-4" />
+                              Usage Thresholds
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {sub.status === 'active' && (
+                              <DropdownMenuItem onClick={() => pauseMutation.mutate(sub.id)}>
+                                <Pause className="mr-2 h-4 w-4" />
+                                Pause
+                              </DropdownMenuItem>
+                            )}
+                            {sub.status === 'paused' && (
+                              <DropdownMenuItem onClick={() => resumeMutation.mutate(sub.id)}>
+                                <Play className="mr-2 h-4 w-4" />
+                                Resume
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
                               onClick={() => setTerminateSub(sub)}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
-                        )}
-                      </div>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Terminate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        <span className="text-muted-foreground">{'\u2014'}</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 )

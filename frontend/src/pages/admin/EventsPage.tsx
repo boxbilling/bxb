@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useQuery, useMutation, useInfiniteQuery } from '@tanstack/react-query'
-import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon, BarChart2, RefreshCw } from 'lucide-react'
+import { Search, Activity, Pause, Play, X, Calculator, Loader2, CalendarIcon, BarChart2, RefreshCw, MoreHorizontal } from 'lucide-react'
 import { format, subDays, subMonths, startOfDay, endOfDay } from 'date-fns'
 import { toast } from 'sonner'
 import { useVirtualizer } from '@tanstack/react-virtual'
@@ -29,6 +29,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Tooltip,
   TooltipContent,
@@ -699,25 +705,30 @@ export default function EventsPage() {
                             )}
                           </td>
                           <td className="p-4 align-middle text-right">
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    disabled={reprocessMutation.isPending}
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      reprocessMutation.mutate(event.id)
-                                    }}
-                                  >
-                                    <RefreshCw className={`h-3.5 w-3.5 ${reprocessMutation.isPending && reprocessMutation.variables === event.id ? 'animate-spin' : ''}`} />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Reprocess event</TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  disabled={reprocessMutation.isPending}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    reprocessMutation.mutate(event.id)
+                                  }}
+                                >
+                                  <RefreshCw className={`mr-2 h-4 w-4 ${reprocessMutation.isPending && reprocessMutation.variables === event.id ? 'animate-spin' : ''}`} />
+                                  Reprocess
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                         </tr>
                         {isExpanded && (

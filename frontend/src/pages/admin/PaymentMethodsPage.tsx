@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Landmark, Star, Trash2, Users } from 'lucide-react'
+import { Plus, Search, Landmark, Star, Trash2, Users, MoreHorizontal } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { Link } from 'react-router-dom'
@@ -32,6 +32,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { TablePagination } from '@/components/TablePagination'
@@ -261,27 +268,30 @@ export default function PaymentMethodsPage() {
           {format(new Date(pm.created_at), 'MMM d, yyyy')}
         </TableCell>
         <TableCell>
-          <div className="flex gap-1">
-            {!pm.is_default && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSetDefaultMethod(pm)}
-                title="Set as default"
-              >
-                <Star className="h-4 w-4" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setDeleteMethod(pm)}
-              disabled={pm.is_default}
-              title={pm.is_default ? 'Cannot delete default payment method' : 'Delete'}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {!pm.is_default && (
+                <DropdownMenuItem onClick={() => setSetDefaultMethod(pm)}>
+                  <Star className="mr-2 h-4 w-4" />
+                  Set as Default
+                </DropdownMenuItem>
+              )}
+              {!pm.is_default && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={pm.is_default}
+                onClick={() => setDeleteMethod(pm)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </TableCell>
       </TableRow>
     )
