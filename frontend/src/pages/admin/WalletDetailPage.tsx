@@ -12,6 +12,7 @@ import {
   TrendingDown,
   Calendar,
   Activity,
+  MoreHorizontal,
 } from 'lucide-react'
 import {
   Area,
@@ -76,6 +77,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { useIsMobile } from '@/components/ui/use-mobile'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { walletsApi, customersApi, ApiError } from '@/lib/api'
 import type {
@@ -98,6 +107,7 @@ function formatCredits(value: number | string): string {
 export default function WalletDetailPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const isMobile = useIsMobile()
   const [editOpen, setEditOpen] = useState(false)
   const [topUpOpen, setTopUpOpen] = useState(false)
   const [transferOpen, setTransferOpen] = useState(false)
@@ -304,14 +314,14 @@ export default function WalletDetailPage() {
       </Breadcrumb>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-center gap-3 flex-wrap">
           <Coins className="h-8 w-8 text-muted-foreground" />
           <div>
             <h2 className="text-2xl font-bold tracking-tight">
               {wallet.name || wallet.code || 'Unnamed Wallet'}
             </h2>
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-muted-foreground flex-wrap">
               {wallet.code && (
                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                   {wallet.code}
@@ -336,52 +346,99 @@ export default function WalletDetailPage() {
           </Badge>
         </div>
         {wallet.status === 'active' && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                editForm[1]({
-                  name: wallet.name || '',
-                  priority: String(wallet.priority),
-                  expiration_at: wallet.expiration_at
-                    ? format(
-                        new Date(wallet.expiration_at),
-                        "yyyy-MM-dd'T'HH:mm"
-                      )
-                    : '',
-                })
-                setEditOpen(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setTopUpOpen(true)}
-            >
-              <ArrowUpCircle className="mr-2 h-4 w-4" />
-              Top Up
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setTransferOpen(true)}
-            >
-              <ArrowLeftRight className="mr-2 h-4 w-4" />
-              Transfer
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setTerminateOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Terminate
-            </Button>
-          </div>
+          isMobile ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full">
+                  <MoreHorizontal className="mr-2 h-4 w-4" />
+                  Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem
+                  onClick={() => {
+                    editForm[1]({
+                      name: wallet.name || '',
+                      priority: String(wallet.priority),
+                      expiration_at: wallet.expiration_at
+                        ? format(
+                            new Date(wallet.expiration_at),
+                            "yyyy-MM-dd'T'HH:mm"
+                          )
+                        : '',
+                    })
+                    setEditOpen(true)
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTopUpOpen(true)}>
+                  <ArrowUpCircle className="mr-2 h-4 w-4" />
+                  Top Up
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTransferOpen(true)}>
+                  <ArrowLeftRight className="mr-2 h-4 w-4" />
+                  Transfer
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={() => setTerminateOpen(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Terminate
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  editForm[1]({
+                    name: wallet.name || '',
+                    priority: String(wallet.priority),
+                    expiration_at: wallet.expiration_at
+                      ? format(
+                          new Date(wallet.expiration_at),
+                          "yyyy-MM-dd'T'HH:mm"
+                        )
+                      : '',
+                  })
+                  setEditOpen(true)
+                }}
+              >
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTopUpOpen(true)}
+              >
+                <ArrowUpCircle className="mr-2 h-4 w-4" />
+                Top Up
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setTransferOpen(true)}
+              >
+                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                Transfer
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setTerminateOpen(true)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Terminate
+              </Button>
+            </div>
+          )
         )}
       </div>
 
@@ -391,17 +448,18 @@ export default function WalletDetailPage() {
         parseFloat(String(wallet.balance_cents)) > 0 && (
           <Card className="border-primary/20 bg-primary/5">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
                 <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-primary" />
                   <span className="text-sm font-medium">
                     Depletion Forecast
                   </span>
                 </div>
-                <Separator orientation="vertical" className="h-8" />
+                <Separator orientation="vertical" className="hidden md:block h-8" />
+                <Separator className="md:hidden" />
                 {forecast.days_remaining !== null &&
                 forecast.projected_depletion_date ? (
-                  <>
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
                     <div>
                       <div className="text-2xl font-bold text-primary">
                         {forecast.days_remaining} days
@@ -414,7 +472,7 @@ export default function WalletDetailPage() {
                         )}
                       </div>
                     </div>
-                    <Separator orientation="vertical" className="h-8" />
+                    <Separator orientation="vertical" className="hidden md:block h-8" />
                     <div>
                       <div className="text-sm font-medium">
                         {formatCents(
@@ -426,7 +484,7 @@ export default function WalletDetailPage() {
                         Avg. daily consumption
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">
                     {parseFloat(String(forecast.avg_daily_consumption)) === 0
@@ -440,7 +498,7 @@ export default function WalletDetailPage() {
         )}
 
       {/* Info Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -532,7 +590,7 @@ export default function WalletDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="transactions">
-        <TabsList>
+        <TabsList className="overflow-x-auto">
           <TabsTrigger value="transactions">
             <Activity className="mr-2 h-4 w-4" />
             Transactions
@@ -556,10 +614,10 @@ export default function WalletDetailPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Credits</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Running Balance</TableHead>
-                  <TableHead>Source</TableHead>
+                  <TableHead className="hidden md:table-cell">Running Balance</TableHead>
+                  <TableHead className="hidden md:table-cell">Source</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead className="hidden md:table-cell">Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -621,7 +679,7 @@ export default function WalletDetailPage() {
                             {formatCents(tx.credit_amount, wallet.currency)}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <span className="font-mono text-sm">
                             {formatCents(
                               tx.running_balance * 100,
@@ -629,7 +687,7 @@ export default function WalletDetailPage() {
                             )}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <span className="text-sm capitalize">
                             {tx.source}
                           </span>
@@ -637,7 +695,7 @@ export default function WalletDetailPage() {
                         <TableCell>
                           <Badge variant="outline">{tx.status}</Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
+                        <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                           {format(
                             new Date(tx.created_at),
                             'MMM d, yyyy HH:mm'
