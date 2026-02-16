@@ -2117,3 +2117,271 @@ class TestNextBillingDateAPI:
         expected_start = (today - timedelta(days=29)).isoformat()
         assert data["start_date"] == expected_start
         assert data["end_date"] == today.isoformat()
+
+
+class TestBulkPauseSubscriptionsAPI:
+    """Tests for POST /v1/subscriptions/bulk_pause endpoint."""
+
+    def _create_active_subscription(self, client, suffix):
+        """Helper to create an active subscription."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_bp_{suffix}", "name": f"Bulk Pause Customer {suffix}"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": f"bp_plan_{suffix}", "name": f"Plan {suffix}", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_bp_{suffix}",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        ).json()
+        return sub
+
+    def test_bulk_pause_success(self, client, db_session):
+        """Test successful bulk pause of multiple active subscriptions."""
+        subs = [self._create_active_subscription(client, f"s{i}") for i in range(3)]
+        response = client.post(
+            "/v1/subscriptions/bulk_pause",
+            json={"subscription_ids": [s["id"] for s in subs]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 3
+        assert data["failed_count"] == 0
+        assert all(r["success"] for r in data["results"])
+
+    def test_bulk_pause_mixed_results(self, client, db_session):
+        """Test bulk pause with mix of active and pending subscriptions."""
+        active = self._create_active_subscription(client, "mix_active")
+        # Create a pending subscription (no started_at)
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_bp_pending", "name": "Pending Cust"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "bp_pend_plan", "name": "Pending Plan", "interval": "monthly"},
+        ).json()
+        pending = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_bp_pending",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+            },
+        ).json()
+
+        response = client.post(
+            "/v1/subscriptions/bulk_pause",
+            json={"subscription_ids": [active["id"], pending["id"]]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 1
+        assert data["failed_count"] == 1
+
+    def test_bulk_pause_not_found(self, client):
+        """Test bulk pause with non-existent subscription IDs."""
+        response = client.post(
+            "/v1/subscriptions/bulk_pause",
+            json={"subscription_ids": [str(uuid.uuid4())]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Subscription not found"
+
+    def test_bulk_pause_empty_list(self, client):
+        """Test bulk pause with empty list fails validation."""
+        response = client.post(
+            "/v1/subscriptions/bulk_pause",
+            json={"subscription_ids": []},
+        )
+        assert response.status_code == 422
+
+
+class TestBulkResumeSubscriptionsAPI:
+    """Tests for POST /v1/subscriptions/bulk_resume endpoint."""
+
+    def _create_paused_subscription(self, client, suffix):
+        """Helper to create a paused subscription."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_br_{suffix}", "name": f"Bulk Resume Customer {suffix}"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": f"br_plan_{suffix}", "name": f"Plan {suffix}", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_br_{suffix}",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        ).json()
+        # Pause it
+        client.post(f"/v1/subscriptions/{sub['id']}/pause")
+        return sub
+
+    def test_bulk_resume_success(self, client, db_session):
+        """Test successful bulk resume of multiple paused subscriptions."""
+        subs = [self._create_paused_subscription(client, f"r{i}") for i in range(3)]
+        response = client.post(
+            "/v1/subscriptions/bulk_resume",
+            json={"subscription_ids": [s["id"] for s in subs]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 3
+        assert data["failed_count"] == 0
+        assert all(r["success"] for r in data["results"])
+
+    def test_bulk_resume_mixed_results(self, client, db_session):
+        """Test bulk resume with mix of paused and active subscriptions."""
+        paused = self._create_paused_subscription(client, "mix_paused")
+        # Create an active subscription (not paused)
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": "cust_br_active", "name": "Active Cust"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": "br_act_plan", "name": "Active Plan", "interval": "monthly"},
+        ).json()
+        active = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": "sub_br_active",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        ).json()
+
+        response = client.post(
+            "/v1/subscriptions/bulk_resume",
+            json={"subscription_ids": [paused["id"], active["id"]]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 1
+        assert data["failed_count"] == 1
+
+    def test_bulk_resume_not_found(self, client):
+        """Test bulk resume with non-existent subscription IDs."""
+        response = client.post(
+            "/v1/subscriptions/bulk_resume",
+            json={"subscription_ids": [str(uuid.uuid4())]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Subscription not found"
+
+    def test_bulk_resume_empty_list(self, client):
+        """Test bulk resume with empty list fails validation."""
+        response = client.post(
+            "/v1/subscriptions/bulk_resume",
+            json={"subscription_ids": []},
+        )
+        assert response.status_code == 422
+
+
+class TestBulkTerminateSubscriptionsAPI:
+    """Tests for POST /v1/subscriptions/bulk_terminate endpoint."""
+
+    def _create_active_subscription(self, client, suffix):
+        """Helper to create an active subscription."""
+        customer = client.post(
+            "/v1/customers/",
+            json={"external_id": f"cust_bt_{suffix}", "name": f"Bulk Term Customer {suffix}"},
+        ).json()
+        plan = client.post(
+            "/v1/plans/",
+            json={"code": f"bt_plan_{suffix}", "name": f"Plan {suffix}", "interval": "monthly"},
+        ).json()
+        sub = client.post(
+            "/v1/subscriptions/",
+            json={
+                "external_id": f"sub_bt_{suffix}",
+                "customer_id": customer["id"],
+                "plan_id": plan["id"],
+                "started_at": (datetime.now(UTC) - timedelta(days=5)).isoformat(),
+            },
+        ).json()
+        return sub
+
+    def test_bulk_terminate_success(self, client, db_session):
+        """Test successful bulk termination of multiple active subscriptions."""
+        subs = [self._create_active_subscription(client, f"t{i}") for i in range(3)]
+        response = client.post(
+            "/v1/subscriptions/bulk_terminate",
+            json={"subscription_ids": [s["id"] for s in subs]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 3
+        assert data["failed_count"] == 0
+        assert all(r["success"] for r in data["results"])
+
+    def test_bulk_terminate_with_skip_action(self, client, db_session):
+        """Test bulk terminate with skip termination action."""
+        sub = self._create_active_subscription(client, "skip_act")
+        response = client.post(
+            "/v1/subscriptions/bulk_terminate",
+            json={
+                "subscription_ids": [sub["id"]],
+                "on_termination_action": "skip",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 1
+        assert data["failed_count"] == 0
+
+    def test_bulk_terminate_mixed_results(self, client, db_session):
+        """Test bulk terminate with mix of active and already-terminated subscriptions."""
+        active = self._create_active_subscription(client, "mix_act")
+        terminated = self._create_active_subscription(client, "mix_term")
+        # Terminate one first
+        client.delete(f"/v1/subscriptions/{terminated['id']}?on_termination_action=skip")
+
+        response = client.post(
+            "/v1/subscriptions/bulk_terminate",
+            json={"subscription_ids": [active["id"], terminated["id"]]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 1
+        assert data["failed_count"] == 1
+
+    def test_bulk_terminate_not_found(self, client):
+        """Test bulk terminate with non-existent subscription IDs."""
+        response = client.post(
+            "/v1/subscriptions/bulk_terminate",
+            json={"subscription_ids": [str(uuid.uuid4())]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["succeeded_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Subscription not found"
+
+    def test_bulk_terminate_empty_list(self, client):
+        """Test bulk terminate with empty list fails validation."""
+        response = client.post(
+            "/v1/subscriptions/bulk_terminate",
+            json={"subscription_ids": []},
+        )
+        assert response.status_code == 422

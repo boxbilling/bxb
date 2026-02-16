@@ -22,6 +22,9 @@ from app.schemas.invoice import (
     BulkFinalizeRequest,
     BulkFinalizeResponse,
     BulkFinalizeResult,
+    BulkVoidRequest,
+    BulkVoidResponse,
+    BulkVoidResult,
     InvoiceResponse,
     InvoiceUpdate,
     OneOffInvoiceCreate,
@@ -182,6 +185,77 @@ async def bulk_finalize_invoices(
     return BulkFinalizeResponse(
         results=results,
         finalized_count=finalized_count,
+        failed_count=failed_count,
+    )
+
+
+@router.post(
+    "/bulk_void",
+    response_model=BulkVoidResponse,
+    summary="Bulk void invoices",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
+async def bulk_void_invoices(
+    data: BulkVoidRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BulkVoidResponse:
+    """Void multiple invoices in one request."""
+    repo = InvoiceRepository(db)
+    audit_service = AuditService(db)
+    webhook_service = WebhookService(db)
+    results: list[BulkVoidResult] = []
+    voided_count = 0
+    failed_count = 0
+
+    for invoice_id in data.invoice_ids:
+        invoice = repo.get_by_id(invoice_id, organization_id)
+        if not invoice:
+            results.append(BulkVoidResult(
+                invoice_id=invoice_id, success=False, error="Invoice not found"
+            ))
+            failed_count += 1
+            continue
+
+        try:
+            old_status = str(invoice.status)
+            voided = repo.void(invoice_id)
+            if not voided:
+                results.append(BulkVoidResult(
+                    invoice_id=invoice_id, success=False, error="Failed to void"
+                ))
+                failed_count += 1
+                continue
+
+            audit_service.log_status_change(
+                resource_type="invoice",
+                resource_id=invoice_id,
+                organization_id=organization_id,
+                old_status=old_status,
+                new_status="voided",
+                actor_type="api_key",
+            )
+
+            webhook_service.send_webhook(
+                webhook_type="invoice.voided",
+                object_type="invoice",
+                object_id=invoice_id,
+                payload={"invoice_id": str(invoice_id)},
+            )
+
+            results.append(BulkVoidResult(invoice_id=invoice_id, success=True))
+            voided_count += 1
+        except ValueError as e:
+            results.append(BulkVoidResult(
+                invoice_id=invoice_id, success=False, error=str(e)
+            ))
+            failed_count += 1
+
+    return BulkVoidResponse(
+        results=results,
+        voided_count=voided_count,
         failed_count=failed_count,
     )
 

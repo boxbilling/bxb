@@ -2266,3 +2266,142 @@ class TestPdfPreviewAPI:
 
         assert response.status_code == 200
         assert response.content == b"%PDF-paid"
+
+
+class TestBulkVoidInvoicesAPI:
+    """Tests for POST /v1/invoices/bulk_void endpoint."""
+
+    def test_bulk_void_success(self, client, db_session, customer, subscription, sample_line_items):
+        """Test successful bulk voiding of multiple finalized invoices."""
+        repo = InvoiceRepository(db_session)
+        invoices = []
+        for i in range(3):
+            data = InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC) + timedelta(days=i * 30),
+                billing_period_end=datetime.now(UTC) + timedelta(days=(i + 1) * 30),
+                line_items=sample_line_items,
+            )
+            inv = repo.create(data, DEFAULT_ORG_ID)
+            repo.finalize(inv.id)
+            invoices.append(inv)
+
+        response = client.post(
+            "/v1/invoices/bulk_void",
+            json={"invoice_ids": [str(inv.id) for inv in invoices]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["voided_count"] == 3
+        assert data["failed_count"] == 0
+        assert len(data["results"]) == 3
+        assert all(r["success"] for r in data["results"])
+
+    def test_bulk_void_mixed_results(self, client, db_session, customer, subscription, sample_line_items):
+        """Test bulk void with mix of valid and paid invoices."""
+        repo = InvoiceRepository(db_session)
+        finalized = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(finalized.id)
+
+        paid = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC) + timedelta(days=30),
+                billing_period_end=datetime.now(UTC) + timedelta(days=60),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(paid.id)
+        repo.mark_paid(paid.id)
+
+        response = client.post(
+            "/v1/invoices/bulk_void",
+            json={"invoice_ids": [str(finalized.id), str(paid.id)]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["voided_count"] == 1
+        assert data["failed_count"] == 1
+
+    def test_bulk_void_not_found(self, client):
+        """Test bulk void with non-existent invoice IDs."""
+        response = client.post(
+            "/v1/invoices/bulk_void",
+            json={"invoice_ids": [str(uuid4())]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["voided_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Invoice not found"
+
+    def test_bulk_void_empty_list(self, client):
+        """Test bulk void with empty list fails validation."""
+        response = client.post(
+            "/v1/invoices/bulk_void",
+            json={"invoice_ids": []},
+        )
+        assert response.status_code == 422
+
+    def test_bulk_void_repo_returns_none(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test bulk void when repo.void returns None (defensive branch)."""
+        repo = InvoiceRepository(db_session)
+        invoice = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(invoice.id)
+
+        with patch.object(InvoiceRepository, "void", return_value=None):
+            response = client.post(
+                "/v1/invoices/bulk_void",
+                json={"invoice_ids": [str(invoice.id)]},
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["voided_count"] == 0
+        assert data["failed_count"] == 1
+        assert data["results"][0]["error"] == "Failed to void"
+
+    def test_bulk_void_draft_invoices(self, client, db_session, customer, subscription, sample_line_items):
+        """Test bulk void of draft invoices (should succeed since void allows non-paid)."""
+        repo = InvoiceRepository(db_session)
+        draft = repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                line_items=sample_line_items,
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        response = client.post(
+            "/v1/invoices/bulk_void",
+            json={"invoice_ids": [str(draft.id)]},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["voided_count"] == 1
+        assert data["failed_count"] == 0

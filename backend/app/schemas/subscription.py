@@ -58,6 +58,27 @@ class SubscriptionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BulkSubscriptionRequest(BaseModel):
+    subscription_ids: list[UUID] = Field(min_length=1)
+
+
+class BulkTerminateRequest(BaseModel):
+    subscription_ids: list[UUID] = Field(min_length=1)
+    on_termination_action: TerminationAction = TerminationAction.GENERATE_INVOICE
+
+
+class BulkSubscriptionResult(BaseModel):
+    subscription_id: UUID
+    success: bool
+    error: str | None = None
+
+
+class BulkSubscriptionResponse(BaseModel):
+    results: list[BulkSubscriptionResult]
+    succeeded_count: int
+    failed_count: int
+
+
 class ChangePlanPreviewRequest(BaseModel):
     """Request body for plan change preview."""
 

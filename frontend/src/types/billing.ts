@@ -40,6 +40,7 @@ export type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewR
 export type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
 export type PlanSummary = components['schemas']['PlanSummary']
 export type ProrationDetail = components['schemas']['ProrationDetail']
+export type BulkSubscriptionResponse = components['schemas']['BulkSubscriptionResponse']
 
 // --- Invoices ---
 export type Invoice = components['schemas']['InvoiceResponse']
@@ -47,6 +48,7 @@ export type InvoiceUpdate = components['schemas']['InvoiceUpdate']
 export type InvoiceStatus = components['schemas']['InvoiceStatus']
 export type OneOffInvoiceCreate = components['schemas']['OneOffInvoiceCreate']
 export type BulkFinalizeResponse = components['schemas']['BulkFinalizeResponse']
+export type BulkVoidResponse = components['schemas']['BulkVoidResponse']
 export type SendReminderResponse = components['schemas']['SendReminderResponse']
 
 // --- Fees ---

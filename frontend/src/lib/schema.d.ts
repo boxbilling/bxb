@@ -700,6 +700,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/subscriptions/bulk_pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk pause subscriptions
+         * @description Pause multiple active subscriptions in one request.
+         */
+        post: operations["bulk_pause_subscriptions_v1_subscriptions_bulk_pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/bulk_resume": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk resume subscriptions
+         * @description Resume multiple paused subscriptions in one request.
+         */
+        post: operations["bulk_resume_subscriptions_v1_subscriptions_bulk_resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/subscriptions/bulk_terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk terminate subscriptions
+         * @description Terminate multiple subscriptions in one request.
+         */
+        post: operations["bulk_terminate_subscriptions_v1_subscriptions_bulk_terminate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/subscriptions/{subscription_id}": {
         parameters: {
             query?: never;
@@ -1128,6 +1188,26 @@ export interface paths {
          * @description Finalize multiple draft invoices in one request.
          */
         post: operations["bulk_finalize_invoices_v1_invoices_bulk_finalize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/invoices/bulk_void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk void invoices
+         * @description Void multiple invoices in one request.
+         */
+        post: operations["bulk_void_invoices_v1_invoices_bulk_void_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4885,6 +4965,65 @@ export interface components {
         };
         /** BulkFinalizeResult */
         BulkFinalizeResult: {
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Success */
+            success: boolean;
+            /** Error */
+            error?: string | null;
+        };
+        /** BulkSubscriptionRequest */
+        BulkSubscriptionRequest: {
+            /** Subscription Ids */
+            subscription_ids: string[];
+        };
+        /** BulkSubscriptionResponse */
+        BulkSubscriptionResponse: {
+            /** Results */
+            results: components["schemas"]["BulkSubscriptionResult"][];
+            /** Succeeded Count */
+            succeeded_count: number;
+            /** Failed Count */
+            failed_count: number;
+        };
+        /** BulkSubscriptionResult */
+        BulkSubscriptionResult: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Success */
+            success: boolean;
+            /** Error */
+            error?: string | null;
+        };
+        /** BulkTerminateRequest */
+        BulkTerminateRequest: {
+            /** Subscription Ids */
+            subscription_ids: string[];
+            /** @default generate_invoice */
+            on_termination_action: components["schemas"]["TerminationAction"];
+        };
+        /** BulkVoidRequest */
+        BulkVoidRequest: {
+            /** Invoice Ids */
+            invoice_ids: string[];
+        };
+        /** BulkVoidResponse */
+        BulkVoidResponse: {
+            /** Results */
+            results: components["schemas"]["BulkVoidResult"][];
+            /** Voided Count */
+            voided_count: number;
+            /** Failed Count */
+            failed_count: number;
+        };
+        /** BulkVoidResult */
+        BulkVoidResult: {
             /**
              * Invoice Id
              * Format: uuid
@@ -9439,6 +9578,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -9938,6 +10078,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -10349,6 +10490,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -10660,6 +10802,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 customer_id?: string | null;
             };
             header?: never;
@@ -10744,6 +10887,126 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    bulk_pause_subscriptions_v1_subscriptions_bulk_pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkSubscriptionResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_resume_subscriptions_v1_subscriptions_bulk_resume_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkSubscriptionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkSubscriptionResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_terminate_subscriptions_v1_subscriptions_bulk_terminate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkTerminateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkSubscriptionResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
@@ -11335,6 +11598,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 external_customer_id?: string | null;
                 code?: string | null;
                 from_timestamp?: string | null;
@@ -11597,6 +11861,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 invoice_id?: string | null;
                 customer_id?: string | null;
                 subscription_id?: string | null;
@@ -11733,6 +11998,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 customer_id?: string | null;
                 subscription_id?: string | null;
                 status?: components["schemas"]["InvoiceStatus"] | null;
@@ -11835,6 +12101,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BulkFinalizeResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_void_invoices_v1_invoices_bulk_void_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkVoidRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BulkVoidResponse"];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */
@@ -12460,6 +12766,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 invoice_id?: string | null;
                 customer_id?: string | null;
                 status?: components["schemas"]["PaymentStatus"] | null;
@@ -12932,6 +13239,7 @@ export interface operations {
                 customer_id?: string | null;
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -13210,6 +13518,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 customer_id?: string | null;
                 status?: components["schemas"]["WalletStatus"] | null;
             };
@@ -13677,6 +13986,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 status?: components["schemas"]["CouponStatus"] | null;
             };
             header?: never;
@@ -14098,6 +14408,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -14438,6 +14749,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 customer_id?: string | null;
                 invoice_id?: string | null;
                 status?: components["schemas"]["CreditNoteStatus"] | null;
@@ -14834,6 +15146,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -15254,6 +15567,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -15962,6 +16276,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 status?: string | null;
             };
             header?: never;
@@ -16347,6 +16662,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 customer_id?: string | null;
                 payment_status?: string | null;
             };
@@ -17006,6 +17322,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -17218,6 +17535,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -17628,6 +17946,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 resource_type?: string | null;
                 resource_id?: string | null;
                 action?: string | null;
@@ -17715,6 +18034,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -17970,6 +18290,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
             };
             header?: never;
             path?: never;
@@ -18225,6 +18546,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 plan_id?: string | null;
             };
             header?: never;
@@ -18452,6 +18774,7 @@ export interface operations {
             query?: {
                 skip?: number;
                 limit?: number;
+                order_by?: string | null;
                 subscription_id?: string | null;
             };
             header?: never;

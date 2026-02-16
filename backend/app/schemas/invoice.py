@@ -61,6 +61,22 @@ class BulkFinalizeResponse(BaseModel):
     failed_count: int
 
 
+class BulkVoidRequest(BaseModel):
+    invoice_ids: list[UUID] = Field(min_length=1)
+
+
+class BulkVoidResult(BaseModel):
+    invoice_id: UUID
+    success: bool
+    error: str | None = None
+
+
+class BulkVoidResponse(BaseModel):
+    results: list[BulkVoidResult]
+    voided_count: int
+    failed_count: int
+
+
 class SendReminderResponse(BaseModel):
     sent: bool
     invoice_id: UUID

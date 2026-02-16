@@ -1020,10 +1020,13 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
   <!-- Completed: Converted 6 admin pages from inline icon-only/label-only action buttons to standardized DropdownMenu (MoreHorizontal trigger) pattern matching the existing PaymentsPage, CreditNotesPage, WalletsPage, and CouponsPage implementations. Pages converted: BillingEntitiesPage (Edit/Delete label buttons → dropdown), MetricsPage (Edit/Delete label buttons → dropdown), FeaturesPage (Pencil/Trash2 icon-only buttons → dropdown with labels), SubscriptionsPage (6 conditional icon-only buttons → organized dropdown with Edit, Change Plan, Usage Thresholds, Pause/Resume, Terminate sections), EventsPage (single Reprocess icon → dropdown for consistency), PaymentMethodsPage (Star/Trash2 icon-only buttons → dropdown with Set as Default/Delete). All dropdowns use consistent pattern: MoreHorizontal trigger icon, right-aligned content, labeled items with icons, destructive variant for delete/terminate actions, separators between action groups. TypeScript compiles clean, all 3976 backend tests pass with 100% coverage. -->
 
 ### Phase 4: UX Enrichment (Medium Impact, Medium Effort)
-- [ ] Dashboard: date range selector, trend indicators, clickable stat cards
-- [ ] Customer health indicators
-- [ ] Table column sorting
-- [ ] Bulk actions for invoices and subscriptions
+- [x] Dashboard: date range selector, trend indicators, clickable stat cards
+  <!-- Already completed in section 3.1 — PeriodSelector (date range with 5 presets + custom), TrendBadge (percentage change with directional icons), clickable StatCard (with href/Link navigation), sparkline mini-charts, revenue breakdown donut chart, recent invoices/subscriptions quick-glance tables, and activity feed filtering all implemented and verified. -->
+- [x] Customer health indicators
+  <!-- Already completed in section 3.2 — GET /v1/customers/{customer_id}/health backend endpoint with good/warning/critical health status logic, CustomerHealthBadge frontend component with color-coded circle and tooltip, integrated into both CustomerDetailPage (header) and CustomersPage (table rows). Full test coverage exists. -->
+- [x] Table column sorting — Added `SortableTableHead` component with `useSortState` hook, `apply_order_by` backend utility, sorting support across all 36 repositories, 24 routers, 22 API methods, and 20 admin pages
+- [x] Bulk actions for invoices and subscriptions
+  <!-- Completed: Added row checkbox selection and floating bulk action bars to both InvoicesPage and SubscriptionsPage. InvoicesPage: expanded checkbox selection from draft-only to draft+finalized invoices, added bulk void mutation (POST /v1/invoices/bulk_void) with per-invoice audit logging and webhooks, floating action bar shows context-aware buttons (Finalize for drafts, Void for draft/finalized, Clear). SubscriptionsPage: added new checkbox column for active/pending/paused subscriptions, floating action bar with Pause (active), Resume (paused), Terminate (all actionable) buttons. Backend: 4 new endpoints (POST /v1/invoices/bulk_void, POST /v1/subscriptions/bulk_pause, POST /v1/subscriptions/bulk_resume, POST /v1/subscriptions/bulk_terminate) with BulkVoidRequest/Response/Result and BulkSubscriptionRequest/BulkTerminateRequest/BulkSubscriptionResponse schemas. 19 new backend tests added. OpenAPI schema and frontend types regenerated. All 4039 backend tests pass with 100% coverage. -->
 - [ ] Integration detail pages
 
 ### Phase 5: Portal Enhancement (Medium Impact, High Effort)

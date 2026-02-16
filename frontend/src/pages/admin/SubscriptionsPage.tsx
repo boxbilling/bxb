@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, CalendarIcon, ArrowRight, TrendingUp, TrendingDown, Minus, Pause, Play, MoreHorizontal } from 'lucide-react'
+import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, CalendarIcon, ArrowRight, TrendingUp, TrendingDown, Minus, Pause, Play, MoreHorizontal, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -52,6 +52,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Separator } from '@/components/ui/separator'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { TablePagination } from '@/components/TablePagination'
@@ -704,6 +706,89 @@ export default function SubscriptionsPage() {
     },
   })
 
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // Selectable subscriptions: active, pending, or paused
+  const selectableSubscriptions = filteredSubscriptions.filter(
+    (s) => s.status === 'active' || s.status === 'pending' || s.status === 'paused'
+  )
+  const allSelectableSelected = selectableSubscriptions.length > 0 && selectableSubscriptions.every((s) => selectedIds.has(s.id))
+
+  // Determine which statuses are in the selection
+  const selectedStatuses = useMemo(() => {
+    const statuses = new Set<string>()
+    for (const sub of filteredSubscriptions) {
+      if (selectedIds.has(sub.id)) {
+        statuses.add(sub.status)
+      }
+    }
+    return statuses
+  }, [filteredSubscriptions, selectedIds])
+
+  const hasActiveSelected = selectedStatuses.has('active')
+  const hasPausedSelected = selectedStatuses.has('paused')
+
+  const toggleSelect = (id: string) => {
+    const next = new Set(selectedIds)
+    if (next.has(id)) {
+      next.delete(id)
+    } else {
+      next.add(id)
+    }
+    setSelectedIds(next)
+  }
+
+  const toggleSelectAll = () => {
+    if (allSelectableSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(selectableSubscriptions.map((s) => s.id)))
+    }
+  }
+
+  // Bulk mutations
+  const bulkPauseMutation = useMutation({
+    mutationFn: () =>
+      subscriptionsApi.bulkPause({ subscription_ids: Array.from(selectedIds) }),
+    onSuccess: (result) => {
+      toast.success(`Paused ${result.succeeded_count} subscription(s)${result.failed_count > 0 ? `, ${result.failed_count} failed` : ''}`)
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+    },
+    onError: () => {
+      toast.error('Failed to bulk pause subscriptions')
+    },
+  })
+
+  const bulkResumeMutation = useMutation({
+    mutationFn: () =>
+      subscriptionsApi.bulkResume({ subscription_ids: Array.from(selectedIds) }),
+    onSuccess: (result) => {
+      toast.success(`Resumed ${result.succeeded_count} subscription(s)${result.failed_count > 0 ? `, ${result.failed_count} failed` : ''}`)
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+    },
+    onError: () => {
+      toast.error('Failed to bulk resume subscriptions')
+    },
+  })
+
+  const bulkTerminateMutation = useMutation({
+    mutationFn: () =>
+      subscriptionsApi.bulkTerminate({ subscription_ids: Array.from(selectedIds), on_termination_action: 'generate_invoice' }),
+    onSuccess: (result) => {
+      toast.success(`Terminated ${result.succeeded_count} subscription(s)${result.failed_count > 0 ? `, ${result.failed_count} failed` : ''}`)
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+    },
+    onError: () => {
+      toast.error('Failed to bulk terminate subscriptions')
+    },
+  })
+
+  const isBulkPending = bulkPauseMutation.isPending || bulkResumeMutation.isPending || bulkTerminateMutation.isPending
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -753,11 +838,78 @@ export default function SubscriptionsPage() {
         </Select>
       </div>
 
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Separator orientation="vertical" className="h-6" />
+          {hasActiveSelected && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkPending}
+              onClick={() => bulkPauseMutation.mutate()}
+            >
+              {bulkPauseMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Pause className="mr-2 h-4 w-4" />
+              )}
+              Pause
+            </Button>
+          )}
+          {hasPausedSelected && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={isBulkPending}
+              onClick={() => bulkResumeMutation.mutate()}
+            >
+              {bulkResumeMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-2 h-4 w-4" />
+              )}
+              Resume
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={isBulkPending}
+            onClick={() => bulkTerminateMutation.mutate()}
+          >
+            {bulkTerminateMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-4 w-4" />
+            )}
+            Terminate
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[40px]">
+                {selectableSubscriptions.length > 0 && (
+                  <Checkbox
+                    checked={allSelectableSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all actionable subscriptions"
+                  />
+                )}
+              </TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Plan</TableHead>
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
@@ -772,6 +924,7 @@ export default function SubscriptionsPage() {
             {isLoading ? (
               [...Array(5)].map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
@@ -784,7 +937,7 @@ export default function SubscriptionsPage() {
               ))
             ) : filteredSubscriptions.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   No subscriptions found
                 </TableCell>
               </TableRow>
@@ -795,6 +948,15 @@ export default function SubscriptionsPage() {
 
                 return (
                   <TableRow key={sub.id}>
+                    <TableCell>
+                      {(sub.status === 'active' || sub.status === 'pending' || sub.status === 'paused') && (
+                        <Checkbox
+                          checked={selectedIds.has(sub.id)}
+                          onCheckedChange={() => toggleSelect(sub.id)}
+                          aria-label={`Select subscription ${sub.external_id}`}
+                        />
+                      )}
+                    </TableCell>
                     <TableCell>
                       <div>
                         <div className="font-medium">{customer?.name ?? 'Unknown'}</div>

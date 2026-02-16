@@ -21,6 +21,10 @@ from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.daily_usage import UsageTrendPoint, UsageTrendResponse
 from app.schemas.entitlement import EntitlementResponse
 from app.schemas.subscription import (
+    BulkSubscriptionRequest,
+    BulkSubscriptionResponse,
+    BulkSubscriptionResult,
+    BulkTerminateRequest,
     ChangePlanPreviewRequest,
     ChangePlanPreviewResponse,
     NextBillingDateResponse,
@@ -59,6 +63,171 @@ async def list_subscriptions(
     if customer_id:
         return repo.get_by_customer_id(customer_id, organization_id)
     return repo.get_all(organization_id, skip=skip, limit=limit, order_by=order_by)
+
+
+@router.post(
+    "/bulk_pause",
+    response_model=BulkSubscriptionResponse,
+    summary="Bulk pause subscriptions",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
+async def bulk_pause_subscriptions(
+    data: BulkSubscriptionRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BulkSubscriptionResponse:
+    """Pause multiple active subscriptions in one request."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    audit_service = AuditService(db)
+    repo = SubscriptionRepository(db)
+    results: list[BulkSubscriptionResult] = []
+    succeeded_count = 0
+    failed_count = 0
+
+    for sub_id in data.subscription_ids:
+        sub = repo.get_by_id(sub_id, organization_id)
+        if not sub:
+            results.append(BulkSubscriptionResult(
+                subscription_id=sub_id, success=False, error="Subscription not found"
+            ))
+            failed_count += 1
+            continue
+
+        try:
+            lifecycle_service.pause_subscription(sub_id)
+            audit_service.log_status_change(
+                resource_type="subscription",
+                resource_id=sub_id,
+                organization_id=organization_id,
+                old_status="active",
+                new_status="paused",
+                actor_type="api_key",
+            )
+            results.append(BulkSubscriptionResult(subscription_id=sub_id, success=True))
+            succeeded_count += 1
+        except ValueError as e:
+            results.append(BulkSubscriptionResult(
+                subscription_id=sub_id, success=False, error=str(e)
+            ))
+            failed_count += 1
+
+    return BulkSubscriptionResponse(
+        results=results,
+        succeeded_count=succeeded_count,
+        failed_count=failed_count,
+    )
+
+
+@router.post(
+    "/bulk_resume",
+    response_model=BulkSubscriptionResponse,
+    summary="Bulk resume subscriptions",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
+async def bulk_resume_subscriptions(
+    data: BulkSubscriptionRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BulkSubscriptionResponse:
+    """Resume multiple paused subscriptions in one request."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    audit_service = AuditService(db)
+    repo = SubscriptionRepository(db)
+    results: list[BulkSubscriptionResult] = []
+    succeeded_count = 0
+    failed_count = 0
+
+    for sub_id in data.subscription_ids:
+        sub = repo.get_by_id(sub_id, organization_id)
+        if not sub:
+            results.append(BulkSubscriptionResult(
+                subscription_id=sub_id, success=False, error="Subscription not found"
+            ))
+            failed_count += 1
+            continue
+
+        try:
+            lifecycle_service.resume_subscription(sub_id)
+            audit_service.log_status_change(
+                resource_type="subscription",
+                resource_id=sub_id,
+                organization_id=organization_id,
+                old_status="paused",
+                new_status="active",
+                actor_type="api_key",
+            )
+            results.append(BulkSubscriptionResult(subscription_id=sub_id, success=True))
+            succeeded_count += 1
+        except ValueError as e:
+            results.append(BulkSubscriptionResult(
+                subscription_id=sub_id, success=False, error=str(e)
+            ))
+            failed_count += 1
+
+    return BulkSubscriptionResponse(
+        results=results,
+        succeeded_count=succeeded_count,
+        failed_count=failed_count,
+    )
+
+
+@router.post(
+    "/bulk_terminate",
+    response_model=BulkSubscriptionResponse,
+    summary="Bulk terminate subscriptions",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+    },
+)
+async def bulk_terminate_subscriptions(
+    data: BulkTerminateRequest,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> BulkSubscriptionResponse:
+    """Terminate multiple subscriptions in one request."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    audit_service = AuditService(db)
+    repo = SubscriptionRepository(db)
+    results: list[BulkSubscriptionResult] = []
+    succeeded_count = 0
+    failed_count = 0
+
+    for sub_id in data.subscription_ids:
+        sub = repo.get_by_id(sub_id, organization_id)
+        if not sub:
+            results.append(BulkSubscriptionResult(
+                subscription_id=sub_id, success=False, error="Subscription not found"
+            ))
+            failed_count += 1
+            continue
+
+        try:
+            lifecycle_service.terminate_subscription(sub_id, data.on_termination_action.value)
+            audit_service.log_status_change(
+                resource_type="subscription",
+                resource_id=sub_id,
+                organization_id=organization_id,
+                old_status=str(sub.status),
+                new_status="terminated",
+                actor_type="api_key",
+            )
+            results.append(BulkSubscriptionResult(subscription_id=sub_id, success=True))
+            succeeded_count += 1
+        except ValueError as e:
+            results.append(BulkSubscriptionResult(
+                subscription_id=sub_id, success=False, error=str(e)
+            ))
+            failed_count += 1
+
+    return BulkSubscriptionResponse(
+        results=results,
+        succeeded_count=succeeded_count,
+        failed_count=failed_count,
+    )
 
 
 @router.get(

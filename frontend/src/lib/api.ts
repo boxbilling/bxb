@@ -26,6 +26,9 @@ type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest'
 type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
 type NextBillingDateResponse = components['schemas']['NextBillingDateResponse']
 type UsageTrendResponse = components['schemas']['UsageTrendResponse']
+type BulkSubscriptionRequest = components['schemas']['BulkSubscriptionRequest']
+type BulkTerminateRequest = components['schemas']['BulkTerminateRequest']
+type BulkSubscriptionResponse = components['schemas']['BulkSubscriptionResponse']
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
 type InvoiceUpdate = components['schemas']['InvoiceUpdate']
@@ -33,6 +36,8 @@ type InvoiceStatus = components['schemas']['InvoiceStatus']
 type OneOffInvoiceCreate = components['schemas']['OneOffInvoiceCreate']
 type BulkFinalizeRequest = components['schemas']['BulkFinalizeRequest']
 type BulkFinalizeResponse = components['schemas']['BulkFinalizeResponse']
+type BulkVoidRequest = components['schemas']['BulkVoidRequest']
+type BulkVoidResponse = components['schemas']['BulkVoidResponse']
 type SendReminderResponse = components['schemas']['SendReminderResponse']
 
 type PaymentResponse = components['schemas']['PaymentResponse']
@@ -727,6 +732,21 @@ export const subscriptionsApi = {
     request<NextBillingDateResponse>(`/v1/subscriptions/${id}/next_billing_date`),
   getUsageTrend: (id: string, params?: { start_date?: string; end_date?: string }) =>
     request<UsageTrendResponse>(`/v1/subscriptions/${id}/usage_trend${buildQuery(params)}`),
+  bulkPause: (data: BulkSubscriptionRequest) =>
+    request<BulkSubscriptionResponse>('/v1/subscriptions/bulk_pause', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  bulkResume: (data: BulkSubscriptionRequest) =>
+    request<BulkSubscriptionResponse>('/v1/subscriptions/bulk_resume', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  bulkTerminate: (data: BulkTerminateRequest) =>
+    request<BulkSubscriptionResponse>('/v1/subscriptions/bulk_terminate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // Events API
@@ -822,6 +842,11 @@ export const invoicesApi = {
     }),
   bulkFinalize: (data: BulkFinalizeRequest) =>
     request<BulkFinalizeResponse>('/v1/invoices/bulk_finalize', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  bulkVoid: (data: BulkVoidRequest) =>
+    request<BulkVoidResponse>('/v1/invoices/bulk_void', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

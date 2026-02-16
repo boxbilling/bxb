@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Search, Eye, FileText, Loader2, CheckCircle, Plus, Trash2 } from 'lucide-react'
+import { Search, Eye, FileText, Loader2, CheckCircle, Plus, Trash2, XCircle, Bell } from 'lucide-react'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
@@ -477,6 +477,21 @@ export default function InvoicesPage() {
     },
   })
 
+  const bulkVoidMutation = useMutation({
+    mutationFn: () =>
+      invoicesApi.bulkVoid({ invoice_ids: Array.from(selectedIds) }),
+    onSuccess: (result) => {
+      toast.success(`Voided ${result.voided_count} invoice(s)${result.failed_count > 0 ? `, ${result.failed_count} failed` : ''}`)
+      setSelectedIds(new Set())
+      queryClient.invalidateQueries({ queryKey: ['invoices'] })
+    },
+    onError: () => {
+      toast.error('Failed to bulk void invoices')
+    },
+  })
+
+  const isBulkPending = bulkFinalizeMutation.isPending || bulkVoidMutation.isPending
+
   // Client-side search filtering on invoice number
   const data = invoices?.filter(
     (i) => !search || i.invoice_number.toLowerCase().includes(search.toLowerCase())
@@ -498,8 +513,25 @@ export default function InvoicesPage() {
     { paid: 0, outstanding: 0, draft: 0 }
   )
 
-  const draftInvoices = data?.filter((i) => i.status === 'draft') ?? []
-  const allDraftsSelected = draftInvoices.length > 0 && draftInvoices.every((i) => selectedIds.has(i.id))
+  // Selectable invoices: draft and finalized (not paid or voided)
+  const selectableInvoices = data?.filter((i) => i.status === 'draft' || i.status === 'finalized') ?? []
+  const allSelectableSelected = selectableInvoices.length > 0 && selectableInvoices.every((i) => selectedIds.has(i.id))
+
+  // Determine which statuses are in the selection for context-aware bulk actions
+  const selectedStatuses = useMemo(() => {
+    const statuses = new Set<string>()
+    if (data) {
+      for (const inv of data) {
+        if (selectedIds.has(inv.id)) {
+          statuses.add(inv.status)
+        }
+      }
+    }
+    return statuses
+  }, [data, selectedIds])
+
+  const hasDraftSelected = selectedStatuses.has('draft')
+  const hasFinalizedSelected = selectedStatuses.has('finalized')
 
   const toggleSelect = (id: string) => {
     const next = new Set(selectedIds)
@@ -511,11 +543,11 @@ export default function InvoicesPage() {
     setSelectedIds(next)
   }
 
-  const toggleSelectAllDrafts = () => {
-    if (allDraftsSelected) {
+  const toggleSelectAll = () => {
+    if (allSelectableSelected) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(draftInvoices.map((i) => i.id)))
+      setSelectedIds(new Set(selectableInvoices.map((i) => i.id)))
     }
   }
 
@@ -580,7 +612,7 @@ export default function InvoicesPage() {
         </Card>
       </div>
 
-      {/* Filters & Bulk Actions */}
+      {/* Filters */}
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -603,20 +635,51 @@ export default function InvoicesPage() {
             <SelectItem value="voided">Voided</SelectItem>
           </SelectContent>
         </Select>
-        {selectedIds.size > 0 && (
-          <Button
-            disabled={bulkFinalizeMutation.isPending}
-            onClick={() => bulkFinalizeMutation.mutate()}
-          >
-            {bulkFinalizeMutation.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="mr-2 h-4 w-4" />
-            )}
-            Finalize {selectedIds.size} Selected
-          </Button>
-        )}
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <Separator orientation="vertical" className="h-6" />
+          {hasDraftSelected && (
+            <Button
+              size="sm"
+              disabled={isBulkPending}
+              onClick={() => bulkFinalizeMutation.mutate()}
+            >
+              {bulkFinalizeMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="mr-2 h-4 w-4" />
+              )}
+              Finalize
+            </Button>
+          )}
+          {(hasDraftSelected || hasFinalizedSelected) && (
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={isBulkPending}
+              onClick={() => bulkVoidMutation.mutate()}
+            >
+              {bulkVoidMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <XCircle className="mr-2 h-4 w-4" />
+              )}
+              Void
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-md border">
@@ -624,11 +687,11 @@ export default function InvoicesPage() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[40px]">
-                {draftInvoices.length > 0 && (
+                {selectableInvoices.length > 0 && (
                   <Checkbox
-                    checked={allDraftsSelected}
-                    onCheckedChange={toggleSelectAllDrafts}
-                    aria-label="Select all draft invoices"
+                    checked={allSelectableSelected}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Select all actionable invoices"
                   />
                 )}
               </TableHead>
@@ -668,7 +731,7 @@ export default function InvoicesPage() {
                   onClick={() => navigate(`/admin/invoices/${invoice.id}`)}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
-                    {invoice.status === 'draft' && (
+                    {(invoice.status === 'draft' || invoice.status === 'finalized') && (
                       <Checkbox
                         checked={selectedIds.has(invoice.id)}
                         onCheckedChange={() => toggleSelect(invoice.id)}
