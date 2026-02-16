@@ -194,7 +194,7 @@ function CouponFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
@@ -234,7 +234,7 @@ function CouponFormDialog({
             </div>
             {!coupon && (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="coupon_type">Type *</Label>
                     <Select
@@ -302,7 +302,7 @@ function CouponFormDialog({
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="frequency">Frequency *</Label>
                     <Select
@@ -360,7 +360,7 @@ function CouponFormDialog({
                 )}
               </>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="expiration">Expiration</Label>
                 <Select
@@ -884,7 +884,7 @@ export default function CouponsPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -932,7 +932,7 @@ export default function CouponsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -943,7 +943,7 @@ export default function CouponsPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full md:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -961,11 +961,11 @@ export default function CouponsPage() {
             <TableRow>
               <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
               <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
-              <TableHead>Type</TableHead>
+              <TableHead className="hidden md:table-cell">Type</TableHead>
               <TableHead>Discount</TableHead>
-              <TableHead>Frequency</TableHead>
+              <TableHead className="hidden md:table-cell">Frequency</TableHead>
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
-              <TableHead>Expiration</TableHead>
+              <TableHead className="hidden md:table-cell">Expiration</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -975,11 +975,11 @@ export default function CouponsPage() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
@@ -1001,7 +1001,7 @@ export default function CouponsPage() {
                     </code>
                   </TableCell>
                   <TableCell className="font-medium">{coupon.name}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="outline">
                       {coupon.coupon_type === 'fixed_amount' ? 'Fixed' : 'Percentage'}
                     </Badge>
@@ -1016,7 +1016,7 @@ export default function CouponsPage() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="outline">{coupon.frequency}</Badge>
                   </TableCell>
                   <TableCell>
@@ -1028,7 +1028,7 @@ export default function CouponsPage() {
                       {coupon.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     {coupon.expiration_at
                       ? format(new Date(coupon.expiration_at), 'MMM d, yyyy')
                       : '—'}

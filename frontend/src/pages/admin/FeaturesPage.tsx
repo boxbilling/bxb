@@ -370,8 +370,8 @@ export default function FeaturesPage() {
                   <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
                   <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
                   <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Plans</TableHead>
+                  <TableHead className="hidden md:table-cell">Description</TableHead>
+                  <TableHead className="hidden md:table-cell">Plans</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -383,8 +383,8 @@ export default function FeaturesPage() {
                       <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-48" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-8" /></TableCell>
                       <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                     </TableRow>
                   ))
@@ -433,10 +433,10 @@ export default function FeaturesPage() {
         {/* Entitlements Tab */}
         <TabsContent value="entitlements">
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-2">
                 <Select value={selectedPlanId} onValueChange={setSelectedPlanId}>
-                  <SelectTrigger className="w-[240px]">
+                  <SelectTrigger className="w-full md:w-[240px]">
                     <SelectValue placeholder="Select a plan..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -449,11 +449,11 @@ export default function FeaturesPage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setCopyDialogOpen(true)}>
+                <Button variant="outline" className="w-full md:w-auto" onClick={() => setCopyDialogOpen(true)}>
                   <Copy className="mr-2 h-4 w-4" />
                   Copy from Plan
                 </Button>
-                <Button variant="outline" onClick={openAddEntitlement} disabled={!selectedPlanId}>
+                <Button variant="outline" className="w-full md:w-auto" onClick={openAddEntitlement} disabled={!selectedPlanId}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Entitlement
                 </Button>
@@ -468,8 +468,8 @@ export default function FeaturesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Feature</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead className="hidden md:table-cell">Code</TableHead>
+                      <TableHead className="hidden md:table-cell">Type</TableHead>
                       <TableHead>Value</TableHead>
                       <TableHead className="w-[60px]">Actions</TableHead>
                     </TableRow>
@@ -479,8 +479,8 @@ export default function FeaturesPage() {
                       Array.from({ length: 3 }).map((_, i) => (
                         <TableRow key={i}>
                           <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                          <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                          <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
+                          <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                           <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                         </TableRow>
@@ -499,12 +499,12 @@ export default function FeaturesPage() {
                           return (
                             <TableRow key={entitlement.id}>
                               <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
-                              <TableCell>
+                              <TableCell className="hidden md:table-cell">
                                 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                   {feature?.code ?? entitlement.feature_id}
                                 </code>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden md:table-cell">
                                 {feature ? (
                                   <Badge variant={featureTypeBadgeVariant(feature.feature_type)}>
                                     {feature.feature_type}
@@ -882,10 +882,10 @@ function ExpandableFeatureRow({
             {feature.feature_type}
           </Badge>
         </TableCell>
-        <TableCell className="text-muted-foreground max-w-[200px] truncate">
+        <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px] truncate">
           {feature.description ?? '\u2014'}
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden md:table-cell">
           <div className="flex items-center gap-1 text-muted-foreground">
             <Layers className="h-3.5 w-3.5" />
             <span className="text-sm">{planCount} {planCount === 1 ? 'plan' : 'plans'}</span>

@@ -128,7 +128,7 @@ function MetricFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
@@ -399,7 +399,7 @@ export default function MetricsPage() {
       </div>
 
       {/* Search & Filter */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -410,7 +410,7 @@ export default function MetricsPage() {
           />
         </div>
         <Select value={aggregationFilter} onValueChange={setAggregationFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-full md:w-48">
             <SelectValue placeholder="Aggregation type" />
           </SelectTrigger>
           <SelectContent>
@@ -431,10 +431,10 @@ export default function MetricsPage() {
             <TableRow>
               <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
               <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
-              <TableHead>Description</TableHead>
+              <TableHead className="hidden md:table-cell">Description</TableHead>
               <TableHead>Aggregation</TableHead>
-              <TableHead>Field / Expression</TableHead>
-              <TableHead>Plans</TableHead>
+              <TableHead className="hidden md:table-cell">Field / Expression</TableHead>
+              <TableHead className="hidden md:table-cell">Plans</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -444,10 +444,10 @@ export default function MetricsPage() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                 </TableRow>
               ))
@@ -484,13 +484,13 @@ export default function MetricsPage() {
                     <TableCell>
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.code}</code>
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                    <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground">
                       {metric.description || <span className="text-muted-foreground">&mdash;</span>}
                     </TableCell>
                     <TableCell>
                       <AggregationBadge type={metric.aggregation_type} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {metric.field_name ? (
                         <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.field_name}</code>
                       ) : metric.expression ? (
@@ -499,7 +499,7 @@ export default function MetricsPage() {
                         <span className="text-muted-foreground">&mdash;</span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1 text-sm">
                         <Layers className="h-3.5 w-3.5 text-muted-foreground" />
                         {count}

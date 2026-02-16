@@ -143,7 +143,7 @@ function AddOnFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="code">Code *</Label>
                 <Input
@@ -181,7 +181,7 @@ function AddOnFormDialog({
                 placeholder="Optional description"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="amount_cents">Amount (cents) *</Label>
                 <Input
@@ -635,7 +635,7 @@ export default function AddOnsPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -671,7 +671,7 @@ export default function AddOnsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -690,11 +690,11 @@ export default function AddOnsPage() {
             <TableRow>
               <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
               <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
-              <TableHead>Description</TableHead>
+              <TableHead className="hidden md:table-cell">Description</TableHead>
               <TableHead>Amount</TableHead>
-              <TableHead>Currency</TableHead>
-              <TableHead>Applications</TableHead>
-              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
+              <TableHead className="hidden md:table-cell">Currency</TableHead>
+              <TableHead className="hidden md:table-cell">Applications</TableHead>
+              <SortableTableHead className="hidden md:table-cell" label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -704,11 +704,11 @@ export default function AddOnsPage() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
@@ -732,7 +732,7 @@ export default function AddOnsPage() {
                       </code>
                     </TableCell>
                     <TableCell className="font-medium">{addOn.name}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm max-w-[200px] truncate">
                       {addOn.description || '—'}
                     </TableCell>
                     <TableCell>
@@ -743,10 +743,10 @@ export default function AddOnsPage() {
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant="outline">{addOn.amount_currency}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <button
                         onClick={() => count > 0 && setHistoryAddOn(addOn)}
                         className={`flex items-center gap-1.5 text-sm ${count > 0 ? 'text-blue-600 hover:underline cursor-pointer' : 'text-muted-foreground'}`}
@@ -755,7 +755,7 @@ export default function AddOnsPage() {
                         {count} {count === 1 ? 'application' : 'applications'}
                       </button>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                       {format(new Date(addOn.created_at), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
