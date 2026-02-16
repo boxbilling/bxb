@@ -462,7 +462,7 @@ function AppliedEntitiesRow({ tax }: { tax: Tax }) {
           </div>
         </TableCell>
         <TableCell className="font-medium">{tax.name}</TableCell>
-        <TableCell>
+        <TableCell className="hidden md:table-cell">
           <div className="flex items-center gap-1">
             <Calculator className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-medium">
@@ -483,7 +483,7 @@ function AppliedEntitiesRow({ tax }: { tax: Tax }) {
         <TableCell className="text-muted-foreground text-sm max-w-[200px] truncate">
           {tax.description || '—'}
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden md:table-cell">
           {tax.applied_to_organization ? (
             <Badge variant="default" className="bg-blue-600">
               <Globe className="mr-1 h-3 w-3" />
@@ -774,7 +774,7 @@ export default function TaxesPage() {
         />
 
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -824,8 +824,8 @@ export default function TaxesPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="relative flex-1 md:max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by code or name..."
@@ -835,7 +835,7 @@ export default function TaxesPage() {
             />
           </div>
           <Select value={orgFilter} onValueChange={setOrgFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder="Scope" />
             </SelectTrigger>
             <SelectContent>
@@ -845,7 +845,7 @@ export default function TaxesPage() {
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder="Category" />
             </SelectTrigger>
             <SelectContent>
@@ -865,10 +865,10 @@ export default function TaxesPage() {
               <TableRow>
                 <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
                 <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
-                <SortableTableHead label="Rate" sortKey="rate" sort={sort} onSort={setSort} />
+                <SortableTableHead label="Rate" sortKey="rate" sort={sort} onSort={setSort} className="hidden md:table-cell" />
                 <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Org Default</TableHead>
+                <TableHead className="hidden md:table-cell">Org Default</TableHead>
                 <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -879,10 +879,10 @@ export default function TaxesPage() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   </TableRow>
