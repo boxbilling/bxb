@@ -193,8 +193,8 @@ export default function CustomersPage() {
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="relative flex-1 max-w-none md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search customers..."
@@ -204,7 +204,7 @@ export default function CustomersPage() {
           />
         </div>
         <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-full md:w-40">
             <SelectValue placeholder="Currency" />
           </SelectTrigger>
           <SelectContent>
@@ -221,8 +221,8 @@ export default function CustomersPage() {
             <TableRow>
               <SortableTableHead label="Customer" sortKey="name" sort={sort} onSort={setSort} />
               <SortableTableHead label="External ID" sortKey="external_id" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Email" sortKey="email" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Timezone" sortKey="timezone" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Email" sortKey="email" sort={sort} onSort={setSort} className="hidden md:table-cell" />
+              <SortableTableHead label="Timezone" sortKey="timezone" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <SortableTableHead label="Currency" sortKey="currency" sort={sort} onSort={setSort} />
             </TableRow>
           </TableHeader>
@@ -232,8 +232,8 @@ export default function CustomersPage() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                 </TableRow>
               ))
@@ -262,7 +262,7 @@ export default function CustomersPage() {
                       {customer.external_id}
                     </code>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {customer.email ? (
                       <div className="flex items-center gap-1 text-sm">
                         <Mail className="h-3 w-3 text-muted-foreground" />
@@ -272,7 +272,7 @@ export default function CustomersPage() {
                       <span className="text-muted-foreground">&mdash;</span>
                     )}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <span className="text-sm">{customer.timezone}</span>
                   </TableCell>
                   <TableCell>
