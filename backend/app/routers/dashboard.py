@@ -81,6 +81,10 @@ _VALID_ACTIVITY_TYPES = {
     "subscription_created",
     "invoice_finalized",
     "payment_received",
+    "subscription_canceled",
+    "payment_failed",
+    "credit_note_created",
+    "wallet_topped_up",
 }
 
 
@@ -110,6 +114,8 @@ async def get_recent_activity(
                     type="customer_created",
                     description=f'New customer "{c.name}" created',
                     timestamp=c.created_at.isoformat() if c.created_at else "",
+                    resource_type="customer",
+                    resource_id=str(c.id),
                 )
             )
 
@@ -121,6 +127,8 @@ async def get_recent_activity(
                     type="subscription_created",
                     description=f"Subscription {s.external_id} started",
                     timestamp=s.created_at.isoformat() if s.created_at else "",
+                    resource_type="subscription",
+                    resource_id=str(s.id),
                 )
             )
 
@@ -132,17 +140,79 @@ async def get_recent_activity(
                     type="invoice_finalized",
                     description=f"Invoice {inv.invoice_number} {inv.status}",
                     timestamp=inv.created_at.isoformat() if inv.created_at else "",
+                    resource_type="invoice",
+                    resource_id=str(inv.id),
                 )
             )
 
     if "payment_received" in include_types:
         for p in repo.recent_payments(organization_id):
+            amount_str = f" ${float(p.amount):,.2f}" if p.amount else ""
             activities.append(
                 RecentActivityResponse(
                     id=str(p.id),
                     type="payment_received",
-                    description="Payment received for invoice",
+                    description=f"Payment{amount_str} received",
                     timestamp=p.created_at.isoformat() if p.created_at else "",
+                    resource_type="payment",
+                    resource_id=str(p.id),
+                )
+            )
+
+    if "subscription_canceled" in include_types:
+        for s in repo.recent_canceled_subscriptions(organization_id):
+            activities.append(
+                RecentActivityResponse(
+                    id=str(s.id),
+                    type="subscription_canceled",
+                    description=f"Subscription {s.external_id} {s.status}",
+                    timestamp=(
+                        s.canceled_at.isoformat() if s.canceled_at else
+                        s.created_at.isoformat() if s.created_at else ""
+                    ),
+                    resource_type="subscription",
+                    resource_id=str(s.id),
+                )
+            )
+
+    if "payment_failed" in include_types:
+        for p in repo.recent_failed_payments(organization_id):
+            amount_str = f" ${float(p.amount):,.2f}" if p.amount else ""
+            activities.append(
+                RecentActivityResponse(
+                    id=str(p.id),
+                    type="payment_failed",
+                    description=f"Payment{amount_str} failed",
+                    timestamp=p.created_at.isoformat() if p.created_at else "",
+                    resource_type="payment",
+                    resource_id=str(p.id),
+                )
+            )
+
+    if "credit_note_created" in include_types:
+        for cn in repo.recent_credit_notes(organization_id):
+            activities.append(
+                RecentActivityResponse(
+                    id=str(cn.id),
+                    type="credit_note_created",
+                    description=f"Credit note {cn.number} created",
+                    timestamp=cn.created_at.isoformat() if cn.created_at else "",
+                    resource_type="credit_note",
+                    resource_id=str(cn.id),
+                )
+            )
+
+    if "wallet_topped_up" in include_types:
+        for wt in repo.recent_wallet_topups(organization_id):
+            amount_str = f" {float(wt.credit_amount):,.2f} credits" if wt.credit_amount else ""
+            activities.append(
+                RecentActivityResponse(
+                    id=str(wt.id),
+                    type="wallet_topped_up",
+                    description=f"Wallet topped up{amount_str}",
+                    timestamp=wt.created_at.isoformat() if wt.created_at else "",
+                    resource_type="wallet",
+                    resource_id=str(wt.wallet_id),
                 )
             )
 

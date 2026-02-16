@@ -6,6 +6,7 @@ from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
 from app.models.billable_metric import BillableMetric
+from app.models.credit_note import CreditNote
 from app.models.customer import Customer
 from app.models.event import Event
 from app.models.invoice import Invoice
@@ -13,6 +14,7 @@ from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.models.wallet import Wallet, WalletStatus
+from app.models.wallet_transaction import WalletTransaction
 
 
 def _resolve_period(
@@ -165,6 +167,61 @@ class DashboardRepository:
                 Payment.status == PaymentStatus.SUCCEEDED.value,
             )
             .order_by(Payment.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def recent_canceled_subscriptions(
+        self, organization_id: UUID, limit: int = 5
+    ) -> list[Subscription]:
+        return (
+            self.db.query(Subscription)
+            .filter(
+                Subscription.organization_id == organization_id,
+                Subscription.status.in_(
+                    [SubscriptionStatus.CANCELED.value, SubscriptionStatus.TERMINATED.value]
+                ),
+            )
+            .order_by(Subscription.canceled_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def recent_failed_payments(
+        self, organization_id: UUID, limit: int = 5
+    ) -> list[Payment]:
+        return (
+            self.db.query(Payment)
+            .filter(
+                Payment.organization_id == organization_id,
+                Payment.status == PaymentStatus.FAILED.value,
+            )
+            .order_by(Payment.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def recent_credit_notes(
+        self, organization_id: UUID, limit: int = 5
+    ) -> list[CreditNote]:
+        return (
+            self.db.query(CreditNote)
+            .filter(CreditNote.organization_id == organization_id)
+            .order_by(CreditNote.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def recent_wallet_topups(
+        self, organization_id: UUID, limit: int = 5
+    ) -> list[WalletTransaction]:
+        return (
+            self.db.query(WalletTransaction)
+            .filter(
+                WalletTransaction.organization_id == organization_id,
+                WalletTransaction.transaction_type == "inbound",
+            )
+            .order_by(WalletTransaction.created_at.desc())
             .limit(limit)
             .all()
         )

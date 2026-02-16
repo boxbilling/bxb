@@ -20,6 +20,8 @@ class RecentActivityResponse(BaseModel):
     type: str
     description: str
     timestamp: str
+    resource_type: str | None = None
+    resource_id: str | None = None
 
 
 class RevenueDataPoint(BaseModel):

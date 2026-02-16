@@ -279,9 +279,11 @@ export interface DashboardStats {
 
 export interface RecentActivity {
   id: string
-  type: 'customer_created' | 'subscription_created' | 'invoice_finalized' | 'payment_received'
+  type: 'customer_created' | 'subscription_created' | 'invoice_finalized' | 'payment_received' | 'subscription_canceled' | 'payment_failed' | 'credit_note_created' | 'wallet_topped_up'
   description: string
   timestamp: string
+  resource_type?: string | null
+  resource_id?: string | null
 }
 
 export interface RevenueDataPoint {

@@ -8,9 +8,12 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.credit_note import CreditNote, CreditNoteStatus, CreditNoteType
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.subscription import SubscriptionStatus
+from app.models.wallet import Wallet, WalletStatus
+from app.models.wallet_transaction import WalletTransaction
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
@@ -499,6 +502,8 @@ class TestDashboardActivity:
             assert "type" in item
             assert "description" in item
             assert "timestamp" in item
+            assert "resource_type" in item
+            assert "resource_id" in item
 
     def test_activity_filter_by_customer_created(self, client: TestClient, seeded_data):
         response = client.get("/dashboard/activity?type=customer_created")
@@ -572,6 +577,358 @@ class TestDashboardActivity:
         data = response.json()
         # 5 customers (capped per type) + 5 subscriptions (capped per type) = 10
         assert len(data) == 10
+
+    def test_activity_resource_type_and_id(self, client: TestClient, seeded_data):
+        """Each activity item should include resource_type and resource_id for navigation."""
+        response = client.get("/dashboard/activity?type=customer_created")
+        data = response.json()
+        assert len(data) == 2
+        for item in data:
+            assert item["resource_type"] == "customer"
+            assert item["resource_id"]  # non-empty UUID string
+
+    def test_activity_resource_type_for_invoices(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=invoice_finalized")
+        data = response.json()
+        for item in data:
+            assert item["resource_type"] == "invoice"
+            assert item["resource_id"]
+
+    def test_activity_resource_type_for_subscriptions(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=subscription_created")
+        data = response.json()
+        for item in data:
+            assert item["resource_type"] == "subscription"
+            assert item["resource_id"]
+
+    def test_activity_resource_type_for_payments(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/activity?type=payment_received")
+        data = response.json()
+        for item in data:
+            assert item["resource_type"] == "payment"
+            assert item["resource_id"]
+
+    def test_activity_filter_subscription_canceled(self, client: TestClient, db_session):
+        """Canceled subscriptions appear as subscription_canceled activity."""
+        customer_repo = CustomerRepository(db_session)
+        plan_repo = PlanRepository(db_session)
+        sub_repo = SubscriptionRepository(db_session)
+
+        c = customer_repo.create(
+            CustomerCreate(external_id="cancel_cust", name="Cancel Customer"),
+            DEFAULT_ORG_ID,
+        )
+        plan = plan_repo.create(
+            PlanCreate(code="cancel_plan", name="Cancel Plan", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
+        sub = sub_repo.create(
+            SubscriptionCreate(
+                external_id="cancel_sub", customer_id=c.id, plan_id=plan.id
+            ),
+            DEFAULT_ORG_ID,
+        )
+        sub.status = SubscriptionStatus.CANCELED.value
+        sub.canceled_at = datetime.now(UTC)
+        db_session.commit()
+
+        response = client.get("/dashboard/activity?type=subscription_canceled")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["type"] == "subscription_canceled"
+        assert data[0]["resource_type"] == "subscription"
+        assert "cancel_sub" in data[0]["description"]
+
+    def test_activity_filter_payment_failed(self, client: TestClient, db_session):
+        """Failed payments appear as payment_failed activity."""
+        customer_repo = CustomerRepository(db_session)
+        plan_repo = PlanRepository(db_session)
+        sub_repo = SubscriptionRepository(db_session)
+        now = datetime.now(UTC)
+
+        c = customer_repo.create(
+            CustomerCreate(external_id="fail_cust", name="Fail Customer"),
+            DEFAULT_ORG_ID,
+        )
+        plan = plan_repo.create(
+            PlanCreate(code="fail_plan", name="Fail Plan", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
+        sub = sub_repo.create(
+            SubscriptionCreate(
+                external_id="fail_sub", customer_id=c.id, plan_id=plan.id
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="FAIL-INV-001",
+            customer_id=c.id,
+            subscription_id=sub.id,
+            status=InvoiceStatus.FINALIZED.value,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("50.00"),
+            tax_amount=Decimal("0"),
+            total=Decimal("50.00"),
+            currency="USD",
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        payment = Payment(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_id=inv.id,
+            customer_id=c.id,
+            amount=Decimal("50.00"),
+            currency="USD",
+            status=PaymentStatus.FAILED.value,
+            provider="stripe",
+        )
+        db_session.add(payment)
+        db_session.commit()
+
+        response = client.get("/dashboard/activity?type=payment_failed")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["type"] == "payment_failed"
+        assert data[0]["resource_type"] == "payment"
+        assert "50.00" in data[0]["description"]
+
+    def test_activity_filter_credit_note_created(self, client: TestClient, db_session):
+        """Credit notes appear as credit_note_created activity."""
+        customer_repo = CustomerRepository(db_session)
+        plan_repo = PlanRepository(db_session)
+        sub_repo = SubscriptionRepository(db_session)
+        now = datetime.now(UTC)
+
+        c = customer_repo.create(
+            CustomerCreate(external_id="cn_cust", name="CN Customer"),
+            DEFAULT_ORG_ID,
+        )
+        plan = plan_repo.create(
+            PlanCreate(code="cn_plan", name="CN Plan", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
+        sub = sub_repo.create(
+            SubscriptionCreate(
+                external_id="cn_sub", customer_id=c.id, plan_id=plan.id
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="CN-INV-001",
+            customer_id=c.id,
+            subscription_id=sub.id,
+            status=InvoiceStatus.FINALIZED.value,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("100.00"),
+            tax_amount=Decimal("0"),
+            total=Decimal("100.00"),
+            currency="USD",
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        cn = CreditNote(
+            organization_id=DEFAULT_ORG_ID,
+            number="CN-001",
+            invoice_id=inv.id,
+            customer_id=c.id,
+            credit_note_type=CreditNoteType.CREDIT.value,
+            status=CreditNoteStatus.DRAFT.value,
+            reason="other",
+            credit_amount_cents=Decimal("50.00"),
+            refund_amount_cents=Decimal("0"),
+            total_amount_cents=Decimal("50.00"),
+            currency="USD",
+        )
+        db_session.add(cn)
+        db_session.commit()
+
+        response = client.get("/dashboard/activity?type=credit_note_created")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["type"] == "credit_note_created"
+        assert data[0]["resource_type"] == "credit_note"
+        assert "CN-001" in data[0]["description"]
+
+    def test_activity_filter_wallet_topped_up(self, client: TestClient, db_session):
+        """Wallet top-ups appear as wallet_topped_up activity."""
+        customer_repo = CustomerRepository(db_session)
+        c = customer_repo.create(
+            CustomerCreate(external_id="wallet_cust", name="Wallet Customer"),
+            DEFAULT_ORG_ID,
+        )
+
+        wallet = Wallet(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=c.id,
+            name="Test Wallet",
+            status=WalletStatus.ACTIVE.value,
+        )
+        db_session.add(wallet)
+        db_session.commit()
+
+        wt = WalletTransaction(
+            organization_id=DEFAULT_ORG_ID,
+            wallet_id=wallet.id,
+            customer_id=c.id,
+            transaction_type="inbound",
+            credit_amount=Decimal("100.00"),
+            amount=Decimal("100.00"),
+        )
+        db_session.add(wt)
+        db_session.commit()
+
+        response = client.get("/dashboard/activity?type=wallet_topped_up")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["type"] == "wallet_topped_up"
+        assert data[0]["resource_type"] == "wallet"
+        assert data[0]["resource_id"] == str(wallet.id)
+        assert "100.00" in data[0]["description"]
+
+    def test_activity_payment_received_includes_amount(self, client: TestClient, seeded_data):
+        """Payment activity descriptions should include the amount."""
+        response = client.get("/dashboard/activity?type=payment_received")
+        data = response.json()
+        assert len(data) == 1
+        assert "$108.00" in data[0]["description"]
+
+    def test_activity_all_types_with_mixed_data(self, client: TestClient, db_session):
+        """When all activity types have data, the feed includes all types."""
+        customer_repo = CustomerRepository(db_session)
+        plan_repo = PlanRepository(db_session)
+        sub_repo = SubscriptionRepository(db_session)
+        now = datetime.now(UTC)
+
+        c = customer_repo.create(
+            CustomerCreate(external_id="all_cust", name="All Types Customer"),
+            DEFAULT_ORG_ID,
+        )
+        plan = plan_repo.create(
+            PlanCreate(code="all_plan", name="All Plan", interval="monthly"),
+            DEFAULT_ORG_ID,
+        )
+        sub = sub_repo.create(
+            SubscriptionCreate(
+                external_id="all_sub", customer_id=c.id, plan_id=plan.id
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        # Canceled subscription
+        canceled_sub = sub_repo.create(
+            SubscriptionCreate(
+                external_id="all_canceled_sub", customer_id=c.id, plan_id=plan.id
+            ),
+            DEFAULT_ORG_ID,
+        )
+        canceled_sub.status = SubscriptionStatus.CANCELED.value
+        canceled_sub.canceled_at = now
+
+        inv = Invoice(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_number="ALL-INV-001",
+            customer_id=c.id,
+            subscription_id=sub.id,
+            status=InvoiceStatus.FINALIZED.value,
+            billing_period_start=now - timedelta(days=30),
+            billing_period_end=now,
+            subtotal=Decimal("100.00"),
+            tax_amount=Decimal("0"),
+            total=Decimal("100.00"),
+            currency="USD",
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+
+        # Payment
+        payment = Payment(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_id=inv.id,
+            customer_id=c.id,
+            amount=Decimal("100.00"),
+            currency="USD",
+            status=PaymentStatus.SUCCEEDED.value,
+            provider="stripe",
+        )
+        db_session.add(payment)
+
+        # Failed payment
+        failed_payment = Payment(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_id=inv.id,
+            customer_id=c.id,
+            amount=Decimal("25.00"),
+            currency="USD",
+            status=PaymentStatus.FAILED.value,
+            provider="stripe",
+        )
+        db_session.add(failed_payment)
+
+        # Credit note
+        cn = CreditNote(
+            organization_id=DEFAULT_ORG_ID,
+            number="ALL-CN-001",
+            invoice_id=inv.id,
+            customer_id=c.id,
+            credit_note_type=CreditNoteType.CREDIT.value,
+            status=CreditNoteStatus.DRAFT.value,
+            reason="other",
+            credit_amount_cents=Decimal("10.00"),
+            refund_amount_cents=Decimal("0"),
+            total_amount_cents=Decimal("10.00"),
+            currency="USD",
+        )
+        db_session.add(cn)
+
+        # Wallet + top-up
+        wallet = Wallet(
+            organization_id=DEFAULT_ORG_ID,
+            customer_id=c.id,
+            name="All Wallet",
+            status=WalletStatus.ACTIVE.value,
+        )
+        db_session.add(wallet)
+        db_session.commit()
+
+        wt = WalletTransaction(
+            organization_id=DEFAULT_ORG_ID,
+            wallet_id=wallet.id,
+            customer_id=c.id,
+            transaction_type="inbound",
+            credit_amount=Decimal("50.00"),
+            amount=Decimal("50.00"),
+        )
+        db_session.add(wt)
+        db_session.commit()
+
+        response = client.get("/dashboard/activity")
+        assert response.status_code == 200
+        data = response.json()
+        types = {a["type"] for a in data}
+        # All 8 types should be present
+        assert "customer_created" in types
+        assert "subscription_created" in types
+        assert "invoice_finalized" in types
+        assert "payment_received" in types
+        assert "subscription_canceled" in types
+        assert "payment_failed" in types
+        assert "credit_note_created" in types
+        assert "wallet_topped_up" in types
 
 
 class TestDashboardDateRangeFiltering:

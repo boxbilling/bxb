@@ -1437,6 +1437,8 @@ export const dashboardApi = {
         type: string
         description: string
         timestamp: string
+        resource_type?: string | null
+        resource_id?: string | null
       }[]
     >(`/dashboard/activity${buildQuery(params)}`),
   getRevenue: (params?: DashboardDateRange) =>

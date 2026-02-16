@@ -16,6 +16,9 @@ import {
   CalendarIcon,
   Minus,
   ArrowRight,
+  XCircle,
+  FileMinus,
+  ArrowUpCircle,
 } from 'lucide-react'
 import {
   Line,
@@ -303,7 +306,11 @@ const activityColors: Record<string, string> = {
   customer_created: 'text-primary',
   subscription_created: 'text-primary',
   invoice_finalized: 'text-primary',
-  payment_received: 'text-primary',
+  payment_received: 'text-green-600',
+  subscription_canceled: 'text-orange-500',
+  payment_failed: 'text-red-500',
+  credit_note_created: 'text-purple-500',
+  wallet_topped_up: 'text-blue-500',
 }
 
 const activityIcons: Record<string, React.ElementType> = {
@@ -311,6 +318,17 @@ const activityIcons: Record<string, React.ElementType> = {
   subscription_created: CreditCard,
   invoice_finalized: FileText,
   payment_received: DollarSign,
+  subscription_canceled: XCircle,
+  payment_failed: AlertTriangle,
+  credit_note_created: FileMinus,
+  wallet_topped_up: ArrowUpCircle,
+}
+
+const activityResourceRoutes: Record<string, string> = {
+  customer: '/admin/customers',
+  subscription: '/admin/subscriptions',
+  invoice: '/admin/invoices',
+  wallet: '/admin/wallets',
 }
 
 const revenueChartConfig = {
@@ -429,6 +447,7 @@ export default function DashboardPage() {
   const { data: activity, isLoading: activityLoading } = useQuery({
     queryKey: ['dashboard-activity', activityParams],
     queryFn: () => dashboardApi.getRecentActivity(activityParams),
+    refetchInterval: 30000,
   })
 
   const { data: recentInvoices, isLoading: recentInvoicesLoading } = useQuery({
@@ -672,8 +691,12 @@ export default function DashboardPage() {
                 <SelectItem value="all">All activity</SelectItem>
                 <SelectItem value="customer_created">Customers</SelectItem>
                 <SelectItem value="subscription_created">Subscriptions</SelectItem>
+                <SelectItem value="subscription_canceled">Canceled subs</SelectItem>
                 <SelectItem value="invoice_finalized">Invoices</SelectItem>
                 <SelectItem value="payment_received">Payments</SelectItem>
+                <SelectItem value="payment_failed">Failed payments</SelectItem>
+                <SelectItem value="credit_note_created">Credit notes</SelectItem>
+                <SelectItem value="wallet_topped_up">Wallet top-ups</SelectItem>
               </SelectContent>
             </Select>
           </CardHeader>
@@ -695,8 +718,10 @@ export default function DashboardPage() {
                 {activity.map((item: RecentActivity) => {
                   const Icon = activityIcons[item.type] ?? TrendingUp
                   const color = activityColors[item.type] ?? 'text-muted-foreground'
-                  return (
-                    <div key={item.id} className="flex items-center gap-3 py-1.5">
+                  const route = item.resource_type ? activityResourceRoutes[item.resource_type] : null
+                  const href = route && item.resource_id ? `${route}/${item.resource_id}` : null
+                  const content = (
+                    <>
                       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted shrink-0">
                         <Icon className={`h-3.5 w-3.5 ${color}`} />
                       </div>
@@ -706,6 +731,19 @@ export default function DashboardPage() {
                           {formatRelativeTime(item.timestamp)}
                         </p>
                       </div>
+                    </>
+                  )
+                  return href ? (
+                    <Link
+                      key={item.id}
+                      to={href}
+                      className="flex items-center gap-3 py-1.5 rounded-md -mx-2 px-2 hover:bg-muted/50 transition-colors"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={item.id} className="flex items-center gap-3 py-1.5">
+                      {content}
                     </div>
                   )
                 })}
