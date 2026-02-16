@@ -41,6 +41,7 @@ from app.routers import (
 OPENAPI_TAGS = [
     {"name": "Dashboard", "description": "Analytics dashboard and overview statistics."},
     {"name": "Customers", "description": "Create, read, update, and delete customers."},
+    {"name": "Billable Metrics", "description": "Define how usage events are aggregated for billing."},
     {"name": "Plans", "description": "Create, read, update, and delete billing plans."},
     {"name": "Subscriptions", "description": "Manage customer subscriptions to plans."},
     {"name": "Events", "description": "Ingest and query usage events."},
@@ -118,7 +119,7 @@ app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 app.include_router(items.router, prefix="/items", tags=["Items"])
 app.include_router(customers.router, prefix="/v1/customers", tags=["Customers"])
 app.include_router(
-    billable_metrics.router, prefix="/v1/billable_metrics", tags=["Customers"]
+    billable_metrics.router, prefix="/v1/billable_metrics", tags=["Billable Metrics"]
 )
 app.include_router(plans.router, prefix="/v1/plans", tags=["Plans"])
 app.include_router(subscriptions.router, prefix="/v1/subscriptions", tags=["Subscriptions"])
