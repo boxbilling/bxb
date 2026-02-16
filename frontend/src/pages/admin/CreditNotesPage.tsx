@@ -428,7 +428,7 @@ export default function CreditNotesPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -478,8 +478,8 @@ export default function CreditNotesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by number or customer..."
@@ -489,7 +489,7 @@ export default function CreditNotesPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full md:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -505,10 +505,10 @@ export default function CreditNotesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Number</TableHead>
+              <TableHead className="hidden md:table-cell">Number</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Reason</TableHead>
+              <TableHead className="hidden md:table-cell">Reason</TableHead>
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Credit Status</TableHead>
               <SortableTableHead label="Total" sortKey="total_amount_cents" sort={sort} onSort={setSort} className="text-right" />
@@ -519,10 +519,10 @@ export default function CreditNotesPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
@@ -542,7 +542,7 @@ export default function CreditNotesPage() {
             ) : (
               filteredCreditNotes.map((cn) => (
                 <TableRow key={cn.id}>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <code className="text-sm bg-muted px-1.5 py-0.5 rounded font-medium">
                       {cn.number}
                     </code>
@@ -555,7 +555,7 @@ export default function CreditNotesPage() {
                       {TYPE_LABELS[cn.credit_note_type] ?? cn.credit_note_type}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="hidden md:table-cell text-sm">
                     {REASON_LABELS[cn.reason] ?? cn.reason}
                   </TableCell>
                   <TableCell>
