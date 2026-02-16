@@ -258,7 +258,7 @@ export default function PaymentMethodsPage() {
             )}
           </div>
         </TableCell>
-        <TableCell>
+        <TableCell className="hidden md:table-cell">
           <Badge variant={providerVariants[pm.provider] ?? 'outline'}>
             {providerLabels[pm.provider] ?? pm.provider}
           </Badge>
@@ -268,7 +268,7 @@ export default function PaymentMethodsPage() {
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
           )}
         </TableCell>
-        <TableCell className="text-muted-foreground">
+        <TableCell className="hidden md:table-cell text-muted-foreground">
           {format(new Date(pm.created_at), 'MMM d, yyyy')}
         </TableCell>
         <TableCell>
@@ -316,8 +316,8 @@ export default function PaymentMethodsPage() {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search payment methods..."
@@ -327,7 +327,7 @@ export default function PaymentMethodsPage() {
           />
         </div>
         <Select value={customerFilter} onValueChange={(v) => { setCustomerFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue placeholder="Filter by customer" />
           </SelectTrigger>
           <SelectContent>
@@ -344,6 +344,7 @@ export default function PaymentMethodsPage() {
           size="sm"
           onClick={() => setGroupByCustomer(!groupByCustomer)}
           title="Group by customer"
+          className="w-full md:w-auto"
         >
           <Users className="mr-2 h-4 w-4" />
           Group
@@ -358,9 +359,9 @@ export default function PaymentMethodsPage() {
               {!groupByCustomer && <TableHead>Customer</TableHead>}
               <TableHead>Type</TableHead>
               <TableHead>Card Number</TableHead>
-              <SortableTableHead label="Provider" sortKey="provider" sort={sort} onSort={setSort} />
+              <SortableTableHead className="hidden md:table-cell" label="Provider" sortKey="provider" sort={sort} onSort={setSort} />
               <TableHead>Default</TableHead>
-              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
+              <SortableTableHead className="hidden md:table-cell" label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -371,9 +372,9 @@ export default function PaymentMethodsPage() {
                   {!groupByCustomer && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
                   <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                 </TableRow>
               ))

@@ -689,7 +689,7 @@ export default function PaymentRequestsPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -737,8 +737,8 @@ export default function PaymentRequestsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by customer or ID..."
@@ -748,7 +748,7 @@ export default function PaymentRequestsPage() {
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full md:w-[180px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -769,10 +769,10 @@ export default function PaymentRequestsPage() {
               <TableHead>Customer</TableHead>
               <SortableTableHead label="Amount" sortKey="amount_cents" sort={sort} onSort={setSort} />
               <SortableTableHead label="Payment Status" sortKey="payment_status" sort={sort} onSort={setSort} />
-              <TableHead>Attempts</TableHead>
-              <TableHead>Ready</TableHead>
+              <TableHead className="hidden md:table-cell">Attempts</TableHead>
+              <TableHead className="hidden md:table-cell">Ready</TableHead>
               <TableHead>Invoices</TableHead>
-              <TableHead>Campaign</TableHead>
+              <TableHead className="hidden md:table-cell">Campaign</TableHead>
               <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -784,10 +784,10 @@ export default function PaymentRequestsPage() {
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-10" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-10" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-10" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
@@ -819,8 +819,8 @@ export default function PaymentRequestsPage() {
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(pr.payment_status)}</TableCell>
-                    <TableCell>{pr.payment_attempts}</TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">{pr.payment_attempts}</TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {pr.ready_for_payment_processing ? (
                         <Badge variant="default" className="bg-green-600">
                           <CheckCircle className="mr-1 h-3 w-3" />
@@ -835,7 +835,7 @@ export default function PaymentRequestsPage() {
                         {pr.invoices?.length ?? 0}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                       {pr.dunning_campaign_id
                         ? pr.dunning_campaign_id.slice(0, 8) + '...'
                         : '—'}
