@@ -187,15 +187,15 @@ export default function PortalDashboardPage() {
   const isLoading = customerLoading || invoicesLoading || walletLoading
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Overview</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl md:text-3xl font-bold">Overview</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           {branding?.welcome_message || 'Welcome to your billing portal'}
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Customer Name */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -366,7 +366,7 @@ export default function PortalDashboardPage() {
       {/* Quick Action Cards */}
       <div>
         <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {dashboardSummary?.quick_actions.outstanding_invoice_count
             ? (
               <QuickActionCard

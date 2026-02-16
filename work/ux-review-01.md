@@ -1033,10 +1033,14 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 ### Phase 5: Portal Enhancement (Medium Impact, High Effort)
 - [x] Portal branding customization
   <!-- Already completed in section 6 (Customer Portal Redesign, "Branding & Identity") — portal_accent_color and portal_welcome_message fields on Organization model, GET /portal/branding endpoint, PortalBrandingContext in PortalLayout, admin Settings page UI for accent color and welcome message, and comprehensive backend tests all exist. -->
-- [ ] Customer self-service actions
-- [ ] Portal payment method management
-- [ ] Portal subscription management
-- [ ] Mobile-first portal redesign
+- [x] Customer self-service actions
+  <!-- Already completed in section 6 (Customer Portal Redesign, "Self-Service Actions") — all 5 self-service features fully implemented: (1) Profile update (PATCH /portal/profile, PortalProfilePage.tsx), (2) Payment methods management (4 endpoints: GET/POST/DELETE /portal/payment_methods, POST set_default, PortalPaymentMethodsPage.tsx), (3) Subscription upgrade/downgrade (5 endpoints including change_plan_preview and change_plan, PortalSubscriptionsPage.tsx), (4) Add-on purchasing (3 endpoints: list/purchased/purchase, PortalAddOnsPage.tsx), (5) Coupon redemption (GET /portal/coupons, POST /portal/coupons/redeem, PortalCouponsPage.tsx). All with proper portal JWT auth, frontend components, API client methods, and backend test coverage. -->
+- [x] Portal payment method management
+  <!-- Already completed in section 6 — 4 portal endpoints (GET/POST/DELETE /portal/payment_methods, POST /portal/payment_methods/{id}/set_default), PortalPaymentMethodsPage.tsx with full CRUD, CardBrandIcon integration, and 20 backend tests. All verified present. -->
+- [x] Portal subscription management
+  <!-- Already completed in section 6 — 5 portal endpoints (GET /portal/subscriptions, GET /portal/subscriptions/{id}, GET /portal/plans, POST change_plan_preview, POST change_plan), PortalSubscriptionsPage.tsx with plan change dialog and proration preview, and 24 backend tests. All verified present. -->
+- [x] Mobile-first portal redesign
+  <!-- Completed: Comprehensive mobile-first redesign across 11 portal files. PortalLayout: replaced hamburger drawer with native mobile bottom tab bar (4 primary nav items + "More" overflow sheet with 3-column grid for remaining 6 items), removed desktop-only customer name display on mobile, added truncation for long branding names. All 10 portal pages: responsive typography (text-2xl/text-3xl headings, text-sm/text-base subtitles), tighter spacing (space-y-4/space-y-6), 2-column stat card grids on mobile. Table-heavy pages (Invoices, Payments, Wallet transactions): added card-based mobile views using useIsMobile() hook — tappable invoice cards, payment cards, and transaction cards replace multi-column tables on small screens. Touch targets: min-h-[44px] on all interactive buttons and action items per Apple HIG. Layout: flex-col stacking for subscription cards and payment method cards on mobile, flex-wrap for action button groups. No backend changes needed — pure frontend responsive redesign. TypeScript compiles clean, all 4039 backend tests pass with 100% coverage. -->
 
 ### Phase 6: Advanced Features (Lower Priority)
 - [ ] Restructure sidebar navigation

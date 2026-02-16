@@ -82,10 +82,10 @@ export default function PortalUsagePage() {
   const selectedSub = subscriptions.find((s) => s.id === selectedSubscriptionId)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Usage</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl md:text-3xl font-bold">Usage</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           View your current billing period usage
         </p>
       </div>

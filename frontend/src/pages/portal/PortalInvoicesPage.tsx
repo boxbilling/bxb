@@ -25,6 +25,7 @@ import { Separator } from '@/components/ui/separator'
 import { portalApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
+import { useIsMobile } from '@/hooks/use-mobile'
 import type { components } from '@/lib/schema'
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
@@ -105,158 +106,201 @@ export default function PortalInvoicesPage() {
     },
   })
 
+  const isMobile = useIsMobile()
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Invoices</h1>
-        <p className="text-muted-foreground">View, pay, and download your invoices</p>
+        <h1 className="text-2xl md:text-3xl font-bold">Invoices</h1>
+        <p className="text-sm md:text-base text-muted-foreground">View, pay, and download your invoices</p>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Number</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[180px]">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                </TableRow>
-              ))
-            ) : invoices.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                  No invoices found
-                </TableCell>
-              </TableRow>
-            ) : (
-              invoices.map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">
-                    {invoice.invoice_number}
-                  </TableCell>
-                  <TableCell>
-                    {format(new Date(invoice.created_at), 'MMM d, yyyy')}
-                  </TableCell>
-                  <TableCell>
+      {/* Mobile card view */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {isLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 w-full rounded-lg" />
+            ))
+          ) : invoices.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">
+              <FileText className="mx-auto h-10 w-10 mb-3 text-muted-foreground/50" />
+              No invoices found
+            </div>
+          ) : (
+            invoices.map((invoice) => (
+              <button
+                key={invoice.id}
+                className="w-full text-left rounded-lg border p-4 active:bg-accent/50 transition-colors"
+                onClick={() => setSelectedInvoice(invoice)}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm">{invoice.invoice_number}</span>
+                  <Badge variant={statusColors[invoice.status] || 'secondary'}>
+                    {invoice.status}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-lg font-bold">
                     {formatCurrency(invoice.total, invoice.currency)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={statusColors[invoice.status] || 'secondary'}>
-                      {invoice.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSelectedInvoice(invoice)}
-                        title="View details"
-                      >
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                      {(invoice.status === 'finalized' || invoice.status === 'paid') && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handlePreviewPdf(invoice.id)}
-                          title="Preview PDF"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {(invoice.status === 'finalized' || invoice.status === 'paid') && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDownloadPdf(invoice.id, invoice.invoice_number)}
-                          title="Download PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {invoice.status === 'finalized' && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => payMutation.mutate(invoice.id)}
-                          disabled={payMutation.isPending}
-                          title="Pay now"
-                        >
-                          {payMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CreditCard className="h-4 w-4" />
-                          )}
-                        </Button>
-                      )}
-                    </div>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                  </span>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      ) : (
+        /* Desktop table view */
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Number</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-[180px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  </TableRow>
+                ))
+              ) : invoices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                    No invoices found
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                invoices.map((invoice) => (
+                  <TableRow key={invoice.id}>
+                    <TableCell className="font-medium">
+                      {invoice.invoice_number}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(invoice.created_at), 'MMM d, yyyy')}
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(invoice.total, invoice.currency)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusColors[invoice.status] || 'secondary'}>
+                        {invoice.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedInvoice(invoice)}
+                          title="View details"
+                        >
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                        {(invoice.status === 'finalized' || invoice.status === 'paid') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handlePreviewPdf(invoice.id)}
+                            title="Preview PDF"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {(invoice.status === 'finalized' || invoice.status === 'paid') && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDownloadPdf(invoice.id, invoice.invoice_number)}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {invoice.status === 'finalized' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => payMutation.mutate(invoice.id)}
+                            disabled={payMutation.isPending}
+                            title="Pay now"
+                          >
+                            {payMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CreditCard className="h-4 w-4" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Invoice Detail Dialog */}
       <Dialog open={!!selectedInvoice} onOpenChange={() => setSelectedInvoice(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Invoice {selectedInvoice?.invoice_number}</DialogTitle>
             <DialogDescription>Invoice details and payment history</DialogDescription>
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Amount</p>
-                  <p className="text-lg font-semibold">
+                  <p className="text-xs md:text-sm text-muted-foreground">Amount</p>
+                  <p className="text-base md:text-lg font-semibold">
                     {formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Status</p>
                   <Badge variant={statusColors[selectedInvoice.status] || 'secondary'}>
                     {selectedInvoice.status}
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Issue Date</p>
-                  <p>{format(new Date(selectedInvoice.created_at), 'PPP')}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Issue Date</p>
+                  <p className="text-sm">{format(new Date(selectedInvoice.created_at), 'PPP')}</p>
                 </div>
                 {selectedInvoice.due_date && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Due Date</p>
-                    <p>{format(new Date(selectedInvoice.due_date), 'PPP')}</p>
+                    <p className="text-xs md:text-sm text-muted-foreground">Due Date</p>
+                    <p className="text-sm">{format(new Date(selectedInvoice.due_date), 'PPP')}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-sm text-muted-foreground">Invoice Type</p>
-                  <p>{selectedInvoice.invoice_type}</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Invoice Type</p>
+                  <p className="text-sm">{selectedInvoice.invoice_type}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Currency</p>
+                  <p className="text-xs md:text-sm text-muted-foreground">Currency</p>
                   <Badge variant="outline">{selectedInvoice.currency}</Badge>
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end">
+              <div className="flex flex-wrap gap-2 justify-end">
                 {selectedInvoice.status === 'finalized' && (
                   <Button
                     size="sm"
+                    className="min-h-[44px] md:min-h-0"
                     onClick={() => payMutation.mutate(selectedInvoice.id)}
                     disabled={payMutation.isPending}
                   >
@@ -272,20 +316,22 @@ export default function PortalInvoicesPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="min-h-[44px] md:min-h-0"
                     onClick={() => handlePreviewPdf(selectedInvoice.id)}
                   >
                     <Eye className="mr-2 h-4 w-4" />
-                    Preview PDF
+                    Preview
                   </Button>
                 )}
                 {(selectedInvoice.status === 'finalized' || selectedInvoice.status === 'paid') && (
                   <Button
                     variant="outline"
                     size="sm"
+                    className="min-h-[44px] md:min-h-0"
                     onClick={() => handleDownloadPdf(selectedInvoice.id, selectedInvoice.invoice_number)}
                   >
                     <Download className="mr-2 h-4 w-4" />
-                    Download PDF
+                    Download
                   </Button>
                 )}
               </div>

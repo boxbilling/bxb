@@ -63,11 +63,11 @@ export default function PortalAddOnsPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Add-ons</h1>
-        <p className="text-muted-foreground">
-          Browse and purchase additional features for your account
+        <h1 className="text-2xl md:text-3xl font-bold">Add-ons</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
+          Browse and purchase additional features
         </p>
       </div>
 

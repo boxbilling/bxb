@@ -150,17 +150,17 @@ export default function PortalPaymentMethodsPage() {
   const otherMethods = methods?.filter((m) => !m.is_default) ?? []
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Payment Methods</h1>
-          <p className="text-muted-foreground">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold">Payment Methods</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Manage your payment methods
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
+        <Button onClick={() => setShowAddDialog(true)} className="shrink-0 min-h-[44px] md:min-h-0">
           <Plus className="mr-2 h-4 w-4" />
-          Add Method
+          Add
         </Button>
       </div>
 
@@ -282,50 +282,51 @@ function PaymentMethodCard({
   const expiry = formatExpiry(method)
 
   return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
-      <div className="flex items-center gap-4">
+    <div className="rounded-lg border p-4">
+      <div className="flex items-center gap-3 md:gap-4">
         <div className="flex-shrink-0">
           {details?.brand ? (
-            <CardBrandIcon brand={details.brand} size={32} />
+            <CardBrandIcon brand={details.brand} size={28} />
           ) : (
             getTypeIcon(method.type)
           )}
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-sm">{formatCardNumber(method)}</span>
-            <Badge variant="outline" className="text-xs">
+            <span className="font-mono text-xs md:text-sm truncate">{formatCardNumber(method)}</span>
+            <Badge variant="outline" className="text-[10px] md:text-xs shrink-0">
               {providerLabels[method.provider] ?? method.provider}
             </Badge>
           </div>
-          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-            {expiry && <span>Expires {expiry}</span>}
+          <div className="flex items-center gap-2 md:gap-3 mt-1 text-[10px] md:text-xs text-muted-foreground">
+            {expiry && <span>Exp {expiry}</span>}
             <span>Added {format(new Date(method.created_at), 'MMM d, yyyy')}</span>
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 mt-3 md:mt-0 md:absolute md:right-4 md:top-1/2 md:-translate-y-1/2">
         {!isDefault && (
           <Button
             variant="ghost"
             size="sm"
+            className="min-h-[44px] md:min-h-0 flex-1 md:flex-none"
             onClick={onSetDefault}
             disabled={isSettingDefault}
             title="Set as default"
           >
-            <Star className="h-4 w-4" />
+            <Star className="h-4 w-4 mr-1" />
             Set Default
           </Button>
         )}
         <Button
           variant="ghost"
           size="icon"
+          className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
           onClick={onDelete}
           disabled={isDefault}
           title={isDefault ? 'Cannot remove default payment method' : 'Remove'}
-          className={isDefault ? 'opacity-30' : 'text-destructive hover:text-destructive'}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className={`h-4 w-4 ${isDefault ? 'opacity-30' : 'text-destructive'}`} />
         </Button>
       </div>
     </div>

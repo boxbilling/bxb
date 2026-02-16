@@ -42,6 +42,7 @@ import {
 import { portalApi, ApiError } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
+import { useIsMobile } from '@/hooks/use-mobile'
 import type { WalletTransaction } from '@/types/billing'
 
 function formatCredits(value: number | string): string {
@@ -126,15 +127,17 @@ export default function PortalWalletPage() {
     outbound: Number(p.outbound),
   })) || []
 
+  const isMobile = useIsMobile()
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Wallet</h1>
-          <p className="text-muted-foreground">Your wallet balance and details</p>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl md:text-3xl font-bold">Wallet</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Your wallet balance and details</p>
         </div>
         {wallet && wallet.status === 'active' && (
-          <Button onClick={() => setTopUpOpen(true)}>
+          <Button onClick={() => setTopUpOpen(true)} className="shrink-0 min-h-[44px] md:min-h-0">
             <ArrowUpCircle className="mr-2 h-4 w-4" />
             Top Up
           </Button>
@@ -160,7 +163,7 @@ export default function PortalWalletPage() {
       ) : (
         <>
           {/* Stat Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -247,6 +250,38 @@ export default function PortalWalletPage() {
                     <p className="text-center text-muted-foreground py-8">
                       No transactions yet
                     </p>
+                  ) : isMobile ? (
+                    <div className="space-y-3">
+                      {transactionsWithBalance.map((tx) => {
+                        const credits = typeof tx.amount === 'string' ? parseFloat(tx.amount) : tx.amount
+                        const isInbound = tx.transaction_type === 'inbound'
+                        return (
+                          <div key={tx.id} className="rounded-lg border p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <Badge variant={isInbound ? 'default' : 'secondary'}>
+                                {tx.transaction_type}
+                              </Badge>
+                              <span className={`font-mono font-bold ${isInbound ? 'text-green-600' : 'text-red-600'}`}>
+                                {isInbound ? '+' : '-'}{formatCredits(credits)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-muted-foreground">
+                              <span>{format(new Date(tx.created_at), 'MMM d, yyyy')}</span>
+                              <Badge
+                                variant={
+                                  tx.status === 'settled' ? 'default' :
+                                  tx.status === 'failed' ? 'destructive' :
+                                  'secondary'
+                                }
+                                className="text-[10px]"
+                              >
+                                {tx.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   ) : (
                     <Table>
                       <TableHeader>

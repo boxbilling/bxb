@@ -52,10 +52,10 @@ export default function PortalSubscriptionsPage() {
   })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Subscriptions</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl md:text-3xl font-bold">Subscriptions</h1>
+        <p className="text-sm md:text-base text-muted-foreground">
           View and manage your subscriptions
         </p>
       </div>
@@ -84,30 +84,31 @@ export default function PortalSubscriptionsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div className="space-y-1">
-                    <div className="text-2xl font-bold">
+                    <div className="text-xl md:text-2xl font-bold">
                       {formatCents(sub.plan.amount_cents, sub.plan.currency)}
                       <span className="text-sm font-normal text-muted-foreground ml-1">
                         / {sub.plan.interval}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground">
                       <span>Plan: {sub.plan.code}</span>
                       {sub.started_at && (
                         <span>Since {format(new Date(sub.started_at), 'MMM d, yyyy')}</span>
                       )}
                     </div>
                     {sub.pending_downgrade_plan && (
-                      <div className="flex items-center gap-1 text-sm text-amber-600">
-                        <Clock className="h-3.5 w-3.5" />
-                        Downgrade to {sub.pending_downgrade_plan.name} pending at end of period
+                      <div className="flex items-center gap-1 text-xs md:text-sm text-amber-600">
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        Downgrade to {sub.pending_downgrade_plan.name} pending
                       </div>
                     )}
                   </div>
                   {sub.status === 'active' && (
                     <Button
                       variant="outline"
+                      className="w-full md:w-auto min-h-[44px] md:min-h-0"
                       onClick={() => setChangePlanSub(sub)}
                     >
                       <ArrowUpDown className="mr-2 h-4 w-4" />
