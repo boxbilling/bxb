@@ -427,8 +427,8 @@ export default function EventsPage() {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4 md:flex-wrap">
+        <div className="relative flex-1 max-w-none md:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Filter by customer ID..."
@@ -447,7 +447,7 @@ export default function EventsPage() {
             </Button>
           )}
         </div>
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative flex-1 max-w-none md:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Filter by event code..."
@@ -476,7 +476,7 @@ export default function EventsPage() {
               if (p !== 'custom') setCustomRange(undefined)
             }}
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full md:w-[160px]">
               <CalendarIcon className="mr-1 h-3.5 w-3.5" />
               <SelectValue />
             </SelectTrigger>
@@ -597,11 +597,11 @@ export default function EventsPage() {
           <table className="w-full caption-bottom text-sm">
             <thead className="[&_tr]:border-b">
               <tr className="border-b transition-colors hover:bg-muted/50">
-                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground w-[180px]">Timestamp</th>
-                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Transaction ID</th>
+                <th className="hidden md:table-cell h-10 px-4 text-left align-middle font-medium text-muted-foreground w-[180px]">Timestamp</th>
+                <th className="hidden md:table-cell h-10 px-4 text-left align-middle font-medium text-muted-foreground">Transaction ID</th>
                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Customer ID</th>
                 <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Code</th>
-                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Properties</th>
+                <th className="hidden md:table-cell h-10 px-4 text-left align-middle font-medium text-muted-foreground">Properties</th>
                 <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground w-[80px]">Actions</th>
               </tr>
             </thead>
@@ -619,11 +619,11 @@ export default function EventsPage() {
               <tbody>
                 {[...Array(10)].map((_, i) => (
                   <tr key={i} className="border-b transition-colors">
-                    <td className="p-4 align-middle w-[180px]"><Skeleton className="h-5 w-36" /></td>
-                    <td className="p-4 align-middle"><Skeleton className="h-5 w-48" /></td>
+                    <td className="hidden md:table-cell p-4 align-middle w-[180px]"><Skeleton className="h-5 w-36" /></td>
+                    <td className="hidden md:table-cell p-4 align-middle"><Skeleton className="h-5 w-48" /></td>
                     <td className="p-4 align-middle"><Skeleton className="h-5 w-28" /></td>
                     <td className="p-4 align-middle"><Skeleton className="h-5 w-24" /></td>
-                    <td className="p-4 align-middle"><Skeleton className="h-5 w-32" /></td>
+                    <td className="hidden md:table-cell p-4 align-middle"><Skeleton className="h-5 w-32" /></td>
                     <td className="p-4 align-middle text-right"><Skeleton className="h-7 w-7 ml-auto" /></td>
                   </tr>
                 ))}
@@ -664,12 +664,12 @@ export default function EventsPage() {
                           className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
                           onClick={() => setExpandedRow(isExpanded ? null : event.id)}
                         >
-                          <td className="p-4 align-middle w-[180px]">
+                          <td className="hidden md:table-cell p-4 align-middle w-[180px]">
                             <span className="text-sm">
                               {format(new Date(event.timestamp), 'MMM d, yyyy HH:mm:ss')}
                             </span>
                           </td>
-                          <td className="p-4 align-middle">
+                          <td className="hidden md:table-cell p-4 align-middle">
                             <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
                               {event.transaction_id}
                             </code>
@@ -682,7 +682,7 @@ export default function EventsPage() {
                           <td className="p-4 align-middle">
                             <Badge variant="outline">{event.code}</Badge>
                           </td>
-                          <td className="p-4 align-middle">
+                          <td className="hidden md:table-cell p-4 align-middle">
                             {Object.keys(event.properties).length > 0 ? (
                               <div className="flex flex-wrap gap-1 max-w-[300px]">
                                 {Object.entries(event.properties).slice(0, 3).map(([key, value]) => (
