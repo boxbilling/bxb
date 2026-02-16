@@ -1,4 +1,4 @@
-import { Outlet, NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, Link, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard,
   Users,
@@ -61,54 +61,59 @@ import { CommandPalette } from '@/components/CommandPalette'
 
 const navigationGroups = [
   {
-    label: null,
+    label: 'Overview',
     items: [
       { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-      { name: 'Customers', href: '/admin/customers', icon: Users },
-      { name: 'Billing Entities', href: '/admin/billing-entities', icon: Building2 },
     ],
   },
   {
-    label: 'Products',
+    label: 'Customers',
     items: [
-      { name: 'Billable Metrics', href: '/admin/metrics', icon: Gauge },
+      { name: 'Customers', href: '/admin/customers', icon: Users },
+      { name: 'Subscriptions', href: '/admin/subscriptions', icon: RefreshCw },
+      { name: 'Wallets', href: '/admin/wallets', icon: Wallet },
+      { name: 'Payment Methods', href: '/admin/payment-methods', icon: CreditCard },
+    ],
+  },
+  {
+    label: 'Catalog',
+    items: [
       { name: 'Plans', href: '/admin/plans', icon: Layers },
+      { name: 'Billable Metrics', href: '/admin/metrics', icon: Gauge },
       { name: 'Features', href: '/admin/features', icon: ToggleLeft },
+      { name: 'Add-ons', href: '/admin/add-ons', icon: Puzzle },
+      { name: 'Coupons', href: '/admin/coupons', icon: Percent },
     ],
   },
   {
     label: 'Billing',
     items: [
-      { name: 'Subscriptions', href: '/admin/subscriptions', icon: RefreshCw },
-      { name: 'Events', href: '/admin/events', icon: Activity },
       { name: 'Invoices', href: '/admin/invoices', icon: FileText },
-      { name: 'Fees', href: '/admin/fees', icon: CircleDollarSign },
       { name: 'Payments', href: '/admin/payments', icon: ArrowLeftRight },
+      { name: 'Fees', href: '/admin/fees', icon: CircleDollarSign },
       { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
-      { name: 'Payment Methods', href: '/admin/payment-methods', icon: CreditCard },
-    ],
-  },
-  {
-    label: 'Financial',
-    items: [
-      { name: 'Wallets', href: '/admin/wallets', icon: Wallet },
-      { name: 'Coupons', href: '/admin/coupons', icon: Percent },
-      { name: 'Add-ons', href: '/admin/add-ons', icon: Puzzle },
       { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
     ],
   },
   {
     label: 'Operations',
     items: [
+      { name: 'Events', href: '/admin/events', icon: Activity },
       { name: 'Webhooks', href: '/admin/webhooks', icon: Radio },
       { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Bell },
       { name: 'Usage Alerts', href: '/admin/usage-alerts', icon: AlertTriangle },
-      { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
-      { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
       { name: 'Integrations', href: '/admin/integrations', icon: Plug },
-      { name: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
     ],
   },
+]
+
+const settingsNavItems = [
+  { name: 'Organization', href: '/admin/settings', icon: Settings },
+  { name: 'Billing Entities', href: '/admin/billing-entities', icon: Building2 },
+  { name: 'API Keys', href: '/admin/api-keys', icon: Key },
+  { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
+  { name: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
+  { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
 ]
 
 function NavItem({
@@ -183,11 +188,14 @@ function Sidebar({
           {navigationGroups.map((group, groupIndex) => (
             <div key={groupIndex}>
               {group.label && !collapsed && (
-                <p className="px-2.5 pt-5 pb-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className={cn(
+                  'px-2.5 pb-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider',
+                  groupIndex === 0 ? 'pt-2' : 'pt-5'
+                )}>
                   {group.label}
                 </p>
               )}
-              {group.label && collapsed && groupIndex > 0 && (
+              {collapsed && groupIndex > 0 && (
                 <Separator className="my-2" />
               )}
               {group.items.map((item) => (
@@ -200,7 +208,7 @@ function Sidebar({
 
       <div className="px-2 pb-2 border-t pt-2">
         <TooltipProvider delayDuration={0}>
-          <SettingsMenu collapsed={collapsed} />
+          <SettingsSection collapsed={collapsed} />
         </TooltipProvider>
       </div>
     </div>
@@ -239,57 +247,104 @@ function useTheme() {
   return { theme, toggle }
 }
 
-function SettingsMenu({ collapsed }: { collapsed: boolean }) {
+function SettingsSection({ collapsed }: { collapsed: boolean }) {
   const { theme, toggle } = useTheme()
-  const navigate = useNavigate()
   const location = useLocation()
-  const isActive = location.pathname.startsWith('/admin/settings') || location.pathname.startsWith('/admin/api-keys')
+  const [expanded, setExpanded] = useState(false)
 
-  const trigger = (
-    <DropdownMenuTrigger asChild>
-      <button
-        className={cn(
-          'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
-          isActive
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-            : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
-        )}
-      >
-        <Settings className="h-4 w-4 shrink-0" />
-        {!collapsed && <span>Settings</span>}
-      </button>
-    </DropdownMenuTrigger>
+  const isSettingsActive = settingsNavItems.some(
+    (item) => item.href === location.pathname || location.pathname.startsWith(item.href + '/')
   )
 
-  return (
-    <DropdownMenu>
-      {collapsed ? (
+  // Auto-expand when a settings route is active
+  useEffect(() => {
+    if (isSettingsActive) setExpanded(true)
+  }, [isSettingsActive])
+
+  const toggleButton = (
+    <button
+      onClick={() => setExpanded(!expanded)}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors',
+        isSettingsActive
+          ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+          : 'text-sidebar-foreground hover:bg-accent hover:text-accent-foreground'
+      )}
+    >
+      <Settings className="h-4 w-4 shrink-0" />
+      {!collapsed && (
+        <>
+          <span className="flex-1 text-left">Settings</span>
+          <svg
+            className={cn('h-3 w-3 transition-transform', expanded && 'rotate-180')}
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </>
+      )}
+    </button>
+  )
+
+  if (collapsed) {
+    return (
+      <DropdownMenu>
         <Tooltip>
-          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>{toggleButton}</DropdownMenuTrigger>
+          </TooltipTrigger>
           <TooltipContent side="right">Settings</TooltipContent>
         </Tooltip>
-      ) : (
-        trigger
+        <DropdownMenuContent side="right" align="end" className="w-48">
+          {settingsNavItems.map((item) => (
+            <DropdownMenuItem key={item.href} asChild>
+              <NavLink to={item.href} className="flex items-center gap-2">
+                <item.icon className="h-4 w-4" />
+                {item.name}
+              </NavLink>
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuItem onClick={(e) => { e.preventDefault(); toggle() }}>
+            {theme === 'light' ? (
+              <Moon className="mr-2 h-4 w-4" />
+            ) : (
+              <Sun className="mr-2 h-4 w-4" />
+            )}
+            {theme === 'light' ? 'Dark mode' : 'Light mode'}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
+  return (
+    <div>
+      {toggleButton}
+      {expanded && (
+        <div className="mt-0.5 space-y-0.5">
+          {settingsNavItems.map((item) => (
+            <NavItem key={item.href} item={item} collapsed={false} />
+          ))}
+          <button
+            onClick={toggle}
+            className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium text-sidebar-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            {theme === 'light' ? (
+              <Moon className="h-4 w-4 shrink-0" />
+            ) : (
+              <Sun className="h-4 w-4 shrink-0" />
+            )}
+            <span>{theme === 'light' ? 'Dark mode' : 'Light mode'}</span>
+          </button>
+        </div>
       )}
-      <DropdownMenuContent side="right" align="end" className="w-48">
-        <DropdownMenuItem onClick={() => navigate('/admin/settings')}>
-          <Settings className="mr-2 h-4 w-4" />
-          Organization
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/admin/api-keys')}>
-          <Key className="mr-2 h-4 w-4" />
-          API Keys
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={(e) => { e.preventDefault(); toggle() }}>
-          {theme === 'light' ? (
-            <Moon className="mr-2 h-4 w-4" />
-          ) : (
-            <Sun className="mr-2 h-4 w-4" />
-          )}
-          {theme === 'light' ? 'Dark mode' : 'Light mode'}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    </div>
   )
 }
 
