@@ -1027,10 +1027,12 @@ The portal is a minimal read-only experience with 5 pages: Dashboard, Invoices, 
 - [x] Table column sorting — Added `SortableTableHead` component with `useSortState` hook, `apply_order_by` backend utility, sorting support across all 36 repositories, 24 routers, 22 API methods, and 20 admin pages
 - [x] Bulk actions for invoices and subscriptions
   <!-- Completed: Added row checkbox selection and floating bulk action bars to both InvoicesPage and SubscriptionsPage. InvoicesPage: expanded checkbox selection from draft-only to draft+finalized invoices, added bulk void mutation (POST /v1/invoices/bulk_void) with per-invoice audit logging and webhooks, floating action bar shows context-aware buttons (Finalize for drafts, Void for draft/finalized, Clear). SubscriptionsPage: added new checkbox column for active/pending/paused subscriptions, floating action bar with Pause (active), Resume (paused), Terminate (all actionable) buttons. Backend: 4 new endpoints (POST /v1/invoices/bulk_void, POST /v1/subscriptions/bulk_pause, POST /v1/subscriptions/bulk_resume, POST /v1/subscriptions/bulk_terminate) with BulkVoidRequest/Response/Result and BulkSubscriptionRequest/BulkTerminateRequest/BulkSubscriptionResponse schemas. 19 new backend tests added. OpenAPI schema and frontend types regenerated. All 4039 backend tests pass with 100% coverage. -->
-- [ ] Integration detail pages
+- [x] Integration detail pages
+  <!-- Already completed in section 3.23 — IntegrationDetailPage.tsx exists at /admin/integrations/:id with 5 tabs (Settings, Customer Mappings, Field Mappings, Sync History, Error Log), provider-specific settings forms for all 9 providers, SyncStatusIndicator component, IntegrationSyncHistory model with migration, and 3 sub-resource API endpoints. Full test coverage maintained. -->
 
 ### Phase 5: Portal Enhancement (Medium Impact, High Effort)
-- [ ] Portal branding customization
+- [x] Portal branding customization
+  <!-- Already completed in section 6 (Customer Portal Redesign, "Branding & Identity") — portal_accent_color and portal_welcome_message fields on Organization model, GET /portal/branding endpoint, PortalBrandingContext in PortalLayout, admin Settings page UI for accent color and welcome message, and comprehensive backend tests all exist. -->
 - [ ] Customer self-service actions
 - [ ] Portal payment method management
 - [ ] Portal subscription management
