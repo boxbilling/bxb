@@ -2596,3 +2596,729 @@ class TestPortalTopUpSchemas:
             new_credits_balance=10,
         )
         assert resp.credits_added == 10
+
+
+class TestPortalUsageTrendEndpoint:
+    """Tests for GET /portal/usage/trend."""
+
+    @pytest.fixture
+    def plan(self, db_session):
+        p = Plan(
+            code=f"trend_plan_{uuid.uuid4().hex[:8]}",
+            name="Trend Plan",
+            interval="monthly",
+            amount_cents=1000,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def subscription(self, db_session, customer, plan):
+        s = Subscription(
+            external_id=f"sub_trend_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            subscription_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+        return s
+
+    def test_usage_trend_success_empty(self, client, customer, subscription):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/trend?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["subscription_id"] == str(subscription.id)
+        assert data["data_points"] == []
+
+    def test_usage_trend_with_data(self, client, customer, subscription, db_session):
+        from app.models.billable_metric import BillableMetric
+        from app.models.daily_usage import DailyUsage
+
+        metric = BillableMetric(
+            code=f"metric_t_{uuid.uuid4().hex[:8]}",
+            name="Trend Metric",
+            aggregation_type="count",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(metric)
+        db_session.commit()
+        db_session.refresh(metric)
+
+        from datetime import date
+
+        du = DailyUsage(
+            subscription_id=subscription.id,
+            billable_metric_id=metric.id,
+            external_customer_id=str(customer.external_id),
+            usage_date=date.today(),
+            usage_value=42,
+            events_count=10,
+        )
+        db_session.add(du)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/trend?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["data_points"]) == 1
+        assert float(data["data_points"][0]["value"]) == 42.0
+        assert data["data_points"][0]["events_count"] == 10
+
+    def test_usage_trend_with_custom_date_range(self, client, customer, subscription):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/trend?token={token}&subscription_id={subscription.id}"
+            "&start_date=2025-01-01&end_date=2025-01-31"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["start_date"] == "2025-01-01"
+        assert data["end_date"] == "2025-01-31"
+
+    def test_usage_trend_subscription_not_found(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/trend?token={token}&subscription_id={uuid.uuid4()}"
+        )
+        assert response.status_code == 404
+
+    def test_usage_trend_cross_customer_isolation(
+        self, client, customer, other_customer, subscription
+    ):
+        """Subscription belonging to another customer should return 404."""
+        token = _make_portal_token(other_customer.id)
+        response = client.get(
+            f"/portal/usage/trend?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 404
+
+    def test_usage_trend_expired_token(self, client, customer, subscription):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(
+            f"/portal/usage/trend?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 401
+
+
+class TestPortalUsageLimitsEndpoint:
+    """Tests for GET /portal/usage/limits."""
+
+    @pytest.fixture
+    def plan(self, db_session):
+        p = Plan(
+            code=f"limits_plan_{uuid.uuid4().hex[:8]}",
+            name="Limits Plan",
+            interval="monthly",
+            amount_cents=1000,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def subscription(self, db_session, customer, plan):
+        s = Subscription(
+            external_id=f"sub_limits_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            subscription_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+        return s
+
+    def test_limits_no_entitlements(self, client, customer, subscription):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["subscription_id"] == str(subscription.id)
+        assert data["items"] == []
+
+    def test_limits_with_quantity_feature(
+        self, client, customer, subscription, plan, db_session
+    ):
+        feature = Feature(
+            code=f"api_calls_{uuid.uuid4().hex[:8]}",
+            name="API Calls",
+            feature_type="quantity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(feature)
+        db_session.commit()
+        db_session.refresh(feature)
+
+        ent = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="1000",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import (
+                BillableMetricUsage,
+                ChargeUsage,
+                CurrentUsageResponse,
+            )
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=500,
+                currency="USD",
+                charges=[
+                    ChargeUsage(
+                        billable_metric=BillableMetricUsage(
+                            code=str(feature.code),
+                            name="API Calls",
+                            aggregation_type="count",
+                        ),
+                        units=250,
+                        amount_cents=250,
+                        charge_model="standard",
+                        filters={},
+                    )
+                ],
+            )
+            response = client.get(
+                f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        item = data["items"][0]
+        assert item["feature_name"] == "API Calls"
+        assert item["feature_type"] == "quantity"
+        assert float(item["limit_value"]) == 1000.0
+        assert float(item["current_usage"]) == 250.0
+        assert item["usage_percentage"] == 25.0
+
+    def test_limits_with_boolean_feature(
+        self, client, customer, subscription, plan, db_session
+    ):
+        feature = Feature(
+            code=f"sso_{uuid.uuid4().hex[:8]}",
+            name="SSO",
+            feature_type="boolean",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(feature)
+        db_session.commit()
+        db_session.refresh(feature)
+
+        ent = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="true",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import CurrentUsageResponse
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=0,
+                currency="USD",
+                charges=[],
+            )
+            response = client.get(
+                f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        item = data["items"][0]
+        assert item["feature_type"] == "boolean"
+        assert float(item["current_usage"]) == 1.0
+        assert item["limit_value"] is None
+        assert item["usage_percentage"] is None
+
+    def test_limits_usage_query_failure(
+        self, client, customer, subscription, plan, db_session
+    ):
+        """Usage limits should still return features even if usage query fails."""
+        feature = Feature(
+            code=f"feat_fail_{uuid.uuid4().hex[:8]}",
+            name="Failing Feature",
+            feature_type="quantity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(feature)
+        db_session.commit()
+        db_session.refresh(feature)
+
+        ent = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="500",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+            side_effect=Exception("Usage calculation failed"),
+        ):
+            response = client.get(
+                f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        # With usage failure, current_usage should be 0 and no percentage
+        assert float(data["items"][0]["current_usage"]) == 0.0
+        assert data["items"][0]["usage_percentage"] is None
+
+    def test_limits_subscription_not_found(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/limits?token={token}&subscription_id={uuid.uuid4()}"
+        )
+        assert response.status_code == 404
+
+    def test_limits_cross_customer_isolation(
+        self, client, customer, other_customer, subscription
+    ):
+        token = _make_portal_token(other_customer.id)
+        response = client.get(
+            f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 404
+
+    def test_limits_invalid_quantity_value(
+        self, client, customer, subscription, plan, db_session
+    ):
+        """Non-numeric entitlement value should not cause an error."""
+        feature = Feature(
+            code=f"feat_inv_{uuid.uuid4().hex[:8]}",
+            name="Invalid Qty Feature",
+            feature_type="quantity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(feature)
+        db_session.commit()
+        db_session.refresh(feature)
+
+        ent = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="not_a_number",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import CurrentUsageResponse
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=0,
+                currency="USD",
+                charges=[],
+            )
+            response = client.get(
+                f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        assert data["items"][0]["limit_value"] is None
+
+
+    def test_limits_zero_limit_value(
+        self, client, customer, subscription, plan, db_session
+    ):
+        """A quantity feature with limit_value=0 should not compute usage_percentage."""
+        feature = Feature(
+            code=f"zero_lim_{uuid.uuid4().hex[:8]}",
+            name="Zero Limit Feature",
+            feature_type="quantity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(feature)
+        db_session.commit()
+        db_session.refresh(feature)
+
+        ent = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="0",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import (
+                BillableMetricUsage,
+                ChargeUsage,
+                CurrentUsageResponse,
+            )
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=0,
+                currency="USD",
+                charges=[
+                    ChargeUsage(
+                        billable_metric=BillableMetricUsage(
+                            code=str(feature.code),
+                            name="Zero Limit Feature",
+                            aggregation_type="count",
+                        ),
+                        units=50,
+                        amount_cents=0,
+                        charge_model="standard",
+                        filters={},
+                    )
+                ],
+            )
+            response = client.get(
+                f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        item = data["items"][0]
+        assert float(item["limit_value"]) == 0
+        assert float(item["current_usage"]) == 50.0
+        # No percentage when limit is 0
+        assert item["usage_percentage"] is None
+
+    def test_limits_custom_feature_type(
+        self, client, customer, subscription, plan, db_session
+    ):
+        """A custom feature type should return current_usage=0 and no percentage."""
+        feature = Feature(
+            code=f"custom_{uuid.uuid4().hex[:8]}",
+            name="Custom Feature",
+            feature_type="custom",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(feature)
+        db_session.commit()
+        db_session.refresh(feature)
+
+        ent = Entitlement(
+            plan_id=plan.id,
+            feature_id=feature.id,
+            value="premium_access",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(ent)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import CurrentUsageResponse
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=0,
+                currency="USD",
+                charges=[],
+            )
+            response = client.get(
+                f"/portal/usage/limits?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["items"]) == 1
+        item = data["items"][0]
+        assert item["feature_type"] == "custom"
+        assert float(item["current_usage"]) == 0
+        assert item["usage_percentage"] is None
+
+
+class TestPortalProjectedUsageEndpoint:
+    """Tests for GET /portal/usage/projected."""
+
+    @pytest.fixture
+    def plan(self, db_session):
+        p = Plan(
+            code=f"proj_plan_{uuid.uuid4().hex[:8]}",
+            name="Projected Plan",
+            interval="monthly",
+            amount_cents=1000,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+        return p
+
+    @pytest.fixture
+    def subscription(self, db_session, customer, plan):
+        s = Subscription(
+            external_id=f"sub_proj_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=plan.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            subscription_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+        return s
+
+    def test_projected_usage_success(self, client, customer, subscription):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import (
+                BillableMetricUsage,
+                ChargeUsage,
+                CurrentUsageResponse,
+            )
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=300,
+                currency="USD",
+                charges=[
+                    ChargeUsage(
+                        billable_metric=BillableMetricUsage(
+                            code="api_calls",
+                            name="API Calls",
+                            aggregation_type="count",
+                        ),
+                        units=100,
+                        amount_cents=300,
+                        charge_model="standard",
+                        filters={},
+                    )
+                ],
+            )
+            response = client.get(
+                f"/portal/usage/projected?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["subscription_id"] == str(subscription.id)
+        assert data["currency"] == "USD"
+        assert float(data["current_total_cents"]) == 300.0
+        assert float(data["projected_total_cents"]) > 0
+        assert data["days_elapsed"] > 0
+        assert data["total_days"] > 0
+        assert len(data["charges"]) == 1
+        assert data["charges"][0]["metric_name"] == "API Calls"
+
+    def test_projected_usage_no_charges(self, client, customer, subscription):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+        ) as mock_usage:
+            from app.schemas.usage import CurrentUsageResponse
+
+            mock_usage.return_value = CurrentUsageResponse(
+                from_datetime=datetime(2025, 1, 1),
+                to_datetime=datetime(2025, 1, 31),
+                amount_cents=0,
+                currency="USD",
+                charges=[],
+            )
+            response = client.get(
+                f"/portal/usage/projected?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert float(data["current_total_cents"]) == 0
+        assert float(data["projected_total_cents"]) == 0
+        assert data["charges"] == []
+
+    def test_projected_usage_subscription_not_found(self, client, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/usage/projected?token={token}&subscription_id={uuid.uuid4()}"
+        )
+        assert response.status_code == 404
+
+    def test_projected_usage_cross_customer(
+        self, client, customer, other_customer, subscription
+    ):
+        token = _make_portal_token(other_customer.id)
+        response = client.get(
+            f"/portal/usage/projected?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 404
+
+    def test_projected_usage_query_failure(self, client, customer, subscription):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.UsageQueryService.get_current_usage",
+            side_effect=Exception("Usage unavailable"),
+        ):
+            response = client.get(
+                f"/portal/usage/projected?token={token}&subscription_id={subscription.id}"
+            )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Usage data unavailable"
+
+    def test_projected_usage_expired_token(self, client, customer, subscription):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(
+            f"/portal/usage/projected?token={token}&subscription_id={subscription.id}"
+        )
+        assert response.status_code == 401
+
+    def test_projected_usage_plan_not_found(self, client, customer, db_session):
+        """Subscription with a deleted/missing plan should return 404."""
+        # Create a plan, then subscription, then delete the plan reference
+        p = Plan(
+            code=f"deleted_plan_{uuid.uuid4().hex[:8]}",
+            name="Deleted Plan",
+            interval="monthly",
+            amount_cents=500,
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(p)
+        db_session.commit()
+        db_session.refresh(p)
+
+        s = Subscription(
+            external_id=f"sub_dplan_{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            plan_id=p.id,
+            status="active",
+            organization_id=DEFAULT_ORG_ID,
+            started_at=datetime(2025, 1, 1, tzinfo=UTC),
+            subscription_at=datetime(2025, 1, 1, tzinfo=UTC),
+        )
+        db_session.add(s)
+        db_session.commit()
+        db_session.refresh(s)
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.repositories.plan_repository.PlanRepository.get_by_id",
+            return_value=None,
+        ):
+            response = client.get(
+                f"/portal/usage/projected?token={token}&subscription_id={s.id}"
+            )
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Plan not found"
+
+
+class TestPortalUsageSchemas:
+    """Tests for portal usage-related schemas."""
+
+    def test_portal_usage_trend_response(self):
+        from app.schemas.portal import PortalUsageTrendPoint, PortalUsageTrendResponse
+
+        resp = PortalUsageTrendResponse(
+            subscription_id=uuid.uuid4(),
+            start_date=datetime(2025, 1, 1).date(),
+            end_date=datetime(2025, 1, 31).date(),
+            data_points=[
+                PortalUsageTrendPoint(
+                    date=datetime(2025, 1, 15).date(),
+                    value=42,
+                    events_count=10,
+                )
+            ],
+        )
+        assert len(resp.data_points) == 1
+        assert resp.data_points[0].value == 42
+
+    def test_portal_usage_limits_response(self):
+        from app.schemas.portal import PortalUsageLimitItem, PortalUsageLimitsResponse
+
+        resp = PortalUsageLimitsResponse(
+            subscription_id=uuid.uuid4(),
+            items=[
+                PortalUsageLimitItem(
+                    feature_name="API Calls",
+                    feature_code="api_calls",
+                    feature_type="quantity",
+                    limit_value=1000,
+                    current_usage=250,
+                    usage_percentage=25.0,
+                )
+            ],
+        )
+        assert len(resp.items) == 1
+        assert resp.items[0].feature_name == "API Calls"
+
+    def test_portal_projected_usage_response(self):
+        from app.schemas.portal import (
+            PortalProjectedUsageItem,
+            PortalProjectedUsageResponse,
+        )
+
+        resp = PortalProjectedUsageResponse(
+            subscription_id=uuid.uuid4(),
+            period_start=datetime(2025, 1, 1),
+            period_end=datetime(2025, 1, 31),
+            days_elapsed=15,
+            days_remaining=16,
+            total_days=31,
+            current_total_cents=300,
+            projected_total_cents=620,
+            currency="USD",
+            charges=[
+                PortalProjectedUsageItem(
+                    metric_name="API Calls",
+                    metric_code="api_calls",
+                    current_units=100,
+                    projected_units=207,
+                    current_amount_cents=300,
+                    projected_amount_cents=620,
+                    charge_model="standard",
+                )
+            ],
+        )
+        assert resp.currency == "USD"
+        assert resp.days_elapsed == 15

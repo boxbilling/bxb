@@ -3979,6 +3979,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/usage/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage trend for a subscription
+         * @description Get daily usage trend for the authenticated customer's subscription.
+         */
+        get: operations["get_portal_usage_trend_portal_usage_trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/usage/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get plan limits vs current usage
+         * @description Get plan entitlement limits with current usage for a subscription.
+         */
+        get: operations["get_portal_usage_limits_portal_usage_limits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/usage/projected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get projected end-of-period usage
+         * @description Project end-of-period usage based on current consumption rate.
+         */
+        get: operations["get_portal_projected_usage_portal_usage_projected_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/": {
         parameters: {
             query?: never;
@@ -7309,6 +7369,61 @@ export interface components {
             timezone?: string | null;
         };
         /**
+         * PortalProjectedUsageItem
+         * @description Projected usage for a single charge at end of billing period.
+         */
+        PortalProjectedUsageItem: {
+            /** Metric Name */
+            metric_name: string;
+            /** Metric Code */
+            metric_code: string;
+            /** Current Units */
+            current_units: string;
+            /** Projected Units */
+            projected_units: string;
+            /** Current Amount Cents */
+            current_amount_cents: string;
+            /** Projected Amount Cents */
+            projected_amount_cents: string;
+            /** Charge Model */
+            charge_model: string;
+        };
+        /**
+         * PortalProjectedUsageResponse
+         * @description Projected end-of-period usage response.
+         */
+        PortalProjectedUsageResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /** Days Elapsed */
+            days_elapsed: number;
+            /** Days Remaining */
+            days_remaining: number;
+            /** Total Days */
+            total_days: number;
+            /** Current Total Cents */
+            current_total_cents: string;
+            /** Projected Total Cents */
+            projected_total_cents: string;
+            /** Currency */
+            currency: string;
+            /** Charges */
+            charges: components["schemas"]["PortalProjectedUsageItem"][];
+        };
+        /**
          * PortalPurchaseAddOnResponse
          * @description Response after purchasing an add-on.
          */
@@ -7462,6 +7577,37 @@ export interface components {
             portal_url: string;
         };
         /**
+         * PortalUsageLimitItem
+         * @description A single usage limit with current usage and limit value.
+         */
+        PortalUsageLimitItem: {
+            /** Feature Name */
+            feature_name: string;
+            /** Feature Code */
+            feature_code: string;
+            /** Feature Type */
+            feature_type: string;
+            /** Limit Value */
+            limit_value?: string | null;
+            /** Current Usage */
+            current_usage: string;
+            /** Usage Percentage */
+            usage_percentage?: number | null;
+        };
+        /**
+         * PortalUsageLimitsResponse
+         * @description Usage limits response for a subscription.
+         */
+        PortalUsageLimitsResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Items */
+            items: components["schemas"]["PortalUsageLimitItem"][];
+        };
+        /**
          * PortalUsageProgress
          * @description Usage progress toward a plan limit/entitlement.
          */
@@ -7478,6 +7624,44 @@ export interface components {
             current_usage?: string | null;
             /** Usage Percentage */
             usage_percentage?: number | null;
+        };
+        /**
+         * PortalUsageTrendPoint
+         * @description A single data point in the portal usage trend.
+         */
+        PortalUsageTrendPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Value */
+            value: string;
+            /** Events Count */
+            events_count: number;
+        };
+        /**
+         * PortalUsageTrendResponse
+         * @description Usage trend response for the portal.
+         */
+        PortalUsageTrendResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Data Points */
+            data_points: components["schemas"]["PortalUsageTrendPoint"][];
         };
         /**
          * ProrationDetail
@@ -19561,6 +19745,146 @@ export interface operations {
                 content?: never;
             };
             /** @description Coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_usage_trend_portal_usage_trend_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                start_date?: string | null;
+                end_date?: string | null;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalUsageTrendResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_usage_limits_portal_usage_limits_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalUsageLimitsResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_projected_usage_portal_usage_projected_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalProjectedUsageResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
             404: {
                 headers: {
                     [name: string]: unknown;

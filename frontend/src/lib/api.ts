@@ -74,6 +74,9 @@ type PortalAddOnResponse = components['schemas']['PortalAddOnResponse']
 type PortalPurchasedAddOnResponse = components['schemas']['PortalPurchasedAddOnResponse']
 type PortalPurchaseAddOnResponse = components['schemas']['PortalPurchaseAddOnResponse']
 type PortalAppliedCouponResponse = components['schemas']['PortalAppliedCouponResponse']
+type PortalUsageTrendResponse = components['schemas']['PortalUsageTrendResponse']
+type PortalUsageLimitsResponse = components['schemas']['PortalUsageLimitsResponse']
+type PortalProjectedUsageResponse = components['schemas']['PortalProjectedUsageResponse']
 
 type CreditNoteResponse = components['schemas']['CreditNoteResponse']
 type CreditNoteCreate = components['schemas']['CreditNoteCreate']
@@ -500,6 +503,16 @@ export const portalApi = {
     portalRequestBlob(`/portal/invoices/${id}/download_pdf`, token),
   getCurrentUsage: (token: string, subscriptionId: string) =>
     portalRequest<CustomerCurrentUsageResponse>(`/portal/current_usage?subscription_id=${subscriptionId}`, token),
+  getUsageTrend: (token: string, subscriptionId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams({ subscription_id: subscriptionId })
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
+    return portalRequest<PortalUsageTrendResponse>(`/portal/usage/trend?${params}`, token)
+  },
+  getUsageLimits: (token: string, subscriptionId: string) =>
+    portalRequest<PortalUsageLimitsResponse>(`/portal/usage/limits?subscription_id=${subscriptionId}`, token),
+  getProjectedUsage: (token: string, subscriptionId: string) =>
+    portalRequest<PortalProjectedUsageResponse>(`/portal/usage/projected?subscription_id=${subscriptionId}`, token),
   listPayments: (token: string) =>
     portalRequest<PaymentResponse[]>('/portal/payments', token),
   getWallet: (token: string) =>

@@ -1,6 +1,6 @@
 """Customer self-service portal API endpoints."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from uuid import UUID
 
@@ -49,9 +49,15 @@ from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodRespons
 from app.schemas.portal import (
     PortalDashboardSummaryResponse,
     PortalNextBillingInfo,
+    PortalProjectedUsageItem,
+    PortalProjectedUsageResponse,
     PortalQuickActions,
     PortalUpcomingCharge,
+    PortalUsageLimitItem,
+    PortalUsageLimitsResponse,
     PortalUsageProgress,
+    PortalUsageTrendPoint,
+    PortalUsageTrendResponse,
 )
 from app.schemas.subscription import (
     ChangePlanPreviewResponse,
@@ -1179,4 +1185,239 @@ async def portal_redeem_coupon(
         frequency_duration_remaining=applied.frequency_duration_remaining,  # type: ignore[arg-type]
         status=str(applied.status),
         created_at=applied.created_at,  # type: ignore[arg-type]
+    )
+
+
+# ── Usage Trend ─────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/usage/trend",
+    response_model=PortalUsageTrendResponse,
+    summary="Get usage trend for a subscription",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_portal_usage_trend(
+    subscription_id: UUID = Query(...),
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalUsageTrendResponse:
+    """Get daily usage trend for the authenticated customer's subscription."""
+    customer_id, organization_id = portal_auth
+
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription or UUID(str(subscription.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    today = date.today()
+    if end_date is None:
+        end_date = today
+    if start_date is None:
+        start_date = end_date - timedelta(days=29)
+
+    from app.repositories.daily_usage_repository import DailyUsageRepository
+
+    daily_repo = DailyUsageRepository(db)
+    rows = daily_repo.get_trend_for_subscription(subscription_id, start_date, end_date)
+
+    data_points = [
+        PortalUsageTrendPoint(date=row_date, value=row_value, events_count=row_events)
+        for row_date, row_value, row_events in rows
+    ]
+
+    return PortalUsageTrendResponse(
+        subscription_id=subscription_id,
+        start_date=start_date,
+        end_date=end_date,
+        data_points=data_points,
+    )
+
+
+# ── Usage Limits ────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/usage/limits",
+    response_model=PortalUsageLimitsResponse,
+    summary="Get plan limits vs current usage",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_portal_usage_limits(
+    subscription_id: UUID = Query(...),
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalUsageLimitsResponse:
+    """Get plan entitlement limits with current usage for a subscription."""
+    customer_id, organization_id = portal_auth
+
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription or UUID(str(subscription.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id, organization_id)
+    if not customer:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    plan_id = UUID(str(subscription.plan_id))
+    entitlement_repo = EntitlementRepository(db)
+    feature_repo = FeatureRepository(db)
+    entitlements = entitlement_repo.get_by_plan_id(plan_id, organization_id)
+
+    import contextlib
+
+    usage_service = UsageQueryService(db)
+    # Get current usage for this subscription (used for quantity features)
+    usage_resp = None
+    with contextlib.suppress(Exception):
+        usage_resp = usage_service.get_current_usage(
+            subscription_id=subscription_id,
+            external_customer_id=str(customer.external_id),
+        )
+
+    items: list[PortalUsageLimitItem] = []
+    for ent in entitlements:
+        feature = feature_repo.get_by_id(UUID(str(ent.feature_id)), organization_id)
+        if not feature:
+            continue  # pragma: no cover
+
+        feature_type = str(feature.feature_type)
+        limit_value = None
+        current_usage = Decimal("0")
+        usage_pct = None
+
+        if feature_type == "quantity":
+            try:
+                limit_value = Decimal(str(ent.value))
+            except (ValueError, ArithmeticError):
+                limit_value = None
+
+            if usage_resp and limit_value is not None:
+                feature_code = str(feature.code)
+                total_units = sum(
+                    float(c.units) for c in usage_resp.charges
+                    if c.billable_metric.code == feature_code
+                )
+                current_usage = Decimal(str(total_units))
+                if limit_value > 0:
+                    usage_pct = min(100.0, (float(current_usage) / float(limit_value)) * 100)
+        elif feature_type == "boolean":
+            is_enabled = str(ent.value).lower() in ("true", "1")
+            current_usage = Decimal("1") if is_enabled else Decimal("0")
+
+        items.append(
+            PortalUsageLimitItem(
+                feature_name=str(feature.name),
+                feature_code=str(feature.code),
+                feature_type=feature_type,
+                limit_value=limit_value,
+                current_usage=current_usage,
+                usage_percentage=usage_pct,
+            )
+        )
+
+    return PortalUsageLimitsResponse(
+        subscription_id=subscription_id,
+        items=items,
+    )
+
+
+# ── Projected Usage ─────────────────────────────────────────────────────
+
+
+@router.get(
+    "/usage/projected",
+    response_model=PortalProjectedUsageResponse,
+    summary="Get projected end-of-period usage",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def get_portal_projected_usage(
+    subscription_id: UUID = Query(...),
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalProjectedUsageResponse:
+    """Project end-of-period usage based on current consumption rate."""
+    customer_id, organization_id = portal_auth
+
+    sub_repo = SubscriptionRepository(db)
+    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    if not subscription or UUID(str(subscription.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id, organization_id)
+    if not customer:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    plan_repo = PlanRepository(db)
+    plan = plan_repo.get_by_id(UUID(str(subscription.plan_id)), organization_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    from app.services.subscription_dates import SubscriptionDatesService
+
+    dates_service = SubscriptionDatesService()
+    interval = str(plan.interval)
+    now = datetime.now(UTC)
+    period_start, period_end = dates_service.calculate_billing_period(
+        subscription, interval, now
+    )
+
+    total_days = max((period_end - period_start).days, 1)
+    days_elapsed = max((now - period_start).days, 1)
+    days_remaining = max((period_end - now).days, 0)
+
+    usage_service = UsageQueryService(db)
+    try:
+        usage_resp = usage_service.get_current_usage(
+            subscription_id=subscription_id,
+            external_customer_id=str(customer.external_id),
+        )
+    except Exception:
+        raise HTTPException(status_code=404, detail="Usage data unavailable") from None
+
+    projection_factor = Decimal(str(total_days)) / Decimal(str(days_elapsed))
+
+    charges: list[PortalProjectedUsageItem] = []
+    projected_total = Decimal("0")
+    for charge in usage_resp.charges:
+        projected_units = charge.units * projection_factor
+        projected_amount = charge.amount_cents * projection_factor
+        projected_total += projected_amount
+        charges.append(
+            PortalProjectedUsageItem(
+                metric_name=charge.billable_metric.name,
+                metric_code=charge.billable_metric.code,
+                current_units=charge.units,
+                projected_units=projected_units.quantize(Decimal("0.01")),
+                current_amount_cents=charge.amount_cents,
+                projected_amount_cents=projected_amount.quantize(Decimal("0.01")),
+                charge_model=charge.charge_model,
+            )
+        )
+
+    return PortalProjectedUsageResponse(
+        subscription_id=subscription_id,
+        period_start=period_start,
+        period_end=period_end,
+        days_elapsed=days_elapsed,
+        days_remaining=days_remaining,
+        total_days=total_days,
+        current_total_cents=usage_resp.amount_cents,
+        projected_total_cents=projected_total.quantize(Decimal("0.01")),
+        currency=usage_resp.currency,
+        charges=charges,
     )
