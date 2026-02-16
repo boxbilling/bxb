@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -470,7 +471,7 @@ export default function BillingEntityFormPage() {
           <Card>
             <CardHeader>
               <CardTitle>Invoice Settings</CardTitle>
-              <CardDescription>Configure invoice numbering for this entity.</CardDescription>
+              <CardDescription>Configure invoice numbering and payment terms for this entity.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -492,6 +493,46 @@ export default function BillingEntityFormPage() {
                   value={form.next_invoice_number}
                   onChange={(e) => setForm({ ...form, next_invoice_number: parseInt(e.target.value) || 1 })}
                 />
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="invoice_grace_period">Grace Period (days)</Label>
+                  <Input
+                    id="invoice_grace_period"
+                    type="number"
+                    min={0}
+                    value={form.invoice_grace_period}
+                    onChange={(e) => setForm({ ...form, invoice_grace_period: parseInt(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-muted-foreground">Days after billing period before invoice is finalized.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="net_payment_term">Net Payment Term (days)</Label>
+                  <Input
+                    id="net_payment_term"
+                    type="number"
+                    min={0}
+                    value={form.net_payment_term}
+                    onChange={(e) => setForm({ ...form, net_payment_term: parseInt(e.target.value) || 0 })}
+                  />
+                  <p className="text-xs text-muted-foreground">Days allowed for payment after invoice is issued.</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="invoice_footer">Invoice Footer</Label>
+                <Textarea
+                  id="invoice_footer"
+                  value={form.invoice_footer}
+                  onChange={(e) => setForm({ ...form, invoice_footer: e.target.value })}
+                  placeholder="Custom text to appear at the bottom of invoices..."
+                  rows={3}
+                  maxLength={1024}
+                />
+                <p className="text-xs text-muted-foreground">{form.invoice_footer.length}/1024 characters</p>
               </div>
             </CardContent>
           </Card>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, Building2, Users, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, Building2, Users, MoreHorizontal, Pencil, Trash2, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { billingEntitiesApi, ApiError } from '@/lib/api'
@@ -127,6 +133,8 @@ export default function BillingEntitiesPage() {
               <TableHead>Location</TableHead>
               <SortableTableHead label="Currency" sortKey="currency" sort={sort} onSort={setSort} />
               <TableHead>Timezone</TableHead>
+              <TableHead>Grace Period</TableHead>
+              <TableHead>Net Terms</TableHead>
               <TableHead>Customers</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -140,13 +148,15 @@ export default function BillingEntitiesPage() {
                   <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                 </TableRow>
               ))
             ) : filteredEntities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={9} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Building2 className="h-8 w-8 text-muted-foreground" />
                     <p className="text-muted-foreground">
@@ -197,6 +207,26 @@ export default function BillingEntitiesPage() {
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">{entity.timezone}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">{entity.invoice_grace_period}d</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm">Net {entity.net_payment_term}</span>
+                        {entity.invoice_footer && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-xs whitespace-pre-wrap">{entity.invoice_footer}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
