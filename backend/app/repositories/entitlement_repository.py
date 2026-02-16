@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.entitlement import Entitlement
 from app.schemas.entitlement import EntitlementCreate, EntitlementUpdate
 
@@ -12,16 +15,18 @@ class EntitlementRepository:
         self.db = db
 
     def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
     ) -> list[Entitlement]:
-        return (
+        query = (
             self.db.query(Entitlement)
             .filter(Entitlement.organization_id == organization_id)
-            .order_by(Entitlement.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, Entitlement, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(
         self, organization_id: UUID, plan_id: UUID | None = None

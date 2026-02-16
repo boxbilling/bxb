@@ -1,11 +1,14 @@
 """PaymentRequest repository for data access."""
 
+from __future__ import annotations
+
 from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.payment_request import PaymentRequest
 from app.models.payment_request_invoice import PaymentRequestInvoice
 
@@ -23,6 +26,7 @@ class PaymentRequestRepository:
         limit: int = 100,
         customer_id: UUID | None = None,
         payment_status: str | None = None,
+        order_by: str | None = None,
     ) -> list[PaymentRequest]:
         """Get all payment requests for an organization."""
         query = self.db.query(PaymentRequest).filter(
@@ -32,7 +36,8 @@ class PaymentRequestRepository:
             query = query.filter(PaymentRequest.customer_id == customer_id)
         if payment_status is not None:
             query = query.filter(PaymentRequest.payment_status == payment_status)
-        return query.order_by(PaymentRequest.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, PaymentRequest, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         """Count payment requests for an organization."""

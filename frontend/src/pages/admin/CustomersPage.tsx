@@ -10,7 +10,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableHead,
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
@@ -33,6 +32,7 @@ import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import type { Customer, CustomerCreate, CustomerUpdate } from '@/types/billing'
 
 const PAGE_SIZE = 20
@@ -47,11 +47,12 @@ export default function CustomersPage() {
   const [currencyFilter, setCurrencyFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch customers from API with pagination
   const { data, isLoading, error } = useQuery({
-    queryKey: ['customers', page, pageSize],
-    queryFn: () => customersApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['customers', page, pageSize, orderBy],
+    queryFn: () => customersApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
 
   const customers = data?.data
@@ -219,11 +220,11 @@ export default function CustomersPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>External ID</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Timezone</TableHead>
-              <TableHead>Currency</TableHead>
+              <SortableTableHead label="Customer" sortKey="name" sort={sort} onSort={setSort} />
+              <SortableTableHead label="External ID" sortKey="external_id" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Email" sortKey="email" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Timezone" sortKey="timezone" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Currency" sortKey="currency" sort={sort} onSort={setSort} />
             </TableRow>
           </TableHeader>
           <TableBody>

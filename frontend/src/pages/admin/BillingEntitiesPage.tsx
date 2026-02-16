@@ -34,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { billingEntitiesApi, ApiError } from '@/lib/api'
 import type { BillingEntity } from '@/types/billing'
 
@@ -45,11 +46,12 @@ export default function BillingEntitiesPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [deleteEntity, setDeleteEntity] = useState<BillingEntity | undefined>()
 
   const { data, isLoading } = useQuery({
-    queryKey: ['billing-entities', page, pageSize],
-    queryFn: () => billingEntitiesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['billing-entities', page, pageSize, orderBy],
+    queryFn: () => billingEntitiesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
   const entities = data?.data
   const totalCount = data?.totalCount ?? 0
@@ -120,10 +122,10 @@ export default function BillingEntitiesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Entity</TableHead>
-              <TableHead>Code</TableHead>
+              <SortableTableHead label="Entity" sortKey="name" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
               <TableHead>Location</TableHead>
-              <TableHead>Currency</TableHead>
+              <SortableTableHead label="Currency" sortKey="currency" sort={sort} onSort={setSort} />
               <TableHead>Timezone</TableHead>
               <TableHead>Customers</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>

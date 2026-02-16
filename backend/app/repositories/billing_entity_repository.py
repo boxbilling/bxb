@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.billing_entity import BillingEntity
 from app.models.customer import Customer
 from app.schemas.billing_entity import BillingEntityCreate, BillingEntityUpdate
@@ -13,16 +16,18 @@ class BillingEntityRepository:
         self.db = db
 
     def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
     ) -> list[BillingEntity]:
-        return (
+        query = (
             self.db.query(BillingEntity)
             .filter(BillingEntity.organization_id == organization_id)
-            .order_by(BillingEntity.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, BillingEntity, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         return (

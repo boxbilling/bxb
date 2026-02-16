@@ -55,6 +55,7 @@ import { Badge } from '@/components/ui/badge'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
 import type { Subscription, SubscriptionCreate, SubscriptionUpdate, SubscriptionStatus, Plan, TerminationAction, UsageThresholdCreateAPI, ChangePlanPreviewResponse } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -578,11 +579,12 @@ export default function SubscriptionsPage() {
   const [editSub, setEditSub] = useState<Subscription | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch subscriptions from API
   const { data, isLoading, error } = useQuery({
-    queryKey: ['subscriptions', page, pageSize],
-    queryFn: () => subscriptionsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['subscriptions', page, pageSize, orderBy],
+    queryFn: () => subscriptionsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
 
   const subscriptions = data?.data
@@ -758,10 +760,10 @@ export default function SubscriptionsPage() {
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Plan</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Trial</TableHead>
               <TableHead>Billing</TableHead>
-              <TableHead>Started</TableHead>
+              <SortableTableHead label="Started" sortKey="started_at" sort={sort} onSort={setSort} />
               <TableHead>Next Billing</TableHead>
               <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>

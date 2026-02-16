@@ -60,6 +60,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { walletsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Wallet,
@@ -398,6 +399,7 @@ export default function WalletsPage() {
   const [terminateWallet, setTerminateWallet] = useState<Wallet | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch wallets
   const {
@@ -405,8 +407,8 @@ export default function WalletsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['wallets', page, pageSize],
-    queryFn: () => walletsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['wallets', page, pageSize, orderBy],
+    queryFn: () => walletsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
 
   const wallets = paginatedData?.data ?? []
@@ -641,10 +643,10 @@ export default function WalletsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Wallet</TableHead>
+              <SortableTableHead label="Wallet" sortKey="name" sort={sort} onSort={setSort} />
               <TableHead>Customer</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Credits Balance</TableHead>
+              <SortableTableHead label="Credits Balance" sortKey="balance_cents" sort={sort} onSort={setSort} />
               <TableHead>Currency</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Expiration</TableHead>

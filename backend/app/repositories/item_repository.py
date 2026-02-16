@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.item import Item
 from app.schemas.item import ItemCreate, ItemUpdate
 
@@ -8,8 +11,15 @@ class ItemRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> list[Item]:
-        return self.db.query(Item).offset(skip).limit(limit).all()
+    def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
+    ) -> list[Item]:
+        query = self.db.query(Item)
+        query = apply_order_by(query, Item, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, item_id: int) -> Item | None:
         return self.db.query(Item).filter(Item.id == item_id).first()

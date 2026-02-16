@@ -84,13 +84,14 @@ async def list_plans(
     response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> list[dict[str, Any]]:
     """List all plans with pagination."""
     repo = PlanRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
-    plans = repo.get_all(organization_id, skip=skip, limit=limit)
+    plans = repo.get_all(organization_id, skip=skip, limit=limit, order_by=order_by)
     return [_plan_to_response(repo, plan) for plan in plans]
 
 

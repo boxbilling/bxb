@@ -1,9 +1,12 @@
 """CreditNoteItem repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.credit_note_item import CreditNoteItem
 
 
@@ -18,6 +21,7 @@ class CreditNoteItemRepository:
         skip: int = 0,
         limit: int = 100,
         credit_note_id: UUID | None = None,
+        order_by: str | None = None,
     ) -> list[CreditNoteItem]:
         """Get all credit note items with optional filters."""
         query = self.db.query(CreditNoteItem)
@@ -25,7 +29,8 @@ class CreditNoteItemRepository:
         if credit_note_id:
             query = query.filter(CreditNoteItem.credit_note_id == credit_note_id)
 
-        return query.order_by(CreditNoteItem.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, CreditNoteItem, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, item_id: UUID) -> CreditNoteItem | None:
         """Get a credit note item by ID."""

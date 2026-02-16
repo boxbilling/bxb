@@ -51,6 +51,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { featuresApi, entitlementsApi, plansApi, ApiError } from '@/lib/api'
 import type { Feature, FeatureCreate, Entitlement } from '@/types/billing'
 
@@ -118,11 +119,12 @@ export default function FeaturesPage() {
   // Pagination state
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Queries
   const { data: featuresData, isLoading: featuresLoading } = useQuery({
-    queryKey: ['features', page, pageSize],
-    queryFn: () => featuresApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['features', page, pageSize, orderBy],
+    queryFn: () => featuresApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
 
   const features = featuresData?.data
@@ -369,8 +371,8 @@ export default function FeaturesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[40px]"></TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Name</TableHead>
+                  <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
+                  <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
                   <TableHead>Type</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Plans</TableHead>

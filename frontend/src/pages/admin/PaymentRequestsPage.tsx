@@ -52,6 +52,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { paymentRequestsApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { PaymentRequest, PaymentRequestCreate, PaymentAttemptEntry } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -580,6 +581,7 @@ export default function PaymentRequestsPage() {
   const [viewingPR, setViewingPR] = useState<PaymentRequest | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch payment requests
   const {
@@ -587,8 +589,8 @@ export default function PaymentRequestsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['payment-requests', page, pageSize],
-    queryFn: () => paymentRequestsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['payment-requests', page, pageSize, orderBy],
+    queryFn: () => paymentRequestsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
 
   const paymentRequests = data?.data ?? []
@@ -764,13 +766,13 @@ export default function PaymentRequestsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Payment Status</TableHead>
+              <SortableTableHead label="Amount" sortKey="amount_cents" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Payment Status" sortKey="payment_status" sort={sort} onSort={setSort} />
               <TableHead>Attempts</TableHead>
               <TableHead>Ready</TableHead>
               <TableHead>Invoices</TableHead>
               <TableHead>Campaign</TableHead>
-              <TableHead>Created</TableHead>
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

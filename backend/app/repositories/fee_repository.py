@@ -1,10 +1,13 @@
 """Fee repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.fee import Fee, FeePaymentStatus, FeeType
 from app.schemas.fee import FeeCreate, FeeUpdate
 
@@ -26,6 +29,7 @@ class FeeRepository:
         fee_type: FeeType | None = None,
         payment_status: FeePaymentStatus | None = None,
         organization_id: UUID | None = None,
+        order_by: str | None = None,
     ) -> list[Fee]:
         """Get all fees with optional filters."""
         query = self.db.query(Fee)
@@ -45,7 +49,8 @@ class FeeRepository:
         if payment_status:
             query = query.filter(Fee.payment_status == payment_status.value)
 
-        return query.order_by(Fee.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Fee, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID | None = None) -> int:
         """Count fees, optionally filtered by organization."""

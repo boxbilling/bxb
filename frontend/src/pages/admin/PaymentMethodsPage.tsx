@@ -42,6 +42,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { CardBrandIcon } from '@/components/CardBrandIcon'
 import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { customersApi, paymentMethodsApi, ApiError } from '@/lib/api'
@@ -92,6 +93,7 @@ export default function PaymentMethodsPage() {
   const [customerFilter, setCustomerFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [groupByCustomer, setGroupByCustomer] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [deleteMethod, setDeleteMethod] = useState<PaymentMethod | null>(null)
@@ -99,11 +101,12 @@ export default function PaymentMethodsPage() {
 
   // Fetch payment methods
   const { data, isLoading } = useQuery({
-    queryKey: ['payment-methods', customerFilter, page, pageSize],
+    queryKey: ['payment-methods', customerFilter, page, pageSize, orderBy],
     queryFn: () =>
       paymentMethodsApi.listPaginated({
         skip: (page - 1) * pageSize,
         limit: pageSize,
+        order_by: orderBy,
         ...(customerFilter !== 'all' ? { customer_id: customerFilter } : {}),
       }),
   })
@@ -356,9 +359,9 @@ export default function PaymentMethodsPage() {
               {!groupByCustomer && <TableHead>Customer</TableHead>}
               <TableHead>Type</TableHead>
               <TableHead>Card Number</TableHead>
-              <TableHead>Provider</TableHead>
+              <SortableTableHead label="Provider" sortKey="provider" sort={sort} onSort={setSort} />
               <TableHead>Default</TableHead>
-              <TableHead>Created</TableHead>
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>

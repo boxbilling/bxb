@@ -1,5 +1,7 @@
 """CreditNote repository for data access."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
@@ -7,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.credit_note import CreditNote, CreditNoteStatus, CreditStatus
 from app.schemas.credit_note import CreditNoteCreate, CreditNoteUpdate
 
@@ -25,6 +28,7 @@ class CreditNoteRepository:
         invoice_id: UUID | None = None,
         status: CreditNoteStatus | None = None,
         organization_id: UUID | None = None,
+        order_by: str | None = None,
     ) -> list[CreditNote]:
         """Get all credit notes with optional filters."""
         query = self.db.query(CreditNote)
@@ -38,7 +42,8 @@ class CreditNoteRepository:
         if status:
             query = query.filter(CreditNote.status == status.value)
 
-        return query.order_by(CreditNote.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, CreditNote, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID | None = None) -> int:
         """Count credit notes, optionally filtered by organization."""

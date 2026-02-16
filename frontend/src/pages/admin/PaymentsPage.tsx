@@ -41,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { paymentsApi, customersApi, invoicesApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { components } from '@/lib/schema'
@@ -77,6 +78,7 @@ export default function PaymentsPage() {
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [showRecordDialog, setShowRecordDialog] = useState(false)
   const [recordInvoiceId, setRecordInvoiceId] = useState('')
   const [recordAmount, setRecordAmount] = useState('')
@@ -86,12 +88,13 @@ export default function PaymentsPage() {
 
   // Fetch payments
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ['payments', statusFilter, providerFilter, page, pageSize],
+    queryKey: ['payments', statusFilter, providerFilter, page, pageSize, orderBy],
     queryFn: () => paymentsApi.listPaginated({
       skip: (page - 1) * pageSize,
       limit: pageSize,
       status: statusFilter === 'all' ? undefined : statusFilter,
       provider: providerFilter === 'all' ? undefined : providerFilter,
+      order_by: orderBy,
     }),
   })
 
@@ -312,10 +315,10 @@ export default function PaymentsPage() {
             <TableRow>
               <TableHead>Customer</TableHead>
               <TableHead>Invoice</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
+              <SortableTableHead label="Amount" sortKey="amount_cents" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Provider" sortKey="provider" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[60px]">Actions</TableHead>
             </TableRow>
           </TableHeader>

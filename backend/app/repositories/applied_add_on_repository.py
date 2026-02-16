@@ -1,10 +1,13 @@
 """AppliedAddOn repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.applied_add_on import AppliedAddOn
 
 
@@ -19,6 +22,7 @@ class AppliedAddOnRepository:
         skip: int = 0,
         limit: int = 100,
         customer_id: UUID | None = None,
+        order_by: str | None = None,
     ) -> list[AppliedAddOn]:
         """Get all applied add-ons with optional filters."""
         query = self.db.query(AppliedAddOn)
@@ -26,7 +30,8 @@ class AppliedAddOnRepository:
         if customer_id:
             query = query.filter(AppliedAddOn.customer_id == customer_id)
 
-        return query.order_by(AppliedAddOn.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, AppliedAddOn, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, applied_add_on_id: UUID) -> AppliedAddOn | None:
         """Get an applied add-on by ID."""

@@ -1,5 +1,7 @@
 """Payment repository for data access."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -8,6 +10,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.schemas.payment import PaymentUpdate
 
@@ -27,6 +30,7 @@ class PaymentRepository:
         status: PaymentStatus | None = None,
         provider: PaymentProvider | None = None,
         organization_id: UUID | None = None,
+        order_by: str | None = None,
     ) -> list[Payment]:
         """Get all payments with optional filters."""
         query = self.db.query(Payment)
@@ -42,7 +46,8 @@ class PaymentRepository:
         if provider:
             query = query.filter(Payment.provider == provider.value)
 
-        return query.order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Payment, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID | None = None) -> int:
         """Count payments, optionally filtered by organization."""

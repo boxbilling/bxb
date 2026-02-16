@@ -1,10 +1,13 @@
 """Data export repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.data_export import DataExport
 from app.schemas.data_export import DataExportCreate
 
@@ -20,16 +23,15 @@ class DataExportRepository:
         organization_id: UUID,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = None,
     ) -> list[DataExport]:
         """List all data exports for an organization."""
-        return (
+        query = (
             self.db.query(DataExport)
             .filter(DataExport.organization_id == organization_id)
-            .order_by(DataExport.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, DataExport, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         """Count data exports for an organization."""

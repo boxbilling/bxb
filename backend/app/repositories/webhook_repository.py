@@ -1,5 +1,7 @@
 """Webhook repository for data access."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -7,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.webhook import Webhook
 from app.models.webhook_delivery_attempt import WebhookDeliveryAttempt
 
@@ -48,6 +51,7 @@ class WebhookRepository:
         limit: int = 100,
         webhook_type: str | None = None,
         status: str | None = None,
+        order_by: str | None = None,
     ) -> list[Webhook]:
         """Get all webhooks with optional filters."""
         query = self.db.query(Webhook)
@@ -55,7 +59,8 @@ class WebhookRepository:
             query = query.filter(Webhook.webhook_type == webhook_type)
         if status:
             query = query.filter(Webhook.status == status)
-        return query.order_by(Webhook.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Webhook, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self) -> int:
         """Count all webhooks."""

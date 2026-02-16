@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timedelta
 from uuid import UUID
@@ -5,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.event import Event
 from app.schemas.event import EventCreate
 
@@ -24,6 +27,7 @@ class EventRepository:
         code: str | None = None,
         from_timestamp: datetime | None = None,
         to_timestamp: datetime | None = None,
+        order_by: str | None = None,
     ) -> list[Event]:
         query = self.db.query(Event).filter(Event.organization_id == organization_id)
 
@@ -36,7 +40,8 @@ class EventRepository:
         if to_timestamp:
             query = query.filter(Event.timestamp <= to_timestamp)
 
-        return query.order_by(Event.timestamp.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Event, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         return (

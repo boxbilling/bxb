@@ -66,6 +66,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { usageAlertsApi, subscriptionsApi, billableMetricsApi, ApiError } from '@/lib/api'
 import type {
   UsageAlert,
@@ -456,6 +457,7 @@ export default function UsageAlertsPage() {
   const [subscriptionFilter, setSubscriptionFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [formOpen, setFormOpen] = useState(false)
   const [editingAlert, setEditingAlert] = useState<UsageAlert | null>(null)
   const [deleteAlert, setDeleteAlert] = useState<UsageAlert | null>(null)
@@ -467,8 +469,8 @@ export default function UsageAlertsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['usage-alerts', page, pageSize],
-    queryFn: () => usageAlertsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['usage-alerts', page, pageSize, orderBy],
+    queryFn: () => usageAlertsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
   const alerts = alertsData?.data ?? []
   const totalCount = alertsData?.totalCount ?? 0
@@ -614,10 +616,10 @@ export default function UsageAlertsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
               <TableHead>Subscription</TableHead>
               <TableHead>Metric</TableHead>
-              <TableHead>Threshold</TableHead>
+              <SortableTableHead label="Threshold" sortKey="threshold_value" sort={sort} onSort={setSort} />
               <TableHead>Progress</TableHead>
               <TableHead>Recurring</TableHead>
               <TableHead>Last Triggered</TableHead>

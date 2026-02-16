@@ -38,6 +38,7 @@ async def list_usage_alerts(
     response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     subscription_id: UUID | None = None,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -48,7 +49,7 @@ async def list_usage_alerts(
         repo.count(organization_id, subscription_id=subscription_id)
     )
     return repo.get_all(
-        organization_id, skip=skip, limit=limit, subscription_id=subscription_id
+        organization_id, skip=skip, limit=limit, order_by=order_by, subscription_id=subscription_id
     )
 
 

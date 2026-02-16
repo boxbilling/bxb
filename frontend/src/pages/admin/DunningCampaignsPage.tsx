@@ -64,6 +64,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { dunningCampaignsApi, ApiError } from '@/lib/api'
 import type {
   DunningCampaign,
@@ -372,6 +373,7 @@ export default function DunningCampaignsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [formOpen, setFormOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] =
     useState<DunningCampaign | null>(null)
@@ -384,8 +386,8 @@ export default function DunningCampaignsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['dunning-campaigns', page, pageSize],
-    queryFn: () => dunningCampaignsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['dunning-campaigns', page, pageSize, orderBy],
+    queryFn: () => dunningCampaignsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
   const campaigns = data?.data ?? []
   const totalCount = data?.totalCount ?? 0
@@ -620,14 +622,14 @@ export default function DunningCampaignsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Max Attempts</TableHead>
               <TableHead>Days Between</TableHead>
               <TableHead>BCC Emails</TableHead>
               <TableHead>Thresholds</TableHead>
-              <TableHead>Created</TableHead>
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

@@ -1,11 +1,14 @@
 """Repository for AuditLog CRUD operations."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.audit_log import AuditLog
 from app.models.customer import generate_uuid
 
@@ -71,6 +74,7 @@ class AuditLogRepository:
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         actor_type: str | None = None,
+        order_by: str | None = None,
     ) -> list[AuditLog]:
         query = self.db.query(AuditLog).filter(
             AuditLog.organization_id == organization_id
@@ -85,4 +89,5 @@ class AuditLogRepository:
             query = query.filter(AuditLog.created_at <= end_date)
         if actor_type is not None:
             query = query.filter(AuditLog.actor_type == actor_type)
-        return query.order_by(AuditLog.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, AuditLog, order_by)
+        return query.offset(skip).limit(limit).all()

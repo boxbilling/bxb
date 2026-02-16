@@ -1,10 +1,13 @@
 """AppliedCoupon repository for data access."""
 
+from __future__ import annotations
+
 from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
 
 
@@ -20,6 +23,7 @@ class AppliedCouponRepository:
         limit: int = 100,
         customer_id: UUID | None = None,
         status: AppliedCouponStatus | None = None,
+        order_by: str | None = None,
     ) -> list[AppliedCoupon]:
         """Get all applied coupons with optional filters."""
         query = self.db.query(AppliedCoupon)
@@ -29,7 +33,8 @@ class AppliedCouponRepository:
         if status:
             query = query.filter(AppliedCoupon.status == status.value)
 
-        return query.order_by(AppliedCoupon.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, AppliedCoupon, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, applied_coupon_id: UUID) -> AppliedCoupon | None:
         """Get an applied coupon by ID."""

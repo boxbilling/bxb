@@ -58,6 +58,7 @@ async def list_coupons(
     response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     status: CouponStatus | None = None,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -65,7 +66,7 @@ async def list_coupons(
     """List coupons with optional status filter."""
     repo = CouponRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
-    return repo.get_all(organization_id, skip=skip, limit=limit, status=status)
+    return repo.get_all(organization_id, skip=skip, limit=limit, order_by=order_by, status=status)
 
 
 @router.get(

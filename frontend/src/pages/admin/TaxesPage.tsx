@@ -77,6 +77,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { cn } from '@/lib/utils'
 import { taxesApi, customersApi, invoicesApi, plansApi, ApiError } from '@/lib/api'
 import type {
@@ -586,6 +587,7 @@ export default function TaxesPage() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [formOpen, setFormOpen] = useState(false)
   const [editingTax, setEditingTax] = useState<Tax | null>(null)
   const [applyTax, setApplyTax] = useState<Tax | null>(null)
@@ -597,8 +599,8 @@ export default function TaxesPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['taxes', page, pageSize],
-    queryFn: () => taxesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['taxes', page, pageSize, orderBy],
+    queryFn: () => taxesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
   const taxes = data?.data ?? []
   const totalCount = data?.totalCount ?? 0
@@ -862,13 +864,13 @@ export default function TaxesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Rate</TableHead>
+                <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
+                <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
+                <SortableTableHead label="Rate" sortKey="rate" sort={sort} onSort={setSort} />
                 <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Org Default</TableHead>
-                <TableHead>Created</TableHead>
+                <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>

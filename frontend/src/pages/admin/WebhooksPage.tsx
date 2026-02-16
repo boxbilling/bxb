@@ -67,6 +67,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { webhookEndpointsApi, ApiError } from '@/lib/api'
 
 const PAGE_SIZE = 20
@@ -530,6 +531,8 @@ export default function WebhooksPage() {
   const [selectedWebhook, setSelectedWebhook] = useState<WebhookType | null>(null)
   const [endpointsPage, setEndpointsPage] = useState(1)
   const [endpointsPageSize, setEndpointsPageSize] = useState(PAGE_SIZE)
+  const { sort: endpointSort, setSort: setEndpointSort, orderBy: endpointOrderBy } = useSortState()
+  const { sort: webhookSort, setSort: setWebhookSort, orderBy: webhookOrderBy } = useSortState()
   const [webhooksPage, setWebhooksPage] = useState(1)
   const [webhooksPageSize, setWebhooksPageSize] = useState(PAGE_SIZE)
 
@@ -539,8 +542,8 @@ export default function WebhooksPage() {
     isLoading: endpointsLoading,
     error: endpointsError,
   } = useQuery({
-    queryKey: ['webhook-endpoints', endpointsPage, endpointsPageSize],
-    queryFn: () => webhookEndpointsApi.listPaginated({ skip: (endpointsPage - 1) * endpointsPageSize, limit: endpointsPageSize }),
+    queryKey: ['webhook-endpoints', endpointsPage, endpointsPageSize, endpointOrderBy],
+    queryFn: () => webhookEndpointsApi.listPaginated({ skip: (endpointsPage - 1) * endpointsPageSize, limit: endpointsPageSize, order_by: endpointOrderBy }),
   })
 
   const endpoints = endpointsData?.data ?? []
@@ -551,8 +554,8 @@ export default function WebhooksPage() {
     data: webhooksData,
     isLoading: webhooksLoading,
   } = useQuery({
-    queryKey: ['webhooks', webhooksPage, webhooksPageSize],
-    queryFn: () => webhookEndpointsApi.listWebhooksPaginated({ skip: (webhooksPage - 1) * webhooksPageSize, limit: webhooksPageSize }),
+    queryKey: ['webhooks', webhooksPage, webhooksPageSize, webhookOrderBy],
+    queryFn: () => webhookEndpointsApi.listWebhooksPaginated({ skip: (webhooksPage - 1) * webhooksPageSize, limit: webhooksPageSize, order_by: webhookOrderBy }),
   })
 
   const webhooks = webhooksData?.data ?? []
@@ -794,11 +797,11 @@ export default function WebhooksPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>URL</TableHead>
+                  <SortableTableHead label="URL" sortKey="url" sort={endpointSort} onSort={setEndpointSort} />
                   <TableHead>Signature Algorithm</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHead label="Status" sortKey="status" sort={endpointSort} onSort={setEndpointSort} />
                   <TableHead>Delivery Rate</TableHead>
-                  <TableHead>Created</TableHead>
+                  <SortableTableHead label="Created" sortKey="created_at" sort={endpointSort} onSort={setEndpointSort} />
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -970,11 +973,11 @@ export default function WebhooksPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Event Type</TableHead>
-                  <TableHead>Status</TableHead>
+                  <SortableTableHead label="Event Type" sortKey="webhook_type" sort={webhookSort} onSort={setWebhookSort} />
+                  <SortableTableHead label="Status" sortKey="status" sort={webhookSort} onSort={setWebhookSort} />
                   <TableHead>HTTP Status</TableHead>
                   <TableHead>Retries</TableHead>
-                  <TableHead>Timestamp</TableHead>
+                  <SortableTableHead label="Timestamp" sortKey="created_at" sort={webhookSort} onSort={setWebhookSort} />
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>

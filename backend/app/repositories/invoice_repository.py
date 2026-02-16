@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
@@ -6,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.billing_entity import BillingEntity
 from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
 from app.schemas.invoice import InvoiceCreate, InvoiceUpdate
@@ -48,6 +51,7 @@ class InvoiceRepository:
         customer_id: UUID | None = None,
         subscription_id: UUID | None = None,
         status: InvoiceStatus | None = None,
+        order_by: str | None = None,
     ) -> list[Invoice]:
         query = self.db.query(Invoice)
 
@@ -60,7 +64,8 @@ class InvoiceRepository:
         if status:
             query = query.filter(Invoice.status == status.value)
 
-        return query.order_by(Invoice.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Invoice, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID | None = None) -> int:
         query = self.db.query(func.count(Invoice.id))

@@ -1,10 +1,13 @@
 """Coupon repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.coupon import Coupon, CouponStatus
 from app.schemas.coupon import CouponCreate, CouponUpdate
 
@@ -21,6 +24,7 @@ class CouponRepository:
         skip: int = 0,
         limit: int = 100,
         status: CouponStatus | None = None,
+        order_by: str | None = None,
     ) -> list[Coupon]:
         """Get all coupons with optional filters."""
         query = self.db.query(Coupon).filter(Coupon.organization_id == organization_id)
@@ -28,7 +32,8 @@ class CouponRepository:
         if status:
             query = query.filter(Coupon.status == status.value)
 
-        return query.order_by(Coupon.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Coupon, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         """Count coupons for an organization."""

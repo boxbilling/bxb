@@ -596,7 +596,7 @@ export const portalApi = {
 export const customersApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<CustomerResponse[]>(`/v1/customers/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<CustomerResponse>(`/v1/customers/${buildQuery(params)}`),
   get: (id: string) => request<CustomerResponse>(`/v1/customers/${id}`),
   create: (data: CustomerCreate) =>
@@ -629,7 +629,7 @@ export const customersApi = {
 export const billableMetricsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<BillableMetricResponse[]>(`/v1/billable_metrics/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<BillableMetricResponse>(`/v1/billable_metrics/${buildQuery(params)}`),
   get: (id: string) => request<BillableMetricResponse>(`/v1/billable_metrics/${id}`),
   create: (data: BillableMetricCreate) =>
@@ -663,7 +663,7 @@ export const billableMetricsApi = {
 export const plansApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<PlanResponse[]>(`/v1/plans/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<PlanResponse>(`/v1/plans/${buildQuery(params)}`),
   get: (id: string) => request<PlanResponse>(`/v1/plans/${id}`),
   create: (data: PlanCreate) =>
@@ -691,7 +691,7 @@ export const plansApi = {
 export const subscriptionsApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string }) =>
     request<SubscriptionResponse[]>(`/v1/subscriptions/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; order_by?: string }) =>
     requestWithCount<SubscriptionResponse>(`/v1/subscriptions/${buildQuery(params)}`),
   get: (id: string) => request<SubscriptionResponse>(`/v1/subscriptions/${id}`),
   create: (data: SubscriptionCreate) =>
@@ -733,7 +733,7 @@ export const subscriptionsApi = {
 export const eventsApi = {
   list: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string }) =>
     request<EventResponse[]>(`/v1/events/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string; order_by?: string }) =>
     requestWithCount<EventResponse>(`/v1/events/${buildQuery(params)}`),
   get: (id: string) => request<EventResponse>(`/v1/events/${id}`),
   create: (data: EventCreate) =>
@@ -776,6 +776,7 @@ export const feesApi = {
     subscription_id?: string
     fee_type?: FeeType
     payment_status?: FeePaymentStatus
+    order_by?: string
   }) => requestWithCount<FeeResponse>(`/v1/fees/${buildQuery(params)}`),
   get: (id: string) => request<FeeResponse>(`/v1/fees/${id}`),
   update: (id: string, data: FeeUpdate) =>
@@ -789,7 +790,7 @@ export const feesApi = {
 export const invoicesApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string; status?: InvoiceStatus; subscription_id?: string }) =>
     request<InvoiceResponse[]>(`/v1/invoices/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; status?: InvoiceStatus; subscription_id?: string }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; status?: InvoiceStatus; subscription_id?: string; order_by?: string }) =>
     requestWithCount<InvoiceResponse>(`/v1/invoices/${buildQuery(params)}`),
   get: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}`),
   update: (id: string, data: InvoiceUpdate) =>
@@ -847,6 +848,7 @@ export const paymentsApi = {
     customer_id?: string
     status?: PaymentStatus
     provider?: PaymentProvider
+    order_by?: string
   }) => requestWithCount<PaymentResponse>(`/v1/payments/${buildQuery(params)}`),
   get: (id: string) => request<PaymentResponse>(`/v1/payments/${id}`),
   createCheckout: (data: CheckoutSessionCreate) =>
@@ -875,7 +877,7 @@ export const paymentsApi = {
 export const paymentMethodsApi = {
   list: (params?: { customer_id?: string; skip?: number; limit?: number }) =>
     request<PaymentMethodResponse[]>(`/v1/payment_methods/${buildQuery(params)}`),
-  listPaginated: (params?: { customer_id?: string; skip?: number; limit?: number }) =>
+  listPaginated: (params?: { customer_id?: string; skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<PaymentMethodResponse>(`/v1/payment_methods/${buildQuery(params)}`),
   get: (id: string) => request<PaymentMethodResponse>(`/v1/payment_methods/${id}`),
   create: (data: PaymentMethodCreate) =>
@@ -900,7 +902,7 @@ export const paymentMethodsApi = {
 export const walletsApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string }) =>
     request<WalletResponse[]>(`/v1/wallets/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; order_by?: string }) =>
     requestWithCount<WalletResponse>(`/v1/wallets/${buildQuery(params)}`),
   get: (id: string) => request<WalletResponse>(`/v1/wallets/${id}`),
   create: (data: WalletCreate) =>
@@ -937,7 +939,7 @@ export const walletsApi = {
 export const couponsApi = {
   list: (params?: { skip?: number; limit?: number; status?: CouponStatus }) =>
     request<CouponResponse[]>(`/v1/coupons/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; status?: CouponStatus }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; status?: CouponStatus; order_by?: string }) =>
     requestWithCount<CouponResponse>(`/v1/coupons/${buildQuery(params)}`),
   get: (code: string) => request<CouponResponse>(`/v1/coupons/${code}`),
   create: (data: CouponCreate) =>
@@ -979,7 +981,7 @@ export const couponsApi = {
 export const addOnsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<AddOnResponse[]>(`/v1/add_ons/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<AddOnResponse>(`/v1/add_ons/${buildQuery(params)}`),
   get: (code: string) => request<AddOnResponse>(`/v1/add_ons/${code}`),
   create: (data: AddOnCreate) =>
@@ -1009,7 +1011,7 @@ export const addOnsApi = {
 export const creditNotesApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string; invoice_id?: string }) =>
     request<CreditNoteResponse[]>(`/v1/credit_notes/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; invoice_id?: string }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; invoice_id?: string; order_by?: string }) =>
     requestWithCount<CreditNoteResponse>(`/v1/credit_notes/${buildQuery(params)}`),
   get: (id: string) => request<CreditNoteResponse>(`/v1/credit_notes/${id}`),
   create: (data: CreditNoteCreate) =>
@@ -1036,7 +1038,7 @@ export const creditNotesApi = {
 export const taxesApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<TaxResponse[]>(`/v1/taxes/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<TaxResponse>(`/v1/taxes/${buildQuery(params)}`),
   get: (code: string) => request<TaxResponse>(`/v1/taxes/${code}`),
   create: (data: TaxCreate) =>
@@ -1070,7 +1072,7 @@ export const taxesApi = {
 export const webhookEndpointsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<WebhookEndpointResponse[]>(`/v1/webhook_endpoints/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<WebhookEndpointResponse>(`/v1/webhook_endpoints/${buildQuery(params)}`),
   get: (id: string) => request<WebhookEndpointResponse>(`/v1/webhook_endpoints/${id}`),
   create: (data: WebhookEndpointCreate) =>
@@ -1130,7 +1132,7 @@ export const organizationsApi = {
 export const dunningCampaignsApi = {
   list: (params?: { skip?: number; limit?: number; status?: string }) =>
     request<DunningCampaignResponse[]>(`/v1/dunning_campaigns/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number; status?: string }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; status?: string; order_by?: string }) =>
     requestWithCount<DunningCampaignResponse>(`/v1/dunning_campaigns/${buildQuery(params)}`),
   get: (id: string) => request<DunningCampaignResponse>(`/v1/dunning_campaigns/${id}`),
   create: (data: DunningCampaignCreate) =>
@@ -1228,7 +1230,7 @@ export const integrationsApi = {
 export const dataExportsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<DataExportResponse[]>(`/v1/data_exports/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<DataExportResponse>(`/v1/data_exports/${buildQuery(params)}`),
   get: (id: string) => request<DataExportResponse>(`/v1/data_exports/${id}`),
   create: (data: DataExportCreate) =>
@@ -1248,7 +1250,7 @@ export const dataExportsApi = {
 export const paymentRequestsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<PaymentRequestResponse[]>(`/v1/payment_requests/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<PaymentRequestResponse>(`/v1/payment_requests/${buildQuery(params)}`),
   get: (id: string) => request<PaymentRequestResponse>(`/v1/payment_requests/${id}`),
   create: (data: PaymentRequestCreate) =>
@@ -1268,7 +1270,7 @@ export const paymentRequestsApi = {
 export const auditLogsApi = {
   list: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string; actor_type?: string }) =>
     request<AuditLogResponse[]>(`/v1/audit_logs/${buildQuery(params)}`),
-  listPaginated: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string; actor_type?: string }) =>
+  listPaginated: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string; actor_type?: string; order_by?: string }) =>
     requestWithCount<AuditLogResponse>(`/v1/audit_logs/${buildQuery(params)}`),
   getForResource: (resourceType: string, resourceId: string) =>
     request<AuditLogResponse[]>(`/v1/audit_logs/${resourceType}/${resourceId}`),
@@ -1278,7 +1280,7 @@ export const auditLogsApi = {
 export const billingEntitiesApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<BillingEntityResponse[]>(`/v1/billing_entities/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<BillingEntityResponse>(`/v1/billing_entities/${buildQuery(params)}`),
   get: (code: string) => request<BillingEntityResponse>(`/v1/billing_entities/${code}`),
   create: (data: BillingEntityCreate) =>
@@ -1301,7 +1303,7 @@ export const billingEntitiesApi = {
 export const featuresApi = {
   list: (params?: { skip?: number; limit?: number }) =>
     request<FeatureResponse[]>(`/v1/features/${buildQuery(params)}`),
-  listPaginated: (params?: { skip?: number; limit?: number }) =>
+  listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<FeatureResponse>(`/v1/features/${buildQuery(params)}`),
   get: (code: string) => request<FeatureResponse>(`/v1/features/${code}`),
   create: (data: FeatureCreate) =>
@@ -1347,7 +1349,7 @@ export const entitlementsApi = {
 export const usageAlertsApi = {
   list: (params?: { subscription_id?: string; skip?: number; limit?: number }) =>
     request<UsageAlertResponse[]>(`/v1/usage_alerts/${buildQuery(params)}`),
-  listPaginated: (params?: { subscription_id?: string; skip?: number; limit?: number }) =>
+  listPaginated: (params?: { subscription_id?: string; skip?: number; limit?: number; order_by?: string }) =>
     requestWithCount<UsageAlertResponse>(`/v1/usage_alerts/${buildQuery(params)}`),
   get: (id: string) => request<UsageAlertResponse>(`/v1/usage_alerts/${id}`),
   create: (data: UsageAlertCreate) =>

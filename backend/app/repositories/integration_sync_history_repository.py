@@ -1,9 +1,12 @@
 """IntegrationSyncHistory repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.integration_sync_history import IntegrationSyncHistory
 from app.schemas.integration_sync_history import IntegrationSyncHistoryCreate
 
@@ -21,6 +24,7 @@ class IntegrationSyncHistoryRepository:
         resource_type: str | None = None,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = None,
     ) -> list[IntegrationSyncHistory]:
         """Get sync history for an integration with optional filters."""
         query = self.db.query(IntegrationSyncHistory).filter(
@@ -30,12 +34,8 @@ class IntegrationSyncHistoryRepository:
             query = query.filter(IntegrationSyncHistory.status == status)
         if resource_type is not None:
             query = query.filter(IntegrationSyncHistory.resource_type == resource_type)
-        return (
-            query.order_by(IntegrationSyncHistory.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
-        )
+        query = apply_order_by(query, IntegrationSyncHistory, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, sync_id: UUID) -> IntegrationSyncHistory | None:
         """Get a sync history entry by ID."""

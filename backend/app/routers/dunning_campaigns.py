@@ -73,6 +73,7 @@ async def list_dunning_campaigns(
     response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     status: str | None = None,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -80,7 +81,9 @@ async def list_dunning_campaigns(
     """List dunning campaigns with optional status filter."""
     repo = DunningCampaignRepository(db)
     response.headers["X-Total-Count"] = str(repo.count(organization_id))
-    campaigns = repo.get_all(organization_id, skip=skip, limit=limit, status=status)
+    campaigns = repo.get_all(
+        organization_id, skip=skip, limit=limit, order_by=order_by, status=status
+    )
     return [_campaign_to_response(c, repo) for c in campaigns]
 
 

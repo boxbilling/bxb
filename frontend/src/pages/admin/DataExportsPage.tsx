@@ -48,6 +48,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
 import type { DataExport, DataExportEstimate, ExportType } from '@/types/billing'
 
@@ -521,6 +522,7 @@ export default function DataExportsPage() {
   const [viewExport, setViewExport] = useState<DataExport | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch exports with auto-refresh when exports are in progress
   const {
@@ -528,8 +530,8 @@ export default function DataExportsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['data-exports', page, pageSize],
-    queryFn: () => dataExportsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['data-exports', page, pageSize, orderBy],
+    queryFn: () => dataExportsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
     refetchInterval: (query) => {
       const qData = query.state.data
       const hasInProgress =
@@ -656,8 +658,8 @@ export default function DataExportsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Export Type</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead label="Export Type" sortKey="export_type" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Record Count</TableHead>
               <TableHead>Started At</TableHead>
               <TableHead>Completed At</TableHead>

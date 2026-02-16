@@ -74,6 +74,7 @@ async def list_wallets(
     response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     customer_id: UUID | None = None,
     status: WalletStatus | None = None,
     db: Session = Depends(get_db),
@@ -86,6 +87,7 @@ async def list_wallets(
         organization_id,
         skip=skip,
         limit=limit,
+        order_by=order_by,
         customer_id=customer_id,
         status=status,
     )

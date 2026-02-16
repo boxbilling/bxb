@@ -35,6 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar'
 import { ChangesDisplay } from '@/components/JsonDiffDisplay'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { auditLogsApi, dataExportsApi, ApiError } from '@/lib/api'
 import type { AuditLog } from '@/types/billing'
 
@@ -147,6 +148,7 @@ export default function AuditLogsPage() {
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedResourceId(resourceIdSearch), 300)
@@ -174,11 +176,12 @@ export default function AuditLogsPage() {
   }, [datePreset, customRange])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit-logs', page, pageSize, { resourceTypeFilter, actionFilter, actorTypeFilter, debouncedResourceId, dateParams }],
+    queryKey: ['audit-logs', page, pageSize, orderBy, { resourceTypeFilter, actionFilter, actorTypeFilter, debouncedResourceId, dateParams }],
     queryFn: () =>
       auditLogsApi.listPaginated({
         skip: (page - 1) * pageSize,
         limit: pageSize,
+        order_by: orderBy,
         resource_type: resourceTypeFilter !== 'all' ? resourceTypeFilter : undefined,
         action: actionFilter !== 'all' ? actionFilter : undefined,
         actor_type: actorTypeFilter !== 'all' ? actorTypeFilter : undefined,
@@ -341,10 +344,10 @@ export default function AuditLogsPage() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-[30px]"></TableHead>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Resource Type</TableHead>
+              <SortableTableHead label="Timestamp" sortKey="created_at" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Resource Type" sortKey="resource_type" sort={sort} onSort={setSort} />
               <TableHead>Resource ID</TableHead>
-              <TableHead>Action</TableHead>
+              <SortableTableHead label="Action" sortKey="action" sort={sort} onSort={setSort} />
               <TableHead>Actor</TableHead>
               <TableHead>Changes</TableHead>
             </TableRow>

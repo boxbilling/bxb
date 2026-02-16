@@ -23,6 +23,7 @@ router = APIRouter()
 async def list_audit_logs(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     resource_type: str | None = None,
     resource_id: UUID | None = None,
     action: str | None = None,
@@ -43,6 +44,7 @@ async def list_audit_logs(
             organization_id=organization_id,
             skip=skip,
             limit=limit,
+            order_by=order_by,
             resource_type=resource_type,
             action=action,
             start_date=start_date,

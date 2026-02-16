@@ -31,6 +31,7 @@ async def list_entitlements(
     response: Response,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
+    order_by: str | None = Query(default=None),
     plan_id: UUID | None = None,
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
@@ -42,7 +43,7 @@ async def list_entitlements(
     )
     if plan_id:
         return repo.get_by_plan_id(plan_id, organization_id)
-    return repo.get_all(organization_id, skip=skip, limit=limit)
+    return repo.get_all(organization_id, skip=skip, limit=limit, order_by=order_by)
 
 
 @router.post(

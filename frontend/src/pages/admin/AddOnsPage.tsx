@@ -63,6 +63,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { addOnsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   AddOn,
@@ -471,6 +472,7 @@ export default function AddOnsPage() {
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [formOpen, setFormOpen] = useState(false)
   const [editingAddOn, setEditingAddOn] = useState<AddOn | null>(null)
   const [applyAddOn, setApplyAddOn] = useState<AddOn | null>(null)
@@ -483,8 +485,8 @@ export default function AddOnsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['add-ons', page, pageSize],
-    queryFn: () => addOnsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['add-ons', page, pageSize, orderBy],
+    queryFn: () => addOnsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
   const addOns = data?.data ?? []
   const totalCount = data?.totalCount ?? 0
@@ -687,13 +689,13 @@ export default function AddOnsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
+              <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
               <TableHead>Description</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Currency</TableHead>
               <TableHead>Applications</TableHead>
-              <TableHead>Created</TableHead>
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

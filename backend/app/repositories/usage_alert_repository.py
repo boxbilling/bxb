@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.usage_alert import UsageAlert
 from app.schemas.usage_alert import UsageAlertCreate, UsageAlertUpdate
 
@@ -17,12 +20,14 @@ class UsageAlertRepository:
         skip: int = 0,
         limit: int = 100,
         subscription_id: UUID | None = None,
+        order_by: str | None = None,
     ) -> list[UsageAlert]:
         query = self.db.query(UsageAlert).filter(
             UsageAlert.organization_id == organization_id
         )
         if subscription_id is not None:
             query = query.filter(UsageAlert.subscription_id == subscription_id)
+        query = apply_order_by(query, UsageAlert, order_by)
         return query.offset(skip).limit(limit).all()
 
     def count(

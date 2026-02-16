@@ -1,5 +1,7 @@
 """DunningCampaign repository for data access."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -8,6 +10,7 @@ from uuid import UUID
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.customer import Customer
 from app.models.dunning_campaign import DunningCampaign
 from app.models.dunning_campaign_threshold import DunningCampaignThreshold
@@ -39,6 +42,7 @@ class DunningCampaignRepository:
         skip: int = 0,
         limit: int = 100,
         status: str | None = None,
+        order_by: str | None = None,
     ) -> list[DunningCampaign]:
         """Get all dunning campaigns for an organization."""
         query = self.db.query(DunningCampaign).filter(
@@ -46,7 +50,8 @@ class DunningCampaignRepository:
         )
         if status is not None:
             query = query.filter(DunningCampaign.status == status)
-        return query.order_by(DunningCampaign.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, DunningCampaign, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         """Count dunning campaigns for an organization."""

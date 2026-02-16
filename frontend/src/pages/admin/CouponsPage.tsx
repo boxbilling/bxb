@@ -68,6 +68,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { couponsApi, customersApi, ApiError } from '@/lib/api'
 import type {
   Coupon,
@@ -704,6 +705,7 @@ export default function CouponsPage() {
   const [analyticsCoupon, setAnalyticsCoupon] = useState<Coupon | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch coupons
   const {
@@ -711,11 +713,12 @@ export default function CouponsPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['coupons', statusFilter, page, pageSize],
+    queryKey: ['coupons', statusFilter, page, pageSize, orderBy],
     queryFn: () => couponsApi.listPaginated({
       skip: (page - 1) * pageSize,
       limit: pageSize,
       status: statusFilter !== 'all' ? (statusFilter as 'active' | 'terminated') : undefined,
+      order_by: orderBy,
     }),
   })
 
@@ -957,12 +960,12 @@ export default function CouponsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Code</TableHead>
-              <TableHead>Name</TableHead>
+              <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
               <TableHead>Type</TableHead>
               <TableHead>Discount</TableHead>
               <TableHead>Frequency</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Expiration</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>

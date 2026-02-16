@@ -50,6 +50,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { billableMetricsApi, ApiError } from '@/lib/api'
 import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/types/billing'
 
@@ -239,6 +240,7 @@ export default function MetricsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
   const [editingMetric, setEditingMetric] = useState<BillableMetric | null>(null)
   const [deleteMetric, setDeleteMetric] = useState<BillableMetric | null>(null)
   const [search, setSearch] = useState('')
@@ -246,8 +248,8 @@ export default function MetricsPage() {
 
   // Fetch metrics from API
   const { data: metricsData, isLoading, error } = useQuery({
-    queryKey: ['billable-metrics', page, pageSize],
-    queryFn: () => billableMetricsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['billable-metrics', page, pageSize, orderBy],
+    queryFn: () => billableMetricsApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
   const metrics = metricsData?.data
   const totalCount = metricsData?.totalCount ?? 0
@@ -428,8 +430,8 @@ export default function MetricsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Code</TableHead>
+              <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
               <TableHead>Description</TableHead>
               <TableHead>Aggregation</TableHead>
               <TableHead>Field / Expression</TableHead>

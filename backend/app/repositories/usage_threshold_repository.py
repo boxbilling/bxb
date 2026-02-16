@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.usage_threshold import UsageThreshold
 from app.schemas.usage_threshold import UsageThresholdCreate
 
@@ -11,15 +14,18 @@ class UsageThresholdRepository:
         self.db = db
 
     def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
     ) -> list[UsageThreshold]:
-        return (
+        query = (
             self.db.query(UsageThreshold)
             .filter(UsageThreshold.organization_id == organization_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, UsageThreshold, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(
         self, threshold_id: UUID, organization_id: UUID | None = None

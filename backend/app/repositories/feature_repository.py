@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.entitlement import Entitlement
 from app.models.feature import Feature
 from app.schemas.feature import FeatureCreate, FeatureUpdate
@@ -13,16 +16,18 @@ class FeatureRepository:
         self.db = db
 
     def get_all(
-        self, organization_id: UUID, skip: int = 0, limit: int = 100
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
     ) -> list[Feature]:
-        return (
+        query = (
             self.db.query(Feature)
             .filter(Feature.organization_id == organization_id)
-            .order_by(Feature.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, Feature, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         return (

@@ -61,6 +61,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { creditNotesApi, customersApi, ApiError } from '@/lib/api'
 import type { CreditNote, Customer } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -322,6 +323,7 @@ export default function CreditNotesPage() {
   const [voidCreditNote, setVoidCreditNote] = useState<CreditNote | null>(null)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   // Fetch credit notes
   const {
@@ -329,8 +331,8 @@ export default function CreditNotesPage() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['credit-notes', page, pageSize],
-    queryFn: () => creditNotesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize }),
+    queryKey: ['credit-notes', page, pageSize, orderBy],
+    queryFn: () => creditNotesApi.listPaginated({ skip: (page - 1) * pageSize, limit: pageSize, order_by: orderBy }),
   })
 
   const creditNotes = paginatedData?.data ?? []
@@ -508,9 +510,9 @@ export default function CreditNotesPage() {
               <TableHead>Customer</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Reason</TableHead>
-              <TableHead>Status</TableHead>
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
               <TableHead>Credit Status</TableHead>
-              <TableHead className="text-right">Total</TableHead>
+              <SortableTableHead label="Total" sortKey="total_amount_cents" sort={sort} onSort={setSort} className="text-right" />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

@@ -1,10 +1,13 @@
 """Integration repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.integration import Integration
 from app.schemas.integration import IntegrationCreate, IntegrationUpdate
 
@@ -20,16 +23,15 @@ class IntegrationRepository:
         organization_id: UUID,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = None,
     ) -> list[Integration]:
         """Get all integrations for an organization."""
-        return (
+        query = (
             self.db.query(Integration)
             .filter(Integration.organization_id == organization_id)
-            .order_by(Integration.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, Integration, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         """Count integrations for an organization."""

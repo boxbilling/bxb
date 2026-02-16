@@ -1,5 +1,7 @@
 """Wallet repository for data access."""
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -7,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.wallet import Wallet, WalletStatus
 from app.schemas.wallet import WalletCreate, WalletUpdate
 
@@ -24,6 +27,7 @@ class WalletRepository:
         limit: int = 100,
         customer_id: UUID | None = None,
         status: WalletStatus | None = None,
+        order_by: str | None = None,
     ) -> list[Wallet]:
         """Get all wallets with optional filters."""
         query = self.db.query(Wallet).filter(Wallet.organization_id == organization_id)
@@ -33,7 +37,8 @@ class WalletRepository:
         if status:
             query = query.filter(Wallet.status == status.value)
 
-        return query.order_by(Wallet.created_at.desc()).offset(skip).limit(limit).all()
+        query = apply_order_by(query, Wallet, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         """Count wallets for an organization."""

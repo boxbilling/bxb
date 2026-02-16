@@ -36,6 +36,7 @@ import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { invoicesApi, customersApi, subscriptionsApi } from '@/lib/api'
 import { formatCurrency, formatCents } from '@/lib/utils'
 import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
@@ -447,14 +448,16 @@ export default function InvoicesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   const { data: paginatedData, isLoading } = useQuery({
-    queryKey: ['invoices', { statusFilter }, page, pageSize],
+    queryKey: ['invoices', { statusFilter }, page, pageSize, orderBy],
     queryFn: () =>
       invoicesApi.listPaginated({
         skip: (page - 1) * pageSize,
         limit: pageSize,
         status: statusFilter !== 'all' ? (statusFilter as InvoiceStatus) : undefined,
+        order_by: orderBy,
       }),
   })
 
@@ -629,12 +632,12 @@ export default function InvoicesPage() {
                   />
                 )}
               </TableHead>
-              <TableHead>Invoice</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Issue Date</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <SortableTableHead label="Invoice #" sortKey="invoice_number" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Type" sortKey="invoice_type" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Issue Date" sortKey="issuing_date" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Due Date" sortKey="payment_due_date" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Amount" sortKey="total_amount_cents" sort={sort} onSort={setSort} className="text-right" />
             </TableRow>
           </TableHeader>
           <TableBody>

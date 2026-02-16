@@ -50,6 +50,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TablePagination } from '@/components/TablePagination'
+import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { feesApi, taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
 import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
@@ -125,19 +126,21 @@ export default function FeesPage() {
   }>({ payment_status: '', description: '', taxes_amount_cents: '', total_amount_cents: '' })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
+  const { sort, setSort, orderBy } = useSortState()
 
   const {
     data: paginatedData,
     isLoading,
     error,
   } = useQuery({
-    queryKey: ['fees', feeTypeFilter, paymentStatusFilter, page, pageSize],
+    queryKey: ['fees', feeTypeFilter, paymentStatusFilter, page, pageSize, orderBy],
     queryFn: () =>
       feesApi.listPaginated({
         skip: (page - 1) * pageSize,
         limit: pageSize,
         fee_type: feeTypeFilter !== 'all' ? (feeTypeFilter as FeeType) : undefined,
         payment_status: paymentStatusFilter !== 'all' ? (paymentStatusFilter as FeePaymentStatus) : undefined,
+        order_by: orderBy,
       }),
   })
 
@@ -337,15 +340,15 @@ export default function FeesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Fee Type</TableHead>
+              <SortableTableHead label="Fee Type" sortKey="fee_type" sort={sort} onSort={setSort} />
               <TableHead>Description</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead>Invoice</TableHead>
-              <TableHead>Amount</TableHead>
+              <SortableTableHead label="Amount" sortKey="amount_cents" sort={sort} onSort={setSort} />
               <TableHead>Tax</TableHead>
               <TableHead>Total</TableHead>
-              <TableHead>Payment Status</TableHead>
-              <TableHead>Created</TableHead>
+              <SortableTableHead label="Payment Status" sortKey="payment_status" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>

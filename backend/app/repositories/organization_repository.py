@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.organization import Organization
 from app.schemas.organization import OrganizationCreate, OrganizationUpdate
 
@@ -10,8 +13,15 @@ class OrganizationRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, skip: int = 0, limit: int = 100) -> list[Organization]:
-        return self.db.query(Organization).offset(skip).limit(limit).all()
+    def get_all(
+        self,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
+    ) -> list[Organization]:
+        query = self.db.query(Organization)
+        query = apply_order_by(query, Organization, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, org_id: UUID) -> Organization | None:
         return self.db.query(Organization).filter(Organization.id == org_id).first()

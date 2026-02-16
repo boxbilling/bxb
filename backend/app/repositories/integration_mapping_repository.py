@@ -1,9 +1,12 @@
 """IntegrationMapping repository for data access."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.integration_mapping import IntegrationMapping
 from app.schemas.integration_mapping import IntegrationMappingCreate, IntegrationMappingUpdate
 
@@ -19,16 +22,15 @@ class IntegrationMappingRepository:
         integration_id: UUID,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = None,
     ) -> list[IntegrationMapping]:
         """Get all mappings for an integration."""
-        return (
+        query = (
             self.db.query(IntegrationMapping)
             .filter(IntegrationMapping.integration_id == integration_id)
-            .order_by(IntegrationMapping.created_at.desc())
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, IntegrationMapping, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def get_by_id(self, mapping_id: UUID) -> IntegrationMapping | None:
         """Get a mapping by ID."""

@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.schemas.subscription import SubscriptionCreate, SubscriptionUpdate
 
@@ -12,14 +15,19 @@ class SubscriptionRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_all(self, organization_id: UUID, skip: int = 0, limit: int = 100) -> list[Subscription]:
-        return (
+    def get_all(
+        self,
+        organization_id: UUID,
+        skip: int = 0,
+        limit: int = 100,
+        order_by: str | None = None,
+    ) -> list[Subscription]:
+        query = (
             self.db.query(Subscription)
             .filter(Subscription.organization_id == organization_id)
-            .offset(skip)
-            .limit(limit)
-            .all()
         )
+        query = apply_order_by(query, Subscription, order_by)
+        return query.offset(skip).limit(limit).all()
 
     def count(self, organization_id: UUID) -> int:
         return (

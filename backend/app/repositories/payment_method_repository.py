@@ -1,9 +1,12 @@
 """Repository for PaymentMethod CRUD operations."""
 
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.core.sorting import apply_order_by
 from app.models.payment_method import PaymentMethod
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodUpdate
 
@@ -18,12 +21,14 @@ class PaymentMethodRepository:
         customer_id: UUID | None = None,
         skip: int = 0,
         limit: int = 100,
+        order_by: str | None = None,
     ) -> list[PaymentMethod]:
         query = self.db.query(PaymentMethod).filter(
             PaymentMethod.organization_id == organization_id
         )
         if customer_id is not None:
             query = query.filter(PaymentMethod.customer_id == customer_id)
+        query = apply_order_by(query, PaymentMethod, order_by)
         return query.offset(skip).limit(limit).all()
 
     def get_by_id(
