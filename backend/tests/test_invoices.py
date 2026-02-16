@@ -1159,6 +1159,40 @@ class TestDownloadInvoicePdf:
         response = client.post(f"/v1/invoices/{uuid4()}/download_pdf")
         assert response.status_code == 404
 
+    def test_download_pdf_with_billing_entity(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test PDF download when invoice has a billing entity."""
+        from app.repositories.billing_entity_repository import BillingEntityRepository
+        from app.schemas.billing_entity import BillingEntityCreate
+
+        be_repo = BillingEntityRepository(db_session)
+        be = be_repo.create(
+            BillingEntityCreate(code="be_dl_pdf", name="DL PDF Entity"),
+            DEFAULT_ORG_ID,
+        )
+
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_entity_id=be.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch(
+            "app.routers.invoices.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-test",
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/download_pdf")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-test"
+
 
 class TestInvoiceRepositoryCount:
     """Tests for InvoiceRepository.count branch coverage."""
@@ -1849,6 +1883,47 @@ class TestSendInvoiceEmailAPI:
         assert response.status_code == 200
         assert response.json() == {"sent": False}
 
+    def test_send_email_with_billing_entity(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test email send when invoice has a billing entity."""
+        from app.repositories.billing_entity_repository import BillingEntityRepository
+        from app.schemas.billing_entity import BillingEntityCreate
+
+        be_repo = BillingEntityRepository(db_session)
+        be = be_repo.create(
+            BillingEntityCreate(code="be_email", name="Email Entity"),
+            DEFAULT_ORG_ID,
+        )
+
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_entity_id=be.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with (
+            patch(
+                "app.routers.invoices.PdfService.generate_invoice_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.invoices.EmailService.send_invoice_email",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+        ):
+            response = client.post(f"/v1/invoices/{invoice.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": True}
+
 
 class TestCreateOneOffInvoiceAPI:
     """Tests for POST /v1/invoices/one_off endpoint."""
@@ -2266,6 +2341,40 @@ class TestPdfPreviewAPI:
 
         assert response.status_code == 200
         assert response.content == b"%PDF-paid"
+
+    def test_pdf_preview_with_billing_entity(
+        self, client, db_session, customer, subscription, sample_line_items
+    ):
+        """Test PDF preview when invoice has a billing entity."""
+        from app.repositories.billing_entity_repository import BillingEntityRepository
+        from app.schemas.billing_entity import BillingEntityCreate
+
+        be_repo = BillingEntityRepository(db_session)
+        be = be_repo.create(
+            BillingEntityCreate(code="be_preview_pdf", name="Preview Entity"),
+            DEFAULT_ORG_ID,
+        )
+
+        repo = InvoiceRepository(db_session)
+        data = InvoiceCreate(
+            customer_id=customer.id,
+            subscription_id=subscription.id,
+            billing_entity_id=be.id,
+            billing_period_start=datetime.now(UTC),
+            billing_period_end=datetime.now(UTC) + timedelta(days=30),
+            line_items=sample_line_items,
+        )
+        invoice = repo.create(data, DEFAULT_ORG_ID)
+        repo.finalize(invoice.id)
+
+        with patch(
+            "app.routers.invoices.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-preview-be",
+        ):
+            response = client.get(f"/v1/invoices/{invoice.id}/pdf_preview")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-preview-be"
 
 
 class TestBulkVoidInvoicesAPI:

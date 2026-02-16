@@ -318,6 +318,45 @@ class TestPortalInvoicePdfEndpoint:
         )
         assert response.status_code == 404
 
+    def test_download_pdf_with_billing_entity(
+        self, client: TestClient, db_session, customer
+    ):
+        from app.models.billing_entity import BillingEntity
+
+        be = BillingEntity(
+            code="be_portal_dl",
+            name="Portal DL Entity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(be)
+        db_session.commit()
+        db_session.refresh(be)
+
+        inv = Invoice(
+            invoice_number=f"INV-BE-DL-{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            billing_entity_id=be.id,
+            status=InvoiceStatus.FINALIZED.value,
+            billing_period_start=datetime(2025, 1, 1),
+            billing_period_end=datetime(2025, 1, 31),
+            subtotal=100,
+            total=100,
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+        db_session.refresh(inv)
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-test-be",
+        ):
+            response = client.get(f"/portal/invoices/{inv.id}/download_pdf?token={token}")
+        assert response.status_code == 200
+        assert response.content == b"%PDF-test-be"
+
 
 class TestPortalInvoicePdfPreviewEndpoint:
     """Tests for GET /portal/invoices/{id}/pdf_preview."""
@@ -359,6 +398,45 @@ class TestPortalInvoicePdfPreviewEndpoint:
         token = _make_portal_token(customer.id, expired=True)
         response = client.get(f"/portal/invoices/{invoice.id}/pdf_preview?token={token}")
         assert response.status_code == 401
+
+    def test_preview_pdf_with_billing_entity(
+        self, client: TestClient, db_session, customer
+    ):
+        from app.models.billing_entity import BillingEntity
+
+        be = BillingEntity(
+            code="be_portal_pv",
+            name="Portal Preview Entity",
+            organization_id=DEFAULT_ORG_ID,
+        )
+        db_session.add(be)
+        db_session.commit()
+        db_session.refresh(be)
+
+        inv = Invoice(
+            invoice_number=f"INV-BE-PV-{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            billing_entity_id=be.id,
+            status=InvoiceStatus.FINALIZED.value,
+            billing_period_start=datetime(2025, 1, 1),
+            billing_period_end=datetime(2025, 1, 31),
+            subtotal=100,
+            total=100,
+            line_items=[],
+        )
+        db_session.add(inv)
+        db_session.commit()
+        db_session.refresh(inv)
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-preview-be",
+        ):
+            response = client.get(f"/portal/invoices/{inv.id}/pdf_preview?token={token}")
+        assert response.status_code == 200
+        assert response.content == b"%PDF-preview-be"
 
 
 class TestPortalPayInvoiceEndpoint:

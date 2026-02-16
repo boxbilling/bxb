@@ -11,6 +11,7 @@ from app.core.idempotency import IdempotencyResult, check_idempotency, record_id
 from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
 from app.models.invoice_settlement import InvoiceSettlement
 from app.models.payment import PaymentProvider
+from app.repositories.billing_entity_repository import BillingEntityRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.fee_repository import FeeRepository
 from app.repositories.invoice_repository import InvoiceRepository
@@ -626,6 +627,11 @@ async def send_invoice_email(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    if invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     pdf_bytes: bytes | None = None
     fee_repo = FeeRepository(db)
     fees = fee_repo.get_by_invoice_id(invoice_id)
@@ -635,6 +641,7 @@ async def send_invoice_email(
         fees=fees,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     email_service = EmailService()
@@ -769,6 +776,11 @@ async def preview_invoice_pdf(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    if invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     fee_repo = FeeRepository(db)
     fees = fee_repo.get_by_invoice_id(invoice_id)
 
@@ -778,6 +790,7 @@ async def preview_invoice_pdf(
         fees=fees,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     return Response(
@@ -821,6 +834,11 @@ async def download_invoice_pdf(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    if invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     fee_repo = FeeRepository(db)
     fees = fee_repo.get_by_invoice_id(invoice_id)
 
@@ -830,6 +848,7 @@ async def download_invoice_pdf(
         fees=fees,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     return Response(

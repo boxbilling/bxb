@@ -19,6 +19,7 @@ from app.models.wallet_transaction import WalletTransaction as WalletTransaction
 from app.repositories.add_on_repository import AddOnRepository
 from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
+from app.repositories.billing_entity_repository import BillingEntityRepository
 from app.repositories.coupon_repository import CouponRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.entitlement_repository import EntitlementRepository
@@ -433,6 +434,11 @@ async def download_portal_invoice_pdf(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    if invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     fee_repo = FeeRepository(db)
     fees = fee_repo.get_by_invoice_id(invoice_id)
 
@@ -442,6 +448,7 @@ async def download_portal_invoice_pdf(
         fees=fees,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     return Response(
@@ -486,6 +493,11 @@ async def preview_portal_invoice_pdf(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    if invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     fee_repo = FeeRepository(db)
     fees = fee_repo.get_by_invoice_id(invoice_id)
 
@@ -495,6 +507,7 @@ async def preview_portal_invoice_pdf(
         fees=fees,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     return Response(

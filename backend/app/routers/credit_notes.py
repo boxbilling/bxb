@@ -8,9 +8,11 @@ from sqlalchemy.orm import Session
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.models.credit_note import CreditNote, CreditNoteStatus, CreditNoteType
+from app.repositories.billing_entity_repository import BillingEntityRepository
 from app.repositories.credit_note_item_repository import CreditNoteItemRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.invoice_repository import InvoiceRepository
 from app.repositories.organization_repository import OrganizationRepository
 from app.schemas.credit_note import (
     CreditNoteCreate,
@@ -272,6 +274,13 @@ async def send_credit_note_email(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(credit_note.invoice_id, organization_id)  # type: ignore[arg-type]
+    if invoice and invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     pdf_bytes: bytes | None = None
     item_repo = CreditNoteItemRepository(db)
     items = item_repo.get_by_credit_note_id(credit_note_id)
@@ -281,6 +290,7 @@ async def send_credit_note_email(
         items=items,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     email_service = EmailService()
@@ -325,6 +335,13 @@ async def download_credit_note_pdf(
     org_repo = OrganizationRepository(db)
     organization = org_repo.get_by_id(organization_id)
 
+    billing_entity = None
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(credit_note.invoice_id, organization_id)  # type: ignore[arg-type]
+    if invoice and invoice.billing_entity_id:
+        be_repo = BillingEntityRepository(db)
+        billing_entity = be_repo.get_by_id(invoice.billing_entity_id)  # type: ignore[arg-type]
+
     item_repo = CreditNoteItemRepository(db)
     items = item_repo.get_by_credit_note_id(credit_note_id)
 
@@ -334,6 +351,7 @@ async def download_credit_note_pdf(
         items=items,
         customer=customer,  # type: ignore[arg-type]
         organization=organization,  # type: ignore[arg-type]
+        billing_entity=billing_entity,
     )
 
     return Response(

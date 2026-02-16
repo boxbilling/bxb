@@ -7,6 +7,7 @@ from string import Template
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from app.models.billing_entity import BillingEntity
     from app.models.credit_note import CreditNote
     from app.models.credit_note_item import CreditNoteItem
     from app.models.customer import Customer
@@ -181,26 +182,26 @@ def _format_date(dt: object) -> str:
     return str(dt)[:10]
 
 
-def _build_org_address(organization: Organization) -> str:
-    """Build a multi-line address string from organization fields."""
+def _build_billing_entity_address(billing_entity: BillingEntity) -> str:
+    """Build a multi-line address string from billing entity fields."""
     parts: list[str] = []
-    if organization.address_line1:
-        parts.append(str(organization.address_line1))
-    if organization.address_line2:
-        parts.append(str(organization.address_line2))
+    if billing_entity.address_line1:
+        parts.append(str(billing_entity.address_line1))
+    if billing_entity.address_line2:
+        parts.append(str(billing_entity.address_line2))
     city_state_zip: list[str] = []
-    if organization.city:
-        city_state_zip.append(str(organization.city))
-    if organization.state:
-        city_state_zip.append(str(organization.state))
-    if organization.zipcode:
-        city_state_zip.append(str(organization.zipcode))
+    if billing_entity.city:
+        city_state_zip.append(str(billing_entity.city))
+    if billing_entity.state:
+        city_state_zip.append(str(billing_entity.state))
+    if billing_entity.zip_code:
+        city_state_zip.append(str(billing_entity.zip_code))
     if city_state_zip:
         parts.append(", ".join(city_state_zip))
-    if organization.country:
-        parts.append(str(organization.country))
-    if organization.email:
-        parts.append(str(organization.email))
+    if billing_entity.country:
+        parts.append(str(billing_entity.country))
+    if billing_entity.email:
+        parts.append(str(billing_entity.email))
     return "<br>".join(parts)
 
 
@@ -213,6 +214,7 @@ class PdfService:
         fees: list[Fee],
         customer: Customer,
         organization: Organization,
+        billing_entity: BillingEntity | None = None,
     ) -> bytes:
         """Generate a PDF for an invoice.
 
@@ -220,7 +222,8 @@ class PdfService:
             invoice: The invoice to render.
             fees: Line-item fees associated with the invoice.
             customer: The customer billed.
-            organization: The issuing organization.
+            organization: The issuing organization (used for name and logo_url).
+            billing_entity: The billing entity for address/legal info.
 
         Returns:
             Raw PDF bytes.
@@ -240,9 +243,15 @@ class PdfService:
             f" to {_format_date(invoice.billing_period_end)}"
         )
 
+        org_address = (
+            _build_billing_entity_address(billing_entity)
+            if billing_entity
+            else ""
+        )
+
         html = _INVOICE_TEMPLATE.substitute(
             org_name=organization.name or "",
-            org_address=_build_org_address(organization),
+            org_address=org_address,
             invoice_number=invoice.invoice_number or "",
             status=str(invoice.status or ""),
             issued_at=_format_date(invoice.issued_at),
@@ -272,6 +281,7 @@ class PdfService:
         items: list[CreditNoteItem],
         customer: Customer,
         organization: Organization,
+        billing_entity: BillingEntity | None = None,
     ) -> bytes:
         """Generate a PDF for a credit note.
 
@@ -279,7 +289,8 @@ class PdfService:
             credit_note: The credit note to render.
             items: Line items associated with the credit note.
             customer: The customer credited.
-            organization: The issuing organization.
+            organization: The issuing organization (used for name and logo_url).
+            billing_entity: The billing entity for address/legal info.
 
         Returns:
             Raw PDF bytes.
@@ -292,9 +303,15 @@ class PdfService:
             for item in items
         )
 
+        org_address = (
+            _build_billing_entity_address(billing_entity)
+            if billing_entity
+            else ""
+        )
+
         html = _CREDIT_NOTE_TEMPLATE.substitute(
             org_name=organization.name or "",
-            org_address=_build_org_address(organization),
+            org_address=org_address,
             credit_note_number=credit_note.number or "",
             status=str(credit_note.status or ""),
             credit_note_type=str(credit_note.credit_note_type or ""),

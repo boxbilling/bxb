@@ -1437,6 +1437,65 @@ class TestDownloadCreditNotePdf:
         response = client.post(f"/v1/credit_notes/{uuid4()}/download_pdf")
         assert response.status_code == 404
 
+    def test_download_pdf_with_billing_entity(
+        self, client, db_session, customer, subscription
+    ):
+        """Test PDF download when credit note's invoice has a billing entity."""
+        from app.repositories.billing_entity_repository import BillingEntityRepository
+        from app.schemas.billing_entity import BillingEntityCreate
+
+        be_repo = BillingEntityRepository(db_session)
+        be = be_repo.create(
+            BillingEntityCreate(code="be_cn_dl", name="CN DL Entity"),
+            DEFAULT_ORG_ID,
+        )
+
+        inv_repo = InvoiceRepository(db_session)
+        inv = inv_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_entity_id=be.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                currency="USD",
+                line_items=[
+                    InvoiceLineItem(
+                        description="Test",
+                        quantity=Decimal("1"),
+                        unit_price=Decimal("100"),
+                        amount=Decimal("100"),
+                    )
+                ],
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        repo = CreditNoteRepository(db_session)
+        cn = repo.create(
+            CreditNoteCreate(
+                number=f"CN-DL-BE-{uuid4().hex[:6]}",
+                invoice_id=inv.id,
+                customer_id=customer.id,
+                credit_note_type=CreditNoteType.CREDIT,
+                reason=CreditNoteReason.OTHER,
+                credit_amount_cents=Decimal("5000.0000"),
+                total_amount_cents=Decimal("5000.0000"),
+                currency="USD",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(cn.id)
+
+        with patch(
+            "app.routers.credit_notes.PdfService.generate_credit_note_pdf",
+            return_value=b"%PDF-test-be",
+        ):
+            response = client.post(f"/v1/credit_notes/{cn.id}/download_pdf")
+
+        assert response.status_code == 200
+        assert response.content == b"%PDF-test-be"
+
 
 class TestSendCreditNoteEmailAPI:
     """Tests for POST /v1/credit_notes/{credit_note_id}/send_email endpoint."""
@@ -1535,3 +1594,69 @@ class TestSendCreditNoteEmailAPI:
 
         assert response.status_code == 200
         assert response.json() == {"sent": False}
+
+    def test_send_email_with_billing_entity(
+        self, client, db_session, customer, subscription
+    ):
+        """Test email send when credit note's invoice has a billing entity."""
+        from app.repositories.billing_entity_repository import BillingEntityRepository
+        from app.schemas.billing_entity import BillingEntityCreate
+
+        be_repo = BillingEntityRepository(db_session)
+        be = be_repo.create(
+            BillingEntityCreate(code="be_cn_email", name="CN Email Entity"),
+            DEFAULT_ORG_ID,
+        )
+
+        inv_repo = InvoiceRepository(db_session)
+        inv = inv_repo.create(
+            InvoiceCreate(
+                customer_id=customer.id,
+                subscription_id=subscription.id,
+                billing_entity_id=be.id,
+                billing_period_start=datetime.now(UTC),
+                billing_period_end=datetime.now(UTC) + timedelta(days=30),
+                currency="USD",
+                line_items=[
+                    InvoiceLineItem(
+                        description="Test",
+                        quantity=Decimal("1"),
+                        unit_price=Decimal("100"),
+                        amount=Decimal("100"),
+                    )
+                ],
+            ),
+            DEFAULT_ORG_ID,
+        )
+
+        repo = CreditNoteRepository(db_session)
+        cn = repo.create(
+            CreditNoteCreate(
+                number=f"CN-EM-BE-{uuid4().hex[:6]}",
+                invoice_id=inv.id,
+                customer_id=customer.id,
+                credit_note_type=CreditNoteType.CREDIT,
+                reason=CreditNoteReason.DUPLICATED_CHARGE,
+                credit_amount_cents=Decimal("5000.0000"),
+                total_amount_cents=Decimal("5000.0000"),
+                currency="USD",
+            ),
+            DEFAULT_ORG_ID,
+        )
+        repo.finalize(cn.id)
+
+        with (
+            patch(
+                "app.routers.credit_notes.PdfService.generate_credit_note_pdf",
+                return_value=b"%PDF-test",
+            ),
+            patch(
+                "app.routers.credit_notes.EmailService.send_credit_note_email",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+        ):
+            response = client.post(f"/v1/credit_notes/{cn.id}/send_email")
+
+        assert response.status_code == 200
+        assert response.json() == {"sent": True}

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 from app.services.pdf_service import (
     PdfService,
-    _build_org_address,
+    _build_billing_entity_address,
     _format_amount,
     _format_date,
 )
@@ -21,11 +21,19 @@ from app.services.pdf_service import (
 def _make_organization(**overrides):  # type: ignore[no-untyped-def]
     defaults = {
         "name": "Acme Corp",
+        "logo_url": None,
+    }
+    defaults.update(overrides)
+    return SimpleNamespace(**defaults)
+
+
+def _make_billing_entity(**overrides):  # type: ignore[no-untyped-def]
+    defaults = {
         "address_line1": "123 Main St",
         "address_line2": "Suite 100",
         "city": "San Francisco",
         "state": "CA",
-        "zipcode": "94105",
+        "zip_code": "94105",
         "country": "US",
         "email": "billing@acme.com",
     }
@@ -112,10 +120,10 @@ class TestFormatDate:
         assert _format_date("2025-06-01T00:00:00") == "2025-06-01"
 
 
-class TestBuildOrgAddress:
+class TestBuildBillingEntityAddress:
     def test_full_address(self) -> None:
-        org = _make_organization()
-        result = _build_org_address(org)
+        be = _make_billing_entity()
+        result = _build_billing_entity_address(be)
         assert "123 Main St" in result
         assert "Suite 100" in result
         assert "San Francisco" in result
@@ -125,29 +133,29 @@ class TestBuildOrgAddress:
         assert "billing@acme.com" in result
 
     def test_minimal_address(self) -> None:
-        org = _make_organization(
+        be = _make_billing_entity(
             address_line1=None,
             address_line2=None,
             city=None,
             state=None,
-            zipcode=None,
+            zip_code=None,
             country=None,
             email=None,
         )
-        result = _build_org_address(org)
+        result = _build_billing_entity_address(be)
         assert result == ""
 
     def test_partial_city_state(self) -> None:
-        org = _make_organization(
+        be = _make_billing_entity(
             address_line1=None,
             address_line2=None,
             city="Denver",
             state=None,
-            zipcode=None,
+            zip_code=None,
             country=None,
             email=None,
         )
-        result = _build_org_address(org)
+        result = _build_billing_entity_address(be)
         assert result == "Denver"
 
 
@@ -166,6 +174,7 @@ class TestGenerateInvoicePdf:
                 fees=[_make_fee()],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         assert result == b"%PDF-1.4 fake"
@@ -181,6 +190,7 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(),
                 organization=_make_organization(name="TestOrg Inc"),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -196,6 +206,7 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(name="Bob Smith", email="bob@test.com"),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -216,6 +227,7 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -238,6 +250,7 @@ class TestGenerateInvoicePdf:
                 fees=fees,
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -258,6 +271,7 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -278,6 +292,7 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -295,6 +310,7 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         assert result == b"%PDF-1.4 fake"
@@ -308,6 +324,7 @@ class TestGenerateInvoicePdf:
                 fees=[_make_fee(description=None)],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -323,10 +340,27 @@ class TestGenerateInvoicePdf:
                 fees=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         # Should not raise – None dates are handled
         mock_doc.write_pdf.assert_called_once()
+
+    def test_no_billing_entity_renders_empty_address(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_invoice_pdf(
+                invoice=_make_invoice(),
+                fees=[],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "Acme Corp" in html_arg
+        # Address should be empty when no billing entity is provided
+        assert "123 Main St" not in html_arg
 
 
 # ---------------------------------------------------------------------------
@@ -376,6 +410,7 @@ class TestGenerateCreditNotePdf:
                 items=[_make_credit_note_item()],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         assert result == b"%PDF-1.4 fake"
@@ -391,6 +426,7 @@ class TestGenerateCreditNotePdf:
                 items=[],
                 customer=_make_customer(),
                 organization=_make_organization(name="TestOrg Inc"),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -406,6 +442,7 @@ class TestGenerateCreditNotePdf:
                 items=[],
                 customer=_make_customer(name="Bob Smith", email="bob@test.com"),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -427,6 +464,7 @@ class TestGenerateCreditNotePdf:
                 items=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -450,6 +488,7 @@ class TestGenerateCreditNotePdf:
                 items=items,
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -472,6 +511,7 @@ class TestGenerateCreditNotePdf:
                 items=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         html_arg = mock_wp.HTML.call_args[1]["string"]
@@ -489,6 +529,7 @@ class TestGenerateCreditNotePdf:
                 items=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         assert result == b"%PDF-1.4 fake"
@@ -502,6 +543,22 @@ class TestGenerateCreditNotePdf:
                 items=[],
                 customer=_make_customer(),
                 organization=_make_organization(),
+                billing_entity=_make_billing_entity(),
             )
 
         mock_doc.write_pdf.assert_called_once()
+
+    def test_no_billing_entity_renders_empty_address(self) -> None:
+        patcher, mock_wp, _mock_doc = _patch_weasyprint()
+        with patcher:
+            service = PdfService()
+            service.generate_credit_note_pdf(
+                credit_note=_make_credit_note(),
+                items=[],
+                customer=_make_customer(),
+                organization=_make_organization(),
+            )
+
+        html_arg = mock_wp.HTML.call_args[1]["string"]
+        assert "Acme Corp" in html_arg
+        assert "123 Main St" not in html_arg
