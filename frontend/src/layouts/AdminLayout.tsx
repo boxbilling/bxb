@@ -30,6 +30,7 @@ import {
   Menu,
   AlertTriangle,
   Search,
+  TrendingUp,
 } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
@@ -65,6 +66,7 @@ const navigationGroups = [
     label: 'Overview',
     items: [
       { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      { name: 'Revenue Analytics', href: '/admin/revenue-analytics', icon: TrendingUp },
     ],
   },
   {

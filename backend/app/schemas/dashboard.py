@@ -109,3 +109,50 @@ class SparklineData(BaseModel):
     mrr: list[SparklinePoint]
     new_customers: list[SparklinePoint]
     new_subscriptions: list[SparklinePoint]
+
+
+# --- Revenue Analytics Deep-Dive ---
+
+
+class DailyRevenuePoint(BaseModel):
+    date: str
+    revenue: float
+
+
+class RevenueByTypeBreakdown(BaseModel):
+    invoice_type: str
+    revenue: float
+    count: int
+
+
+class TopCustomerRevenue(BaseModel):
+    customer_id: str
+    customer_name: str
+    revenue: float
+    invoice_count: int
+
+
+class CollectionMetrics(BaseModel):
+    total_invoiced: float
+    total_collected: float
+    collection_rate: float
+    average_days_to_payment: float | None
+    overdue_count: int
+    overdue_amount: float
+
+
+class NetRevenueMetrics(BaseModel):
+    gross_revenue: float
+    refunds: float
+    credit_notes: float
+    net_revenue: float
+    currency: str
+
+
+class RevenueAnalyticsResponse(BaseModel):
+    daily_revenue: list[DailyRevenuePoint]
+    revenue_by_type: list[RevenueByTypeBreakdown]
+    top_customers: list[TopCustomerRevenue]
+    collection: CollectionMetrics
+    net_revenue: NetRevenueMetrics
+    currency: str

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from uuid import UUID
 
+from sqlalchemy import case as sa_case
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
@@ -702,3 +703,245 @@ class DashboardRepository:
             or 0
         )
         return float(result)
+
+    # --- Revenue analytics deep-dive ---
+
+    @dataclass
+    class RevenueByTypeRow:
+        invoice_type: str
+        revenue: float
+        count: int
+
+    def revenue_by_invoice_type(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list["DashboardRepository.RevenueByTypeRow"]:
+        """Revenue grouped by invoice type (subscription, add_on, one_off, etc.)."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        rows = (
+            self.db.query(
+                Invoice.invoice_type.label("invoice_type"),
+                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+                sa_func.count(Invoice.id).label("cnt"),
+            )
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status.in_(["finalized", "paid"]),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .group_by(Invoice.invoice_type)
+            .order_by(sa_func.sum(Invoice.total).desc())
+            .all()
+        )
+        return [
+            DashboardRepository.RevenueByTypeRow(
+                invoice_type=r.invoice_type,
+                revenue=float(r.revenue),
+                count=r.cnt,
+            )
+            for r in rows
+        ]
+
+    @dataclass
+    class TopCustomerRow:
+        customer_id: str
+        customer_name: str
+        revenue: float
+        invoice_count: int
+
+    def top_customers_by_revenue(
+        self,
+        organization_id: UUID,
+        limit: int = 10,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> list["DashboardRepository.TopCustomerRow"]:
+        """Top customers ranked by total revenue from finalized/paid invoices."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        rows = (
+            self.db.query(
+                Customer.id.label("customer_id"),
+                Customer.name.label("customer_name"),
+                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+                sa_func.count(Invoice.id).label("invoice_count"),
+            )
+            .join(Customer, Invoice.customer_id == Customer.id)
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status.in_(["finalized", "paid"]),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .group_by(Customer.id, Customer.name)
+            .order_by(sa_func.sum(Invoice.total).desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            DashboardRepository.TopCustomerRow(
+                customer_id=str(r.customer_id),
+                customer_name=r.customer_name,
+                revenue=float(r.revenue),
+                invoice_count=r.invoice_count,
+            )
+            for r in rows
+        ]
+
+    @dataclass
+    class CollectionRow:
+        total_invoiced: float
+        total_collected: float
+        avg_days_to_payment: float | None
+        overdue_count: int
+        overdue_amount: float
+
+    def collection_metrics(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> "DashboardRepository.CollectionRow":
+        """Payment collection metrics for finalized/paid invoices."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+        now = datetime.now(UTC)
+
+        # Total invoiced (finalized + paid)
+        totals = (
+            self.db.query(
+                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("total_invoiced"),
+                sa_func.coalesce(
+                    sa_func.sum(
+                        sa_case(
+                            (Invoice.status == "paid", Invoice.total),
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("total_collected"),
+            )
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status.in_(["finalized", "paid"]),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .one()
+        )
+
+        # Average days to payment
+        dialect = self.db.bind.dialect.name if self.db.bind else ""
+        if dialect == "postgresql":
+            days_expr = sa_func.extract(
+                "epoch", Invoice.paid_at - Invoice.issued_at
+            ) / 86400
+        else:
+            days_expr = (
+                sa_func.julianday(Invoice.paid_at)
+                - sa_func.julianday(Invoice.issued_at)
+            )
+
+        avg_days = (
+            self.db.query(sa_func.avg(days_expr))
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status == "paid",
+                Invoice.paid_at.isnot(None),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .scalar()
+        )
+
+        # Overdue invoices
+        overdue = (
+            self.db.query(
+                sa_func.count(Invoice.id).label("cnt"),
+                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("amount"),
+            )
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status == "finalized",
+                Invoice.due_date.isnot(None),
+                Invoice.due_date < now,
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .one()
+        )
+
+        return DashboardRepository.CollectionRow(
+            total_invoiced=float(totals.total_invoiced),
+            total_collected=float(totals.total_collected),
+            avg_days_to_payment=round(float(avg_days), 1) if avg_days is not None else None,
+            overdue_count=overdue.cnt,
+            overdue_amount=float(overdue.amount),
+        )
+
+    @dataclass
+    class NetRevenueRow:
+        gross_revenue: float
+        refunds: float
+        credit_notes_total: float
+
+    def net_revenue(
+        self,
+        organization_id: UUID,
+        start_date: date | None = None,
+        end_date: date | None = None,
+    ) -> "DashboardRepository.NetRevenueRow":
+        """Gross revenue, refunds, and credit note totals."""
+        start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
+
+        # Gross revenue
+        gross = (
+            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
+            .filter(
+                Invoice.organization_id == organization_id,
+                Invoice.status.in_(["finalized", "paid"]),
+                Invoice.issued_at.isnot(None),
+                Invoice.issued_at >= start_dt,
+                Invoice.issued_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+
+        # Refunds (payments with refunded status)
+        refunds = (
+            self.db.query(sa_func.coalesce(sa_func.sum(Payment.amount), 0))
+            .filter(
+                Payment.organization_id == organization_id,
+                Payment.status == PaymentStatus.REFUNDED.value,
+                Payment.created_at >= start_dt,
+                Payment.created_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+
+        # Credit notes
+        cn_total = (
+            self.db.query(sa_func.coalesce(sa_func.sum(CreditNote.total_amount_cents), 0))
+            .filter(
+                CreditNote.organization_id == organization_id,
+                CreditNote.status == "finalized",
+                CreditNote.created_at >= start_dt,
+                CreditNote.created_at <= end_dt,
+            )
+            .scalar()
+            or 0
+        )
+
+        return DashboardRepository.NetRevenueRow(
+            gross_revenue=float(gross),
+            refunds=float(refunds),
+            credit_notes_total=float(cn_total),
+        )

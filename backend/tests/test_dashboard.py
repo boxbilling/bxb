@@ -15,6 +15,7 @@ from app.models.subscription import SubscriptionStatus
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import WalletTransaction
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.dashboard_repository import DashboardRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.customer import CustomerCreate
@@ -1812,3 +1813,243 @@ class TestDashboardRecentSubscriptions:
         response = client.get("/dashboard/recent_subscriptions")
         data = response.json()
         assert len(data) == 5
+
+
+class TestRevenueAnalytics:
+    """Tests for GET /dashboard/revenue_analytics."""
+
+    def test_revenue_analytics_empty_db(self, client: TestClient):
+        response = client.get("/dashboard/revenue_analytics")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["daily_revenue"] == []
+        assert data["revenue_by_type"] == []
+        assert data["top_customers"] == []
+        assert data["collection"]["total_invoiced"] == 0
+        assert data["collection"]["total_collected"] == 0
+        assert data["collection"]["collection_rate"] == 0.0
+        assert data["collection"]["average_days_to_payment"] is None
+        assert data["collection"]["overdue_count"] == 0
+        assert data["collection"]["overdue_amount"] == 0
+        assert data["net_revenue"]["gross_revenue"] == 0
+        assert data["net_revenue"]["refunds"] == 0
+        assert data["net_revenue"]["credit_notes"] == 0
+        assert data["net_revenue"]["net_revenue"] == 0
+        assert data["currency"] == "USD"
+
+    def test_revenue_analytics_with_data(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue_analytics")
+        assert response.status_code == 200
+        data = response.json()
+        # seeded_data has 2 invoices: one paid ($108), one finalized ($54)
+        assert len(data["daily_revenue"]) > 0
+        assert data["collection"]["total_invoiced"] > 0
+        assert data["collection"]["total_collected"] > 0
+        assert data["currency"] == "USD"
+
+    def test_revenue_analytics_date_range(self, client: TestClient, seeded_data):
+        today = date.today()
+        start = (today - timedelta(days=60)).isoformat()
+        end = today.isoformat()
+        response = client.get(
+            f"/dashboard/revenue_analytics?start_date={start}&end_date={end}"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["daily_revenue"], list)
+        assert isinstance(data["revenue_by_type"], list)
+
+    def test_revenue_analytics_narrow_range_excludes(self, client: TestClient, seeded_data):
+        """A date range before any invoices should return empty results."""
+        response = client.get(
+            "/dashboard/revenue_analytics?start_date=2000-01-01&end_date=2000-01-31"
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["daily_revenue"] == []
+        assert data["revenue_by_type"] == []
+        assert data["top_customers"] == []
+        assert data["collection"]["total_invoiced"] == 0
+
+    def test_revenue_by_type(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        by_type = data["revenue_by_type"]
+        assert len(by_type) > 0
+        for item in by_type:
+            assert "invoice_type" in item
+            assert "revenue" in item
+            assert "count" in item
+            assert item["count"] > 0
+
+    def test_top_customers(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        top = data["top_customers"]
+        assert len(top) > 0
+        assert len(top) <= 10
+        # First customer should have highest revenue
+        if len(top) > 1:
+            assert top[0]["revenue"] >= top[1]["revenue"]
+        for cust in top:
+            assert "customer_id" in cust
+            assert "customer_name" in cust
+            assert "revenue" in cust
+            assert "invoice_count" in cust
+
+    def test_collection_rate_calculation(self, client: TestClient, seeded_data):
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        coll = data["collection"]
+        if coll["total_invoiced"] > 0:
+            expected_rate = round(
+                (coll["total_collected"] / coll["total_invoiced"]) * 100, 1
+            )
+            assert coll["collection_rate"] == expected_rate
+
+    def test_avg_days_to_payment(self, client: TestClient, db_session, seeded_data):
+        """Paid invoices with issued_at and paid_at should produce avg_days_to_payment."""
+        # Set paid_at on the paid invoice
+        inv = seeded_data["invoices"][0]  # paid invoice
+        inv.paid_at = inv.issued_at + timedelta(days=3)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        assert data["collection"]["average_days_to_payment"] is not None
+        assert data["collection"]["average_days_to_payment"] >= 0
+
+    def test_overdue_invoices(self, client: TestClient, db_session, seeded_data):
+        """Finalized invoices past due_date should count as overdue."""
+        inv = seeded_data["invoices"][1]  # finalized invoice
+        inv.due_date = datetime.now(UTC) - timedelta(days=5)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        assert data["collection"]["overdue_count"] >= 1
+        assert data["collection"]["overdue_amount"] > 0
+
+    def test_net_revenue_with_refund(self, client: TestClient, db_session, seeded_data):
+        """Refunded payments should reduce net revenue."""
+        refund = Payment(
+            organization_id=DEFAULT_ORG_ID,
+            invoice_id=seeded_data["invoices"][0].id,
+            customer_id=seeded_data["customers"][0].id,
+            amount=Decimal("25.00"),
+            currency="USD",
+            status=PaymentStatus.REFUNDED.value,
+            provider="stripe",
+        )
+        db_session.add(refund)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        assert data["net_revenue"]["refunds"] == 25.0
+        assert data["net_revenue"]["net_revenue"] == (
+            data["net_revenue"]["gross_revenue"]
+            - data["net_revenue"]["refunds"]
+            - data["net_revenue"]["credit_notes"]
+        )
+
+    def test_net_revenue_with_credit_note(
+        self, client: TestClient, db_session, seeded_data
+    ):
+        """Credit notes should reduce net revenue."""
+        cn = CreditNote(
+            organization_id=DEFAULT_ORG_ID,
+            number="CN-REV-001",
+            invoice_id=seeded_data["invoices"][0].id,
+            customer_id=seeded_data["customers"][0].id,
+            credit_amount_cents=Decimal("10.00"),
+            refund_amount_cents=Decimal("0"),
+            balance_amount_cents=Decimal("10.00"),
+            total_amount_cents=Decimal("10.00"),
+            taxes_amount_cents=Decimal("0"),
+            currency="USD",
+            status=CreditNoteStatus.FINALIZED.value,
+            reason="other",
+            credit_note_type=CreditNoteType.CREDIT.value,
+        )
+        db_session.add(cn)
+        db_session.commit()
+
+        response = client.get("/dashboard/revenue_analytics")
+        data = response.json()
+        assert data["net_revenue"]["credit_notes"] == 10.0
+
+
+class TestRevenueAnalyticsRepo:
+    """Tests for DashboardRepository revenue analytics methods."""
+
+    def test_revenue_by_invoice_type_empty(self, db_session):
+        repo = DashboardRepository(db_session)
+        result = repo.revenue_by_invoice_type(DEFAULT_ORG_ID)
+        assert result == []
+
+    def test_revenue_by_invoice_type_with_data(self, db_session, seeded_data):
+        repo = DashboardRepository(db_session)
+        result = repo.revenue_by_invoice_type(DEFAULT_ORG_ID)
+        assert len(result) > 0
+        total = sum(r.revenue for r in result)
+        assert total > 0
+
+    def test_top_customers_empty(self, db_session):
+        repo = DashboardRepository(db_session)
+        result = repo.top_customers_by_revenue(DEFAULT_ORG_ID)
+        assert result == []
+
+    def test_top_customers_ordering(self, db_session, seeded_data):
+        repo = DashboardRepository(db_session)
+        result = repo.top_customers_by_revenue(DEFAULT_ORG_ID)
+        assert len(result) > 0
+        if len(result) > 1:
+            assert result[0].revenue >= result[1].revenue
+
+    def test_top_customers_limit(self, db_session, seeded_data):
+        repo = DashboardRepository(db_session)
+        result = repo.top_customers_by_revenue(DEFAULT_ORG_ID, limit=1)
+        assert len(result) == 1
+
+    def test_collection_metrics_empty(self, db_session):
+        repo = DashboardRepository(db_session)
+        result = repo.collection_metrics(DEFAULT_ORG_ID)
+        assert result.total_invoiced == 0
+        assert result.total_collected == 0
+        assert result.avg_days_to_payment is None
+        assert result.overdue_count == 0
+        assert result.overdue_amount == 0
+
+    def test_collection_metrics_with_data(self, db_session, seeded_data):
+        repo = DashboardRepository(db_session)
+        result = repo.collection_metrics(DEFAULT_ORG_ID)
+        assert result.total_invoiced > 0
+        assert result.total_collected > 0
+
+    def test_net_revenue_empty(self, db_session):
+        repo = DashboardRepository(db_session)
+        result = repo.net_revenue(DEFAULT_ORG_ID)
+        assert result.gross_revenue == 0
+        assert result.refunds == 0
+        assert result.credit_notes_total == 0
+
+    def test_net_revenue_with_data(self, db_session, seeded_data):
+        repo = DashboardRepository(db_session)
+        result = repo.net_revenue(DEFAULT_ORG_ID)
+        assert result.gross_revenue > 0
+
+    def test_collection_metrics_postgresql_branch(self, db_session):
+        """Cover the PostgreSQL dialect branch for avg days calculation."""
+        from unittest.mock import MagicMock
+        from uuid import uuid4
+
+        repo = DashboardRepository(db_session)
+        org_id = uuid4()
+        mock_bind = MagicMock()
+        mock_bind.dialect.name = "postgresql"
+        repo.db = MagicMock(wraps=db_session)
+        repo.db.bind = mock_bind
+        # With no matching data the query completes without error
+        result = repo.collection_metrics(org_id)
+        assert result.total_invoiced == 0

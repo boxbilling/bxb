@@ -620,8 +620,11 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         {/* Revenue Trend Chart */}
         <Card className="col-span-4">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-medium">Revenue Trend ({PERIOD_LABELS[preset]})</CardTitle>
+            <Link to="/admin/revenue-analytics" className="text-xs text-primary hover:underline">
+              Deep dive →
+            </Link>
           </CardHeader>
           <CardContent>
             {revenueLoading ? (

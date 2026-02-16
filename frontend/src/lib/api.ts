@@ -1502,6 +1502,28 @@ export const dashboardApi = {
       new_customers: { date: string; value: number }[]
       new_subscriptions: { date: string; value: number }[]
     }>(`/dashboard/sparklines${buildQuery(params)}`),
+  getRevenueAnalytics: (params?: DashboardDateRange) =>
+    request<{
+      daily_revenue: { date: string; revenue: number }[]
+      revenue_by_type: { invoice_type: string; revenue: number; count: number }[]
+      top_customers: { customer_id: string; customer_name: string; revenue: number; invoice_count: number }[]
+      collection: {
+        total_invoiced: number
+        total_collected: number
+        collection_rate: number
+        average_days_to_payment: number | null
+        overdue_count: number
+        overdue_amount: number
+      }
+      net_revenue: {
+        gross_revenue: number
+        refunds: number
+        credit_notes: number
+        net_revenue: number
+        currency: string
+      }
+      currency: string
+    }>(`/dashboard/revenue_analytics${buildQuery(params)}`),
 }
 
 // Global Search API

@@ -8,19 +8,25 @@ from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.repositories.dashboard_repository import DashboardRepository
 from app.schemas.dashboard import (
+    CollectionMetrics,
     CustomerMetricsResponse,
+    DailyRevenuePoint,
     DashboardStatsResponse,
+    NetRevenueMetrics,
     PlanRevenueBreakdown,
     RecentActivityResponse,
     RecentInvoiceItem,
     RecentSubscriptionItem,
+    RevenueAnalyticsResponse,
     RevenueByPlanResponse,
+    RevenueByTypeBreakdown,
     RevenueDataPoint,
     RevenueResponse,
     SparklineData,
     SparklinePoint,
     SubscriptionMetricsResponse,
     SubscriptionPlanBreakdown,
+    TopCustomerRevenue,
     TrendIndicator,
     UsageMetricsResponse,
     UsageMetricVolume,
@@ -476,4 +482,80 @@ async def get_sparklines(
                 organization_id, start_date=start_date, end_date=end_date
             )
         ],
+    )
+
+
+@router.get(
+    "/revenue_analytics",
+    response_model=RevenueAnalyticsResponse,
+    summary="Get revenue analytics deep-dive",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_revenue_analytics(
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+    start_date: date | None = Query(None, description="Period start date (YYYY-MM-DD)"),
+    end_date: date | None = Query(None, description="Period end date (YYYY-MM-DD)"),
+) -> RevenueAnalyticsResponse:
+    """Get comprehensive revenue analytics: daily trend, by type, top customers,
+    collection metrics, and net revenue."""
+    repo = DashboardRepository(db)
+
+    daily = repo.daily_revenue(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    by_type = repo.revenue_by_invoice_type(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    top_custs = repo.top_customers_by_revenue(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    coll = repo.collection_metrics(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+    net = repo.net_revenue(
+        organization_id, start_date=start_date, end_date=end_date
+    )
+
+    collection_rate = (
+        round((coll.total_collected / coll.total_invoiced) * 100, 1)
+        if coll.total_invoiced > 0
+        else 0.0
+    )
+
+    return RevenueAnalyticsResponse(
+        daily_revenue=[
+            DailyRevenuePoint(date=p.date, revenue=p.value) for p in daily
+        ],
+        revenue_by_type=[
+            RevenueByTypeBreakdown(
+                invoice_type=r.invoice_type, revenue=r.revenue, count=r.count
+            )
+            for r in by_type
+        ],
+        top_customers=[
+            TopCustomerRevenue(
+                customer_id=r.customer_id,
+                customer_name=r.customer_name,
+                revenue=r.revenue,
+                invoice_count=r.invoice_count,
+            )
+            for r in top_custs
+        ],
+        collection=CollectionMetrics(
+            total_invoiced=coll.total_invoiced,
+            total_collected=coll.total_collected,
+            collection_rate=collection_rate,
+            average_days_to_payment=coll.avg_days_to_payment,
+            overdue_count=coll.overdue_count,
+            overdue_amount=coll.overdue_amount,
+        ),
+        net_revenue=NetRevenueMetrics(
+            gross_revenue=net.gross_revenue,
+            refunds=net.refunds,
+            credit_notes=net.credit_notes_total,
+            net_revenue=net.gross_revenue - net.refunds - net.credit_notes_total,
+            currency="USD",
+        ),
+        currency="USD",
     )

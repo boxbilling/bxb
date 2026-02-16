@@ -35,6 +35,7 @@ import {
   BillingEntityFormPage,
   FeaturesPage,
   UsageAlertsPage,
+  RevenueAnalyticsPage,
 } from './pages/admin'
 import {
   PortalDashboardPage,
@@ -90,6 +91,7 @@ function App() {
         <Route path="billing-entities/:code/edit" element={<BillingEntityFormPage />} />
         <Route path="features" element={<FeaturesPage />} />
         <Route path="usage-alerts" element={<UsageAlertsPage />} />
+        <Route path="revenue-analytics" element={<RevenueAnalyticsPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="api-keys" element={<ApiKeysPage />} />
