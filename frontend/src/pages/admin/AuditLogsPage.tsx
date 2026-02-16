@@ -1,7 +1,7 @@
 import { Fragment, useState, useEffect, useMemo } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { Search, ScrollText, X, Copy, ChevronRight, CalendarIcon, ExternalLink, Download } from 'lucide-react'
+import { Search, ScrollText, X, Copy, ChevronRight, CalendarIcon, ExternalLink, Download, SlidersHorizontal } from 'lucide-react'
 import { format, subDays, subMonths } from 'date-fns'
 import { toast } from 'sonner'
 import type { DateRange } from 'react-day-picker'
@@ -147,6 +147,7 @@ export default function AuditLogsPage() {
   const [datePreset, setDatePreset] = useState<DatePreset>('all')
   const [customRange, setCustomRange] = useState<DateRange | undefined>()
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const { sort, setSort, orderBy } = useSortState()
@@ -235,105 +236,122 @@ export default function AuditLogsPage() {
       />
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by resource ID..."
-            value={resourceIdSearch}
-            onChange={(e) => setResourceIdSearch(e.target.value)}
-            className="pl-9"
-          />
-          {resourceIdSearch && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2"
-              onClick={() => setResourceIdSearch('')}
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          )}
-        </div>
-        <Select value={resourceTypeFilter} onValueChange={setResourceTypeFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Resource type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All resources</SelectItem>
-            <SelectItem value="invoice">Invoice</SelectItem>
-            <SelectItem value="payment">Payment</SelectItem>
-            <SelectItem value="subscription">Subscription</SelectItem>
-            <SelectItem value="customer">Customer</SelectItem>
-            <SelectItem value="credit_note">Credit Note</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Action" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All actions</SelectItem>
-            <SelectItem value="created">Created</SelectItem>
-            <SelectItem value="updated">Updated</SelectItem>
-            <SelectItem value="status_changed">Status Changed</SelectItem>
-            <SelectItem value="deleted">Deleted</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={actorTypeFilter} onValueChange={setActorTypeFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Actor type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All actors</SelectItem>
-            <SelectItem value="system">System</SelectItem>
-            <SelectItem value="api_key">API Key</SelectItem>
-            <SelectItem value="webhook">Webhook</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2">
-          <Select
-            value={datePreset}
-            onValueChange={(v) => {
-              const p = v as DatePreset
-              setDatePreset(p)
-              if (p === 'custom') setCalendarOpen(true)
-            }}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="relative flex-1 md:max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by resource ID..."
+              value={resourceIdSearch}
+              onChange={(e) => setResourceIdSearch(e.target.value)}
+              className="pl-9"
+            />
+            {resourceIdSearch && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 h-6 w-6 -translate-y-1/2"
+                onClick={() => setResourceIdSearch('')}
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            className="md:hidden w-full"
+            onClick={() => setFiltersOpen(!filtersOpen)}
           >
-            <SelectTrigger className="w-44">
-              <CalendarIcon className="mr-1 h-3.5 w-3.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(DATE_PRESET_LABELS).map(([key, label]) => (
-                <SelectItem key={key} value={key}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {datePreset === 'custom' && (
-            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="font-normal">
-                  {customRange?.from
-                    ? customRange.to
-                      ? `${format(customRange.from, 'MMM d, yyyy')} - ${format(customRange.to, 'MMM d, yyyy')}`
-                      : format(customRange.from, 'MMM d, yyyy')
-                    : 'Pick dates'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="range"
-                  selected={customRange}
-                  onSelect={setCustomRange}
-                  numberOfMonths={2}
-                  disabled={{ after: new Date() }}
-                />
-              </PopoverContent>
-            </Popover>
-          )}
+            <SlidersHorizontal className="mr-2 h-4 w-4" />
+            Filters
+            {(resourceTypeFilter !== 'all' || actionFilter !== 'all' || actorTypeFilter !== 'all' || datePreset !== 'all') && (
+              <Badge variant="secondary" className="ml-2">
+                {[resourceTypeFilter !== 'all', actionFilter !== 'all', actorTypeFilter !== 'all', datePreset !== 'all'].filter(Boolean).length}
+              </Badge>
+            )}
+          </Button>
+          <div className={`${filtersOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row md:items-center gap-4`}>
+            <Select value={resourceTypeFilter} onValueChange={setResourceTypeFilter}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Resource type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All resources</SelectItem>
+                <SelectItem value="invoice">Invoice</SelectItem>
+                <SelectItem value="payment">Payment</SelectItem>
+                <SelectItem value="subscription">Subscription</SelectItem>
+                <SelectItem value="customer">Customer</SelectItem>
+                <SelectItem value="credit_note">Credit Note</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={actionFilter} onValueChange={setActionFilter}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Action" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All actions</SelectItem>
+                <SelectItem value="created">Created</SelectItem>
+                <SelectItem value="updated">Updated</SelectItem>
+                <SelectItem value="status_changed">Status Changed</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={actorTypeFilter} onValueChange={setActorTypeFilter}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Actor type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All actors</SelectItem>
+                <SelectItem value="system">System</SelectItem>
+                <SelectItem value="api_key">API Key</SelectItem>
+                <SelectItem value="webhook">Webhook</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex flex-col md:flex-row md:items-center gap-2">
+              <Select
+                value={datePreset}
+                onValueChange={(v) => {
+                  const p = v as DatePreset
+                  setDatePreset(p)
+                  if (p === 'custom') setCalendarOpen(true)
+                }}
+              >
+                <SelectTrigger className="w-full md:w-44">
+                  <CalendarIcon className="mr-1 h-3.5 w-3.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(DATE_PRESET_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {datePreset === 'custom' && (
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full md:w-auto font-normal">
+                      {customRange?.from
+                        ? customRange.to
+                          ? `${format(customRange.from, 'MMM d, yyyy')} - ${format(customRange.to, 'MMM d, yyyy')}`
+                          : format(customRange.from, 'MMM d, yyyy')
+                        : 'Pick dates'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                      mode="range"
+                      selected={customRange}
+                      onSelect={setCustomRange}
+                      numberOfMonths={2}
+                      disabled={{ after: new Date() }}
+                    />
+                  </PopoverContent>
+                </Popover>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
