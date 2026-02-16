@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { FileText, Download } from 'lucide-react'
+import { useQuery, useMutation } from '@tanstack/react-query'
+import { FileText, Download, Eye, CreditCard, Loader2, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 
 import { Button } from '@/components/ui/button'
@@ -15,17 +15,20 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { portalApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import type { components } from '@/lib/schema'
 
 type InvoiceResponse = components['schemas']['InvoiceResponse']
+type PaymentResponse = components['schemas']['PaymentResponse']
 
 const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   draft: 'outline',
@@ -36,14 +39,40 @@ const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'ou
   failed: 'destructive',
 }
 
+const paymentStatusIcons: Record<string, typeof CheckCircle> = {
+  succeeded: CheckCircle,
+  failed: XCircle,
+  pending: Clock,
+  processing: Loader2,
+  refunded: AlertCircle,
+  canceled: XCircle,
+}
+
+const paymentStatusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  succeeded: 'default',
+  failed: 'destructive',
+  pending: 'secondary',
+  processing: 'secondary',
+  refunded: 'outline',
+  canceled: 'outline',
+}
+
 export default function PortalInvoicesPage() {
   const token = usePortalToken()
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponse | null>(null)
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['portal-invoices', token],
     queryFn: () => portalApi.listInvoices(token),
     enabled: !!token,
+  })
+
+  const { data: invoicePayments = [] } = useQuery({
+    queryKey: ['portal-invoice-payments', token, selectedInvoice?.id],
+    queryFn: () => portalApi.getInvoicePayments(token, selectedInvoice!.id),
+    enabled: !!token && !!selectedInvoice,
   })
 
   const handleDownloadPdf = async (invoiceId: string, invoiceNumber: string) => {
@@ -58,11 +87,29 @@ export default function PortalInvoicesPage() {
     a.remove()
   }
 
+  const handlePreviewPdf = async (invoiceId: string) => {
+    const blob = await portalApi.previewInvoicePdf(token, invoiceId)
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl)
+    const url = URL.createObjectURL(blob)
+    setPdfUrl(url)
+    setPdfPreviewOpen(true)
+  }
+
+  const payMutation = useMutation({
+    mutationFn: (invoiceId: string) => {
+      const currentUrl = window.location.href
+      return portalApi.payInvoice(token, invoiceId, currentUrl, currentUrl)
+    },
+    onSuccess: (data) => {
+      window.open(data.checkout_url, '_blank')
+    },
+  })
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Invoices</h1>
-        <p className="text-muted-foreground">View and download your invoices</p>
+        <p className="text-muted-foreground">View, pay, and download your invoices</p>
       </div>
 
       <div className="rounded-md border">
@@ -73,7 +120,7 @@ export default function PortalInvoicesPage() {
               <TableHead>Date</TableHead>
               <TableHead>Amount</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[180px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,7 +131,7 @@ export default function PortalInvoicesPage() {
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                 </TableRow>
               ))
             ) : invoices.length === 0 ? (
@@ -120,14 +167,41 @@ export default function PortalInvoicesPage() {
                       >
                         <FileText className="h-4 w-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDownloadPdf(invoice.id, invoice.invoice_number)}
-                        title="Download PDF"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
+                      {(invoice.status === 'finalized' || invoice.status === 'paid') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handlePreviewPdf(invoice.id)}
+                          title="Preview PDF"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {(invoice.status === 'finalized' || invoice.status === 'paid') && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDownloadPdf(invoice.id, invoice.invoice_number)}
+                          title="Download PDF"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {invoice.status === 'finalized' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => payMutation.mutate(invoice.id)}
+                          disabled={payMutation.isPending}
+                          title="Pay now"
+                        >
+                          {payMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CreditCard className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -142,6 +216,7 @@ export default function PortalInvoicesPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Invoice {selectedInvoice?.invoice_number}</DialogTitle>
+            <DialogDescription>Invoice details and payment history</DialogDescription>
           </DialogHeader>
           {selectedInvoice && (
             <div className="space-y-4">
@@ -177,17 +252,104 @@ export default function PortalInvoicesPage() {
                   <Badge variant="outline">{selectedInvoice.currency}</Badge>
                 </div>
               </div>
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownloadPdf(selectedInvoice.id, selectedInvoice.invoice_number)}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download PDF
-                </Button>
+
+              <div className="flex gap-2 justify-end">
+                {selectedInvoice.status === 'finalized' && (
+                  <Button
+                    size="sm"
+                    onClick={() => payMutation.mutate(selectedInvoice.id)}
+                    disabled={payMutation.isPending}
+                  >
+                    {payMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="mr-2 h-4 w-4" />
+                    )}
+                    Pay Now
+                  </Button>
+                )}
+                {(selectedInvoice.status === 'finalized' || selectedInvoice.status === 'paid') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePreviewPdf(selectedInvoice.id)}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview PDF
+                  </Button>
+                )}
+                {(selectedInvoice.status === 'finalized' || selectedInvoice.status === 'paid') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadPdf(selectedInvoice.id, selectedInvoice.invoice_number)}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download PDF
+                  </Button>
+                )}
               </div>
+
+              {/* Payment History */}
+              {invoicePayments.length > 0 && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-medium mb-3">Payment History</h4>
+                    <div className="space-y-2">
+                      {invoicePayments.map((payment: PaymentResponse) => {
+                        const StatusIcon = paymentStatusIcons[payment.status] || AlertCircle
+                        return (
+                          <div
+                            key={payment.id}
+                            className="flex items-center justify-between rounded-md border px-3 py-2"
+                          >
+                            <div className="flex items-center gap-2">
+                              <StatusIcon className={`h-4 w-4 ${payment.status === 'succeeded' ? 'text-green-600' : payment.status === 'failed' ? 'text-red-600' : 'text-muted-foreground'}`} />
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {formatCurrency(payment.amount, payment.currency)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {format(new Date(payment.created_at), 'MMM d, yyyy h:mm a')} via {payment.provider}
+                                </p>
+                              </div>
+                            </div>
+                            <Badge variant={paymentStatusColors[payment.status] || 'secondary'}>
+                              {payment.status}
+                            </Badge>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={pdfPreviewOpen} onOpenChange={(open) => {
+        if (!open && pdfUrl) {
+          URL.revokeObjectURL(pdfUrl)
+          setPdfUrl(null)
+        }
+        setPdfPreviewOpen(open)
+      }}>
+        <DialogContent className="sm:max-w-[800px] h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Invoice PDF Preview</DialogTitle>
+            <DialogDescription>Viewing invoice document</DialogDescription>
+          </DialogHeader>
+          {pdfUrl && (
+            <iframe
+              src={pdfUrl}
+              className="w-full flex-1 rounded border"
+              style={{ minHeight: '70vh' }}
+              title="Invoice PDF Preview"
+            />
           )}
         </DialogContent>
       </Dialog>

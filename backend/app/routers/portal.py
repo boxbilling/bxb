@@ -11,7 +11,7 @@ from app.core.auth import get_portal_customer
 from app.core.database import get_db
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
-from app.models.payment import Payment
+from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.payment_method import PaymentMethod
 from app.models.subscription import Subscription
 from app.models.wallet import Wallet
@@ -49,6 +49,8 @@ from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodRespons
 from app.schemas.portal import (
     PortalDashboardSummaryResponse,
     PortalNextBillingInfo,
+    PortalPayNowRequest,
+    PortalPayNowResponse,
     PortalProjectedUsageItem,
     PortalProjectedUsageResponse,
     PortalQuickActions,
@@ -448,6 +450,198 @@ async def download_portal_invoice_pdf(
         headers={
             "Content-Disposition": f'attachment; filename="invoice_{invoice.invoice_number}.pdf"'
         },
+    )
+
+
+@router.get(
+    "/invoices/{invoice_id}/pdf_preview",
+    summary="Preview invoice PDF inline",
+    responses={
+        400: {"description": "Invoice must be finalized or paid to generate PDF"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def preview_portal_invoice_pdf(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> Response:
+    """Preview a PDF for a finalized or paid invoice (inline in browser)."""
+    customer_id, organization_id = portal_auth
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice or UUID(str(invoice.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status not in (InvoiceStatus.FINALIZED.value, InvoiceStatus.PAID.value):
+        raise HTTPException(
+            status_code=400,
+            detail="Invoice must be finalized or paid to generate PDF",
+        )
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id)
+
+    org_repo = OrganizationRepository(db)
+    organization = org_repo.get_by_id(organization_id)
+
+    fee_repo = FeeRepository(db)
+    fees = fee_repo.get_by_invoice_id(invoice_id)
+
+    pdf_service = PdfService()
+    pdf_bytes = pdf_service.generate_invoice_pdf(
+        invoice=invoice,
+        fees=fees,
+        customer=customer,  # type: ignore[arg-type]
+        organization=organization,  # type: ignore[arg-type]
+    )
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="invoice_{invoice.invoice_number}.pdf"'
+        },
+    )
+
+
+@router.post(
+    "/invoices/{invoice_id}/pay",
+    response_model=PortalPayNowResponse,
+    summary="Pay an outstanding invoice",
+    responses={
+        400: {"description": "Only finalized invoices can be paid"},
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Invoice not found"},
+        503: {"description": "Payment provider not configured"},
+    },
+)
+async def pay_portal_invoice(
+    invoice_id: UUID,
+    data: PortalPayNowRequest,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> PortalPayNowResponse:
+    """Create a checkout session to pay an outstanding invoice."""
+    customer_id, organization_id = portal_auth
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice or UUID(str(invoice.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if invoice.status != InvoiceStatus.FINALIZED.value:
+        raise HTTPException(
+            status_code=400,
+            detail="Only finalized invoices can be paid",
+        )
+
+    payment_repo = PaymentRepository(db)
+
+    # Check for existing pending payment with a checkout URL
+    existing_payments = payment_repo.get_all(
+        invoice_id=invoice_id,
+        status=PaymentStatus.PENDING,
+        organization_id=organization_id,
+    )
+    if existing_payments:
+        existing = existing_payments[0]
+        if existing.provider_checkout_url:
+            return PortalPayNowResponse(
+                payment_id=existing.id,  # type: ignore[arg-type]
+                checkout_url=existing.provider_checkout_url,  # type: ignore[arg-type]
+                provider=existing.provider,  # type: ignore[arg-type]
+                invoice_id=invoice_id,
+                amount=invoice.total,  # type: ignore[arg-type]
+                currency=invoice.currency,  # type: ignore[arg-type]
+            )
+
+    # Get customer email for checkout
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id)
+    customer_email: str | None = customer.email if customer else None  # type: ignore[assignment]
+
+    # Create payment record
+    payment = payment_repo.create(
+        invoice_id=invoice_id,
+        customer_id=customer_id,
+        amount=float(invoice.total),
+        currency=invoice.currency,  # type: ignore[arg-type]
+        provider=PaymentProvider.STRIPE,
+        organization_id=organization_id,
+    )
+
+    # Create checkout session with payment provider
+    try:
+        from app.services.payment_provider import get_payment_provider
+
+        provider_svc = get_payment_provider(PaymentProvider.STRIPE)
+        session = provider_svc.create_checkout_session(
+            payment_id=payment.id,  # type: ignore[arg-type]
+            amount=invoice.total,  # type: ignore[arg-type]
+            currency=invoice.currency,  # type: ignore[arg-type]
+            customer_email=customer_email,
+            invoice_number=invoice.invoice_number,  # type: ignore[arg-type]
+            success_url=data.success_url,
+            cancel_url=data.cancel_url,
+            metadata={"invoice_id": str(invoice.id)},
+        )
+    except ImportError:
+        payment_repo.delete(payment.id)  # type: ignore[arg-type]
+        raise HTTPException(
+            status_code=503,
+            detail="Payment provider not configured",
+        ) from None
+    except Exception as e:
+        payment_repo.delete(payment.id)  # type: ignore[arg-type]
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create checkout session: {e!s}",
+        ) from None
+
+    # Update payment with provider IDs
+    payment_repo.set_provider_ids(
+        payment_id=payment.id,  # type: ignore[arg-type]
+        provider_checkout_id=session.provider_checkout_id,
+        provider_checkout_url=session.checkout_url,
+    )
+
+    return PortalPayNowResponse(
+        payment_id=payment.id,  # type: ignore[arg-type]
+        checkout_url=session.checkout_url,
+        provider=PaymentProvider.STRIPE.value,
+        invoice_id=invoice_id,
+        amount=invoice.total,  # type: ignore[arg-type]
+        currency=invoice.currency,  # type: ignore[arg-type]
+    )
+
+
+@router.get(
+    "/invoices/{invoice_id}/payments",
+    response_model=list[PaymentResponse],
+    summary="List payments for an invoice",
+    responses={
+        401: {"description": "Invalid or expired portal token"},
+        404: {"description": "Invoice not found"},
+    },
+)
+async def list_portal_invoice_payments(
+    invoice_id: UUID,
+    db: Session = Depends(get_db),
+    portal_auth: tuple[UUID, UUID] = Depends(get_portal_customer),
+) -> list[Payment]:
+    """List payments for a specific invoice belonging to the authenticated customer."""
+    customer_id, organization_id = portal_auth
+    invoice_repo = InvoiceRepository(db)
+    invoice = invoice_repo.get_by_id(invoice_id, organization_id)
+    if not invoice or UUID(str(invoice.customer_id)) != customer_id:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    payment_repo = PaymentRepository(db)
+    return payment_repo.get_all(
+        invoice_id=invoice_id,
+        customer_id=customer_id,
+        organization_id=organization_id,
     )
 
 

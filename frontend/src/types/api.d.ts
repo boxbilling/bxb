@@ -1888,6 +1888,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/add_ons/application_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get application counts per add-on
+         * @description Return a mapping of add_on_id to application count.
+         */
+        get: operations["get_application_counts_v1_add_ons_application_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add_ons/{code}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get application history for an add-on
+         * @description Get all applications of an add-on with customer names.
+         */
+        get: operations["get_add_on_applications_v1_add_ons__code__applications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/add_ons/{code}": {
         parameters: {
             query?: never;
@@ -2148,6 +2188,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/taxes/application_counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get tax application counts
+         * @description Get the count of applied tax records per tax.
+         */
+        get: operations["get_application_counts_v1_taxes_application_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/taxes/{code}/applied_entities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get entities a tax is applied to
+         * @description Get all entities a tax is applied to.
+         */
+        get: operations["get_applied_entities_v1_taxes__code__applied_entities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/taxes/{code}": {
         parameters: {
             query?: never;
@@ -2194,6 +2274,26 @@ export interface paths {
          * @description Create a new webhook endpoint.
          */
         post: operations["create_webhook_endpoint_v1_webhook_endpoints__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/delivery_stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get delivery stats per endpoint
+         * @description Get delivery success/failure stats grouped by webhook endpoint.
+         */
+        get: operations["get_delivery_stats_v1_webhook_endpoints_delivery_stats_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2260,6 +2360,26 @@ export interface paths {
          * @description Get webhook details.
          */
         get: operations["get_webhook_v1_webhook_endpoints_hooks__webhook_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhook_endpoints/hooks/{webhook_id}/delivery_attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get webhook delivery attempts
+         * @description Get all delivery attempts for a webhook, ordered by attempt number.
+         */
+        get: operations["get_webhook_delivery_attempts_v1_webhook_endpoints_hooks__webhook_id__delivery_attempts_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2360,6 +2480,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/organizations/current/api_keys/{api_key_id}/rotate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rotate API key
+         * @description Rotate an API key: revoke the old key and create a new one with the same config.
+         */
+        post: operations["rotate_api_key_v1_organizations_current_api_keys__api_key_id__rotate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/organizations/current/api_keys/{api_key_id}": {
         parameters: {
             query?: never;
@@ -2404,6 +2544,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dunning_campaigns/performance_stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get dunning campaign performance stats
+         * @description Get performance statistics across all dunning campaigns.
+         */
+        get: operations["get_performance_stats_v1_dunning_campaigns_performance_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/dunning_campaigns/{campaign_id}": {
         parameters: {
             query?: never;
@@ -2427,6 +2587,66 @@ export interface paths {
          * @description Delete a dunning campaign.
          */
         delete: operations["delete_dunning_campaign_v1_dunning_campaigns__campaign_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dunning_campaigns/{campaign_id}/execution_history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get campaign execution history
+         * @description Get payment requests generated by this campaign with customer and invoice details.
+         */
+        get: operations["get_execution_history_v1_dunning_campaigns__campaign_id__execution_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dunning_campaigns/{campaign_id}/timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get campaign timeline
+         * @description Get a chronological timeline of campaign events and outcomes.
+         */
+        get: operations["get_campaign_timeline_v1_dunning_campaigns__campaign_id__timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dunning_campaigns/{campaign_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview campaign execution
+         * @description Simulate what the campaign would do if executed now.
+         */
+        post: operations["preview_campaign_v1_dunning_campaigns__campaign_id__preview_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2456,6 +2676,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/payment_requests/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Batch create payment requests for all customers with overdue invoices
+         * @description Create payment requests for all customers with overdue finalized invoices.
+         */
+        post: operations["batch_create_payment_requests_v1_payment_requests_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/payment_requests/{request_id}": {
         parameters: {
             query?: never;
@@ -2468,6 +2708,26 @@ export interface paths {
          * @description Get a payment request by ID.
          */
         get: operations["get_payment_request_v1_payment_requests__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payment_requests/{request_id}/attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get payment attempt history
+         * @description Get the payment attempt history for a payment request.
+         */
+        get: operations["get_payment_attempt_history_v1_payment_requests__request_id__attempts_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2636,6 +2896,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/data_exports/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Estimate export size
+         * @description Estimate the number of records for a data export without creating it.
+         */
+        post: operations["estimate_data_export_v1_data_exports_estimate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/data_exports/{export_id}": {
         parameters: {
             query?: never;
@@ -2742,6 +3022,66 @@ export interface paths {
          * @description Test an integration's connection credentials.
          */
         post: operations["test_integration_connection_v1_integrations__integration_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration customer mappings
+         * @description List customer mappings for an integration.
+         */
+        get: operations["list_integration_customers_v1_integrations__integration_id__customers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration field mappings
+         * @description List field mappings for an integration.
+         */
+        get: operations["list_integration_mappings_v1_integrations__integration_id__mappings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/integrations/{integration_id}/sync_history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List integration sync history
+         * @description List sync history for an integration, with optional status/resource_type filters.
+         */
+        get: operations["list_integration_sync_history_v1_integrations__integration_id__sync_history_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3052,6 +3392,89 @@ export interface paths {
         patch: operations["update_usage_alert_v1_usage_alerts__alert_id__patch"];
         trace?: never;
     };
+    "/v1/usage_alerts/{alert_id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage alert status with current usage
+         * @description Get current usage status for a usage alert.
+         */
+        get: operations["get_usage_alert_status_v1_usage_alerts__alert_id__status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage_alerts/{alert_id}/triggers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List alert trigger history
+         * @description List trigger history for a usage alert.
+         */
+        get: operations["list_alert_triggers_v1_usage_alerts__alert_id__triggers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/usage_alerts/{alert_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test a usage alert by checking current usage
+         * @description Test a usage alert by computing current usage and returning the status.
+         *
+         *     This does NOT actually trigger the alert or send webhooks; it only shows
+         *     what the current usage vs threshold looks like.
+         */
+        post: operations["test_usage_alert_v1_usage_alerts__alert_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/dashboard_summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get portal dashboard summary
+         * @description Aggregated dashboard: billing, charges, usage, actions.
+         */
+        get: operations["get_portal_dashboard_summary_portal_dashboard_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/portal/customer": {
         parameters: {
             query?: never;
@@ -3064,6 +3487,46 @@ export interface paths {
          * @description Get the authenticated customer's profile information.
          */
         get: operations["get_portal_customer_profile_portal_customer_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update customer profile
+         * @description Update the authenticated customer's profile (name, email, timezone).
+         */
+        patch: operations["update_portal_profile_portal_profile_patch"];
+        trace?: never;
+    };
+    "/portal/branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get organization branding for portal
+         * @description Get the organization's branding information for portal display.
+         */
+        get: operations["get_portal_branding_portal_branding_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3132,6 +3595,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/invoices/{invoice_id}/pdf_preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview invoice PDF inline
+         * @description Preview a PDF for a finalized or paid invoice (inline in browser).
+         */
+        get: operations["preview_portal_invoice_pdf_portal_invoices__invoice_id__pdf_preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/invoices/{invoice_id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pay an outstanding invoice
+         * @description Create a checkout session to pay an outstanding invoice.
+         */
+        post: operations["pay_portal_invoice_portal_invoices__invoice_id__pay_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/invoices/{invoice_id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List payments for an invoice
+         * @description List payments for a specific invoice belonging to the authenticated customer.
+         */
+        get: operations["list_portal_invoice_payments_portal_invoices__invoice_id__payments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/portal/current_usage": {
         parameters: {
             query?: never;
@@ -3184,6 +3707,390 @@ export interface paths {
          * @description Get wallet balance and recent transactions for the authenticated customer.
          */
         get: operations["get_portal_wallet_portal_wallet_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet/{wallet_id}/transactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List wallet transactions
+         * @description List transactions for a customer's wallet.
+         */
+        get: operations["list_portal_wallet_transactions_portal_wallet__wallet_id__transactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet/{wallet_id}/balance_timeline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get wallet balance timeline
+         * @description Get daily balance timeline for a customer's wallet.
+         */
+        get: operations["get_portal_wallet_balance_timeline_portal_wallet__wallet_id__balance_timeline_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/wallet/{wallet_id}/top_up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request a wallet top-up
+         * @description Top up a customer's wallet with credits.
+         */
+        post: operations["portal_wallet_top_up_portal_wallet__wallet_id__top_up_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/payment_methods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List customer payment methods
+         * @description List payment methods for the authenticated customer.
+         */
+        get: operations["list_portal_payment_methods_portal_payment_methods_get"];
+        put?: never;
+        /**
+         * Add a payment method
+         * @description Add a new payment method for the authenticated customer.
+         */
+        post: operations["add_portal_payment_method_portal_payment_methods_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/payment_methods/{payment_method_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove a payment method
+         * @description Remove a payment method. Cannot remove the default payment method.
+         */
+        delete: operations["remove_portal_payment_method_portal_payment_methods__payment_method_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/payment_methods/{payment_method_id}/set_default": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set default payment method
+         * @description Set a payment method as the default for the authenticated customer.
+         */
+        post: operations["set_portal_default_payment_method_portal_payment_methods__payment_method_id__set_default_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/subscriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List customer subscriptions
+         * @description List subscriptions for the authenticated customer with plan details.
+         */
+        get: operations["list_portal_subscriptions_portal_subscriptions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/subscriptions/{subscription_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get subscription detail
+         * @description Get a specific subscription for the authenticated customer.
+         */
+        get: operations["get_portal_subscription_portal_subscriptions__subscription_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List available plans
+         * @description List all available plans for the organization.
+         */
+        get: operations["list_portal_plans_portal_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/subscriptions/{subscription_id}/change_plan_preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview plan change with proration
+         * @description Preview a plan change showing price comparison and proration details.
+         */
+        post: operations["portal_change_plan_preview_portal_subscriptions__subscription_id__change_plan_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/subscriptions/{subscription_id}/change_plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Change subscription plan
+         * @description Change a subscription's plan (upgrade or downgrade).
+         */
+        post: operations["portal_change_plan_portal_subscriptions__subscription_id__change_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/add_ons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List available add-ons
+         * @description List all add-ons available for purchase.
+         */
+        get: operations["list_portal_add_ons_portal_add_ons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/add_ons/purchased": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List purchased add-ons
+         * @description List all add-ons the customer has purchased.
+         */
+        get: operations["list_portal_purchased_add_ons_portal_add_ons_purchased_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/add_ons/{add_on_id}/purchase": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Purchase an add-on
+         * @description Purchase an add-on. Creates an applied add-on record and a one-off invoice.
+         */
+        post: operations["portal_purchase_add_on_portal_add_ons__add_on_id__purchase_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/coupons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List applied coupons
+         * @description List all coupons applied to the authenticated customer.
+         */
+        get: operations["list_portal_coupons_portal_coupons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/coupons/redeem": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Redeem a coupon code
+         * @description Redeem a coupon code for the authenticated customer.
+         */
+        post: operations["portal_redeem_coupon_portal_coupons_redeem_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/usage/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get usage trend for a subscription
+         * @description Get daily usage trend for the authenticated customer's subscription.
+         */
+        get: operations["get_portal_usage_trend_portal_usage_trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/usage/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get plan limits vs current usage
+         * @description Get plan entitlement limits with current usage for a subscription.
+         */
+        get: operations["get_portal_usage_limits_portal_usage_limits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portal/usage/projected": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get projected end-of-period usage
+         * @description Project end-of-period usage based on current consumption rate.
+         */
+        get: operations["get_portal_projected_usage_portal_usage_projected_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3341,6 +4248,38 @@ export interface components {
             expires_at: string | null;
             /** Status */
             status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * AppliedAddOnDetailResponse
+         * @description Applied add-on with customer name for display.
+         */
+        AppliedAddOnDetailResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Add On Id
+             * Format: uuid
+             */
+            add_on_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
             /**
              * Created At
              * Format: date-time
@@ -3552,6 +4491,45 @@ export interface components {
             wallet_id: string;
             /** Points */
             points: components["schemas"]["BalanceTimelinePoint"][];
+        };
+        /**
+         * BatchPaymentRequestResponse
+         * @description Response for batch payment request creation.
+         */
+        BatchPaymentRequestResponse: {
+            /** Total Customers */
+            total_customers: number;
+            /** Created */
+            created: number;
+            /** Failed */
+            failed: number;
+            /** Results */
+            results: components["schemas"]["BatchPaymentRequestResult"][];
+        };
+        /**
+         * BatchPaymentRequestResult
+         * @description Result for a single customer in a batch payment request creation.
+         */
+        BatchPaymentRequestResult: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Payment Request Id */
+            payment_request_id?: string | null;
+            /** Invoice Count */
+            invoice_count: number;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /** Status */
+            status: string;
+            /** Error */
+            error?: string | null;
         };
         /** BillableMetricCreate */
         BillableMetricCreate: {
@@ -3873,6 +4851,89 @@ export interface components {
             success: boolean;
             /** Error */
             error?: string | null;
+        };
+        /**
+         * CampaignPreviewInvoiceGroup
+         * @description A group of invoices for a customer+currency that would trigger a payment request.
+         */
+        CampaignPreviewInvoiceGroup: {
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Currency */
+            currency: string;
+            /** Total Outstanding Cents */
+            total_outstanding_cents: string;
+            /** Matching Threshold Cents */
+            matching_threshold_cents: string;
+            /** Invoice Count */
+            invoice_count: number;
+            /** Invoices */
+            invoices?: components["schemas"]["ExecutionHistoryInvoice"][];
+        };
+        /**
+         * CampaignPreviewResponse
+         * @description Preview of what a campaign would do if executed now.
+         */
+        CampaignPreviewResponse: {
+            /**
+             * Campaign Id
+             * Format: uuid
+             */
+            campaign_id: string;
+            /** Campaign Name */
+            campaign_name: string;
+            /** Status */
+            status: string;
+            /** Total Overdue Invoices */
+            total_overdue_invoices: number;
+            /** Total Overdue Amount Cents */
+            total_overdue_amount_cents: string;
+            /** Payment Requests To Create */
+            payment_requests_to_create: number;
+            /** Groups */
+            groups?: components["schemas"]["CampaignPreviewInvoiceGroup"][];
+            /** Existing Pending Requests */
+            existing_pending_requests: number;
+        };
+        /**
+         * CampaignTimelineEvent
+         * @description A single event in the campaign timeline.
+         */
+        CampaignTimelineEvent: {
+            /** Event Type */
+            event_type: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Description */
+            description: string;
+            /** Payment Request Id */
+            payment_request_id?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Amount Cents */
+            amount_cents?: string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Payment Status */
+            payment_status?: string | null;
+            /** Attempt Number */
+            attempt_number?: number | null;
+        };
+        /**
+         * CampaignTimelineResponse
+         * @description Chronological timeline of campaign events.
+         */
+        CampaignTimelineResponse: {
+            /** Events */
+            events?: components["schemas"]["CampaignTimelineEvent"][];
         };
         /**
          * ChangePlanPreviewRequest
@@ -4528,6 +5589,16 @@ export interface components {
             } | null;
         };
         /**
+         * DataExportEstimate
+         * @description Schema for data export size estimate response.
+         */
+        DataExportEstimate: {
+            /** Export Type */
+            export_type: string;
+            /** Record Count */
+            record_count: number;
+        };
+        /**
          * DataExportResponse
          * @description Schema for data export response.
          */
@@ -4614,6 +5685,30 @@ export interface components {
             status: string;
             /** Thresholds */
             thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][];
+        };
+        /**
+         * DunningCampaignPerformanceStats
+         * @description Performance statistics for dunning campaigns.
+         */
+        DunningCampaignPerformanceStats: {
+            /** Total Campaigns */
+            total_campaigns: number;
+            /** Active Campaigns */
+            active_campaigns: number;
+            /** Total Payment Requests */
+            total_payment_requests: number;
+            /** Succeeded Requests */
+            succeeded_requests: number;
+            /** Failed Requests */
+            failed_requests: number;
+            /** Pending Requests */
+            pending_requests: number;
+            /** Recovery Rate */
+            recovery_rate: number;
+            /** Total Recovered Amount Cents */
+            total_recovered_amount_cents: string;
+            /** Total Outstanding Amount Cents */
+            total_outstanding_amount_cents: string;
         };
         /**
          * DunningCampaignResponse
@@ -4718,6 +5813,19 @@ export interface components {
             status?: string | null;
             /** Thresholds */
             thresholds?: components["schemas"]["DunningCampaignThresholdCreate"][] | null;
+        };
+        /** EndpointDeliveryStats */
+        EndpointDeliveryStats: {
+            /** Endpoint Id */
+            endpoint_id: string;
+            /** Total */
+            total: number;
+            /** Succeeded */
+            succeeded: number;
+            /** Failed */
+            failed: number;
+            /** Success Rate */
+            success_rate: number;
         };
         /** EntitlementCopyRequest */
         EntitlementCopyRequest: {
@@ -4903,6 +6011,65 @@ export interface components {
             data_points: components["schemas"]["EventVolumePoint"][];
         };
         /**
+         * ExecutionHistoryEntry
+         * @description A single payment request in the campaign's execution history.
+         */
+        ExecutionHistoryEntry: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /** Payment Status */
+            payment_status: string;
+            /** Payment Attempts */
+            payment_attempts: number;
+            /** Ready For Payment Processing */
+            ready_for_payment_processing: boolean;
+            /** Invoices */
+            invoices?: components["schemas"]["ExecutionHistoryInvoice"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /**
+         * ExecutionHistoryInvoice
+         * @description Invoice summary within an execution history entry.
+         */
+        ExecutionHistoryInvoice: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invoice Number */
+            invoice_number: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Currency */
+            currency: string;
+            /** Status */
+            status: string;
+        };
+        /**
          * ExportType
          * @description Types of data that can be exported.
          * @enum {string}
@@ -5078,6 +6245,78 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** IntegrationCustomerResponse */
+        IntegrationCustomerResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /**
+             * Customer Id
+             * Format: uuid
+             */
+            customer_id: string;
+            /** External Customer Id */
+            external_customer_id: string;
+            /** Settings */
+            settings?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** IntegrationMappingResponse */
+        IntegrationMappingResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /** Mappable Type */
+            mappable_type: string;
+            /**
+             * Mappable Id
+             * Format: uuid
+             */
+            mappable_id: string;
+            /** External Id */
+            external_id: string;
+            /** External Data */
+            external_data?: {
+                [key: string]: unknown;
+            } | null;
+            /** Last Synced At */
+            last_synced_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** IntegrationResponse */
         IntegrationResponse: {
             /**
@@ -5116,6 +6355,47 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** IntegrationSyncHistoryResponse */
+        IntegrationSyncHistoryResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /** Resource Type */
+            resource_type: string;
+            /** Resource Id */
+            resource_id?: string | null;
+            /** External Id */
+            external_id?: string | null;
+            /** Action */
+            action: string;
+            /** Status */
+            status: string;
+            /** Error Message */
+            error_message?: string | null;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** IntegrationUpdate */
         IntegrationUpdate: {
@@ -5483,6 +6763,10 @@ export interface components {
             logo_url: string | null;
             /** Email */
             email: string | null;
+            /** Portal Accent Color */
+            portal_accent_color: string | null;
+            /** Portal Welcome Message */
+            portal_welcome_message: string | null;
             /** Legal Name */
             legal_name: string | null;
             /** Address Line1 */
@@ -5602,16 +6886,45 @@ export interface components {
             /** Country */
             country?: string | null;
         };
-        /** PortalBrandingResponse */
-        PortalBrandingResponse: {
-            /** Name */
-            name: string;
-            /** Logo Url */
-            logo_url: string | null;
-            /** Accent Color */
-            accent_color: string | null;
-            /** Welcome Message */
-            welcome_message: string | null;
+        /**
+         * PaymentAttemptEntry
+         * @description A single entry in the payment attempt history.
+         */
+        PaymentAttemptEntry: {
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Action */
+            action: string;
+            /** Old Status */
+            old_status?: string | null;
+            /** New Status */
+            new_status?: string | null;
+            /** Attempt Number */
+            attempt_number?: number | null;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            } | null;
+        };
+        /**
+         * PaymentAttemptHistoryResponse
+         * @description Response for payment request attempt history.
+         */
+        PaymentAttemptHistoryResponse: {
+            /**
+             * Payment Request Id
+             * Format: uuid
+             */
+            payment_request_id: string;
+            /** Current Status */
+            current_status: string;
+            /** Total Attempts */
+            total_attempts: number;
+            /** Entries */
+            entries: components["schemas"]["PaymentAttemptEntry"][];
         };
         /** PaymentMethodCreate */
         PaymentMethodCreate: {
@@ -5963,10 +7276,492 @@ export interface components {
             /** Charges */
             charges?: components["schemas"]["ChargeInput"][] | null;
         };
+        /**
+         * PortalAddOnResponse
+         * @description Add-on available for purchase in the customer portal.
+         */
+        PortalAddOnResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+        };
+        /**
+         * PortalAppliedCouponResponse
+         * @description Response for a portal-applied coupon with user-friendly details.
+         */
+        PortalAppliedCouponResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Coupon Code */
+            coupon_code: string;
+            /** Coupon Name */
+            coupon_name: string;
+            /** Coupon Type */
+            coupon_type: string;
+            /** Amount Cents */
+            amount_cents?: string | null;
+            /** Amount Currency */
+            amount_currency?: string | null;
+            /** Percentage Rate */
+            percentage_rate?: string | null;
+            /** Frequency */
+            frequency: string;
+            /** Frequency Duration */
+            frequency_duration?: number | null;
+            /** Frequency Duration Remaining */
+            frequency_duration_remaining?: number | null;
+            /** Status */
+            status: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** PortalBrandingResponse */
+        PortalBrandingResponse: {
+            /** Name */
+            name: string;
+            /** Logo Url */
+            logo_url: string | null;
+            /** Accent Color */
+            accent_color: string | null;
+            /** Welcome Message */
+            welcome_message: string | null;
+        };
+        /**
+         * PortalChangePlanRequest
+         * @description Request body for portal plan change.
+         */
+        PortalChangePlanRequest: {
+            /**
+             * New Plan Id
+             * Format: uuid
+             */
+            new_plan_id: string;
+        };
+        /**
+         * PortalDashboardSummaryResponse
+         * @description Aggregated dashboard summary for the portal.
+         */
+        PortalDashboardSummaryResponse: {
+            /** Next Billing */
+            next_billing: components["schemas"]["PortalNextBillingInfo"][];
+            /** Upcoming Charges */
+            upcoming_charges: components["schemas"]["PortalUpcomingCharge"][];
+            /** Usage Progress */
+            usage_progress: components["schemas"]["PortalUsageProgress"][];
+            quick_actions: components["schemas"]["PortalQuickActions"];
+        };
+        /**
+         * PortalNextBillingInfo
+         * @description Next billing date info for a single subscription.
+         */
+        PortalNextBillingInfo: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Subscription External Id */
+            subscription_external_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Plan Interval */
+            plan_interval: string;
+            /**
+             * Next Billing Date
+             * Format: date-time
+             */
+            next_billing_date: string;
+            /** Days Until Next Billing */
+            days_until_next_billing: number;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Currency */
+            currency: string;
+        };
+        /**
+         * PortalPayNowRequest
+         * @description Request to initiate payment for an invoice.
+         */
+        PortalPayNowRequest: {
+            /**
+             * Success Url
+             * @description URL to redirect after successful payment
+             */
+            success_url: string;
+            /**
+             * Cancel Url
+             * @description URL to redirect if payment is canceled
+             */
+            cancel_url: string;
+        };
+        /**
+         * PortalPayNowResponse
+         * @description Response with checkout URL for paying an invoice.
+         */
+        PortalPayNowResponse: {
+            /**
+             * Payment Id
+             * Format: uuid
+             */
+            payment_id: string;
+            /** Checkout Url */
+            checkout_url: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Amount */
+            amount: string;
+            /** Currency */
+            currency: string;
+        };
+        /**
+         * PortalPlanResponse
+         * @description Plan info suitable for portal display.
+         */
+        PortalPlanResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Code */
+            code: string;
+            /** Description */
+            description: string | null;
+            /** Interval */
+            interval: string;
+            /** Amount Cents */
+            amount_cents: number;
+            /** Currency */
+            currency: string;
+        };
+        /** PortalProfileUpdate */
+        PortalProfileUpdate: {
+            /** Name */
+            name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+        };
+        /**
+         * PortalProjectedUsageItem
+         * @description Projected usage for a single charge at end of billing period.
+         */
+        PortalProjectedUsageItem: {
+            /** Metric Name */
+            metric_name: string;
+            /** Metric Code */
+            metric_code: string;
+            /** Current Units */
+            current_units: string;
+            /** Projected Units */
+            projected_units: string;
+            /** Current Amount Cents */
+            current_amount_cents: string;
+            /** Projected Amount Cents */
+            projected_amount_cents: string;
+            /** Charge Model */
+            charge_model: string;
+        };
+        /**
+         * PortalProjectedUsageResponse
+         * @description Projected end-of-period usage response.
+         */
+        PortalProjectedUsageResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Period Start
+             * Format: date-time
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date-time
+             */
+            period_end: string;
+            /** Days Elapsed */
+            days_elapsed: number;
+            /** Days Remaining */
+            days_remaining: number;
+            /** Total Days */
+            total_days: number;
+            /** Current Total Cents */
+            current_total_cents: string;
+            /** Projected Total Cents */
+            projected_total_cents: string;
+            /** Currency */
+            currency: string;
+            /** Charges */
+            charges: components["schemas"]["PortalProjectedUsageItem"][];
+        };
+        /**
+         * PortalPurchaseAddOnResponse
+         * @description Response after purchasing an add-on.
+         */
+        PortalPurchaseAddOnResponse: {
+            /**
+             * Applied Add On Id
+             * Format: uuid
+             */
+            applied_add_on_id: string;
+            /**
+             * Invoice Id
+             * Format: uuid
+             */
+            invoice_id: string;
+            /** Add On Name */
+            add_on_name: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+        };
+        /**
+         * PortalPurchasedAddOnResponse
+         * @description An add-on the customer has already purchased.
+         */
+        PortalPurchasedAddOnResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Add On Id
+             * Format: uuid
+             */
+            add_on_id: string;
+            /** Add On Name */
+            add_on_name: string;
+            /** Add On Code */
+            add_on_code: string;
+            /** Amount Cents */
+            amount_cents: string;
+            /** Amount Currency */
+            amount_currency: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /**
+         * PortalQuickActions
+         * @description Data for quick action cards on the portal dashboard.
+         */
+        PortalQuickActions: {
+            /** Outstanding Invoice Count */
+            outstanding_invoice_count: number;
+            /** Outstanding Amount Cents */
+            outstanding_amount_cents: number;
+            /** Has Wallet */
+            has_wallet: boolean;
+            /** Wallet Balance Cents */
+            wallet_balance_cents: number;
+            /** Has Active Subscription */
+            has_active_subscription: boolean;
+            /** Currency */
+            currency: string;
+        };
+        /**
+         * PortalRedeemCouponRequest
+         * @description Request body for portal coupon code redemption.
+         */
+        PortalRedeemCouponRequest: {
+            /** Coupon Code */
+            coupon_code: string;
+        };
+        /**
+         * PortalSubscriptionResponse
+         * @description Subscription response enriched with plan details for portal display.
+         */
+        PortalSubscriptionResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** External Id */
+            external_id: string;
+            status: components["schemas"]["SubscriptionStatus"];
+            /** Started At */
+            started_at: string | null;
+            /** Canceled At */
+            canceled_at: string | null;
+            /** Paused At */
+            paused_at: string | null;
+            /** Downgraded At */
+            downgraded_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            plan: components["schemas"]["PlanSummary"];
+            pending_downgrade_plan?: components["schemas"]["PlanSummary"] | null;
+        };
+        /** PortalTopUpRequest */
+        PortalTopUpRequest: {
+            /** Credits */
+            credits: number | string;
+        };
+        /** PortalTopUpResponse */
+        PortalTopUpResponse: {
+            /**
+             * Wallet Id
+             * Format: uuid
+             */
+            wallet_id: string;
+            /** Credits Added */
+            credits_added: string;
+            /** New Balance Cents */
+            new_balance_cents: string;
+            /** New Credits Balance */
+            new_credits_balance: string;
+        };
+        /**
+         * PortalUpcomingCharge
+         * @description Upcoming charge estimate for a subscription.
+         */
+        PortalUpcomingCharge: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Subscription External Id */
+            subscription_external_id: string;
+            /** Plan Name */
+            plan_name: string;
+            /** Base Amount Cents */
+            base_amount_cents: number;
+            /** Usage Amount Cents */
+            usage_amount_cents: number;
+            /** Total Estimated Cents */
+            total_estimated_cents: number;
+            /** Currency */
+            currency: string;
+        };
         /** PortalUrlResponse */
         PortalUrlResponse: {
             /** Portal Url */
             portal_url: string;
+        };
+        /**
+         * PortalUsageLimitItem
+         * @description A single usage limit with current usage and limit value.
+         */
+        PortalUsageLimitItem: {
+            /** Feature Name */
+            feature_name: string;
+            /** Feature Code */
+            feature_code: string;
+            /** Feature Type */
+            feature_type: string;
+            /** Limit Value */
+            limit_value?: string | null;
+            /** Current Usage */
+            current_usage: string;
+            /** Usage Percentage */
+            usage_percentage?: number | null;
+        };
+        /**
+         * PortalUsageLimitsResponse
+         * @description Usage limits response for a subscription.
+         */
+        PortalUsageLimitsResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /** Items */
+            items: components["schemas"]["PortalUsageLimitItem"][];
+        };
+        /**
+         * PortalUsageProgress
+         * @description Usage progress toward a plan limit/entitlement.
+         */
+        PortalUsageProgress: {
+            /** Feature Name */
+            feature_name: string;
+            /** Feature Code */
+            feature_code: string;
+            /** Feature Type */
+            feature_type: string;
+            /** Entitlement Value */
+            entitlement_value: string;
+            /** Current Usage */
+            current_usage?: string | null;
+            /** Usage Percentage */
+            usage_percentage?: number | null;
+        };
+        /**
+         * PortalUsageTrendPoint
+         * @description A single data point in the portal usage trend.
+         */
+        PortalUsageTrendPoint: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Value */
+            value: string;
+            /** Events Count */
+            events_count: number;
+        };
+        /**
+         * PortalUsageTrendResponse
+         * @description Usage trend response for the portal.
+         */
+        PortalUsageTrendResponse: {
+            /**
+             * Subscription Id
+             * Format: uuid
+             */
+            subscription_id: string;
+            /**
+             * Start Date
+             * Format: date
+             */
+            start_date: string;
+            /**
+             * End Date
+             * Format: date
+             */
+            end_date: string;
+            /** Data Points */
+            data_points: components["schemas"]["PortalUsageTrendPoint"][];
         };
         /**
          * ProrationDetail
@@ -6280,6 +8075,33 @@ export interface components {
             downgraded_at?: string | null;
             on_termination_action?: components["schemas"]["TerminationAction"] | null;
         };
+        /**
+         * TaxApplicationCountsResponse
+         * @description Response for tax application counts.
+         */
+        TaxApplicationCountsResponse: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * TaxAppliedEntitiesResponse
+         * @description Response for listing entities a tax is applied to.
+         */
+        TaxAppliedEntitiesResponse: {
+            /**
+             * Tax Id
+             * Format: uuid
+             */
+            tax_id: string;
+            /** Tax Code */
+            tax_code: string;
+            /** Entities */
+            entities: {
+                [key: string]: string | null;
+            }[];
+        };
         /** TaxCreate */
         TaxCreate: {
             /** Code */
@@ -6290,6 +8112,8 @@ export interface components {
             rate: number | string;
             /** Description */
             description?: string | null;
+            /** Category */
+            category?: string | null;
             /**
              * Applied To Organization
              * @default false
@@ -6311,6 +8135,8 @@ export interface components {
             rate: string;
             /** Description */
             description?: string | null;
+            /** Category */
+            category?: string | null;
             /** Applied To Organization */
             applied_to_organization: boolean;
             /**
@@ -6332,6 +8158,8 @@ export interface components {
             rate?: number | string | null;
             /** Description */
             description?: string | null;
+            /** Category */
+            category?: string | null;
             /** Applied To Organization */
             applied_to_organization?: boolean | null;
         };
@@ -6411,6 +8239,54 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** UsageAlertStatusResponse */
+        UsageAlertStatusResponse: {
+            /**
+             * Alert Id
+             * Format: uuid
+             */
+            alert_id: string;
+            /** Current Usage */
+            current_usage: string;
+            /** Threshold Value */
+            threshold_value: string;
+            /** Usage Percentage */
+            usage_percentage: string;
+            /**
+             * Billing Period Start
+             * Format: date-time
+             */
+            billing_period_start: string;
+            /**
+             * Billing Period End
+             * Format: date-time
+             */
+            billing_period_end: string;
+        };
+        /** UsageAlertTriggerResponse */
+        UsageAlertTriggerResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Usage Alert Id
+             * Format: uuid
+             */
+            usage_alert_id: string;
+            /** Current Usage */
+            current_usage: string;
+            /** Threshold Value */
+            threshold_value: string;
+            /** Metric Code */
+            metric_code: string;
+            /**
+             * Triggered At
+             * Format: date-time
+             */
+            triggered_at: string;
         };
         /** UsageAlertUpdate */
         UsageAlertUpdate: {
@@ -6696,6 +8572,34 @@ export interface components {
             expiration_at?: string | null;
             /** Priority */
             priority?: number | null;
+        };
+        /** WebhookDeliveryAttemptResponse */
+        WebhookDeliveryAttemptResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Webhook Id
+             * Format: uuid
+             */
+            webhook_id: string;
+            /** Attempt Number */
+            attempt_number: number;
+            /** Http Status */
+            http_status?: number | null;
+            /** Response Body */
+            response_body?: string | null;
+            /** Success */
+            success: boolean;
+            /** Error Message */
+            error_message?: string | null;
+            /**
+             * Attempted At
+             * Format: date-time
+             */
+            attempted_at: string;
         };
         /** WebhookEndpointCreate */
         WebhookEndpointCreate: {
@@ -12103,6 +14007,80 @@ export interface operations {
             };
         };
     };
+    get_application_counts_v1_add_ons_application_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_add_on_applications_v1_add_ons__code__applications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedAddOnDetailResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_add_on_v1_add_ons__code__get: {
         parameters: {
             query?: never;
@@ -12894,6 +14872,78 @@ export interface operations {
             };
         };
     };
+    get_application_counts_v1_taxes_application_counts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxApplicationCountsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_applied_entities_v1_taxes__code__applied_entities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxAppliedEntitiesResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Tax not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_tax_v1_taxes__code__get: {
         parameters: {
             query?: never;
@@ -13106,6 +15156,33 @@ export interface operations {
             };
         };
     };
+    get_delivery_stats_v1_webhook_endpoints_delivery_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EndpointDeliveryStats"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_webhook_endpoint_v1_webhook_endpoints__endpoint_id__get: {
         parameters: {
             query?: never;
@@ -13300,6 +15377,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookResponse"];
+                };
+            };
+            /** @description Webhook not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_webhook_delivery_attempts_v1_webhook_endpoints_hooks__webhook_id__delivery_attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryAttemptResponse"][];
                 };
             };
             /** @description Webhook not found */
@@ -13584,6 +15699,51 @@ export interface operations {
             };
         };
     };
+    rotate_api_key_v1_organizations_current_api_keys__api_key_id__rotate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                api_key_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiKeyCreateResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description API key not found or not active */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     revoke_api_key_v1_organizations_current_api_keys__api_key_id__delete: {
         parameters: {
             query?: never;
@@ -13705,6 +15865,33 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_performance_stats_v1_dunning_campaigns_performance_stats_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DunningCampaignPerformanceStats"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -13847,6 +16034,144 @@ export interface operations {
             };
         };
     };
+    get_execution_history_v1_dunning_campaigns__campaign_id__execution_history_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionHistoryEntry"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_campaign_timeline_v1_dunning_campaigns__campaign_id__timeline_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignTimelineResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_campaign_v1_dunning_campaigns__campaign_id__preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignPreviewResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Dunning campaign not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_payment_requests_v1_payment_requests__get: {
         parameters: {
             query?: {
@@ -13935,6 +16260,33 @@ export interface operations {
             };
         };
     };
+    batch_create_payment_requests_v1_payment_requests_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BatchPaymentRequestResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_payment_request_v1_payment_requests__request_id__get: {
         parameters: {
             query?: never;
@@ -13953,6 +16305,51 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentRequestResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment request not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_payment_attempt_history_v1_payment_requests__request_id__attempts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                request_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentAttemptHistoryResponse"];
                 };
             };
             /** @description Unauthorized */
@@ -14511,6 +16908,44 @@ export interface operations {
             };
         };
     };
+    estimate_data_export_v1_data_exports_estimate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DataExportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportEstimate"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     get_data_export_v1_data_exports__export_id__get: {
         parameters: {
             query?: never;
@@ -14872,6 +17307,152 @@ export interface operations {
             };
         };
     };
+    list_integration_customers_v1_integrations__integration_id__customers_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCustomerResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integration_mappings_v1_integrations__integration_id__mappings_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationMappingResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integration_sync_history_v1_integrations__integration_id__sync_history_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                resource_type?: string | null;
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                integration_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationSyncHistoryResponse"][];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Integration not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_audit_logs_v1_audit_logs__get: {
         parameters: {
             query?: {
@@ -14880,6 +17461,9 @@ export interface operations {
                 resource_type?: string | null;
                 resource_id?: string | null;
                 action?: string | null;
+                start_date?: string | null;
+                end_date?: string | null;
+                actor_type?: string | null;
             };
             header?: never;
             path?: never;
@@ -15913,6 +18497,182 @@ export interface operations {
             };
         };
     };
+    get_usage_alert_status_v1_usage_alerts__alert_id__status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertStatusResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert, subscription, plan, or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_alert_triggers_v1_usage_alerts__alert_id__triggers_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertTriggerResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_usage_alert_v1_usage_alerts__alert_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alert_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageAlertStatusResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Usage alert, subscription, plan, or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_dashboard_summary_portal_dashboard_summary_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalDashboardSummaryResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_portal_customer_profile_portal_customer_get: {
         parameters: {
             query: {
@@ -15941,6 +18701,98 @@ export interface operations {
                 content?: never;
             };
             /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_portal_profile_portal_profile_patch: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_portal_branding_portal_branding_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalBrandingResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Organization not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16099,6 +18951,172 @@ export interface operations {
             };
         };
     };
+    preview_portal_invoice_pdf_portal_invoices__invoice_id__pdf_preview_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Invoice must be finalized or paid to generate PDF */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pay_portal_invoice_portal_invoices__invoice_id__pay_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalPayNowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalPayNowResponse"];
+                };
+            };
+            /** @description Only finalized invoices can be paid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Payment provider not configured */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_portal_invoice_payments_portal_invoices__invoice_id__payments_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                invoice_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invoice not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_portal_current_usage_portal_current_usage_get: {
         parameters: {
             query: {
@@ -16207,6 +19225,933 @@ export interface operations {
             };
             /** @description Invalid or expired portal token */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_wallet_transactions_portal_wallet__wallet_id__transactions_get: {
+        parameters: {
+            query: {
+                skip?: number;
+                limit?: number;
+                token: string;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletTransactionResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_wallet_balance_timeline_portal_wallet__wallet_id__balance_timeline_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BalanceTimelineResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_wallet_top_up_portal_wallet__wallet_id__top_up_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                wallet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalTopUpRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalTopUpResponse"];
+                };
+            };
+            /** @description Wallet is not active or invalid credits */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Wallet not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_payment_methods_portal_payment_methods_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_portal_payment_method_portal_payment_methods_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PaymentMethodCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    remove_portal_payment_method_portal_payment_methods__payment_method_id__delete: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                payment_method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Cannot delete default payment method */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_portal_default_payment_method_portal_payment_methods__payment_method_id__set_default_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                payment_method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentMethodResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Payment method not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_subscriptions_portal_subscriptions_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalSubscriptionResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_subscription_portal_subscriptions__subscription_id__get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalSubscriptionResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_plans_portal_plans_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalPlanResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_change_plan_preview_portal_subscriptions__subscription_id__change_plan_preview_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChangePlanPreviewResponse"];
+                };
+            };
+            /** @description Invalid plan or same plan */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription or plan not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_change_plan_portal_subscriptions__subscription_id__change_plan_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                subscription_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalChangePlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionResponse"];
+                };
+            };
+            /** @description Invalid plan change */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_add_ons_portal_add_ons_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalAddOnResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_purchased_add_ons_portal_add_ons_purchased_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalPurchasedAddOnResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_purchase_add_on_portal_add_ons__add_on_id__purchase_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path: {
+                add_on_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalPurchaseAddOnResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Add-on not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_portal_coupons_portal_coupons_get: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalAppliedCouponResponse"][];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    portal_redeem_coupon_portal_coupons_redeem_post: {
+        parameters: {
+            query: {
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PortalRedeemCouponRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalAppliedCouponResponse"];
+                };
+            };
+            /** @description Coupon is not active, expired, or already applied */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Coupon not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_usage_trend_portal_usage_trend_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                start_date?: string | null;
+                end_date?: string | null;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalUsageTrendResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_usage_limits_portal_usage_limits_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalUsageLimitsResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_projected_usage_portal_usage_projected_get: {
+        parameters: {
+            query: {
+                subscription_id: string;
+                token: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalProjectedUsageResponse"];
+                };
+            };
+            /** @description Invalid or expired portal token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Subscription not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

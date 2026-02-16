@@ -319,6 +319,345 @@ class TestPortalInvoicePdfEndpoint:
         assert response.status_code == 404
 
 
+class TestPortalInvoicePdfPreviewEndpoint:
+    """Tests for GET /portal/invoices/{id}/pdf_preview."""
+
+    def test_preview_pdf(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.routers.portal.PdfService.generate_invoice_pdf",
+            return_value=b"%PDF-preview",
+        ):
+            response = client.get(f"/portal/invoices/{invoice.id}/pdf_preview?token={token}")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+        assert "inline" in response.headers["Content-Disposition"]
+
+    def test_invoice_not_found(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/invoices/{uuid.uuid4()}/pdf_preview?token={token}")
+        assert response.status_code == 404
+
+    def test_draft_invoice_returns_400(self, client: TestClient, customer, draft_invoice):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/invoices/{draft_invoice.id}/pdf_preview?token={token}"
+        )
+        assert response.status_code == 400
+        assert "finalized or paid" in response.json()["detail"]
+
+    def test_other_customers_invoice_returns_404(
+        self, client: TestClient, customer, other_customer, other_customer_invoice
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/invoices/{other_customer_invoice.id}/pdf_preview?token={token}"
+        )
+        assert response.status_code == 404
+
+    def test_expired_token_returns_401(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/invoices/{invoice.id}/pdf_preview?token={token}")
+        assert response.status_code == 401
+
+
+class TestPortalPayInvoiceEndpoint:
+    """Tests for POST /portal/invoices/{id}/pay."""
+
+    def test_pay_finalized_invoice(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.services.payment_provider.get_payment_provider",
+        ) as mock_get_provider:
+            mock_provider = mock_get_provider.return_value
+            mock_provider.create_checkout_session.return_value = type(
+                "Session", (), {
+                    "provider_checkout_id": "cs_test_123",
+                    "checkout_url": "https://checkout.stripe.com/pay/cs_test_123",
+                    "expires_at": None,
+                }
+            )()
+            response = client.post(
+                f"/portal/invoices/{invoice.id}/pay?token={token}",
+                json={
+                    "success_url": "https://example.com/success",
+                    "cancel_url": "https://example.com/cancel",
+                },
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["checkout_url"] == "https://checkout.stripe.com/pay/cs_test_123"
+        assert data["invoice_id"] == str(invoice.id)
+        assert data["provider"] == "stripe"
+
+    def test_pay_invoice_not_found(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/invoices/{uuid.uuid4()}/pay?token={token}",
+            json={
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
+        assert response.status_code == 404
+
+    def test_pay_draft_invoice_returns_400(self, client: TestClient, customer, draft_invoice):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/invoices/{draft_invoice.id}/pay?token={token}",
+            json={
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
+        assert response.status_code == 400
+        assert "Only finalized invoices can be paid" in response.json()["detail"]
+
+    def test_pay_paid_invoice_returns_400(self, client: TestClient, customer, db_session):
+        paid_invoice = Invoice(
+            invoice_number=f"INV-PAID-{uuid.uuid4().hex[:8]}",
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            status=InvoiceStatus.PAID.value,
+            billing_period_start=datetime(2025, 3, 1),
+            billing_period_end=datetime(2025, 3, 31),
+            subtotal=75,
+            total=75,
+            line_items=[],
+        )
+        db_session.add(paid_invoice)
+        db_session.commit()
+        db_session.refresh(paid_invoice)
+
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/invoices/{paid_invoice.id}/pay?token={token}",
+            json={
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
+        assert response.status_code == 400
+
+    def test_pay_other_customers_invoice_returns_404(
+        self, client: TestClient, customer, other_customer, other_customer_invoice
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/invoices/{other_customer_invoice.id}/pay?token={token}",
+            json={
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
+        assert response.status_code == 404
+
+    def test_pay_returns_existing_pending_payment(
+        self, client: TestClient, customer, invoice, db_session
+    ):
+        """If there's an existing pending payment with checkout URL, return it."""
+        existing_payment = Payment(
+            invoice_id=invoice.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            amount=100,
+            currency="USD",
+            status=PaymentStatus.PENDING.value,
+            provider="stripe",
+            provider_checkout_url="https://checkout.stripe.com/existing",
+        )
+        db_session.add(existing_payment)
+        db_session.commit()
+        db_session.refresh(existing_payment)
+
+        token = _make_portal_token(customer.id)
+        response = client.post(
+            f"/portal/invoices/{invoice.id}/pay?token={token}",
+            json={
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["checkout_url"] == "https://checkout.stripe.com/existing"
+        assert data["payment_id"] == str(existing_payment.id)
+
+    def test_pay_provider_not_configured(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.services.payment_provider.get_payment_provider",
+        ) as mock_get_provider:
+            mock_provider = mock_get_provider.return_value
+            mock_provider.create_checkout_session.side_effect = ImportError("stripe not installed")
+            response = client.post(
+                f"/portal/invoices/{invoice.id}/pay?token={token}",
+                json={
+                    "success_url": "https://example.com/success",
+                    "cancel_url": "https://example.com/cancel",
+                },
+            )
+        assert response.status_code == 503
+        assert "Payment provider not configured" in response.json()["detail"]
+
+    def test_pay_existing_pending_without_checkout_url(
+        self, client: TestClient, customer, invoice, db_session
+    ):
+        """If pending payment exists without checkout URL, create new checkout."""
+        existing_payment = Payment(
+            invoice_id=invoice.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            amount=100,
+            currency="USD",
+            status=PaymentStatus.PENDING.value,
+            provider="stripe",
+            provider_checkout_url=None,
+        )
+        db_session.add(existing_payment)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.services.payment_provider.get_payment_provider",
+        ) as mock_get_provider:
+            mock_provider = mock_get_provider.return_value
+            mock_provider.create_checkout_session.return_value = type(
+                "Session", (), {
+                    "provider_checkout_id": "cs_new_123",
+                    "checkout_url": "https://checkout.stripe.com/pay/cs_new_123",
+                    "expires_at": None,
+                }
+            )()
+            response = client.post(
+                f"/portal/invoices/{invoice.id}/pay?token={token}",
+                json={
+                    "success_url": "https://example.com/success",
+                    "cancel_url": "https://example.com/cancel",
+                },
+            )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["checkout_url"] == "https://checkout.stripe.com/pay/cs_new_123"
+
+    def test_pay_checkout_session_generic_error(self, client: TestClient, customer, invoice):
+        """Test generic exception from checkout session creation returns 500."""
+        token = _make_portal_token(customer.id)
+        with patch(
+            "app.services.payment_provider.get_payment_provider",
+        ) as mock_get_provider:
+            mock_provider = mock_get_provider.return_value
+            mock_provider.create_checkout_session.side_effect = RuntimeError(
+                "Connection refused"
+            )
+            response = client.post(
+                f"/portal/invoices/{invoice.id}/pay?token={token}",
+                json={
+                    "success_url": "https://example.com/success",
+                    "cancel_url": "https://example.com/cancel",
+                },
+            )
+        assert response.status_code == 500
+        assert "Failed to create checkout session" in response.json()["detail"]
+
+    def test_expired_token_returns_401(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.post(
+            f"/portal/invoices/{invoice.id}/pay?token={token}",
+            json={
+                "success_url": "https://example.com/success",
+                "cancel_url": "https://example.com/cancel",
+            },
+        )
+        assert response.status_code == 401
+
+
+class TestPortalInvoicePaymentsEndpoint:
+    """Tests for GET /portal/invoices/{id}/payments."""
+
+    def test_list_invoice_payments(self, client: TestClient, customer, invoice, payment):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/invoices/{invoice.id}/payments?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["id"] == str(payment.id)
+        assert data[0]["invoice_id"] == str(invoice.id)
+
+    def test_list_invoice_payments_empty(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/invoices/{invoice.id}/payments?token={token}")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_invoice_not_found(self, client: TestClient, customer):
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/invoices/{uuid.uuid4()}/payments?token={token}")
+        assert response.status_code == 404
+
+    def test_other_customers_invoice_returns_404(
+        self, client: TestClient, customer, other_customer, other_customer_invoice
+    ):
+        token = _make_portal_token(customer.id)
+        response = client.get(
+            f"/portal/invoices/{other_customer_invoice.id}/payments?token={token}"
+        )
+        assert response.status_code == 404
+
+    def test_expired_token_returns_401(self, client: TestClient, customer, invoice):
+        token = _make_portal_token(customer.id, expired=True)
+        response = client.get(f"/portal/invoices/{invoice.id}/payments?token={token}")
+        assert response.status_code == 401
+
+    def test_multiple_payments(self, client: TestClient, customer, invoice, payment, db_session):
+        """Multiple payments for the same invoice should all be returned."""
+        second_payment = Payment(
+            invoice_id=invoice.id,
+            customer_id=customer.id,
+            organization_id=DEFAULT_ORG_ID,
+            amount=50,
+            currency="USD",
+            status=PaymentStatus.FAILED.value,
+            provider="stripe",
+        )
+        db_session.add(second_payment)
+        db_session.commit()
+
+        token = _make_portal_token(customer.id)
+        response = client.get(f"/portal/invoices/{invoice.id}/payments?token={token}")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+
+class TestPortalPayNowSchemas:
+    """Tests for PortalPayNow request/response schemas."""
+
+    def test_pay_now_request_valid(self):
+        from app.schemas.portal import PortalPayNowRequest
+
+        req = PortalPayNowRequest(
+            success_url="https://example.com/success",
+            cancel_url="https://example.com/cancel",
+        )
+        assert req.success_url == "https://example.com/success"
+        assert req.cancel_url == "https://example.com/cancel"
+
+    def test_pay_now_response_valid(self):
+        from app.schemas.portal import PortalPayNowResponse
+
+        resp = PortalPayNowResponse(
+            payment_id=uuid.uuid4(),
+            checkout_url="https://checkout.stripe.com/test",
+            provider="stripe",
+            invoice_id=uuid.uuid4(),
+            amount=100,
+            currency="USD",
+        )
+        assert resp.provider == "stripe"
+        assert resp.currency == "USD"
+
+
 class TestPortalPaymentsEndpoint:
     """Tests for GET /portal/payments."""
 

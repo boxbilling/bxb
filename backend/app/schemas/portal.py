@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PortalUrlResponse(BaseModel):
@@ -125,3 +125,21 @@ class PortalProjectedUsageResponse(BaseModel):
     projected_total_cents: Decimal
     currency: str
     charges: list[PortalProjectedUsageItem]
+
+
+class PortalPayNowRequest(BaseModel):
+    """Request to initiate payment for an invoice."""
+
+    success_url: str = Field(..., description="URL to redirect after successful payment")
+    cancel_url: str = Field(..., description="URL to redirect if payment is canceled")
+
+
+class PortalPayNowResponse(BaseModel):
+    """Response with checkout URL for paying an invoice."""
+
+    payment_id: UUID
+    checkout_url: str
+    provider: str
+    invoice_id: UUID
+    amount: Decimal
+    currency: str

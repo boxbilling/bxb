@@ -77,6 +77,7 @@ type PortalAppliedCouponResponse = components['schemas']['PortalAppliedCouponRes
 type PortalUsageTrendResponse = components['schemas']['PortalUsageTrendResponse']
 type PortalUsageLimitsResponse = components['schemas']['PortalUsageLimitsResponse']
 type PortalProjectedUsageResponse = components['schemas']['PortalProjectedUsageResponse']
+type PortalPayNowResponse = components['schemas']['PortalPayNowResponse']
 
 type CreditNoteResponse = components['schemas']['CreditNoteResponse']
 type CreditNoteCreate = components['schemas']['CreditNoteCreate']
@@ -501,6 +502,15 @@ export const portalApi = {
     portalRequest<InvoiceResponse>(`/portal/invoices/${id}`, token),
   downloadInvoicePdf: (token: string, id: string) =>
     portalRequestBlob(`/portal/invoices/${id}/download_pdf`, token),
+  previewInvoicePdf: (token: string, id: string) =>
+    portalRequestBlob(`/portal/invoices/${id}/pdf_preview`, token),
+  payInvoice: (token: string, id: string, successUrl: string, cancelUrl: string) =>
+    portalRequest<PortalPayNowResponse>(`/portal/invoices/${id}/pay`, token, {
+      method: 'POST',
+      body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
+    }),
+  getInvoicePayments: (token: string, id: string) =>
+    portalRequest<PaymentResponse[]>(`/portal/invoices/${id}/payments`, token),
   getCurrentUsage: (token: string, subscriptionId: string) =>
     portalRequest<CustomerCurrentUsageResponse>(`/portal/current_usage?subscription_id=${subscriptionId}`, token),
   getUsageTrend: (token: string, subscriptionId: string, startDate?: string, endDate?: string) => {
