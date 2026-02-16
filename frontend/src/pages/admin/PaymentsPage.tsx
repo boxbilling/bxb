@@ -213,7 +213,7 @@ export default function PaymentsPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -257,8 +257,8 @@ export default function PaymentsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
-        <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+        <div className="relative flex-1 max-w-none md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search by customer or invoice..."
@@ -271,7 +271,7 @@ export default function PaymentsPage() {
           value={statusFilter}
           onValueChange={(value) => setStatusFilter(value as PaymentStatus | 'all')}
         >
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full md:w-[150px]">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -288,7 +288,7 @@ export default function PaymentsPage() {
           value={providerFilter}
           onValueChange={(value) => setProviderFilter(value as PaymentProvider | 'all')}
         >
-          <SelectTrigger className="w-[150px]">
+          <SelectTrigger className="w-full md:w-[150px]">
             <SelectValue placeholder="Provider" />
           </SelectTrigger>
           <SelectContent>
@@ -306,11 +306,11 @@ export default function PaymentsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Customer</TableHead>
-              <TableHead>Invoice</TableHead>
+              <TableHead className="hidden md:table-cell">Invoice</TableHead>
               <SortableTableHead label="Amount" sortKey="amount_cents" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Provider" sortKey="provider" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Provider" sortKey="provider" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <SortableTableHead label="Status" sortKey="status" sort={sort} onSort={setSort} />
-              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <TableHead className="w-[60px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -319,11 +319,11 @@ export default function PaymentsPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                 </TableRow>
               ))
@@ -339,13 +339,13 @@ export default function PaymentsPage() {
                   <TableCell className="font-medium">
                     {getCustomerName(payment.customer_id)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <code className="text-xs">{getInvoiceNumber(payment.invoice_id)}</code>
                   </TableCell>
                   <TableCell>
                     {formatCurrency(payment.amount, payment.currency)}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Badge variant="outline">
                       {providerLabels[payment.provider] || payment.provider}
                     </Badge>
@@ -355,7 +355,7 @@ export default function PaymentsPage() {
                       {payment.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">
+                  <TableCell className="hidden md:table-cell text-muted-foreground">
                     {format(new Date(payment.created_at), 'MMM d, yyyy')}
                   </TableCell>
                   <TableCell>
