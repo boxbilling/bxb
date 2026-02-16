@@ -143,8 +143,8 @@ export default function ApiKeysPage() {
               <TableHead>Name</TableHead>
               <TableHead>Key Prefix</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Last Used</TableHead>
+              <TableHead className="hidden md:table-cell">Created</TableHead>
+              <TableHead className="hidden md:table-cell">Last Used</TableHead>
               <TableHead>Expires</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -156,8 +156,8 @@ export default function ApiKeysPage() {
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
@@ -190,10 +190,10 @@ export default function ApiKeysPage() {
                       {key.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     {format(new Date(key.created_at), 'MMM d, yyyy')}
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
+                  <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                     {key.last_used_at
                       ? format(new Date(key.last_used_at), 'MMM d, yyyy')
                       : 'Never'}

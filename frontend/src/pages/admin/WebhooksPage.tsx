@@ -280,16 +280,18 @@ function EndpointFormDialog({
               </div>
             )}
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
             <Button
               type="submit"
+              className="w-full sm:w-auto"
               disabled={isLoading || !formData.url}
             >
               {isLoading ? 'Saving...' : endpoint ? 'Update' : 'Create'}
@@ -708,7 +710,7 @@ export default function WebhooksPage() {
       />
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -769,8 +771,8 @@ export default function WebhooksPage() {
         {/* Endpoints Tab */}
         <TabsContent value="endpoints" className="space-y-4">
           {/* Filters */}
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1 max-w-sm">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <div className="relative flex-1 md:max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by URL..."
@@ -780,7 +782,7 @@ export default function WebhooksPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -797,10 +799,10 @@ export default function WebhooksPage() {
               <TableHeader>
                 <TableRow>
                   <SortableTableHead label="URL" sortKey="url" sort={endpointSort} onSort={setEndpointSort} />
-                  <TableHead>Signature Algorithm</TableHead>
+                  <TableHead className="hidden md:table-cell">Signature Algorithm</TableHead>
                   <SortableTableHead label="Status" sortKey="status" sort={endpointSort} onSort={setEndpointSort} />
-                  <TableHead>Delivery Rate</TableHead>
-                  <SortableTableHead label="Created" sortKey="created_at" sort={endpointSort} onSort={setEndpointSort} />
+                  <TableHead className="hidden md:table-cell">Delivery Rate</TableHead>
+                  <SortableTableHead className="hidden md:table-cell" label="Created" sortKey="created_at" sort={endpointSort} onSort={setEndpointSort} />
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -809,10 +811,10 @@ export default function WebhooksPage() {
                   Array.from({ length: 3 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                     </TableRow>
                   ))
@@ -834,7 +836,7 @@ export default function WebhooksPage() {
                           {endpoint.url}
                         </code>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <Badge variant="outline">
                           {endpoint.signature_algo === 'hmac'
                             ? 'HMAC-SHA256'
@@ -844,7 +846,7 @@ export default function WebhooksPage() {
                       <TableCell>
                         {getEndpointStatusBadge(endpoint.status)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         {(() => {
                           const epStats = deliveryStatsMap[endpoint.id]
                           if (!epStats || epStats.total === 0) {
@@ -887,7 +889,7 @@ export default function WebhooksPage() {
                           )
                         })()}
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
+                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                         {format(new Date(endpoint.created_at), 'MMM d, yyyy')}
                       </TableCell>
                       <TableCell>
@@ -930,9 +932,9 @@ export default function WebhooksPage() {
         {/* Recent Webhooks Tab */}
         <TabsContent value="webhooks" className="space-y-4">
           {/* Filters */}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
             <Select value={webhookStatusFilter} onValueChange={setWebhookStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -943,7 +945,7 @@ export default function WebhooksPage() {
               </SelectContent>
             </Select>
             <Select value={webhookEventTypeFilter} onValueChange={setWebhookEventTypeFilter}>
-              <SelectTrigger className="w-[260px]">
+              <SelectTrigger className="w-full md:w-[260px]">
                 <Filter className="mr-2 h-4 w-4 text-muted-foreground" />
                 <SelectValue placeholder="Event Type" />
               </SelectTrigger>
@@ -974,8 +976,8 @@ export default function WebhooksPage() {
                 <TableRow>
                   <SortableTableHead label="Event Type" sortKey="webhook_type" sort={webhookSort} onSort={setWebhookSort} />
                   <SortableTableHead label="Status" sortKey="status" sort={webhookSort} onSort={setWebhookSort} />
-                  <TableHead>HTTP Status</TableHead>
-                  <TableHead>Retries</TableHead>
+                  <TableHead className="hidden md:table-cell">HTTP Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Retries</TableHead>
                   <SortableTableHead label="Timestamp" sortKey="created_at" sort={webhookSort} onSort={setWebhookSort} />
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
@@ -986,8 +988,8 @@ export default function WebhooksPage() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                       <TableCell><Skeleton className="h-8 w-16" /></TableCell>
                     </TableRow>
@@ -1013,7 +1015,7 @@ export default function WebhooksPage() {
                         </code>
                       </TableCell>
                       <TableCell>{getStatusBadge(wh.status)}</TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="hidden md:table-cell text-sm">
                         {wh.http_status !== null && wh.http_status !== undefined ? (
                           <span
                             className={
@@ -1028,7 +1030,7 @@ export default function WebhooksPage() {
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm">
+                      <TableCell className="hidden md:table-cell text-sm">
                         {wh.retries} / {wh.max_retries}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
