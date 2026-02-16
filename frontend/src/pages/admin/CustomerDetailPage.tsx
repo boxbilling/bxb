@@ -90,7 +90,7 @@ function CustomerOutstandingBalance({ customerId, currency }: { customerId: stri
     .reduce((sum, i) => sum + Number(i.total), 0)
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-2 gap-3 md:gap-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Outstanding Balance</CardTitle>
@@ -994,7 +994,7 @@ function PortalLinkDialog({ externalId }: { externalId: string }) {
 
   return (
     <>
-      <Button variant="default" size="sm" onClick={handleOpen}>
+      <Button variant="default" size="sm" className="w-full md:w-auto" onClick={handleOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
         Portal Link
       </Button>
@@ -1105,7 +1105,7 @@ export default function CustomerDetailPage() {
       ) : customer ? (
         <>
           {/* Header */}
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex items-center gap-3">
               <CustomerAvatar name={customer.name} size="lg" />
               <div>
@@ -1119,7 +1119,7 @@ export default function CustomerDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={() => setEditOpen(true)}>
                 <Pencil className="mr-2 h-3.5 w-3.5" />
                 Edit
               </Button>
@@ -1190,28 +1190,30 @@ export default function CustomerDetailPage() {
 
           {/* Related Data Tabs */}
           <Tabs defaultValue="overview">
-            <TabsList>
-              <TabsTrigger value="overview">
-                <ScrollText className="mr-2 h-4 w-4" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="billing">
-                <FileText className="mr-2 h-4 w-4" />
-                Billing
-              </TabsTrigger>
-              <TabsTrigger value="payments">
-                <CreditCard className="mr-2 h-4 w-4" />
-                Payments
-              </TabsTrigger>
-              <TabsTrigger value="coupons">
-                <Tag className="mr-2 h-4 w-4" />
-                Coupons
-              </TabsTrigger>
-              <TabsTrigger value="activity">
-                <History className="mr-2 h-4 w-4" />
-                Activity
-              </TabsTrigger>
-            </TabsList>
+            <div className="overflow-x-auto">
+              <TabsList>
+                <TabsTrigger value="overview">
+                  <ScrollText className="mr-2 h-4 w-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="billing">
+                  <FileText className="mr-2 h-4 w-4" />
+                  Billing
+                </TabsTrigger>
+                <TabsTrigger value="payments">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  Payments
+                </TabsTrigger>
+                <TabsTrigger value="coupons">
+                  <Tag className="mr-2 h-4 w-4" />
+                  Coupons
+                </TabsTrigger>
+                <TabsTrigger value="activity">
+                  <History className="mr-2 h-4 w-4" />
+                  Activity
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* Overview: Subscriptions + Usage */}
             <TabsContent value="overview">
