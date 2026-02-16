@@ -113,7 +113,7 @@ export default function BillingEntitiesPage() {
 
       {/* Search Filter */}
       <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
+        <div className="relative flex-1 md:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search entities..."
@@ -131,12 +131,12 @@ export default function BillingEntitiesPage() {
             <TableRow>
               <SortableTableHead label="Entity" sortKey="name" sort={sort} onSort={setSort} />
               <SortableTableHead label="Code" sortKey="code" sort={sort} onSort={setSort} />
-              <TableHead>Location</TableHead>
+              <TableHead className="hidden md:table-cell">Location</TableHead>
               <SortableTableHead label="Currency" sortKey="currency" sort={sort} onSort={setSort} />
-              <TableHead>Timezone</TableHead>
-              <TableHead>Grace Period</TableHead>
-              <TableHead>Net Terms</TableHead>
-              <TableHead>Customers</TableHead>
+              <TableHead className="hidden md:table-cell">Timezone</TableHead>
+              <TableHead className="hidden md:table-cell">Grace Period</TableHead>
+              <TableHead className="hidden md:table-cell">Net Terms</TableHead>
+              <TableHead className="hidden md:table-cell">Customers</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -146,12 +146,12 @@ export default function BillingEntitiesPage() {
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                 </TableRow>
               ))
@@ -196,7 +196,7 @@ export default function BillingEntitiesPage() {
                     <TableCell>
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{entity.code}</code>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {formatAddress(entity) ? (
                         <span className="text-sm">{formatAddress(entity)}</span>
                       ) : (
@@ -206,13 +206,13 @@ export default function BillingEntitiesPage() {
                     <TableCell>
                       <Badge variant="outline">{entity.currency}</Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <span className="text-sm">{entity.timezone}</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <span className="text-sm">{entity.invoice_grace_period}d</span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1">
                         <span className="text-sm">Net {entity.net_payment_term}</span>
                         {entity.invoice_footer && (
@@ -229,7 +229,7 @@ export default function BillingEntitiesPage() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-1 text-sm">
                         <Users className="h-3.5 w-3.5 text-muted-foreground" />
                         {count}
