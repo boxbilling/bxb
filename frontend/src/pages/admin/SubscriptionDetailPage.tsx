@@ -314,7 +314,7 @@ export default function SubscriptionDetailPage() {
       ) : subscription ? (
         <>
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <h2 className="text-xl font-semibold tracking-tight">Subscription Details</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
@@ -326,6 +326,7 @@ export default function SubscriptionDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="w-full md:w-auto"
                   onClick={() => pauseMutation.mutate()}
                   disabled={pauseMutation.isPending}
                 >
@@ -337,6 +338,7 @@ export default function SubscriptionDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="w-full md:w-auto"
                   onClick={() => resumeMutation.mutate()}
                   disabled={resumeMutation.isPending}
                 >
@@ -345,7 +347,7 @@ export default function SubscriptionDetailPage() {
                 </Button>
               )}
               {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (
-                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+                <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={() => setEditOpen(true)}>
                   <Pencil className="mr-1 h-3.5 w-3.5" />
                   Edit
                 </Button>
@@ -603,7 +605,7 @@ export default function SubscriptionDetailPage() {
                         <TableHead>Metric</TableHead>
                         <TableHead>Units</TableHead>
                         <TableHead>Amount</TableHead>
-                        <TableHead>Charge Model</TableHead>
+                        <TableHead className="hidden md:table-cell">Charge Model</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -617,7 +619,7 @@ export default function SubscriptionDetailPage() {
                           <TableCell className="font-mono">
                             {formatCents(Number(charge.amount_cents), customerUsage.currency)}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <Badge variant="outline">{charge.charge_model}</Badge>
                           </TableCell>
                         </TableRow>
@@ -660,10 +662,10 @@ export default function SubscriptionDetailPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Number</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead className="hidden md:table-cell">Type</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Issue Date</TableHead>
-                        <TableHead>Due Date</TableHead>
+                        <TableHead className="hidden md:table-cell">Issue Date</TableHead>
+                        <TableHead className="hidden md:table-cell">Due Date</TableHead>
                         <TableHead className="text-right">Amount</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -682,12 +684,12 @@ export default function SubscriptionDetailPage() {
                                 {invoice.invoice_number || '\u2014'}
                               </code>
                             </TableCell>
-                            <TableCell className="capitalize">{invoice.invoice_type}</TableCell>
+                            <TableCell className="hidden md:table-cell capitalize">{invoice.invoice_type}</TableCell>
                             <TableCell>
                               <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
                             </TableCell>
-                            <TableCell>{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
-                            <TableCell>{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
+                            <TableCell className="hidden md:table-cell">{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
+                            <TableCell className="hidden md:table-cell">{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
                             <TableCell className="text-right font-mono">
                               {formatCents(Number(invoice.total), invoice.currency)}
                             </TableCell>
@@ -732,7 +734,7 @@ export default function SubscriptionDetailPage() {
                     <TableRow>
                       <TableHead>Amount</TableHead>
                       <TableHead>Recurring</TableHead>
-                      <TableHead>Name</TableHead>
+                      <TableHead className="hidden md:table-cell">Name</TableHead>
                       <TableHead className="w-[40px]"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -747,7 +749,7 @@ export default function SubscriptionDetailPage() {
                             {t.recurring ? 'Yes' : 'No'}
                           </Badge>
                         </TableCell>
-                        <TableCell>{t.threshold_display_name ?? '\u2014'}</TableCell>
+                        <TableCell className="hidden md:table-cell">{t.threshold_display_name ?? '\u2014'}</TableCell>
                         <TableCell>
                           <Button
                             variant="ghost"
@@ -1038,8 +1040,8 @@ export default function SubscriptionDetailPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Feature</TableHead>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Type</TableHead>
+                        <TableHead className="hidden md:table-cell">Code</TableHead>
+                        <TableHead className="hidden md:table-cell">Type</TableHead>
                         <TableHead>Value</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1049,12 +1051,12 @@ export default function SubscriptionDetailPage() {
                         return (
                           <TableRow key={entitlement.id}>
                             <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">
                               <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                 {feature?.code ?? entitlement.feature_id}
                               </code>
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="hidden md:table-cell">
                               {feature ? (
                                 <Badge variant={feature.feature_type === 'boolean' ? 'default' : feature.feature_type === 'quantity' ? 'secondary' : 'outline'}>
                                   {feature.feature_type}
