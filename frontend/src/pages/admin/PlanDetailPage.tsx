@@ -474,7 +474,7 @@ export default function PlanDetailPage() {
       ) : plan ? (
         <>
           {/* Header */}
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold tracking-tight">
@@ -494,6 +494,7 @@ export default function PlanDetailPage() {
               <Button
                 variant="outline"
                 size="sm"
+                className="w-full md:w-auto"
                 onClick={handleClone}
                 disabled={cloneMutation.isPending}
               >
@@ -543,7 +544,7 @@ export default function PlanDetailPage() {
                   <p className="font-medium">{plan.currency}</p>
                 </div>
               </div>
-              <div className="flex gap-4 mt-4 text-xs text-muted-foreground">
+              <div className="flex flex-wrap gap-4 mt-4 text-xs text-muted-foreground">
                 <span>
                   Created {format(new Date(plan.created_at), 'MMM d, yyyy')}
                 </span>
@@ -556,7 +557,7 @@ export default function PlanDetailPage() {
 
           {/* Tabs */}
           <Tabs defaultValue="charges">
-            <TabsList>
+            <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="charges">
                 Charges{' '}
                 {plan.charges && plan.charges.length > 0
@@ -613,9 +614,9 @@ export default function PlanDetailPage() {
                           <TableHeader>
                             <TableRow>
                               <TableHead>Metric</TableHead>
-                              <TableHead>Code</TableHead>
+                              <TableHead className="hidden md:table-cell">Code</TableHead>
                               <TableHead>Charge Model</TableHead>
-                              <TableHead>Properties</TableHead>
+                              <TableHead className="hidden md:table-cell">Properties</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -628,7 +629,7 @@ export default function PlanDetailPage() {
                                   <TableCell className="font-medium">
                                     {metric?.name ?? 'Unknown'}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="hidden md:table-cell">
                                     <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                       {metric?.code ??
                                         charge.billable_metric_id.slice(0, 8)}
@@ -639,7 +640,7 @@ export default function PlanDetailPage() {
                                       model={charge.charge_model}
                                     />
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="hidden md:table-cell">
                                     {charge.properties &&
                                     Object.keys(charge.properties).length >
                                       0 ? (
@@ -660,7 +661,7 @@ export default function PlanDetailPage() {
                       </div>
 
                       {/* Charge Model Visualizers */}
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:gap-4">
                         {plan.charges.map((charge) => (
                           <ChargeModelVisualizer
                             key={charge.id}
@@ -724,7 +725,7 @@ export default function PlanDetailPage() {
                           <TableRow>
                             <TableHead>Type</TableHead>
                             <TableHead>Amount</TableHead>
-                            <TableHead>Display Name</TableHead>
+                            <TableHead className="hidden md:table-cell">Display Name</TableHead>
                             <TableHead className="w-[100px]">
                               Actions
                             </TableHead>
@@ -737,9 +738,9 @@ export default function PlanDetailPage() {
                                 <TableCell colSpan={4}>
                                   <form
                                     onSubmit={handleUpdateCommitment}
-                                    className="flex items-end gap-2"
+                                    className="flex flex-col gap-2 md:flex-row md:items-end"
                                   >
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 w-full md:w-auto">
                                       <Label className="text-xs">Type</Label>
                                       <Select
                                         value={
@@ -752,7 +753,7 @@ export default function PlanDetailPage() {
                                           })
                                         }
                                       >
-                                        <SelectTrigger className="w-[180px]">
+                                        <SelectTrigger className="w-full md:w-[180px]">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -762,7 +763,7 @@ export default function PlanDetailPage() {
                                         </SelectContent>
                                       </Select>
                                     </div>
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 w-full md:w-auto">
                                       <Label className="text-xs">
                                         Amount (cents)
                                       </Label>
@@ -775,11 +776,11 @@ export default function PlanDetailPage() {
                                             amount_cents: e.target.value,
                                           })
                                         }
-                                        className="w-[120px]"
+                                        className="w-full md:w-[120px]"
                                         required
                                       />
                                     </div>
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 w-full md:w-auto">
                                       <Label className="text-xs">
                                         Display Name
                                       </Label>
@@ -794,7 +795,7 @@ export default function PlanDetailPage() {
                                               e.target.value,
                                           })
                                         }
-                                        className="w-[140px]"
+                                        className="w-full md:w-[140px]"
                                       />
                                     </div>
                                     <Button
@@ -831,7 +832,7 @@ export default function PlanDetailPage() {
                                     parseInt(c.amount_cents)
                                   )}
                                 </TableCell>
-                                <TableCell className="text-muted-foreground">
+                                <TableCell className="hidden md:table-cell text-muted-foreground">
                                   {c.invoice_display_name || '—'}
                                 </TableCell>
                                 <TableCell>
@@ -872,8 +873,8 @@ export default function PlanDetailPage() {
                       onSubmit={handleCreateCommitment}
                       className="border rounded-lg p-3 bg-muted/50 space-y-3 mt-3"
                     >
-                      <div className="flex items-end gap-3">
-                        <div className="space-y-1">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                        <div className="space-y-1 w-full md:w-auto">
                           <Label className="text-xs">Commitment Type</Label>
                           <Select
                             value={commitmentForm.commitment_type}
@@ -884,7 +885,7 @@ export default function PlanDetailPage() {
                               })
                             }
                           >
-                            <SelectTrigger className="w-[180px]">
+                            <SelectTrigger className="w-full md:w-[180px]">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -894,7 +895,7 @@ export default function PlanDetailPage() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 w-full md:w-auto">
                           <Label className="text-xs">Amount (cents) *</Label>
                           <Input
                             type="number"
@@ -905,11 +906,11 @@ export default function PlanDetailPage() {
                                 amount_cents: e.target.value,
                               })
                             }
-                            className="w-[120px]"
+                            className="w-full md:w-[120px]"
                             required
                           />
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-1 w-full md:w-auto">
                           <Label className="text-xs">Display Name</Label>
                           <Input
                             value={commitmentForm.invoice_display_name}
@@ -919,7 +920,7 @@ export default function PlanDetailPage() {
                                 invoice_display_name: e.target.value,
                               })
                             }
-                            className="w-[140px]"
+                            className="w-full md:w-[140px]"
                           />
                         </div>
                       </div>
@@ -975,9 +976,9 @@ export default function PlanDetailPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Amount</TableHead>
-                            <TableHead>Currency</TableHead>
+                            <TableHead className="hidden md:table-cell">Currency</TableHead>
                             <TableHead>Recurring</TableHead>
-                            <TableHead>Display Name</TableHead>
+                            <TableHead className="hidden md:table-cell">Display Name</TableHead>
                             <TableHead className="w-[60px]">Actions</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -987,7 +988,7 @@ export default function PlanDetailPage() {
                               <TableCell className="font-mono">
                                 {formatCents(parseInt(t.amount_cents))}
                               </TableCell>
-                              <TableCell>{t.currency}</TableCell>
+                              <TableCell className="hidden md:table-cell">{t.currency}</TableCell>
                               <TableCell>
                                 <Badge
                                   variant={
@@ -997,7 +998,7 @@ export default function PlanDetailPage() {
                                   {t.recurring ? 'Yes' : 'No'}
                                 </Badge>
                               </TableCell>
-                              <TableCell className="text-muted-foreground">
+                              <TableCell className="hidden md:table-cell text-muted-foreground">
                                 {t.threshold_display_name || '—'}
                               </TableCell>
                               <TableCell>
@@ -1142,8 +1143,8 @@ export default function PlanDetailPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Feature</TableHead>
-                            <TableHead>Code</TableHead>
-                            <TableHead>Type</TableHead>
+                            <TableHead className="hidden md:table-cell">Code</TableHead>
+                            <TableHead className="hidden md:table-cell">Type</TableHead>
                             <TableHead>Value</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -1157,13 +1158,13 @@ export default function PlanDetailPage() {
                                 <TableCell className="font-medium">
                                   {feature?.name ?? 'Unknown'}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden md:table-cell">
                                   <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                                     {feature?.code ??
                                       entitlement.feature_id}
                                   </code>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden md:table-cell">
                                   {feature ? (
                                     <Badge
                                       variant={
@@ -1225,9 +1226,9 @@ export default function PlanDetailPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>External ID</TableHead>
-                            <TableHead>Customer</TableHead>
+                            <TableHead className="hidden md:table-cell">Customer</TableHead>
                             <TableHead>Status</TableHead>
-                            <TableHead>Started</TableHead>
+                            <TableHead className="hidden md:table-cell">Started</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1243,7 +1244,7 @@ export default function PlanDetailPage() {
                                     {sub.external_id}
                                   </Link>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden md:table-cell">
                                   {customer ? (
                                     <Link
                                       to={`/admin/customers/${sub.customer_id}`}
@@ -1260,7 +1261,7 @@ export default function PlanDetailPage() {
                                 <TableCell>
                                   <StatusBadge status={sub.status} />
                                 </TableCell>
-                                <TableCell>
+                                <TableCell className="hidden md:table-cell">
                                   {sub.started_at
                                     ? format(
                                         new Date(sub.started_at),
