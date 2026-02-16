@@ -21,8 +21,6 @@ import {
   ArrowUpCircle,
 } from 'lucide-react'
 import {
-  Line,
-  LineChart,
   Area,
   AreaChart,
   Bar,
@@ -332,13 +330,6 @@ const activityResourceRoutes: Record<string, string> = {
   wallet: '/admin/wallets',
 }
 
-const revenueChartConfig = {
-  revenue: {
-    label: 'Revenue',
-    color: 'hsl(var(--primary))',
-  },
-} satisfies ChartConfig
-
 const planChartConfig = {
   count: {
     label: 'Subscriptions',
@@ -615,152 +606,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Revenue Trend Chart */}
-        <Card className="col-span-4">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-medium">Revenue Trend ({PERIOD_LABELS[preset]})</CardTitle>
-            <Link to="/admin/revenue-analytics" className="text-xs text-primary hover:underline">
-              Deep dive →
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {revenueLoading ? (
-              <div className="h-[280px] flex items-center justify-center">
-                <Skeleton className="h-full w-full" />
-              </div>
-            ) : revenue && revenue.monthly_trend.length > 0 ? (
-              <ChartContainer config={revenueChartConfig} className="h-[280px] w-full">
-                <LineChart data={revenue.monthly_trend} accessibilityLayer>
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(v) => v.slice(5)}
-                  />
-                  <YAxis
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(v) => `$${v}`}
-                  />
-                  <ChartTooltip
-                    content={
-                      <ChartTooltipContent
-                        formatter={(value) =>
-                          formatCurrency(Number(value), revenue.currency)
-                        }
-                      />
-                    }
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="revenue"
-                    stroke="var(--color-revenue)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ChartContainer>
-            ) : (
-              <div className="h-[280px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <TrendingUp className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No revenue data yet</p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Recent Activity */}
-        <Card className="col-span-3">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
-              <Link to="/admin/audit-logs" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-                View all <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-            <Select value={activityTypeFilter} onValueChange={setActivityTypeFilter}>
-              <SelectTrigger size="sm" className="w-[160px] mt-1">
-                <SelectValue placeholder="Filter type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All activity</SelectItem>
-                <SelectItem value="customer_created">Customers</SelectItem>
-                <SelectItem value="subscription_created">Subscriptions</SelectItem>
-                <SelectItem value="subscription_canceled">Canceled subs</SelectItem>
-                <SelectItem value="invoice_finalized">Invoices</SelectItem>
-                <SelectItem value="payment_received">Payments</SelectItem>
-                <SelectItem value="payment_failed">Failed payments</SelectItem>
-                <SelectItem value="credit_note_created">Credit notes</SelectItem>
-                <SelectItem value="wallet_topped_up">Wallet top-ups</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardHeader>
-          <CardContent>
-            {activityLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="h-7 w-7 rounded-full" />
-                    <div className="flex-1 space-y-1">
-                      <Skeleton className="h-3.5 w-3/4" />
-                      <Skeleton className="h-3 w-1/4" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : activity && activity.length > 0 ? (
-              <div className="space-y-1">
-                {activity.map((item: RecentActivity) => {
-                  const Icon = activityIcons[item.type] ?? TrendingUp
-                  const color = activityColors[item.type] ?? 'text-muted-foreground'
-                  const route = item.resource_type ? activityResourceRoutes[item.resource_type] : null
-                  const href = route && item.resource_id ? `${route}/${item.resource_id}` : null
-                  const content = (
-                    <>
-                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted shrink-0">
-                        <Icon className={`h-3.5 w-3.5 ${color}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] leading-snug truncate">{item.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatRelativeTime(item.timestamp)}
-                        </p>
-                      </div>
-                    </>
-                  )
-                  return href ? (
-                    <Link
-                      key={item.id}
-                      to={href}
-                      className="flex items-center gap-3 py-1.5 rounded-md -mx-2 px-2 hover:bg-muted/50 transition-colors"
-                    >
-                      {content}
-                    </Link>
-                  ) : (
-                    <div key={item.id} className="flex items-center gap-3 py-1.5">
-                      {content}
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No recent activity
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Recent Invoices & Recent Subscriptions Tables */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         {/* Recent Invoices */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -850,6 +697,88 @@ export default function DashboardPage() {
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
                 No subscriptions yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+              <Link to="/admin/audit-logs" className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                View all <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+            <Select value={activityTypeFilter} onValueChange={setActivityTypeFilter}>
+              <SelectTrigger size="sm" className="w-[160px] mt-1">
+                <SelectValue placeholder="Filter type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All activity</SelectItem>
+                <SelectItem value="customer_created">Customers</SelectItem>
+                <SelectItem value="subscription_created">Subscriptions</SelectItem>
+                <SelectItem value="subscription_canceled">Canceled subs</SelectItem>
+                <SelectItem value="invoice_finalized">Invoices</SelectItem>
+                <SelectItem value="payment_received">Payments</SelectItem>
+                <SelectItem value="payment_failed">Failed payments</SelectItem>
+                <SelectItem value="credit_note_created">Credit notes</SelectItem>
+                <SelectItem value="wallet_topped_up">Wallet top-ups</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {activityLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-7 w-7 rounded-full" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-3.5 w-3/4" />
+                      <Skeleton className="h-3 w-1/4" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : activity && activity.length > 0 ? (
+              <div className="space-y-1">
+                {activity.map((item: RecentActivity) => {
+                  const Icon = activityIcons[item.type] ?? TrendingUp
+                  const color = activityColors[item.type] ?? 'text-muted-foreground'
+                  const route = item.resource_type ? activityResourceRoutes[item.resource_type] : null
+                  const href = route && item.resource_id ? `${route}/${item.resource_id}` : null
+                  const content = (
+                    <>
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted shrink-0">
+                        <Icon className={`h-3.5 w-3.5 ${color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] leading-snug truncate">{item.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatRelativeTime(item.timestamp)}
+                        </p>
+                      </div>
+                    </>
+                  )
+                  return href ? (
+                    <Link
+                      key={item.id}
+                      to={href}
+                      className="flex items-center gap-3 py-1.5 rounded-md -mx-2 px-2 hover:bg-muted/50 transition-colors"
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={item.id} className="flex items-center gap-3 py-1.5">
+                      {content}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No recent activity
               </p>
             )}
           </CardContent>
