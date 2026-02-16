@@ -5,6 +5,16 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useIsMobile } from '@/hooks/use-mobile'
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
 
 function Dialog({
   ...props
@@ -129,6 +139,106 @@ function DialogDescription({
   )
 }
 
+function ResponsiveDialog({
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return <Drawer {...props} />
+  }
+
+  return <Dialog {...props} />
+}
+
+function ResponsiveDialogContent({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Content> & {
+  showCloseButton?: boolean
+}) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return (
+      <DrawerContent className={className}>
+        {children}
+      </DrawerContent>
+    )
+  }
+
+  return (
+    <DialogContent className={className} {...props}>
+      {children}
+    </DialogContent>
+  )
+}
+
+function ResponsiveDialogHeader({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return <DrawerHeader className={className} {...props} />
+  }
+
+  return <DialogHeader className={className} {...props} />
+}
+
+function ResponsiveDialogTitle({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return <DrawerTitle className={className} {...props} />
+  }
+
+  return <DialogTitle className={className} {...props} />
+}
+
+function ResponsiveDialogDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return <DrawerDescription className={className} {...props} />
+  }
+
+  return <DialogDescription className={className} {...props} />
+}
+
+function ResponsiveDialogFooter({
+  className,
+  ...props
+}: React.ComponentProps<'div'>) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return <DrawerFooter className={className} {...props} />
+  }
+
+  return <DialogFooter className={className} {...props} />
+}
+
+function ResponsiveDialogClose({
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Close>) {
+  const isMobile = useIsMobile()
+
+  if (isMobile) {
+    return <DrawerClose {...props} />
+  }
+
+  return <DialogClose {...props} />
+}
+
 export {
   Dialog,
   DialogClose,
@@ -140,4 +250,11 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
 }
