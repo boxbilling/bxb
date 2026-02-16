@@ -11,6 +11,7 @@ from app.models.charge_filter import ChargeFilter
 from app.models.charge_filter_value import ChargeFilterValue
 from app.models.commitment import Commitment
 from app.models.coupon import Coupon, CouponExpiration, CouponFrequency, CouponStatus, CouponType
+from app.models.currency import CurrencyCode
 from app.models.credit_note import (
     CreditNote,
     CreditNoteReason,
@@ -84,6 +85,7 @@ __all__ = [
     "CouponFrequency",
     "CouponStatus",
     "CouponType",
+    "CurrencyCode",
     "CreditNote",
     "CreditNoteItem",
     "CreditNoteReason",
