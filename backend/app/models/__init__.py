@@ -11,7 +11,6 @@ from app.models.charge_filter import ChargeFilter
 from app.models.charge_filter_value import ChargeFilterValue
 from app.models.commitment import Commitment
 from app.models.coupon import Coupon, CouponExpiration, CouponFrequency, CouponStatus, CouponType
-from app.models.currency import CurrencyCode
 from app.models.credit_note import (
     CreditNote,
     CreditNoteReason,
@@ -21,6 +20,7 @@ from app.models.credit_note import (
     RefundStatus,
 )
 from app.models.credit_note_item import CreditNoteItem
+from app.models.currency import CurrencyCode
 from app.models.customer import Customer
 from app.models.daily_usage import DailyUsage
 from app.models.data_export import DataExport, ExportStatus, ExportType

@@ -104,4 +104,4 @@ dmypy.json
 # Reference repos (local only)
 reference/
 Auto Run Docs/*
-work
+work/*
