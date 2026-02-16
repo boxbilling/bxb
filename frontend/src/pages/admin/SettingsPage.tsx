@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { Check, ChevronsUpDown, Eye, EyeOff, Loader2, Mail } from 'lucide-react'
+import { Check, ChevronsUpDown, Eye, EyeOff, Loader2 } from 'lucide-react'
 
 import {
   organizationsApi,
@@ -57,10 +57,6 @@ const TIMEZONES = (Intl as unknown as { supportedValuesOf(key: string): string[]
 
 type ValidationErrors = Partial<Record<keyof OrganizationUpdate, string>>
 
-function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
 function validateUrl(url: string): boolean {
   try {
     new URL(url)
@@ -71,7 +67,7 @@ function validateUrl(url: string): boolean {
 }
 
 function validateSection(
-  section: 'general' | 'billing' | 'branding' | 'legal',
+  section: 'general' | 'branding',
   formData: OrganizationUpdate,
 ): ValidationErrors {
   const errors: ValidationErrors = {}
@@ -88,24 +84,9 @@ function validateSection(
     }
   }
 
-  if (section === 'billing') {
-    if (
-      formData.invoice_grace_period != null &&
-      formData.invoice_grace_period < 0
-    ) {
-      errors.invoice_grace_period = 'Grace period cannot be negative'
-    }
-    if (formData.net_payment_term != null && formData.net_payment_term < 0) {
-      errors.net_payment_term = 'Payment term cannot be negative'
-    }
-  }
-
   if (section === 'branding') {
     if (formData.logo_url && !validateUrl(formData.logo_url)) {
       errors.logo_url = 'Please enter a valid URL'
-    }
-    if (formData.email && !validateEmail(formData.email)) {
-      errors.email = 'Please enter a valid email address'
     }
     if (formData.portal_accent_color && !/^#[0-9a-fA-F]{6}$/.test(formData.portal_accent_color)) {
       errors.portal_accent_color = 'Please enter a valid hex color (e.g. #ff6600)'
@@ -235,21 +216,10 @@ export default function SettingsPage() {
       name: org.name,
       default_currency: org.default_currency,
       timezone: org.timezone,
-      invoice_grace_period: org.invoice_grace_period,
-      net_payment_term: org.net_payment_term,
-      document_number_prefix: org.document_number_prefix,
       hmac_key: org.hmac_key,
       logo_url: org.logo_url,
-      email: org.email,
       portal_accent_color: org.portal_accent_color,
       portal_welcome_message: org.portal_welcome_message,
-      legal_name: org.legal_name,
-      address_line1: org.address_line1,
-      address_line2: org.address_line2,
-      city: org.city,
-      state: org.state,
-      zipcode: org.zipcode,
-      country: org.country,
     })
     setInitialized(true)
   }
@@ -284,10 +254,6 @@ export default function SettingsPage() {
     () => validateSection('general', formData),
     [formData],
   )
-  const billingErrors = useMemo(
-    () => validateSection('billing', formData),
-    [formData],
-  )
   const brandingErrors = useMemo(
     () => validateSection('branding', formData),
     [formData],
@@ -299,29 +265,14 @@ export default function SettingsPage() {
   )
 
   const saveSection = (
-    section: 'general' | 'billing' | 'branding' | 'legal',
+    section: 'general' | 'branding',
   ) => {
     const errors = validateSection(section, formData)
     if (Object.keys(errors).length > 0) {
       // Mark all section fields as touched to show errors
       const sectionFields: Record<string, (keyof OrganizationUpdate)[]> = {
         general: ['name', 'default_currency', 'timezone'],
-        billing: [
-          'invoice_grace_period',
-          'net_payment_term',
-          'document_number_prefix',
-          'hmac_key',
-        ],
-        branding: ['logo_url', 'email', 'portal_accent_color', 'portal_welcome_message'],
-        legal: [
-          'legal_name',
-          'address_line1',
-          'address_line2',
-          'city',
-          'state',
-          'zipcode',
-          'country',
-        ],
+        branding: ['logo_url', 'portal_accent_color', 'portal_welcome_message'],
       }
       setTouched((prev) => {
         const next = new Set(prev)
@@ -345,7 +296,7 @@ export default function SettingsPage() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-4 w-64 mt-2" />
         </div>
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 2 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-5 w-32" />
@@ -367,7 +318,7 @@ export default function SettingsPage() {
           Organization Settings
         </h2>
         <p className="text-muted-foreground">
-          Configure your organization's billing and branding
+          Configure your organization's general settings and branding
         </p>
       </div>
 
@@ -433,123 +384,40 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="hmac-key">HMAC Key</Label>
+            <div className="relative">
+              <Input
+                id="hmac-key"
+                type={showHmacKey ? 'text' : 'password'}
+                value={formData.hmac_key ?? ''}
+                onChange={(e) =>
+                  updateField('hmac_key', e.target.value || null)
+                }
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                className="absolute right-1 top-1/2 -translate-y-1/2"
+                onClick={() => setShowHmacKey((v) => !v)}
+                aria-label={showHmacKey ? 'Hide HMAC key' : 'Show HMAC key'}
+              >
+                {showHmacKey ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </Button>
+            </div>
+          </div>
           <SectionSaveButton
             onClick={() => saveSection('general')}
             isPending={
               updateMutation.isPending && savingSection === 'general'
             }
             disabled={updateMutation.isPending && savingSection !== 'general'}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Billing */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Billing</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="grace-period">
-                Invoice Grace Period (days)
-              </Label>
-              <Input
-                id="grace-period"
-                type="number"
-                min={0}
-                value={formData.invoice_grace_period ?? 0}
-                onChange={(e) =>
-                  updateField(
-                    'invoice_grace_period',
-                    parseInt(e.target.value) || 0,
-                  )
-                }
-                aria-invalid={
-                  !!hasError('invoice_grace_period', billingErrors)
-                }
-              />
-              <FieldError
-                message={
-                  hasError('invoice_grace_period', billingErrors)
-                    ? billingErrors.invoice_grace_period
-                    : undefined
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="net-term">Net Payment Term (days)</Label>
-              <Input
-                id="net-term"
-                type="number"
-                min={0}
-                value={formData.net_payment_term ?? 0}
-                onChange={(e) =>
-                  updateField(
-                    'net_payment_term',
-                    parseInt(e.target.value) || 0,
-                  )
-                }
-                aria-invalid={!!hasError('net_payment_term', billingErrors)}
-              />
-              <FieldError
-                message={
-                  hasError('net_payment_term', billingErrors)
-                    ? billingErrors.net_payment_term
-                    : undefined
-                }
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="doc-prefix">Document Number Prefix</Label>
-              <Input
-                id="doc-prefix"
-                value={formData.document_number_prefix ?? ''}
-                onChange={(e) =>
-                  updateField(
-                    'document_number_prefix',
-                    e.target.value || null,
-                  )
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="hmac-key">HMAC Key</Label>
-              <div className="relative">
-                <Input
-                  id="hmac-key"
-                  type={showHmacKey ? 'text' : 'password'}
-                  value={formData.hmac_key ?? ''}
-                  onChange={(e) =>
-                    updateField('hmac_key', e.target.value || null)
-                  }
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  onClick={() => setShowHmacKey((v) => !v)}
-                  aria-label={showHmacKey ? 'Hide HMAC key' : 'Show HMAC key'}
-                >
-                  {showHmacKey ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </div>
-          <SectionSaveButton
-            onClick={() => saveSection('billing')}
-            isPending={
-              updateMutation.isPending && savingSection === 'billing'
-            }
-            disabled={updateMutation.isPending && savingSection !== 'billing'}
           />
         </CardContent>
       </Card>
@@ -577,26 +445,6 @@ export default function SettingsPage() {
                   message={
                     hasError('logo_url', brandingErrors)
                       ? brandingErrors.logo_url
-                      : undefined
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="org-email">Email</Label>
-                <Input
-                  id="org-email"
-                  type="email"
-                  value={formData.email ?? ''}
-                  onChange={(e) =>
-                    updateField('email', e.target.value || null)
-                  }
-                  placeholder="billing@example.com"
-                  aria-invalid={!!hasError('email', brandingErrors)}
-                />
-                <FieldError
-                  message={
-                    hasError('email', brandingErrors)
-                      ? brandingErrors.email
                       : undefined
                   }
                 />
@@ -675,12 +523,6 @@ export default function SettingsPage() {
                     <p className="text-sm font-medium">
                       {formData.name || 'Your Organization'}
                     </p>
-                    {formData.email ? (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Mail className="size-3" />
-                        {formData.email}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
                 <div className="space-y-1.5">
@@ -695,12 +537,6 @@ export default function SettingsPage() {
                       {formData.default_currency ?? 'USD'} 250.00
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Due date</span>
-                    <span>
-                      Net {formData.net_payment_term ?? 30} days
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -713,96 +549,6 @@ export default function SettingsPage() {
             disabled={
               updateMutation.isPending && savingSection !== 'branding'
             }
-          />
-        </CardContent>
-      </Card>
-
-      {/* Legal Address */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Legal Address</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="legal-name">Legal Name</Label>
-            <Input
-              id="legal-name"
-              value={formData.legal_name ?? ''}
-              onChange={(e) =>
-                updateField('legal_name', e.target.value || null)
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="address1">Address Line 1</Label>
-            <Input
-              id="address1"
-              value={formData.address_line1 ?? ''}
-              onChange={(e) =>
-                updateField('address_line1', e.target.value || null)
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="address2">Address Line 2</Label>
-            <Input
-              id="address2"
-              value={formData.address_line2 ?? ''}
-              onChange={(e) =>
-                updateField('address_line2', e.target.value || null)
-              }
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city">City</Label>
-              <Input
-                id="city"
-                value={formData.city ?? ''}
-                onChange={(e) =>
-                  updateField('city', e.target.value || null)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="state">State</Label>
-              <Input
-                id="state"
-                value={formData.state ?? ''}
-                onChange={(e) =>
-                  updateField('state', e.target.value || null)
-                }
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="zipcode">Zipcode</Label>
-              <Input
-                id="zipcode"
-                value={formData.zipcode ?? ''}
-                onChange={(e) =>
-                  updateField('zipcode', e.target.value || null)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="country">Country</Label>
-              <Input
-                id="country"
-                value={formData.country ?? ''}
-                onChange={(e) =>
-                  updateField('country', e.target.value || null)
-                }
-              />
-            </div>
-          </div>
-          <SectionSaveButton
-            onClick={() => saveSection('legal')}
-            isPending={
-              updateMutation.isPending && savingSection === 'legal'
-            }
-            disabled={updateMutation.isPending && savingSection !== 'legal'}
           />
         </CardContent>
       </Card>
