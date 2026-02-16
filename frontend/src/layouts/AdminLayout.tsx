@@ -25,6 +25,9 @@ import {
   ScrollText,
   Settings,
   Key,
+  Book,
+  Signature,
+  LifeBuoy,
   Moon,
   Sun,
   Menu,
@@ -86,6 +89,7 @@ const navigationGroups = [
     items: [
       { name: 'Invoices', href: '/admin/invoices', icon: FileText },
       { name: 'Payments', href: '/admin/payments', icon: ArrowLeftRight },
+      { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
       { name: 'Fees', href: '/admin/fees', icon: CircleDollarSign },
       { name: 'Credit Notes', href: '/admin/credit-notes', icon: FileMinus },
       { name: 'Taxes', href: '/admin/taxes', icon: Calculator },
@@ -95,10 +99,8 @@ const navigationGroups = [
     label: 'Operations',
     items: [
       { name: 'Events', href: '/admin/events', icon: Activity },
-      { name: 'Webhooks', href: '/admin/webhooks', icon: Radio },
       { name: 'Dunning', href: '/admin/dunning-campaigns', icon: Bell },
       { name: 'Usage Alerts', href: '/admin/usage-alerts', icon: AlertTriangle },
-      { name: 'Integrations', href: '/admin/integrations', icon: Plug },
     ],
   },
 ]
@@ -107,9 +109,13 @@ const settingsNavItems = [
   { name: 'Organization', href: '/admin/settings', icon: Settings },
   { name: 'Billing Entities', href: '/admin/billing-entities', icon: Building2 },
   { name: 'API Keys', href: '/admin/api-keys', icon: Key },
+  { name: 'Webhooks', href: '/admin/webhooks', icon: Radio },
+  { name: 'Integrations', href: '/admin/integrations', icon: Plug },
   { name: 'Data Exports', href: '/admin/data-exports', icon: FileDown },
   { name: 'Audit Logs', href: '/admin/audit-logs', icon: ScrollText },
-  { name: 'Payment Requests', href: '/admin/payment-requests', icon: Send },
+  { name: 'Help', href: 'https://go.boxbilling.com/help', icon: LifeBuoy },
+  { name: 'Docs', href: 'https://go.boxbilling.com/docs', icon: Book },
+  { name: 'License', href: 'https://go.boxbilling.com/license', icon: Signature },
 ]
 
 function NavItem({
