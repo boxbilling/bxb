@@ -208,13 +208,6 @@ export default function PaymentsPage() {
               <Plus className="mr-2 h-4 w-4" />
               Record Payment
             </Button>
-            <Link
-              to="/admin/payment-requests"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Send className="h-4 w-4" />
-              Payment Requests
-            </Link>
           </>
         }
       />
