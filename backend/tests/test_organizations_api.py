@@ -98,8 +98,6 @@ class TestCreateOrganization:
         assert data["name"] == "New Org"
         assert data["default_currency"] == "USD"
         assert data["timezone"] == "UTC"
-        assert data["invoice_grace_period"] == 0
-        assert data["net_payment_term"] == 30
         assert "id" in data
         assert "created_at" in data
         assert "updated_at" in data
@@ -122,18 +120,9 @@ class TestCreateOrganization:
                 "default_currency": "EUR",
                 "timezone": "Europe/London",
                 "hmac_key": "secret123",
-                "document_number_prefix": "INV-",
-                "invoice_grace_period": 5,
-                "net_payment_term": 45,
                 "logo_url": "https://example.com/logo.png",
-                "email": "billing@example.com",
-                "legal_name": "Full Org Inc.",
-                "address_line1": "123 Main St",
-                "address_line2": "Suite 100",
-                "city": "London",
-                "state": "Greater London",
-                "zipcode": "EC1A 1BB",
-                "country": "GB",
+                "portal_accent_color": "#FF0000",
+                "portal_welcome_message": "Welcome!",
             },
         )
         assert response.status_code == 201
@@ -142,18 +131,9 @@ class TestCreateOrganization:
         assert data["default_currency"] == "EUR"
         assert data["timezone"] == "Europe/London"
         assert data["hmac_key"] == "secret123"
-        assert data["document_number_prefix"] == "INV-"
-        assert data["invoice_grace_period"] == 5
-        assert data["net_payment_term"] == 45
         assert data["logo_url"] == "https://example.com/logo.png"
-        assert data["email"] == "billing@example.com"
-        assert data["legal_name"] == "Full Org Inc."
-        assert data["address_line1"] == "123 Main St"
-        assert data["address_line2"] == "Suite 100"
-        assert data["city"] == "London"
-        assert data["state"] == "Greater London"
-        assert data["zipcode"] == "EC1A 1BB"
-        assert data["country"] == "GB"
+        assert data["portal_accent_color"] == "#FF0000"
+        assert data["portal_welcome_message"] == "Welcome!"
         assert "api_key" in data
 
     def test_create_organization_missing_name(self, client):
@@ -241,11 +221,11 @@ class TestUpdateCurrentOrganization:
         """Test partial update preserves other fields."""
         response = authed_client.put(
             "/v1/organizations/current",
-            json={"email": "new@example.com"},
+            json={"logo_url": "https://example.com/new.png"},
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["email"] == "new@example.com"
+        assert data["logo_url"] == "https://example.com/new.png"
         assert data["name"] == "Default Test Organization"
 
     def test_update_current_organization_all_fields(self, authed_client):
@@ -257,18 +237,9 @@ class TestUpdateCurrentOrganization:
                 "default_currency": "GBP",
                 "timezone": "Europe/London",
                 "hmac_key": "newkey",
-                "document_number_prefix": "DOC-",
-                "invoice_grace_period": 7,
-                "net_payment_term": 60,
                 "logo_url": "https://example.com/new.png",
-                "email": "updated@example.com",
-                "legal_name": "Updated Inc.",
-                "address_line1": "456 Oak Ave",
-                "address_line2": "Floor 3",
-                "city": "Manchester",
-                "state": "Lancashire",
-                "zipcode": "M1 1AA",
-                "country": "GB",
+                "portal_accent_color": "#00FF00",
+                "portal_welcome_message": "Hello!",
             },
         )
         assert response.status_code == 200
@@ -277,9 +248,7 @@ class TestUpdateCurrentOrganization:
         assert data["default_currency"] == "GBP"
         assert data["timezone"] == "Europe/London"
         assert data["hmac_key"] == "newkey"
-        assert data["document_number_prefix"] == "DOC-"
-        assert data["invoice_grace_period"] == 7
-        assert data["net_payment_term"] == 60
+        assert data["logo_url"] == "https://example.com/new.png"
 
     def test_update_current_organization_no_auth(self, client):
         """Test updating without auth falls back to default org."""

@@ -44,18 +44,7 @@ class TestOrganizationModel:
         assert org.default_currency == "USD"
         assert org.timezone == "UTC"
         assert org.hmac_key is None
-        assert org.document_number_prefix is None
-        assert org.invoice_grace_period == 0
-        assert org.net_payment_term == 30
         assert org.logo_url is None
-        assert org.email is None
-        assert org.legal_name is None
-        assert org.address_line1 is None
-        assert org.address_line2 is None
-        assert org.city is None
-        assert org.state is None
-        assert org.zipcode is None
-        assert org.country is None
         assert org.created_at is not None
         assert org.updated_at is not None
 
@@ -67,18 +56,9 @@ class TestOrganizationModel:
             default_currency="EUR",
             timezone="Europe/London",
             hmac_key="secret123",
-            document_number_prefix="INV-",
-            invoice_grace_period=5,
-            net_payment_term=45,
             logo_url="https://example.com/logo.png",
-            email="billing@example.com",
-            legal_name="Full Org Inc.",
-            address_line1="123 Main St",
-            address_line2="Suite 100",
-            city="London",
-            state="Greater London",
-            zipcode="EC1A 1BB",
-            country="GB",
+            portal_accent_color="#FF0000",
+            portal_welcome_message="Welcome!",
         )
         db_session.add(org)
         db_session.commit()
@@ -87,18 +67,9 @@ class TestOrganizationModel:
         assert org.default_currency == "EUR"
         assert org.timezone == "Europe/London"
         assert org.hmac_key == "secret123"
-        assert org.document_number_prefix == "INV-"
-        assert org.invoice_grace_period == 5
-        assert org.net_payment_term == 45
         assert org.logo_url == "https://example.com/logo.png"
-        assert org.email == "billing@example.com"
-        assert org.legal_name == "Full Org Inc."
-        assert org.address_line1 == "123 Main St"
-        assert org.address_line2 == "Suite 100"
-        assert org.city == "London"
-        assert org.state == "Greater London"
-        assert org.zipcode == "EC1A 1BB"
-        assert org.country == "GB"
+        assert org.portal_accent_color == "#FF0000"
+        assert org.portal_welcome_message == "Welcome!"
 
     def test_default_organization_exists(self, db_session):
         """Test that the default test organization is seeded."""
@@ -206,8 +177,6 @@ class TestOrganizationSchemas:
         assert schema.name == "Min Org"
         assert schema.default_currency == "USD"
         assert schema.timezone == "UTC"
-        assert schema.invoice_grace_period == 0
-        assert schema.net_payment_term == 30
 
     def test_create_schema_all_fields(self):
         """Test OrganizationCreate with all fields."""
@@ -216,22 +185,13 @@ class TestOrganizationSchemas:
             default_currency="EUR",
             timezone="Europe/London",
             hmac_key="secret",
-            document_number_prefix="INV-",
-            invoice_grace_period=5,
-            net_payment_term=45,
             logo_url="https://example.com/logo.png",
-            email="test@example.com",
-            legal_name="Full Org Inc.",
-            address_line1="123 Main St",
-            address_line2="Suite 100",
-            city="London",
-            state="Greater London",
-            zipcode="EC1A 1BB",
-            country="GB",
+            portal_accent_color="#FF0000",
+            portal_welcome_message="Welcome!",
         )
         assert schema.default_currency == "EUR"
         assert schema.hmac_key == "secret"
-        assert schema.city == "London"
+        assert schema.logo_url == "https://example.com/logo.png"
 
     def test_update_schema_partial(self):
         """Test OrganizationUpdate with partial fields."""
@@ -246,18 +206,9 @@ class TestOrganizationSchemas:
             default_currency="JPY",
             timezone="Asia/Tokyo",
             hmac_key="new_key",
-            document_number_prefix="ORD-",
-            invoice_grace_period=10,
-            net_payment_term=60,
             logo_url="https://example.com/new.png",
-            email="new@example.com",
-            legal_name="New Inc.",
-            address_line1="456 Oak Ave",
-            address_line2=None,
-            city="Tokyo",
-            state="Kanto",
-            zipcode="100-0001",
-            country="JP",
+            portal_accent_color="#00FF00",
+            portal_welcome_message="Hello!",
         )
         assert schema.default_currency == "JPY"
 
@@ -285,18 +236,9 @@ class TestOrganizationSchemas:
             default_currency="CAD",
             timezone="America/Toronto",
             hmac_key="hmac123",
-            document_number_prefix="CN-",
-            invoice_grace_period=3,
-            net_payment_term=15,
             logo_url="https://example.com/ca.png",
-            email="ca@example.com",
-            legal_name="Canadian Corp.",
-            address_line1="789 Maple Dr",
-            address_line2="Floor 2",
-            city="Toronto",
-            state="Ontario",
-            zipcode="M5V 2H1",
-            country="CA",
+            portal_accent_color="#0000FF",
+            portal_welcome_message="Bienvenue!",
         )
         db_session.add(org)
         db_session.commit()
@@ -305,5 +247,4 @@ class TestOrganizationSchemas:
         response = OrganizationResponse.model_validate(org)
         assert response.default_currency == "CAD"
         assert response.hmac_key == "hmac123"
-        assert response.legal_name == "Canadian Corp."
-        assert response.city == "Toronto"
+        assert response.logo_url == "https://example.com/ca.png"
