@@ -62,6 +62,7 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import PageHeader from '@/components/PageHeader'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { dashboardApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
@@ -251,9 +252,10 @@ function PeriodSelector({
   onCustomRangeChange: (r: DateRange | undefined) => void
 }) {
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const isMobile = useIsMobile()
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-2 md:flex-row md:items-center">
       <Select
         value={preset}
         onValueChange={(v) => {
@@ -262,7 +264,7 @@ function PeriodSelector({
           if (p === 'custom') setCalendarOpen(true)
         }}
       >
-        <SelectTrigger size="sm" className="w-[160px]">
+        <SelectTrigger size="sm" className="w-full md:w-[160px]">
           <CalendarIcon className="mr-1 h-3.5 w-3.5" />
           <SelectValue />
         </SelectTrigger>
@@ -291,7 +293,7 @@ function PeriodSelector({
               mode="range"
               selected={customRange}
               onSelect={onCustomRangeChange}
-              numberOfMonths={2}
+              numberOfMonths={isMobile ? 1 : 2}
               disabled={{ after: new Date() }}
             />
           </PopoverContent>
