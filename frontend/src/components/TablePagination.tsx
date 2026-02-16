@@ -60,9 +60,9 @@ export function TablePagination({
   }
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      <div className="flex items-center gap-4">
-        <p className="text-sm text-muted-foreground">
+    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between px-2 py-4">
+      <div className="flex flex-col items-center gap-2 md:flex-row md:gap-4">
+        <p className="text-sm text-muted-foreground text-center">
           {totalCount === 0 ? 'No results' : `${startItem}-${endItem} of ${totalCount}`}
         </p>
         {onPageSizeChange && (
@@ -72,7 +72,7 @@ export function TablePagination({
               value={String(pageSize)}
               onValueChange={(val) => onPageSizeChange(Number(val))}
             >
-              <SelectTrigger className="h-8 w-[70px]">
+              <SelectTrigger className="h-9 w-[80px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -93,7 +93,7 @@ export function TablePagination({
             <PaginationItem>
               <PaginationPrevious
                 onClick={() => onPageChange(page - 1)}
-                className={page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                className={`min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 ${page <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
               />
             </PaginationItem>
             {getVisiblePages().map((p, i) =>
@@ -116,7 +116,7 @@ export function TablePagination({
             <PaginationItem>
               <PaginationNext
                 onClick={() => onPageChange(page + 1)}
-                className={page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                className={`min-h-[44px] md:min-h-0 min-w-[44px] md:min-w-0 ${page >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
               />
             </PaginationItem>
           </PaginationContent>

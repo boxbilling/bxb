@@ -102,10 +102,9 @@ class TestSentryInit:
         """Test that sentry_sdk.init is NOT called when SENTRY_DSN is empty."""
         from app.main import init_sentry
 
-        with patch("app.core.config.settings.SENTRY_DSN", ""):
-            with patch("sentry_sdk.init") as mock_init:
-                init_sentry()
-                mock_init.assert_not_called()
+        with patch("app.core.config.settings.SENTRY_DSN", ""), patch("sentry_sdk.init") as mock_init:
+            init_sentry()
+            mock_init.assert_not_called()
 
 
 class TestDashboardEndpoints:
