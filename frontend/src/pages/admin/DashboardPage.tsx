@@ -630,7 +630,7 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Invoice</TableHead>
-                    <TableHead className="text-xs">Customer</TableHead>
+                    <TableHead className="text-xs hidden md:table-cell">Customer</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs text-right">Amount</TableHead>
                   </TableRow>
@@ -638,8 +638,8 @@ export default function DashboardPage() {
                 <TableBody>
                   {recentInvoices.map((inv) => (
                     <TableRow key={inv.id}>
-                      <TableCell className="text-xs font-mono py-2">{inv.invoice_number}</TableCell>
-                      <TableCell className="text-xs py-2 truncate max-w-[120px]">{inv.customer_name}</TableCell>
+                      <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">{inv.invoice_number}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[120px] hidden md:table-cell">{inv.customer_name}</TableCell>
                       <TableCell className="py-2">
                         <InvoiceStatusBadge status={inv.status} />
                       </TableCell>
@@ -679,16 +679,16 @@ export default function DashboardPage() {
                   <TableRow>
                     <TableHead className="text-xs">ID</TableHead>
                     <TableHead className="text-xs">Customer</TableHead>
-                    <TableHead className="text-xs">Plan</TableHead>
+                    <TableHead className="text-xs hidden md:table-cell">Plan</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {recentSubscriptions.map((sub) => (
                     <TableRow key={sub.id}>
-                      <TableCell className="text-xs font-mono py-2">{sub.external_id}</TableCell>
+                      <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">{sub.external_id}</TableCell>
                       <TableCell className="text-xs py-2 truncate max-w-[120px]">{sub.customer_name}</TableCell>
-                      <TableCell className="text-xs py-2 truncate max-w-[100px]">{sub.plan_name}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[100px] hidden md:table-cell">{sub.plan_name}</TableCell>
                       <TableCell className="py-2">
                         <SubStatusBadge status={sub.status} />
                       </TableCell>
