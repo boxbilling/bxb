@@ -6,10 +6,12 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment_request import PaymentRequest
 from app.repositories.dunning_campaign_repository import DunningCampaignRepository
 from app.repositories.payment_request_repository import PaymentRequestRepository
+from app.services.notification_service import NotificationService
 from app.services.webhook_service import WebhookService
 
 
@@ -21,6 +23,7 @@ class DunningService:
         self.campaign_repo = DunningCampaignRepository(db)
         self.pr_repo = PaymentRequestRepository(db)
         self.webhook_service = WebhookService(db)
+        self.notification_service = NotificationService(db)
 
     def check_and_create_payment_requests(
         self,
@@ -134,6 +137,22 @@ class DunningService:
                             "dunning_campaign_id": str(campaign_id),
                         },
                     )
+
+                    # Create notification
+                    customer = (
+                        self.db.query(Customer)
+                        .filter(Customer.id == customer_id)
+                        .first()
+                    )
+                    customer_name = str(customer.name) if customer else str(customer_id)
+                    self.notification_service.notify_dunning_alert(
+                        organization_id=organization_id,
+                        customer_name=customer_name,
+                        amount_cents=int(new_outstanding),
+                        currency=currency,
+                        payment_request_id=pr.id,  # type: ignore[arg-type]
+                    )
+
                     # Only use first matching campaign per customer+currency
                     break
 

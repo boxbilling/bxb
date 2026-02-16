@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.models.webhook import Webhook
 from app.repositories.webhook_endpoint_repository import WebhookEndpointRepository
 from app.repositories.webhook_repository import WebhookRepository
+from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ class WebhookService:
         self.db = db
         self.endpoint_repo = WebhookEndpointRepository(db)
         self.webhook_repo = WebhookRepository(db)
+        self.notification_service = NotificationService(db)
 
     def send_webhook(
         self,
@@ -188,6 +190,13 @@ class WebhookService:
                     http_status=resp.status_code,
                     response_body=response_text,
                 )
+                self.notification_service.notify_webhook_failure(
+                    organization_id=endpoint.organization_id,  # type: ignore[arg-type]
+                    webhook_type=str(webhook.webhook_type),
+                    endpoint_url=str(endpoint.url),
+                    error=f"HTTP {resp.status_code}",
+                    webhook_id=webhook_id,
+                )
                 return False
 
         except httpx.HTTPError as exc:
@@ -202,6 +211,13 @@ class WebhookService:
                 attempt_number=attempt_number,
                 success=False,
                 error_message=error_msg,
+            )
+            self.notification_service.notify_webhook_failure(
+                organization_id=endpoint.organization_id,  # type: ignore[arg-type]
+                webhook_type=str(webhook.webhook_type),
+                endpoint_url=str(endpoint.url),
+                error=error_msg,
+                webhook_id=webhook_id,
             )
             return False
 

@@ -1516,4 +1516,19 @@ export const searchApi = {
     request<SearchResult[]>(`/v1/search${buildQuery({ q: query, limit })}`),
 }
 
+// Notifications API
+type NotificationResponse = components['schemas']['NotificationResponse']
+type NotificationCountResponse = components['schemas']['NotificationCountResponse']
+
+export const notificationsApi = {
+  list: (params?: { skip?: number; limit?: number; category?: string; is_read?: boolean; order_by?: string }) =>
+    request<NotificationResponse[]>(`/v1/notifications/${buildQuery(params as Record<string, string | number | undefined>)}`),
+  unreadCount: () =>
+    request<NotificationCountResponse>('/v1/notifications/unread_count'),
+  markAsRead: (id: string) =>
+    request<NotificationResponse>(`/v1/notifications/${id}/read`, { method: 'POST' }),
+  markAllAsRead: () =>
+    request<NotificationCountResponse>('/v1/notifications/read_all', { method: 'POST' }),
+}
+
 export { ApiError }

@@ -57,6 +57,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import OrgSwitcher from '@/components/OrgSwitcher'
+import NotificationBell from '@/components/NotificationBell'
 import { CommandPalette } from '@/components/CommandPalette'
 
 const navigationGroups = [
@@ -461,6 +462,7 @@ export default function AdminLayout() {
               <span className="text-xs">&#8984;</span>K
             </kbd>
           </Button>
+          <NotificationBell />
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
