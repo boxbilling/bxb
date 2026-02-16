@@ -596,7 +596,7 @@ export default function UsageAlertsPage() {
       {/* Filter */}
       <div className="flex items-center gap-4">
         <Select value={subscriptionFilter} onValueChange={(v) => { setSubscriptionFilter(v); setPage(1) }}>
-          <SelectTrigger className="w-[280px]">
+          <SelectTrigger className="w-full md:w-[280px]">
             <SelectValue placeholder="Filter by subscription" />
           </SelectTrigger>
           <SelectContent>
@@ -616,12 +616,12 @@ export default function UsageAlertsPage() {
           <TableHeader>
             <TableRow>
               <SortableTableHead label="Name" sortKey="name" sort={sort} onSort={setSort} />
-              <TableHead>Subscription</TableHead>
+              <TableHead className="hidden md:table-cell">Subscription</TableHead>
               <TableHead>Metric</TableHead>
               <SortableTableHead label="Threshold" sortKey="threshold_value" sort={sort} onSort={setSort} />
               <TableHead>Progress</TableHead>
-              <TableHead>Recurring</TableHead>
-              <TableHead>Last Triggered</TableHead>
+              <TableHead className="hidden md:table-cell">Recurring</TableHead>
+              <TableHead className="hidden md:table-cell">Last Triggered</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -630,12 +630,12 @@ export default function UsageAlertsPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                 </TableRow>
               ))
@@ -658,7 +658,7 @@ export default function UsageAlertsPage() {
                     <TableCell className="font-medium">
                       {alert.name || 'Unnamed'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
                         {subscription?.external_id ?? alert.subscription_id.slice(0, 8) + '...'}
                       </code>
@@ -677,12 +677,12 @@ export default function UsageAlertsPage() {
                     <TableCell>
                       <UsageProgressCell alertId={alert.id} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <Badge variant={alert.recurring ? 'default' : 'secondary'}>
                         {alert.recurring ? 'Yes' : 'No'}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
+                    <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
                       {alert.triggered_at
                         ? format(new Date(alert.triggered_at), 'MMM d, yyyy HH:mm')
                         : 'Never'}
