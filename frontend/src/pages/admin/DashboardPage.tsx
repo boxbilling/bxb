@@ -482,7 +482,7 @@ export default function DashboardPage() {
       />
 
       {/* Revenue Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard
           title="MRR"
           value={
@@ -541,7 +541,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Customer & Subscription Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Customers"
           value={customerMetrics?.total.toLocaleString() ?? '-'}
@@ -574,7 +574,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Subscription Metrics Row */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-3">
         <StatCard
           title="Active Subscriptions"
           value={subscriptionMetrics?.active.toLocaleString() ?? '-'}
@@ -607,7 +607,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Recent Invoices & Recent Subscriptions Tables */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-3">
         {/* Recent Invoices */}
         <Card>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -786,7 +786,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Bottom Charts Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-3">
         {/* Revenue by Plan (Donut) */}
         <Card>
           <CardHeader className="pb-2">
