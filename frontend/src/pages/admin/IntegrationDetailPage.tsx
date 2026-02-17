@@ -241,7 +241,7 @@ function ProviderSettingsForm({
         <div className="space-y-2">
           <Label>Status</Label>
           <Select value={integrationStatus} onValueChange={setIntegrationStatus}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -270,7 +270,7 @@ function ProviderSettingsForm({
       <div className="space-y-2">
         <Label>Status</Label>
         <Select value={integrationStatus} onValueChange={setIntegrationStatus}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full md:w-[200px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -393,7 +393,7 @@ export default function IntegrationDetailPage() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-6 w-64" />
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardHeader>
@@ -432,10 +432,10 @@ export default function IntegrationDetailPage() {
       </Breadcrumb>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-4">
           <Link to="/admin/integrations">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="self-start">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>
@@ -452,6 +452,7 @@ export default function IntegrationDetailPage() {
             variant="outline"
             onClick={() => testConnectionMutation.mutate()}
             disabled={testConnectionMutation.isPending}
+            className="w-full md:w-auto"
           >
             {testConnectionMutation.isPending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -462,7 +463,7 @@ export default function IntegrationDetailPage() {
           </Button>
           <Button
             variant="outline"
-            className="text-destructive"
+            className="text-destructive w-full md:w-auto"
             onClick={() => setDeleteOpen(true)}
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -472,7 +473,7 @@ export default function IntegrationDetailPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         <SyncStatusIndicator integration={integration} />
         <Card>
           <CardHeader className="pb-3">
@@ -522,28 +523,30 @@ export default function IntegrationDetailPage() {
 
       {/* Tabs */}
       <Tabs defaultValue="settings">
-        <TabsList>
-          <TabsTrigger value="settings">
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </TabsTrigger>
-          <TabsTrigger value="customers">
-            <Users className="mr-2 h-4 w-4" />
-            Customer Mappings
-          </TabsTrigger>
-          <TabsTrigger value="mappings">
-            <ArrowRightLeft className="mr-2 h-4 w-4" />
-            Field Mappings
-          </TabsTrigger>
-          <TabsTrigger value="sync-history">
-            <History className="mr-2 h-4 w-4" />
-            Sync History
-          </TabsTrigger>
-          <TabsTrigger value="errors">
-            <AlertCircle className="mr-2 h-4 w-4" />
-            Error Log
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto">
+          <TabsList>
+            <TabsTrigger value="settings">
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </TabsTrigger>
+            <TabsTrigger value="customers">
+              <Users className="mr-2 h-4 w-4" />
+              Customer Mappings
+            </TabsTrigger>
+            <TabsTrigger value="mappings">
+              <ArrowRightLeft className="mr-2 h-4 w-4" />
+              Field Mappings
+            </TabsTrigger>
+            <TabsTrigger value="sync-history">
+              <History className="mr-2 h-4 w-4" />
+              Sync History
+            </TabsTrigger>
+            <TabsTrigger value="errors">
+              <AlertCircle className="mr-2 h-4 w-4" />
+              Error Log
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="space-y-4">
@@ -608,30 +611,32 @@ export default function IntegrationDetailPage() {
                   <p>No customer mappings configured</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Customer ID</TableHead>
-                      <TableHead>External Customer ID</TableHead>
-                      <TableHead>Settings</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {customers.map((cm) => (
-                      <TableRow key={cm.id}>
-                        <TableCell className="font-mono text-xs">{cm.customer_id}</TableCell>
-                        <TableCell className="font-mono text-xs">{cm.external_customer_id}</TableCell>
-                        <TableCell>
-                          {cm.settings
-                            ? Object.keys(cm.settings).length + ' keys'
-                            : '-'}
-                        </TableCell>
-                        <TableCell>{format(new Date(cm.created_at), 'PP')}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer ID</TableHead>
+                        <TableHead>External Customer ID</TableHead>
+                        <TableHead className="hidden md:table-cell">Settings</TableHead>
+                        <TableHead className="hidden md:table-cell">Created</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {customers.map((cm) => (
+                        <TableRow key={cm.id}>
+                          <TableCell className="font-mono text-xs">{cm.customer_id}</TableCell>
+                          <TableCell className="font-mono text-xs">{cm.external_customer_id}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {cm.settings
+                              ? Object.keys(cm.settings).length + ' keys'
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{format(new Date(cm.created_at), 'PP')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -653,34 +658,36 @@ export default function IntegrationDetailPage() {
                   <p>No field mappings configured</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Resource Type</TableHead>
-                      <TableHead>Resource ID</TableHead>
-                      <TableHead>External ID</TableHead>
-                      <TableHead>Last Synced</TableHead>
-                      <TableHead>Created</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {mappings.map((m) => (
-                      <TableRow key={m.id}>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">{m.mappable_type}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{m.mappable_id}</TableCell>
-                        <TableCell className="font-mono text-xs">{m.external_id}</TableCell>
-                        <TableCell>
-                          {m.last_synced_at
-                            ? format(new Date(m.last_synced_at), 'PPp')
-                            : 'Never'}
-                        </TableCell>
-                        <TableCell>{format(new Date(m.created_at), 'PP')}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Resource Type</TableHead>
+                        <TableHead>Resource ID</TableHead>
+                        <TableHead>External ID</TableHead>
+                        <TableHead className="hidden md:table-cell">Last Synced</TableHead>
+                        <TableHead className="hidden md:table-cell">Created</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {mappings.map((m) => (
+                        <TableRow key={m.id}>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">{m.mappable_type}</Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">{m.mappable_id}</TableCell>
+                          <TableCell className="font-mono text-xs">{m.external_id}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {m.last_synced_at
+                              ? format(new Date(m.last_synced_at), 'PPp')
+                              : 'Never'}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{format(new Date(m.created_at), 'PP')}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -688,14 +695,14 @@ export default function IntegrationDetailPage() {
 
         {/* Sync History Tab */}
         <TabsContent value="sync-history" className="space-y-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <Select
               value={syncHistoryFilter.status ?? 'all'}
               onValueChange={(v) =>
                 setSyncHistoryFilter({ ...syncHistoryFilter, status: v === 'all' ? undefined : v })
               }
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full md:w-[160px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
@@ -711,7 +718,7 @@ export default function IntegrationDetailPage() {
                 setSyncHistoryFilter({ ...syncHistoryFilter, resource_type: v === 'all' ? undefined : v })
               }
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full md:w-[180px]">
                 <SelectValue placeholder="Filter by resource" />
               </SelectTrigger>
               <SelectContent>
@@ -732,36 +739,38 @@ export default function IntegrationDetailPage() {
                   <p>No sync history</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Resource</TableHead>
-                      <TableHead>External ID</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Started</TableHead>
-                      <TableHead>Error</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {syncHistory.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="capitalize">{entry.action}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">{entry.resource_type}</Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{entry.external_id ?? '-'}</TableCell>
-                        <TableCell>
-                          <SyncStatusBadge status={entry.status} />
-                        </TableCell>
-                        <TableCell>{format(new Date(entry.started_at), 'PPp')}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-destructive text-xs">
-                          {entry.error_message ?? '-'}
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Resource</TableHead>
+                        <TableHead className="hidden md:table-cell">External ID</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Started</TableHead>
+                        <TableHead className="hidden md:table-cell">Error</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {syncHistory.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell className="capitalize">{entry.action}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">{entry.resource_type}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell font-mono text-xs">{entry.external_id ?? '-'}</TableCell>
+                          <TableCell>
+                            <SyncStatusBadge status={entry.status} />
+                          </TableCell>
+                          <TableCell>{format(new Date(entry.started_at), 'PPp')}</TableCell>
+                          <TableCell className="hidden md:table-cell max-w-[200px] truncate text-destructive text-xs">
+                            {entry.error_message ?? '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

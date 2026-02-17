@@ -124,7 +124,7 @@ function IntegrationFormDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="integration_type">Integration Type *</Label>
                 <Input
@@ -183,15 +183,16 @@ function IntegrationFormDialog({
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
               {isLoading ? 'Saving...' : integration ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>
@@ -356,7 +357,7 @@ export default function IntegrationsPage() {
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0" onClick={(e) => e.stopPropagation()}>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
