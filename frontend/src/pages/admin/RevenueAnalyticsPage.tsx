@@ -54,6 +54,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import PageHeader from '@/components/PageHeader'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { dashboardApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
@@ -124,6 +125,7 @@ const netRevenueChartConfig = {
 } satisfies ChartConfig
 
 export default function RevenueAnalyticsPage() {
+  const isMobile = useIsMobile()
   const [preset, setPreset] = useState<PeriodPreset>('30d')
   const [customRange, setCustomRange] = useState<DateRange | undefined>()
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -204,7 +206,7 @@ export default function RevenueAnalyticsPage() {
                     mode="range"
                     selected={customRange}
                     onSelect={setCustomRange}
-                    numberOfMonths={2}
+                    numberOfMonths={isMobile ? 1 : 2}
                     disabled={{ after: new Date() }}
                   />
                 </PopoverContent>
@@ -215,7 +217,7 @@ export default function RevenueAnalyticsPage() {
       />
 
       {/* Summary Stat Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard
           title="Net Revenue"
           value={data ? formatCurrency(data.net_revenue.net_revenue, data.currency) : '—'}
@@ -258,9 +260,9 @@ export default function RevenueAnalyticsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <Skeleton className="h-[300px] w-full" />
+            <Skeleton className="h-[200px] md:h-[300px] w-full" />
           ) : data && data.daily_revenue.length > 0 ? (
-            <ChartContainer config={revenueChartConfig} className="h-[300px] w-full">
+            <ChartContainer config={revenueChartConfig} className="h-[200px] md:h-[300px] w-full">
               <AreaChart data={data.daily_revenue} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueFill" x1="0" y1="0" x2="0" y2="1">
@@ -301,7 +303,7 @@ export default function RevenueAnalyticsPage() {
               </AreaChart>
             </ChartContainer>
           ) : (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            <div className="h-[200px] md:h-[300px] flex items-center justify-center text-muted-foreground">
               No revenue data for this period
             </div>
           )}
@@ -523,8 +525,8 @@ export default function RevenueAnalyticsPage() {
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead className="text-right">Revenue</TableHead>
-                  <TableHead className="text-right">Invoices</TableHead>
-                  <TableHead className="text-right">Share</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Invoices</TableHead>
+                  <TableHead className="hidden md:table-cell text-right">Share</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -545,8 +547,8 @@ export default function RevenueAnalyticsPage() {
                       <TableCell className="text-right font-mono font-medium">
                         {formatCurrency(customer.revenue, data.currency)}
                       </TableCell>
-                      <TableCell className="text-right">{customer.invoice_count}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="hidden md:table-cell text-right">{customer.invoice_count}</TableCell>
+                      <TableCell className="hidden md:table-cell text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Progress value={parseFloat(share)} className="h-2 w-16" />
                           <span className="text-xs text-muted-foreground w-12 text-right">{share}%</span>
