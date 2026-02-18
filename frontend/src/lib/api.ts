@@ -79,6 +79,7 @@ type AppliedAddOnDetailResponse = components['schemas']['AppliedAddOnDetailRespo
 type PortalAddOnResponse = components['schemas']['PortalAddOnResponse']
 type PortalPurchasedAddOnResponse = components['schemas']['PortalPurchasedAddOnResponse']
 type PortalPurchaseAddOnResponse = components['schemas']['PortalPurchaseAddOnResponse']
+type CustomerIntegrationMappingResponse = components['schemas']['CustomerIntegrationMappingResponse']
 type PortalAppliedCouponResponse = components['schemas']['PortalAppliedCouponResponse']
 type PortalUsageTrendResponse = components['schemas']['PortalUsageTrendResponse']
 type PortalUsageLimitsResponse = components['schemas']['PortalUsageLimitsResponse']
@@ -628,6 +629,10 @@ export const customersApi = {
     request<{ portal_url: string }>(`/v1/customers/${externalId}/portal_url`),
   getHealth: (customerId: string) =>
     request<{ status: string; total_invoices: number; paid_invoices: number; overdue_invoices: number; total_payments: number; failed_payments: number; overdue_amount: number }>(`/v1/customers/${customerId}/health`),
+  getAppliedAddOns: (customerId: string) =>
+    request<AppliedAddOnDetailResponse[]>(`/v1/customers/${customerId}/applied_add_ons`),
+  getIntegrationMappings: (customerId: string) =>
+    request<CustomerIntegrationMappingResponse[]>(`/v1/customers/${customerId}/integration_mappings`),
 }
 
 // Billable Metrics API

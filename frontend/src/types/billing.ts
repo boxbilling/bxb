@@ -6,6 +6,7 @@ import type { components } from '@/lib/schema'
 export type Customer = components['schemas']['CustomerResponse']
 export type CustomerCreate = components['schemas']['CustomerCreate']
 export type CustomerUpdate = components['schemas']['CustomerUpdate']
+export type CustomerIntegrationMappingResponse = components['schemas']['CustomerIntegrationMappingResponse']
 
 // --- Billable Metrics ---
 export type BillableMetric = components['schemas']['BillableMetricResponse']
