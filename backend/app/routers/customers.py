@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -10,6 +11,7 @@ from app.core.database import get_db
 from app.core.idempotency import IdempotencyResult, check_idempotency, record_idempotency_response
 from app.models.applied_coupon import AppliedCoupon
 from app.models.customer import Customer
+from app.models.integration import Integration
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan
@@ -17,6 +19,7 @@ from app.models.subscription import Subscription
 from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.integration_customer_repository import IntegrationCustomerRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.schemas.add_on import AppliedAddOnDetailResponse
 from app.schemas.coupon import AppliedCouponResponse
@@ -24,6 +27,7 @@ from app.schemas.customer import (
     CustomerCreate,
     CustomerHealthResponse,
     CustomerHealthStatus,
+    CustomerIntegrationMappingResponse,
     CustomerResponse,
     CustomerUpdate,
 )
@@ -334,6 +338,54 @@ async def list_applied_add_ons_for_customer(
                 "amount_cents": applied.amount_cents,
                 "amount_currency": applied.amount_currency,
                 "created_at": applied.created_at,
+            }
+        )
+    return result
+
+
+@router.get(
+    "/{customer_id}/integration_mappings",
+    response_model=list[CustomerIntegrationMappingResponse],
+    summary="List customer integration mappings",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
+async def list_integration_mappings_for_customer(
+    customer_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[dict[str, Any]]:
+    """List integration mappings for a customer."""
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    ic_repo = IntegrationCustomerRepository(db)
+    mappings = ic_repo.get_all_by_customer_id(customer_id)
+
+    result = []
+    for mapping in mappings:
+        integration = (
+            db.query(Integration).filter(Integration.id == mapping.integration_id).first()
+        )
+        if integration:
+            integration_name = str(integration.integration_type)
+            integration_provider = str(integration.provider_type)
+        else:
+            integration_name = "Unknown"
+            integration_provider = "Unknown"
+        result.append(
+            {
+                "id": mapping.id,
+                "integration_id": mapping.integration_id,
+                "integration_name": integration_name,
+                "integration_provider": integration_provider,
+                "external_customer_id": mapping.external_customer_id,
+                "settings": mapping.settings,
+                "created_at": mapping.created_at,
             }
         )
     return result

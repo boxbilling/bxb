@@ -50,6 +50,16 @@ class CustomerResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CustomerIntegrationMappingResponse(BaseModel):
+    id: UUID
+    integration_id: UUID
+    integration_name: str
+    integration_provider: str
+    external_customer_id: str
+    settings: dict[str, Any] | None = None
+    created_at: datetime
+
+
 class CustomerHealthStatus(str, Enum):
     GOOD = "good"
     WARNING = "warning"

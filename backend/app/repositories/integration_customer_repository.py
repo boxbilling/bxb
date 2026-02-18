@@ -32,6 +32,15 @@ class IntegrationCustomerRepository:
         query = apply_order_by(query, IntegrationCustomer, order_by)
         return query.offset(skip).limit(limit).all()
 
+    def get_all_by_customer_id(self, customer_id: UUID) -> list[IntegrationCustomer]:
+        """Get all integration customers for a given customer, ordered by created_at desc."""
+        return (
+            self.db.query(IntegrationCustomer)
+            .filter(IntegrationCustomer.customer_id == customer_id)
+            .order_by(IntegrationCustomer.created_at.desc())
+            .all()
+        )
+
     def get_by_id(self, integration_customer_id: UUID) -> IntegrationCustomer | None:
         """Get an integration customer by ID."""
         return (

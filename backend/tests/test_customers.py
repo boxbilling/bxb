@@ -15,6 +15,8 @@ from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer, UUIDType, generate_uuid, utc_now
 from app.models.event import Event
+from app.models.integration import Integration
+from app.models.integration_customer import IntegrationCustomer
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan, PlanInterval
@@ -1032,5 +1034,107 @@ class TestCustomerAppliedAddOnsAPI:
         """404 for nonexistent customer."""
         fake_id = str(uuid.uuid4())
         response = client.get(f"/v1/customers/{fake_id}/applied_add_ons")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+
+class TestCustomerIntegrationMappingsAPI:
+    """Tests for GET /v1/customers/{customer_id}/integration_mappings endpoint."""
+
+    def test_list_integration_mappings_empty(self, client: TestClient, db_session):
+        """Customer with no integration mappings returns empty list."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"intmap-empty-{uuid.uuid4().hex[:8]}",
+            name="No Mappings Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        response = client.get(f"/v1/customers/{customer.id}/integration_mappings")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_integration_mappings_success(self, client: TestClient, db_session):
+        """Customer with integration mappings returns correct data."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"intmap-succ-{uuid.uuid4().hex[:8]}",
+            name="Mapped Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        integration = Integration(
+            organization_id=DEFAULT_ORG_ID,
+            integration_type="payment_provider",
+            provider_type="stripe",
+            settings={},
+        )
+        db_session.add(integration)
+        db_session.commit()
+        db_session.refresh(integration)
+
+        ic = IntegrationCustomer(
+            integration_id=integration.id,
+            customer_id=customer.id,
+            external_customer_id="stripe_cus_123",
+        )
+        db_session.add(ic)
+        db_session.commit()
+        db_session.refresh(ic)
+
+        response = client.get(f"/v1/customers/{customer.id}/integration_mappings")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        item = data[0]
+        assert item["integration_name"] == "payment_provider"
+        assert item["integration_provider"] == "stripe"
+        assert item["external_customer_id"] == "stripe_cus_123"
+
+    def test_list_integration_mappings_missing_integration(
+        self, client: TestClient, db_session
+    ):
+        """Mapping with missing integration returns 'Unknown' for name and provider."""
+        from sqlalchemy import text
+
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"intmap-miss-{uuid.uuid4().hex[:8]}",
+            name="Missing Integration Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        fake_integration_id = uuid.uuid4()
+        mapping_id = uuid.uuid4()
+        # Disable FK checks to insert an orphan mapping
+        db_session.execute(text("PRAGMA foreign_keys=OFF"))
+        db_session.execute(
+            IntegrationCustomer.__table__.insert().values(
+                id=str(mapping_id),
+                integration_id=str(fake_integration_id),
+                customer_id=str(customer.id),
+                external_customer_id="orphan_cus_456",
+            )
+        )
+        db_session.commit()
+        db_session.execute(text("PRAGMA foreign_keys=ON"))
+
+        response = client.get(f"/v1/customers/{customer.id}/integration_mappings")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["integration_name"] == "Unknown"
+        assert data[0]["integration_provider"] == "Unknown"
+
+    def test_list_integration_mappings_customer_not_found(self, client: TestClient):
+        """404 for nonexistent customer."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(f"/v1/customers/{fake_id}/integration_mappings")
         assert response.status_code == 404
         assert response.json()["detail"] == "Customer not found"
