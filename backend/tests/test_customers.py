@@ -184,6 +184,7 @@ class TestCustomersAPI:
         assert data["billing_metadata"] == {}
         assert data["invoice_grace_period"] == 0
         assert data["net_payment_term"] == 30
+        assert data["billing_entity_id"] is None
         assert "id" in data
         assert "created_at" in data
         assert "updated_at" in data

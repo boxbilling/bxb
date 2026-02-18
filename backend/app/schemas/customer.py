@@ -43,6 +43,7 @@ class CustomerResponse(BaseModel):
     billing_metadata: dict[str, Any]
     invoice_grace_period: int
     net_payment_term: int
+    billing_entity_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
