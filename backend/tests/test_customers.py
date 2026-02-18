@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
+from app.models.add_on import AddOn
+from app.models.applied_add_on import AppliedAddOn
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
 from app.models.customer import Customer, UUIDType, generate_uuid, utc_now
@@ -963,3 +965,72 @@ class TestCustomerHealthAPI:
         assert data["total_invoices"] == 2
         assert data["paid_invoices"] == 1
         assert data["overdue_invoices"] == 1
+
+
+class TestCustomerAppliedAddOnsAPI:
+    """Tests for GET /v1/customers/{customer_id}/applied_add_ons endpoint."""
+
+    def test_list_applied_add_ons_empty(self, client: TestClient, db_session):
+        """Customer with no applied add-ons returns empty list."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"addon-empty-{uuid.uuid4().hex[:8]}",
+            name="No AddOns Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        response = client.get(f"/v1/customers/{customer.id}/applied_add_ons")
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_list_applied_add_ons_success(self, client: TestClient, db_session):
+        """Customer with applied add-ons returns correct data."""
+        customer = Customer(
+            organization_id=DEFAULT_ORG_ID,
+            external_id=f"addon-succ-{uuid.uuid4().hex[:8]}",
+            name="AddOn Customer",
+        )
+        db_session.add(customer)
+        db_session.commit()
+        db_session.refresh(customer)
+
+        add_on = AddOn(
+            organization_id=DEFAULT_ORG_ID,
+            code=f"addon-{uuid.uuid4().hex[:8]}",
+            name="Test Add-On",
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+        )
+        db_session.add(add_on)
+        db_session.commit()
+        db_session.refresh(add_on)
+
+        applied = AppliedAddOn(
+            add_on_id=add_on.id,
+            customer_id=customer.id,
+            amount_cents=Decimal("1000"),
+            amount_currency="USD",
+        )
+        db_session.add(applied)
+        db_session.commit()
+        db_session.refresh(applied)
+
+        response = client.get(f"/v1/customers/{customer.id}/applied_add_ons")
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        item = data[0]
+        assert item["add_on_id"] == str(add_on.id)
+        assert item["customer_id"] == str(customer.id)
+        assert item["customer_name"] == "AddOn Customer"
+        assert float(item["amount_cents"]) == 1000
+        assert item["amount_currency"] == "USD"
+
+    def test_list_applied_add_ons_customer_not_found(self, client: TestClient):
+        """404 for nonexistent customer."""
+        fake_id = str(uuid.uuid4())
+        response = client.get(f"/v1/customers/{fake_id}/applied_add_ons")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"

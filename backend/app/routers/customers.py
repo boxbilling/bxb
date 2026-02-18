@@ -14,9 +14,11 @@ from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment, PaymentStatus
 from app.models.plan import Plan
 from app.models.subscription import Subscription
+from app.repositories.applied_add_on_repository import AppliedAddOnRepository
 from app.repositories.applied_coupon_repository import AppliedCouponRepository
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.subscription_repository import SubscriptionRepository
+from app.schemas.add_on import AppliedAddOnDetailResponse
 from app.schemas.coupon import AppliedCouponResponse
 from app.schemas.customer import (
     CustomerCreate,
@@ -294,6 +296,47 @@ async def get_customer_health(
         failed_payments=failed_payments,
         overdue_amount=overdue_amount,
     )
+
+
+@router.get(
+    "/{customer_id}/applied_add_ons",
+    response_model=list[AppliedAddOnDetailResponse],
+    summary="List customer applied add-ons",
+    responses={
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
+async def list_applied_add_ons_for_customer(
+    customer_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[dict[str, object]]:
+    """List applied add-ons for a customer."""
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_id(customer_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    applied_repo = AppliedAddOnRepository(db)
+    applied_add_ons = applied_repo.get_by_customer_id(customer_id)
+
+    result = []
+    for applied in applied_add_ons:
+        result.append(
+            {
+                "id": applied.id,
+                "add_on_id": applied.add_on_id,
+                "customer_id": applied.customer_id,
+                "customer_name": customer.name,
+                "amount_cents": applied.amount_cents,
+                "amount_currency": applied.amount_currency,
+                "created_at": applied.created_at,
+            }
+        )
+    return result
 
 
 @router.get(
