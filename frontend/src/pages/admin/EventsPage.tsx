@@ -543,8 +543,8 @@ export default function EventsPage() {
                 <AreaChart data={volumeData.data_points}>
                   <defs>
                     <linearGradient id="volumeFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.2} />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -566,8 +566,8 @@ export default function EventsPage() {
                   />
                   <RechartsTooltip
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
+                      backgroundColor: 'var(--background)',
+                      border: '1px solid var(--border)',
                       borderRadius: '6px',
                       fontSize: '12px',
                     }}
@@ -577,7 +577,7 @@ export default function EventsPage() {
                   <Area
                     type="monotone"
                     dataKey="count"
-                    stroke="hsl(var(--primary))"
+                    stroke="var(--primary)"
                     strokeWidth={1.5}
                     fill="url(#volumeFill)"
                     dot={false}

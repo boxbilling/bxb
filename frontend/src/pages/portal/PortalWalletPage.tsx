@@ -360,8 +360,8 @@ export default function PortalWalletPage() {
                         <AreaChart data={timelineChartData}>
                           <defs>
                             <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                              <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" />
@@ -373,7 +373,7 @@ export default function PortalWalletPage() {
                           <Area
                             type="monotone"
                             dataKey="balance"
-                            stroke="#3b82f6"
+                            stroke="var(--primary)"
                             fill="url(#balanceGradient)"
                           />
                         </AreaChart>
@@ -405,8 +405,8 @@ export default function PortalWalletPage() {
                             ]}
                           />
                           <Legend />
-                          <Bar dataKey="inbound" name="Credits In" fill="#22c55e" />
-                          <Bar dataKey="outbound" name="Credits Out" fill="#ef4444" />
+                          <Bar dataKey="inbound" name="Credits In" fill="oklch(0.72 0.19 150)" />
+                          <Bar dataKey="outbound" name="Credits Out" fill="oklch(0.70 0.19 25)" />
                         </BarChart>
                       </ResponsiveContainer>
                     )}

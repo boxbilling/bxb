@@ -95,32 +95,32 @@ const INVOICE_TYPE_LABELS: Record<string, string> = {
 }
 
 const PIE_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--chart-2, 220 70% 55%))',
-  'hsl(var(--chart-3, 150 60% 45%))',
-  'hsl(var(--chart-4, 40 90% 55%))',
-  'hsl(var(--chart-5, 340 70% 55%))',
+  'var(--primary)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
 ]
 
 const revenueChartConfig = {
   revenue: {
     label: 'Revenue',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
 } satisfies ChartConfig
 
 const netRevenueChartConfig = {
   gross: {
     label: 'Gross Revenue',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
   refunds: {
     label: 'Refunds',
-    color: 'hsl(var(--destructive, 0 72% 51%))',
+    color: 'var(--destructive)',
   },
   credit_notes: {
     label: 'Credit Notes',
-    color: 'hsl(var(--chart-4, 40 90% 55%))',
+    color: 'var(--chart-4)',
   },
 } satisfies ChartConfig
 
@@ -154,10 +154,10 @@ export default function RevenueAnalyticsPage() {
   const netRevenueBarData = useMemo(() => {
     if (!data) return []
     return [
-      { name: 'Gross', value: data.net_revenue.gross_revenue, fill: 'hsl(var(--primary))' },
-      { name: 'Refunds', value: data.net_revenue.refunds, fill: 'hsl(var(--destructive, 0 72% 51%))' },
-      { name: 'Credits', value: data.net_revenue.credit_notes, fill: 'hsl(var(--chart-4, 40 90% 55%))' },
-      { name: 'Net', value: data.net_revenue.net_revenue, fill: 'hsl(var(--chart-3, 150 60% 45%))' },
+      { name: 'Gross', value: data.net_revenue.gross_revenue, fill: 'var(--primary)' },
+      { name: 'Refunds', value: data.net_revenue.refunds, fill: 'var(--destructive)' },
+      { name: 'Credits', value: data.net_revenue.credit_notes, fill: 'var(--chart-4)' },
+      { name: 'Net', value: data.net_revenue.net_revenue, fill: 'var(--chart-3)' },
     ]
   }, [data])
 

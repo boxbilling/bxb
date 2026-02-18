@@ -750,7 +750,7 @@ function ChargeUsageTable({ charges, currency }: { charges: CustomerCurrentUsage
 const pastUsageChartConfig = {
   amount: {
     label: 'Amount',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
 } satisfies ChartConfig
 

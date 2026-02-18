@@ -116,7 +116,7 @@ function TrendBadge({
 
 function Sparkline({
   data,
-  color = 'hsl(var(--primary))',
+  color = 'var(--primary)',
 }: {
   data: { date: string; value: number }[]
   color?: string
@@ -335,7 +335,7 @@ const activityResourceRoutes: Record<string, string> = {
 const planChartConfig = {
   count: {
     label: 'Subscriptions',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
 } satisfies ChartConfig
 
@@ -366,19 +366,19 @@ function SubStatusBadge({ status }: { status: string }) {
 const usageChartConfig = {
   event_count: {
     label: 'Events',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
 } satisfies ChartConfig
 
 const PLAN_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--chart-2, 160 60% 45%))',
-  'hsl(var(--chart-3, 30 80% 55%))',
-  'hsl(var(--chart-4, 280 65% 60%))',
-  'hsl(var(--chart-5, 340 75% 55%))',
-  'hsl(200 70% 50%)',
-  'hsl(45 90% 50%)',
-  'hsl(120 40% 50%)',
+  'var(--primary)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'oklch(0.65 0.15 230)',
+  'oklch(0.80 0.16 90)',
+  'oklch(0.65 0.14 150)',
 ]
 
 const revenueByPlanChartConfig = {
@@ -499,7 +499,7 @@ export default function DashboardPage() {
           trend={revenue?.mrr_trend}
           href="/admin/invoices?status=paid"
           sparklineData={sparklines?.mrr}
-          sparklineColor="hsl(var(--primary))"
+          sparklineColor="var(--primary)"
         />
         <StatCard
           title="Outstanding Invoices"
@@ -561,7 +561,7 @@ export default function DashboardPage() {
           trend={customerMetrics?.new_trend}
           href="/admin/customers"
           sparklineData={sparklines?.new_customers}
-          sparklineColor="hsl(160 60% 45%)"
+          sparklineColor="var(--chart-2)"
         />
         <StatCard
           title="Churned"
@@ -594,7 +594,7 @@ export default function DashboardPage() {
           trend={subscriptionMetrics?.new_trend}
           href="/admin/subscriptions"
           sparklineData={sparklines?.new_subscriptions}
-          sparklineColor="hsl(200 70% 50%)"
+          sparklineColor="var(--chart-3)"
         />
         <StatCard
           title="Canceled"

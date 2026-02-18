@@ -735,12 +735,12 @@ export default function WalletDetailPage() {
                           >
                             <stop
                               offset="5%"
-                              stopColor="hsl(var(--primary))"
+                              stopColor="var(--primary)"
                               stopOpacity={0.3}
                             />
                             <stop
                               offset="95%"
-                              stopColor="hsl(var(--primary))"
+                              stopColor="var(--primary)"
                               stopOpacity={0}
                             />
                           </linearGradient>
@@ -760,8 +760,8 @@ export default function WalletDetailPage() {
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--popover))',
-                            borderColor: 'hsl(var(--border))',
+                            backgroundColor: 'var(--popover)',
+                            borderColor: 'var(--border)',
                             borderRadius: '8px',
                           }}
                           formatter={(value: number) => [
@@ -772,7 +772,7 @@ export default function WalletDetailPage() {
                         <Area
                           type="monotone"
                           dataKey="balance"
-                          stroke="hsl(var(--primary))"
+                          stroke="var(--primary)"
                           fill="url(#balanceGradient)"
                           strokeWidth={2}
                         />
@@ -808,8 +808,8 @@ export default function WalletDetailPage() {
                         />
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--popover))',
-                            borderColor: 'hsl(var(--border))',
+                            backgroundColor: 'var(--popover)',
+                            borderColor: 'var(--border)',
                             borderRadius: '8px',
                           }}
                           formatter={(value: number, name: string) => [
@@ -820,13 +820,13 @@ export default function WalletDetailPage() {
                         <Legend />
                         <Bar
                           dataKey="inbound"
-                          fill="#22c55e"
+                          fill="oklch(0.72 0.19 150)"
                           name="Credits In"
                           radius={[4, 4, 0, 0]}
                         />
                         <Bar
                           dataKey="outbound"
-                          fill="#ef4444"
+                          fill="oklch(0.70 0.19 25)"
                           name="Credits Out"
                           radius={[4, 4, 0, 0]}
                         />

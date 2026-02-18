@@ -515,8 +515,8 @@ export default function SubscriptionDetailPage() {
                     <AreaChart data={usageTrend.data_points}>
                       <defs>
                         <linearGradient id="usageTrendFill" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid vertical={false} strokeDasharray="3 3" />
@@ -558,7 +558,7 @@ export default function SubscriptionDetailPage() {
                       <Area
                         type="monotone"
                         dataKey="value"
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeWidth={2}
                         fill="url(#usageTrendFill)"
                         dot={false}

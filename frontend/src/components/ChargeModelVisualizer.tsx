@@ -107,22 +107,22 @@ function extractGraduatedPercentageTiers(
 }
 
 const TIER_COLORS = [
-  'hsl(var(--primary))',
-  'hsl(var(--chart-2, 160 60% 45%))',
-  'hsl(var(--chart-3, 30 80% 55%))',
-  'hsl(var(--chart-4, 280 65% 60%))',
-  'hsl(var(--chart-5, 340 75% 55%))',
-  'hsl(200 70% 50%)',
+  'var(--primary)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'oklch(0.65 0.15 230)',
 ]
 
 const chartConfig = {
   unitPrice: {
     label: 'Unit Price',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
   rate: {
     label: 'Rate (%)',
-    color: 'hsl(var(--primary))',
+    color: 'var(--primary)',
   },
 } satisfies ChartConfig
 
