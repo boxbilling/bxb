@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Wallet2, Tag, ScrollText, Landmark, Star, Trash2, Plus, ExternalLink, Copy, Check, Pencil, History } from 'lucide-react'
+import { FileText, CreditCard, Wallet2, Tag, ScrollText, Plus, Pencil, History } from 'lucide-react'
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { toast } from 'sonner'
 
@@ -41,24 +41,6 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
@@ -67,12 +49,12 @@ import {
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
-import { CardBrandIcon } from '@/components/CardBrandIcon'
-import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
-import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, paymentMethodsApi, plansApi, ApiError } from '@/lib/api'
+import { CustomerPaymentMethodsCard } from '@/components/customer-detail/CustomerPaymentMethodsCard'
+import { PortalLinkDialog } from '@/components/customer-detail/PortalLinkDialog'
+import { customersApi, subscriptionsApi, invoicesApi, paymentsApi, walletsApi, creditNotesApi, feesApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
-import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, PaymentMethod, PaymentMethodCreate, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
+import type { Subscription, Invoice, Payment, Wallet as WalletType, AppliedCoupon, CreditNote, CustomerCurrentUsageResponse, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
 
 function CustomerOutstandingBalance({ customerId, currency }: { customerId: string; currency: string }) {
@@ -538,179 +520,6 @@ function CustomerActivityTab({ customerId }: { customerId: string }) {
   )
 }
 
-function CustomerPaymentMethodsCard({ customerId, customerName }: { customerId: string; customerName: string }) {
-  const queryClient = useQueryClient()
-  const [deleteMethod, setDeleteMethod] = useState<PaymentMethod | null>(null)
-  const [addFormOpen, setAddFormOpen] = useState(false)
-
-  const { data: paymentMethods, isLoading } = useQuery({
-    queryKey: ['customer-payment-methods', customerId],
-    queryFn: () => paymentMethodsApi.list({ customer_id: customerId }),
-  })
-
-  const createMutation = useMutation({
-    mutationFn: (data: PaymentMethodCreate) => paymentMethodsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customer-payment-methods', customerId] })
-      setAddFormOpen(false)
-      toast.success('Payment method added')
-    },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Failed to add payment method')
-    },
-  })
-
-  const setDefaultMutation = useMutation({
-    mutationFn: (id: string) => paymentMethodsApi.setDefault(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customer-payment-methods', customerId] })
-      toast.success('Default payment method updated')
-    },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Failed to set default payment method')
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => paymentMethodsApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customer-payment-methods', customerId] })
-      setDeleteMethod(null)
-      toast.success('Payment method removed')
-    },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Failed to remove payment method')
-    },
-  })
-
-  return (
-    <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-3">
-          <CardTitle className="text-sm font-medium">Payment Methods</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => setAddFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Payment Method
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-16 w-full" />
-              <Skeleton className="h-16 w-full" />
-            </div>
-          ) : !paymentMethods?.length ? (
-            <p className="text-sm text-muted-foreground py-4">No payment methods found</p>
-          ) : (
-            <div className="space-y-3">
-              {paymentMethods.map((pm) => {
-                const details = pm.details as { last4?: string; brand?: string; exp_month?: number; exp_year?: number } | null
-                const brand = details?.brand
-                const last4 = details?.last4
-                const expMonth = details?.exp_month
-                const expYear = details?.exp_year
-
-                return (
-                  <div
-                    key={pm.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      {pm.type === 'card' && brand ? (
-                        <CardBrandIcon brand={brand} size={28} />
-                      ) : pm.type === 'card' ? (
-                        <CreditCard className="h-6 w-6 text-muted-foreground" />
-                      ) : (
-                        <Landmark className="h-6 w-6 text-muted-foreground" />
-                      )}
-                      <div>
-                        {last4 ? (
-                          <div className="font-mono text-sm font-semibold tracking-wider">
-                            {'•••• •••• •••• '}{last4}
-                            {expMonth && expYear && (
-                              <span className="ml-2 text-xs text-muted-foreground font-normal tracking-normal">
-                                {String(expMonth).padStart(2, '0')}/{String(expYear).slice(-2)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="text-sm font-medium">
-                            {pm.type === 'bank_account' ? 'Bank Account' : pm.type === 'direct_debit' ? 'Direct Debit' : 'Card'}
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          {pm.provider}
-                        </div>
-                      </div>
-                      {pm.is_default && (
-                        <Badge variant="secondary" className="ml-2">Default</Badge>
-                      )}
-                    </div>
-                    <div className="flex gap-1">
-                      {!pm.is_default && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setDefaultMutation.mutate(pm.id)}
-                          disabled={setDefaultMutation.isPending}
-                          title="Set as default"
-                        >
-                          <Star className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setDeleteMethod(pm)}
-                        disabled={pm.is_default}
-                        title={pm.is_default ? 'Cannot remove default payment method' : 'Remove'}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <PaymentMethodFormDialog
-        open={addFormOpen}
-        onOpenChange={setAddFormOpen}
-        onSubmit={(data) => createMutation.mutate(data)}
-        isLoading={createMutation.isPending}
-        customers={[{ id: customerId, name: customerName }]}
-        defaultCustomerId={customerId}
-      />
-
-      <AlertDialog
-        open={!!deleteMethod}
-        onOpenChange={(open) => !open && setDeleteMethod(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remove Payment Method</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to remove this payment method? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => deleteMethod && deleteMutation.mutate(deleteMethod.id)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteMutation.isPending ? 'Removing...' : 'Remove'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  )
-}
-
 function ChargeUsageTable({ charges, currency }: { charges: CustomerCurrentUsageResponse['charges']; currency: string }) {
   if (!charges.length) {
     return <p className="text-sm text-muted-foreground py-2">No charge data</p>
@@ -958,69 +767,6 @@ function CustomerUsageTab({ customerId, externalId }: { customerId: string; exte
         </div>
       )}
     </div>
-  )
-}
-
-function PortalLinkDialog({ externalId }: { externalId: string }) {
-  const [open, setOpen] = useState(false)
-  const [portalUrl, setPortalUrl] = useState<string | null>(null)
-  const [copied, setCopied] = useState(false)
-
-  const mutation = useMutation({
-    mutationFn: () => customersApi.getPortalUrl(externalId),
-    onSuccess: (data) => {
-      setPortalUrl(data.portal_url)
-      setCopied(false)
-    },
-    onError: (error) => {
-      toast.error(error instanceof ApiError ? error.message : 'Failed to generate portal link')
-    },
-  })
-
-  const handleOpen = () => {
-    setOpen(true)
-    setPortalUrl(null)
-    setCopied(false)
-    mutation.mutate()
-  }
-
-  const handleCopy = async () => {
-    if (!portalUrl) return
-    await navigator.clipboard.writeText(portalUrl)
-    setCopied(true)
-    toast.success('Portal link copied to clipboard')
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <>
-      <Button variant="default" size="sm" className="w-full md:w-auto" onClick={handleOpen}>
-        <ExternalLink className="mr-2 h-4 w-4" />
-        Portal Link
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Customer Portal Link</DialogTitle>
-            <DialogDescription>
-              Share this link with the customer. Link expires in 12 hours.
-            </DialogDescription>
-          </DialogHeader>
-          {mutation.isPending ? (
-            <Skeleton className="h-10 w-full" />
-          ) : portalUrl ? (
-            <div className="flex items-center gap-2">
-              <Input readOnly value={portalUrl} className="font-mono text-xs" />
-              <Button variant="outline" size="icon" onClick={handleCopy}>
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </Button>
-            </div>
-          ) : mutation.isError ? (
-            <p className="text-sm text-destructive">Failed to generate portal link.</p>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-    </>
   )
 }
 
