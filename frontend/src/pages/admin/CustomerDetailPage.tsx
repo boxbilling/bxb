@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { FileText, CreditCard, Tag, ScrollText, Plus, Pencil, History } from 'lucide-react'
+import { FileText, CreditCard, Tag, ScrollText, Plus, History } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -19,10 +19,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
-import { CustomerAvatar } from '@/components/CustomerAvatar'
-import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import { CustomerPaymentMethodsCard } from '@/components/customer-detail/CustomerPaymentMethodsCard'
-import { PortalLinkDialog } from '@/components/customer-detail/PortalLinkDialog'
 import { CustomerSubscriptionsTable } from '@/components/customer-detail/CustomerSubscriptionsTable'
 import { CustomerInvoicesTable } from '@/components/customer-detail/CustomerInvoicesTable'
 import { CustomerPaymentsTable } from '@/components/customer-detail/CustomerPaymentsTable'
@@ -33,6 +30,7 @@ import { CustomerFeesTable } from '@/components/customer-detail/CustomerFeesTabl
 import { CustomerKPICards } from '@/components/customer-detail/CustomerKPICards'
 import { CustomerUsageSection } from '@/components/customer-detail/CustomerUsageSection'
 import { CustomerActivityTab } from '@/components/customer-detail/CustomerActivityTab'
+import { CustomerHeader } from '@/components/customer-detail/CustomerHeader'
 import { customersApi, subscriptionsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import type { CustomerUpdate, SubscriptionCreate } from '@/types/billing'
@@ -118,27 +116,7 @@ export default function CustomerDetailPage() {
       ) : customer ? (
         <>
           {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="flex items-center gap-3">
-              <CustomerAvatar name={customer.name} size="lg" />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-semibold tracking-tight">{customer.name}</h2>
-                  <CustomerHealthBadge customerId={customer.id} />
-                </div>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {customer.external_id}{customer.email ? ` \u2022 ${customer.email}` : ''}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={() => setEditOpen(true)}>
-                <Pencil className="mr-2 h-3.5 w-3.5" />
-                Edit
-              </Button>
-              <PortalLinkDialog externalId={customer.external_id} />
-            </div>
-          </div>
+          <CustomerHeader customer={customer} onEdit={() => setEditOpen(true)} />
 
           {/* Outstanding Balance */}
           <CustomerKPICards customerId={customer.id} currency={customer.currency} />
