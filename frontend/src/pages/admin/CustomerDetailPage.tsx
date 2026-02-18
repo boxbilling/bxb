@@ -3,7 +3,6 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { FileText, CreditCard, Tag, ScrollText, Plus, Pencil, History } from 'lucide-react'
-import { Bar, BarChart, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { toast } from 'sonner'
 
 import {
@@ -19,37 +18,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion'
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
-import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { CustomerPaymentMethodsCard } from '@/components/customer-detail/CustomerPaymentMethodsCard'
 import { PortalLinkDialog } from '@/components/customer-detail/PortalLinkDialog'
 import { CustomerSubscriptionsTable } from '@/components/customer-detail/CustomerSubscriptionsTable'
@@ -59,320 +30,12 @@ import { CustomerWalletsTable } from '@/components/customer-detail/CustomerWalle
 import { CustomerCouponsTable } from '@/components/customer-detail/CustomerCouponsTable'
 import { CustomerCreditNotesTable } from '@/components/customer-detail/CustomerCreditNotesTable'
 import { CustomerFeesTable } from '@/components/customer-detail/CustomerFeesTable'
-import { customersApi, subscriptionsApi, invoicesApi, plansApi, ApiError } from '@/lib/api'
+import { CustomerKPICards } from '@/components/customer-detail/CustomerKPICards'
+import { CustomerUsageSection } from '@/components/customer-detail/CustomerUsageSection'
+import { CustomerActivityTab } from '@/components/customer-detail/CustomerActivityTab'
+import { customersApi, subscriptionsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
-import type { CustomerCurrentUsageResponse, CustomerUpdate, SubscriptionCreate } from '@/types/billing'
-import { formatCents } from '@/lib/utils'
-
-function CustomerOutstandingBalance({ customerId, currency }: { customerId: string; currency: string }) {
-  const { data: invoices } = useQuery({
-    queryKey: ['customer-invoices-balance', customerId],
-    queryFn: () => invoicesApi.list({ customer_id: customerId }),
-  })
-
-  const outstanding = (invoices ?? [])
-    .filter((i) => i.status === 'finalized')
-    .reduce((sum, i) => sum + Number(i.total), 0)
-
-  const overdue = (invoices ?? [])
-    .filter((i) => i.status === 'finalized' && i.due_date && new Date(i.due_date) < new Date())
-    .reduce((sum, i) => sum + Number(i.total), 0)
-
-  return (
-    <div className="grid grid-cols-2 gap-3 md:gap-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Outstanding Balance</CardTitle>
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-orange-600">{formatCents(outstanding, currency)}</div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {(invoices ?? []).filter((i) => i.status === 'finalized').length} unpaid invoice(s)
-          </p>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Overdue Amount</CardTitle>
-          <FileText className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <div className={`text-2xl font-bold ${overdue > 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-            {formatCents(overdue, currency)}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {(invoices ?? []).filter((i) => i.status === 'finalized' && i.due_date && new Date(i.due_date) < new Date()).length} overdue invoice(s)
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-
-function CustomerActivityTab({ customerId }: { customerId: string }) {
-  return (
-    <div className="space-y-4">
-      <AuditTrailTimeline
-        resourceType="customer"
-        resourceId={customerId}
-        limit={50}
-        showViewAll
-      />
-    </div>
-  )
-}
-
-function ChargeUsageTable({ charges, currency }: { charges: CustomerCurrentUsageResponse['charges']; currency: string }) {
-  if (!charges.length) {
-    return <p className="text-sm text-muted-foreground py-2">No charge data</p>
-  }
-
-  return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Metric</TableHead>
-            <TableHead>Units</TableHead>
-            <TableHead>Charge Model</TableHead>
-            <TableHead className="text-right">Amount</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {charges.map((charge, idx) => (
-            <TableRow key={`${charge.billable_metric.code}-${idx}`}>
-              <TableCell>
-                <div>{charge.billable_metric.name}</div>
-                <div className="text-xs text-muted-foreground">{charge.billable_metric.code}</div>
-              </TableCell>
-              <TableCell className="font-mono">{charge.units}</TableCell>
-              <TableCell>
-                <Badge variant="outline">{charge.charge_model}</Badge>
-              </TableCell>
-              <TableCell className="text-right font-mono">{formatCents(Number(charge.amount_cents), currency)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  )
-}
-
-const pastUsageChartConfig = {
-  amount: {
-    label: 'Amount',
-    color: 'var(--primary)',
-  },
-} satisfies ChartConfig
-
-function CustomerUsageTab({ customerId, externalId }: { customerId: string; externalId: string }) {
-  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string>('')
-
-  const { data: subscriptions, isLoading: subsLoading } = useQuery({
-    queryKey: ['customer-subscriptions', customerId],
-    queryFn: () => subscriptionsApi.list({ customer_id: customerId }),
-  })
-
-  const selectedSubscription = subscriptions?.find((s) => s.external_id === selectedSubscriptionId)
-
-  const { data: currentUsage, isLoading: currentLoading } = useQuery({
-    queryKey: ['customer-usage', externalId, selectedSubscriptionId],
-    queryFn: () => customersApi.getCurrentUsage(externalId, selectedSubscriptionId),
-    enabled: !!selectedSubscriptionId,
-  })
-
-  const { data: projectedUsage, isLoading: projectedLoading } = useQuery({
-    queryKey: ['customer-projected-usage', externalId, selectedSubscriptionId],
-    queryFn: () => customersApi.getProjectedUsage(externalId, selectedSubscriptionId),
-    enabled: !!selectedSubscriptionId,
-  })
-
-  const { data: pastUsage, isLoading: pastLoading } = useQuery({
-    queryKey: ['customer-past-usage', externalId, selectedSubscriptionId],
-    queryFn: () => customersApi.getPastUsage(externalId, selectedSubscriptionId, 3),
-    enabled: !!selectedSubscriptionId,
-  })
-
-  if (subsLoading) {
-    return (
-      <div className="space-y-2">
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-10 w-full" />
-      </div>
-    )
-  }
-
-  if (!subscriptions?.length) {
-    return <p className="text-sm text-muted-foreground py-4">No subscriptions found. Usage data requires an active subscription.</p>
-  }
-
-  const chartData = (pastUsage ?? []).map((period) => ({
-    period: `${format(new Date(period.from_datetime), 'MMM d')} – ${format(new Date(period.to_datetime), 'MMM d')}`,
-    amount: Number(period.amount_cents) / 100,
-  }))
-
-  return (
-    <div className="space-y-6">
-      {/* Subscription Selector */}
-      <div className="flex items-center gap-3">
-        <span className="text-sm font-medium">Subscription:</span>
-        <Select value={selectedSubscriptionId} onValueChange={setSelectedSubscriptionId}>
-          <SelectTrigger className="w-[280px]">
-            <SelectValue placeholder="Select a subscription" />
-          </SelectTrigger>
-          <SelectContent>
-            {subscriptions.map((sub) => (
-              <SelectItem key={sub.id} value={sub.external_id}>
-                {sub.external_id} ({sub.status})
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {!selectedSubscriptionId ? (
-        <p className="text-sm text-muted-foreground py-4">Select a subscription to view usage data.</p>
-      ) : (
-        <div className="space-y-6">
-          {/* Current Usage */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Current Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {currentLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : currentUsage ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Period:</span>
-                    <span>
-                      {format(new Date(currentUsage.from_datetime), 'MMM d, yyyy')} – {format(new Date(currentUsage.to_datetime), 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Total:</span>
-                    <span className="text-lg font-semibold">{formatCents(Number(currentUsage.amount_cents), currentUsage.currency)}</span>
-                  </div>
-                  <ChargeUsageTable charges={currentUsage.charges} currency={currentUsage.currency} />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No current usage data available.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Projected Usage */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Projected Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {projectedLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : projectedUsage ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Projected Period:</span>
-                    <span>
-                      {format(new Date(projectedUsage.from_datetime), 'MMM d, yyyy')} – {format(new Date(projectedUsage.to_datetime), 'MMM d, yyyy')}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground">Projected Total:</span>
-                    <span className="text-lg font-semibold">{formatCents(Number(projectedUsage.amount_cents), projectedUsage.currency)}</span>
-                  </div>
-                  <ChargeUsageTable charges={projectedUsage.charges} currency={projectedUsage.currency} />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No projected usage data available.</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Past Usage */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Past Usage</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pastLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : pastUsage?.length ? (
-                <div className="space-y-4">
-                  {/* Bar Chart */}
-                  <ChartContainer config={pastUsageChartConfig} className="h-[200px] w-full">
-                    <BarChart data={chartData} accessibilityLayer>
-                      <CartesianGrid vertical={false} />
-                      <XAxis
-                        dataKey="period"
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                      />
-                      <YAxis
-                        tickLine={false}
-                        axisLine={false}
-                        tickMargin={8}
-                        tickFormatter={(v) => `$${v}`}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value) =>
-                              formatCents(Number(value) * 100, pastUsage[0]?.currency ?? 'USD')
-                            }
-                          />
-                        }
-                      />
-                      <Bar dataKey="amount" fill="var(--color-amount)" radius={4} />
-                    </BarChart>
-                  </ChartContainer>
-
-                  {/* Accordion for period details */}
-                  <Accordion type="multiple">
-                    {pastUsage.map((period, idx) => (
-                      <AccordionItem key={idx} value={`period-${idx}`}>
-                        <AccordionTrigger>
-                          <div className="flex items-center gap-4">
-                            <span>
-                              {format(new Date(period.from_datetime), 'MMM d, yyyy')} – {format(new Date(period.to_datetime), 'MMM d, yyyy')}
-                            </span>
-                            <span className="font-mono text-muted-foreground">
-                              {formatCents(Number(period.amount_cents), period.currency)}
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <ChargeUsageTable charges={period.charges} currency={period.currency} />
-                        </AccordionContent>
-                      </AccordionItem>
-                    ))}
-                  </Accordion>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No past usage data available.</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  )
-}
+import type { CustomerUpdate, SubscriptionCreate } from '@/types/billing'
 
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -478,7 +141,7 @@ export default function CustomerDetailPage() {
           </div>
 
           {/* Outstanding Balance */}
-          <CustomerOutstandingBalance customerId={customer.id} currency={customer.currency} />
+          <CustomerKPICards customerId={customer.id} currency={customer.currency} />
 
           {/* Customer Information */}
           <Card>
@@ -580,7 +243,7 @@ export default function CustomerDetailPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium mb-3">Usage</h3>
-                  <CustomerUsageTab customerId={customer.id} externalId={customer.external_id} />
+                  <CustomerUsageSection customerId={customer.id} externalId={customer.external_id} />
                 </div>
               </div>
             </TabsContent>
