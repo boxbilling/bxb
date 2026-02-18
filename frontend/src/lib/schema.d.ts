@@ -421,6 +421,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/customers/{customer_id}/applied_add_ons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List customer applied add-ons
+         * @description List applied add-ons for a customer.
+         */
+        get: operations["list_applied_add_ons_for_customer_v1_customers__customer_id__applied_add_ons_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{customer_id}/integration_mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List customer integration mappings
+         * @description List integration mappings for a customer.
+         */
+        get: operations["list_integration_mappings_for_customer_v1_customers__customer_id__integration_mappings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/customers/{customer_id}": {
         parameters: {
             query?: never;
@@ -5794,6 +5834,34 @@ export interface components {
          * @enum {string}
          */
         CustomerHealthStatus: "good" | "warning" | "critical";
+        /** CustomerIntegrationMappingResponse */
+        CustomerIntegrationMappingResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Integration Id
+             * Format: uuid
+             */
+            integration_id: string;
+            /** Integration Name */
+            integration_name: string;
+            /** Integration Provider */
+            integration_provider: string;
+            /** External Customer Id */
+            external_customer_id: string;
+            /** Settings */
+            settings?: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** CustomerMetricsResponse */
         CustomerMetricsResponse: {
             /** Total */
@@ -5830,6 +5898,8 @@ export interface components {
             invoice_grace_period: number;
             /** Net Payment Term */
             net_payment_term: number;
+            /** Billing Entity Id */
+            billing_entity_id?: string | null;
             /**
              * Created At
              * Format: date-time
@@ -10018,6 +10088,99 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CustomerHealthResponse"];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_applied_add_ons_for_customer_v1_customers__customer_id__applied_add_ons_get: {
+        parameters: {
+            query?: {
+                skip?: number;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedAddOnDetailResponse"][];
+                };
+            };
+            /** @description Unauthorized – invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_integration_mappings_for_customer_v1_customers__customer_id__integration_mappings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                customer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerIntegrationMappingResponse"][];
                 };
             };
             /** @description Unauthorized – invalid or missing API key */
