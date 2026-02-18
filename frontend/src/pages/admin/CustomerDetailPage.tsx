@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
 import { FileText, CreditCard, Tag, ScrollText, Plus, History } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -14,8 +13,6 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CustomerFormDialog } from '@/components/CustomerFormDialog'
@@ -120,64 +117,6 @@ export default function CustomerDetailPage() {
 
           {/* Outstanding Balance */}
           <CustomerKPICards customerId={customer.id} currency={customer.currency} />
-
-          {/* Customer Information */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Customer Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">External ID</span>
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{customer.external_id}</code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Email</span>
-                  <span>{customer.email ?? '\u2014'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Currency</span>
-                  <Badge variant="outline">{customer.currency}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Timezone</span>
-                  <span>{customer.timezone}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Invoice Grace Period</span>
-                  <span>{customer.invoice_grace_period} days</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Net Payment Term</span>
-                  <span>{customer.net_payment_term} days</span>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-muted-foreground">Billing Metadata</span>
-                  {customer.billing_metadata && Object.keys(customer.billing_metadata).length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {Object.entries(customer.billing_metadata).map(([key, value]) => (
-                        <Badge key={key} variant="outline" className="font-normal text-xs">
-                          <span className="font-medium">{key}:</span>
-                          <span className="ml-1 text-muted-foreground">{String(value)}</span>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <span>None</span>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created</span>
-                  <span>{format(new Date(customer.created_at), 'MMM d, yyyy HH:mm')}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Updated</span>
-                  <span>{format(new Date(customer.updated_at), 'MMM d, yyyy HH:mm')}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Related Data Tabs */}
           <Tabs defaultValue="overview">
