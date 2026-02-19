@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Copy, Check, Pencil, Pause, Play, ArrowRightLeft, Trash2 } from 'lucide-react'
+import { Copy, Check, Pencil, Pause, Play, ArrowRightLeft, Trash2, ExternalLink, Users, FileText, Radio } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -170,24 +170,36 @@ export function SubscriptionInfoSidebar({
 
         {/* Customer & Plan Links */}
         <div className="grid gap-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Customer</span>
+          <div>
+            <span className="text-muted-foreground text-xs">Customer</span>
             {customer ? (
-              <Link to={`/admin/customers/${customer.id}`} className="text-primary hover:underline">
-                {customer.name}
-              </Link>
+              <div className="mt-0.5">
+                <Link to={`/admin/customers/${customer.id}`} className="text-primary hover:underline font-medium flex items-center gap-1">
+                  {customer.name}
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+                {customer.email && (
+                  <span className="text-xs text-muted-foreground">{customer.email}</span>
+                )}
+              </div>
             ) : (
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24 mt-0.5" />
             )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Plan</span>
+          <div>
+            <span className="text-muted-foreground text-xs">Plan</span>
             {plan ? (
-              <Link to={`/admin/plans/${plan.id}`} className="text-primary hover:underline">
-                {plan.name}
-              </Link>
+              <div className="mt-0.5">
+                <Link to={`/admin/plans/${plan.id}`} className="text-primary hover:underline font-medium flex items-center gap-1">
+                  {plan.name}
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+                <span className="text-xs text-muted-foreground">
+                  {(plan.amount_cents / 100).toLocaleString(undefined, { style: 'currency', currency: plan.currency })} / {plan.interval}
+                </span>
+              </div>
             ) : (
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24 mt-0.5" />
             )}
           </div>
         </div>
@@ -271,23 +283,55 @@ export function SubscriptionInfoSidebar({
         {customer?.billing_entity_id && (
           <>
             <Separator className="my-3" />
-            <div className="space-y-1 text-sm">
-              <span className="text-muted-foreground">Billing Entity</span>
+            <div className="text-sm">
+              <span className="text-muted-foreground text-xs">Billing Entity</span>
               {billingEntity ? (
-                <p>
+                <div className="mt-0.5">
                   <Link
                     to={`/admin/billing-entities/${billingEntity.code}`}
-                    className="text-primary hover:underline"
+                    className="text-primary hover:underline font-medium flex items-center gap-1"
                   >
                     {billingEntity.name}
+                    <ExternalLink className="h-3 w-3" />
                   </Link>
-                </p>
+                </div>
               ) : (
                 <p className="text-muted-foreground">{'\u2014'}</p>
               )}
             </div>
           </>
         )}
+
+        {/* Related */}
+        <Separator className="my-3" />
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Related</h4>
+          {customer && (
+            <Link
+              to={`/admin/subscriptions?customer_id=${subscription.customer_id}`}
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <Users className="h-3.5 w-3.5" />
+              Customer&apos;s other subscriptions
+            </Link>
+          )}
+          <Link
+            to={`/admin/invoices?subscription_id=${subscription.id}`}
+            className="flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Invoices for this subscription
+          </Link>
+          {customer && (
+            <Link
+              to={`/admin/events?customer_id=${customer.external_id}`}
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <Radio className="h-3.5 w-3.5" />
+              Events from this customer
+            </Link>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
