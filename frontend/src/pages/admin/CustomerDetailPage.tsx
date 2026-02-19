@@ -172,7 +172,7 @@ export default function CustomerDetailPage() {
                           Create Subscription
                         </Button>
                       </div>
-                      <CustomerSubscriptionsTable customerId={customer.id} />
+                      <CustomerSubscriptionsTable customerId={customer.id} plans={plans ?? []} />
                     </div>
                     <div>
                       <h3 className="text-sm font-medium mb-3">Usage</h3>
@@ -262,7 +262,7 @@ export default function CustomerDetailPage() {
                           Create Subscription
                         </Button>
                       </div>
-                      <CustomerSubscriptionsTable customerId={customer.id} />
+                      <CustomerSubscriptionsTable customerId={customer.id} plans={plans ?? []} />
                     </div>
                     <div>
                       <h3 className="text-sm font-medium mb-3">Usage</h3>
