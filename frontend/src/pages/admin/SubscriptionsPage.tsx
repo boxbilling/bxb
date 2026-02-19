@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { Plus, Search, ArrowUpDown, Target, Trash2, Pencil, Pause, Play, MoreHorizontal, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -287,6 +287,7 @@ function SubscriptionThresholdsDialog({
 
 export default function SubscriptionsPage() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all')
@@ -661,8 +662,12 @@ export default function SubscriptionsPage() {
                 const plan = planMap.get(sub.plan_id)
 
                 return (
-                  <TableRow key={sub.id}>
-                    <TableCell>
+                  <TableRow
+                    key={sub.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => navigate(`/admin/subscriptions/${sub.id}`)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {(sub.status === 'active' || sub.status === 'pending' || sub.status === 'paused') && (
                         <Checkbox
                           checked={selectedIds.has(sub.id)}
@@ -673,7 +678,13 @@ export default function SubscriptionsPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div className="font-medium">{customer?.name ?? 'Unknown'}</div>
+                        <Link
+                          to={`/admin/customers/${sub.customer_id}`}
+                          className="font-medium hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {customer?.name ?? 'Unknown'}
+                        </Link>
                         <div className="text-xs text-muted-foreground">
                           {sub.external_id}
                         </div>
@@ -681,7 +692,13 @@ export default function SubscriptionsPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <div>{plan?.name ?? 'Unknown'}</div>
+                        <Link
+                          to={`/admin/plans/${sub.plan_id}`}
+                          className="hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {plan?.name ?? 'Unknown'}
+                        </Link>
                         <div className="text-xs text-muted-foreground">
                           {plan ? `${formatCents(plan.amount_cents, plan.currency)}/${plan.interval}` : '\u2014'}
                         </div>
@@ -714,7 +731,7 @@ export default function SubscriptionsPage() {
                     <TableCell className="hidden md:table-cell">
                       <NextBillingCell sub={sub} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       {(sub.status === 'active' || sub.status === 'pending' || sub.status === 'paused') ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
