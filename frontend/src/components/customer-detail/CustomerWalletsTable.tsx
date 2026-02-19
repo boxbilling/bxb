@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,7 +56,11 @@ export function CustomerWalletsTable({ customerId }: { customerId: string }) {
           {wallets.map((wallet) => (
             <TableRow key={wallet.id}>
               <TableCell>
-                <div>{wallet.name ?? '\u2014'}</div>
+                <div>
+                  <Link to={'/admin/wallets/' + wallet.id} className="text-primary hover:underline">
+                    {wallet.name ?? '\u2014'}
+                  </Link>
+                </div>
                 {wallet.code && <div className="text-xs text-muted-foreground">{wallet.code}</div>}
               </TableCell>
               <TableCell>

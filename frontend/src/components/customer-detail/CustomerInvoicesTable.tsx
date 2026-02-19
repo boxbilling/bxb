@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,7 +56,15 @@ export function CustomerInvoicesTable({ customerId }: { customerId: string }) {
         <TableBody>
           {invoices.map((invoice) => (
             <TableRow key={invoice.id}>
-              <TableCell>{invoice.invoice_number || '\u2014'}</TableCell>
+              <TableCell>
+                {invoice.invoice_number ? (
+                  <Link to={'/admin/invoices/' + invoice.id} className="text-primary hover:underline">
+                    {invoice.invoice_number}
+                  </Link>
+                ) : (
+                  '\u2014'
+                )}
+              </TableCell>
               <TableCell>
                 <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
               </TableCell>

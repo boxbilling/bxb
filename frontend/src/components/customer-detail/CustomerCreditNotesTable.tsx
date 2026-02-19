@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -55,7 +56,15 @@ export function CustomerCreditNotesTable({ customerId }: { customerId: string })
         <TableBody>
           {creditNotes.map((cn) => (
             <TableRow key={cn.id}>
-              <TableCell>{cn.number || '\u2014'}</TableCell>
+              <TableCell>
+                {cn.number ? (
+                  <Link to={'/admin/credit-notes/' + cn.id} className="text-primary hover:underline">
+                    {cn.number}
+                  </Link>
+                ) : (
+                  '\u2014'
+                )}
+              </TableCell>
               <TableCell>
                 <Badge variant={statusVariant[cn.status] ?? 'outline'}>{cn.status}</Badge>
               </TableCell>

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
+import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,6 +51,7 @@ export function CustomerPaymentsTable({ customerId }: { customerId: string }) {
           <TableRow>
             <TableHead>Amount</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Invoice</TableHead>
             <TableHead>Provider</TableHead>
             <TableHead>Created At</TableHead>
           </TableRow>
@@ -60,6 +62,15 @@ export function CustomerPaymentsTable({ customerId }: { customerId: string }) {
               <TableCell className="font-mono">{formatCents(Number(payment.amount), payment.currency)}</TableCell>
               <TableCell>
                 <Badge variant={statusVariant[payment.status] ?? 'outline'}>{payment.status}</Badge>
+              </TableCell>
+              <TableCell>
+                {payment.invoice_id ? (
+                  <Link to={'/admin/invoices/' + payment.invoice_id} className="text-primary hover:underline">
+                    View Invoice
+                  </Link>
+                ) : (
+                  '\u2014'
+                )}
               </TableCell>
               <TableCell>{payment.provider || '\u2014'}</TableCell>
               <TableCell>{format(new Date(payment.created_at), 'MMM d, yyyy')}</TableCell>
