@@ -37,9 +37,11 @@ worker:
 
 test:
 	cd backend && uv run pytest tests/ -v
+	cd frontend && npx vitest run
 
 test-cov:
 	cd backend && uv run pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=100
+	cd frontend && npx vitest run
 
 lint:
 	cd backend && uv run ruff check --fix app/ tests/
