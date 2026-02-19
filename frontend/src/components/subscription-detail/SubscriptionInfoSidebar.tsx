@@ -20,6 +20,7 @@ interface SubscriptionInfoSidebarProps {
   onEdit?: () => void
   onPause?: () => void
   onResume?: () => void
+  onChangePlan?: () => void
   isPauseLoading?: boolean
   isResumeLoading?: boolean
 }
@@ -40,6 +41,7 @@ export function SubscriptionInfoSidebar({
   onEdit,
   onPause,
   onResume,
+  onChangePlan,
   isPauseLoading,
   isResumeLoading,
 }: SubscriptionInfoSidebarProps) {
@@ -141,11 +143,9 @@ export function SubscriptionInfoSidebar({
             </Button>
           )}
           {(subscription.status === 'active' || subscription.status === 'pending') && plan && (
-            <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-              <Link to={`/admin/subscriptions/${subscription.id}/change-plan`}>
-                <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
-                Change Plan
-              </Link>
+            <Button variant="outline" size="sm" className="w-full justify-start" onClick={onChangePlan}>
+              <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
+              Change Plan
             </Button>
           )}
         </div>

@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
+import { ChangePlanDialog } from '@/components/ChangePlanDialog'
 import { SubscriptionHeader } from '@/components/subscription-detail/SubscriptionHeader'
 import { SubscriptionKPICards } from '@/components/subscription-detail/SubscriptionKPICards'
 import { SubscriptionInfoSidebar } from '@/components/subscription-detail/SubscriptionInfoSidebar'
@@ -35,6 +36,7 @@ export default function SubscriptionDetailPage() {
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()
   const [editOpen, setEditOpen] = useState(false)
+  const [changePlanOpen, setChangePlanOpen] = useState(false)
 
   const { data: subscription, isLoading, error } = useQuery({
     queryKey: ['subscription', id],
@@ -52,6 +54,11 @@ export default function SubscriptionDetailPage() {
     queryKey: ['plan', subscription?.plan_id],
     queryFn: () => plansApi.get(subscription!.plan_id),
     enabled: !!subscription?.plan_id,
+  })
+
+  const { data: plans } = useQuery({
+    queryKey: ['plans'],
+    queryFn: () => plansApi.list(),
   })
 
   const updateMutation = useMutation({
@@ -89,6 +96,25 @@ export default function SubscriptionDetailPage() {
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to resume subscription'
+      toast.error(message)
+    },
+  })
+
+  const changePlanMutation = useMutation({
+    mutationFn: ({ planId }: { planId: string }) =>
+      subscriptionsApi.update(id!, {
+        plan_id: planId,
+        previous_plan_id: subscription?.plan_id,
+        downgraded_at: new Date().toISOString(),
+      } as SubscriptionUpdate),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      setChangePlanOpen(false)
+      toast.success('Plan changed successfully')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to change plan'
       toast.error(message)
     },
   })
@@ -240,6 +266,7 @@ export default function SubscriptionDetailPage() {
                     onEdit={() => setEditOpen(true)}
                     onPause={() => pauseMutation.mutate()}
                     onResume={() => resumeMutation.mutate()}
+                    onChangePlan={() => setChangePlanOpen(true)}
                     isPauseLoading={pauseMutation.isPending}
                     isResumeLoading={resumeMutation.isPending}
                   />
@@ -257,6 +284,7 @@ export default function SubscriptionDetailPage() {
                   onEdit={() => setEditOpen(true)}
                   onPause={() => pauseMutation.mutate()}
                   onResume={() => resumeMutation.mutate()}
+                  onChangePlan={() => setChangePlanOpen(true)}
                   isPauseLoading={pauseMutation.isPending}
                   isResumeLoading={resumeMutation.isPending}
                 />
@@ -272,6 +300,16 @@ export default function SubscriptionDetailPage() {
             subscription={subscription}
             onSubmit={(data) => updateMutation.mutate(data)}
             isLoading={updateMutation.isPending}
+          />
+
+          {/* Change Plan Dialog */}
+          <ChangePlanDialog
+            open={changePlanOpen}
+            onOpenChange={setChangePlanOpen}
+            subscription={subscription}
+            plans={plans ?? []}
+            onSubmit={(_id, planId) => changePlanMutation.mutate({ planId })}
+            isLoading={changePlanMutation.isPending}
           />
         </>
       ) : null}
