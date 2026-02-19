@@ -22,6 +22,7 @@ import { CustomerSubscriptionsTable } from '@/components/customer-detail/Custome
 import { CustomerInvoicesTable } from '@/components/customer-detail/CustomerInvoicesTable'
 import { CustomerPaymentsTable } from '@/components/customer-detail/CustomerPaymentsTable'
 import { CustomerWalletsTable } from '@/components/customer-detail/CustomerWalletsTable'
+import { CustomerAddOnsTable } from '@/components/customer-detail/CustomerAddOnsTable'
 import { CustomerCouponsTable } from '@/components/customer-detail/CustomerCouponsTable'
 import { CustomerCreditNotesTable } from '@/components/customer-detail/CustomerCreditNotesTable'
 import { CustomerFeesTable } from '@/components/customer-detail/CustomerFeesTable'
@@ -213,7 +214,16 @@ export default function CustomerDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="coupons">
-                  <CustomerCouponsTable customerId={customer.id} />
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Coupons</h3>
+                      <CustomerCouponsTable customerId={customer.id} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Applied Add-Ons</h3>
+                      <CustomerAddOnsTable customerId={customer.id} />
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="activity">
@@ -303,7 +313,16 @@ export default function CustomerDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="coupons">
-                  <CustomerCouponsTable customerId={customer.id} />
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Coupons</h3>
+                      <CustomerCouponsTable customerId={customer.id} />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Applied Add-Ons</h3>
+                      <CustomerAddOnsTable customerId={customer.id} />
+                    </div>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="activity">
