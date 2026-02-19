@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { FileText, CreditCard, Tag, ScrollText, Plus, History, Activity, ChevronDown } from 'lucide-react'
+import { FileText, CreditCard, Tag, ScrollText, History, Activity, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -135,7 +135,7 @@ export default function CustomerDetailPage() {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-3">
-                  <CustomerInfoSidebar customer={customer} />
+                  <CustomerInfoSidebar customer={customer} onCreateSubscription={() => setSubscriptionFormOpen(true)} />
                 </CollapsibleContent>
               </Collapsible>
               <Tabs defaultValue="overview">
@@ -171,13 +171,7 @@ export default function CustomerDetailPage() {
                 <TabsContent value="overview">
                   <div className="space-y-6">
                     <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium">Subscriptions</h3>
-                        <Button variant="outline" size="sm" onClick={() => setSubscriptionFormOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create Subscription
-                        </Button>
-                      </div>
+                      <h3 className="text-sm font-medium mb-3">Subscriptions</h3>
                       <CustomerSubscriptionsTable customerId={customer.id} plans={plans ?? []} />
                     </div>
                     <div>
@@ -243,7 +237,7 @@ export default function CustomerDetailPage() {
           ) : (
             <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
               <div className="sticky top-6">
-                <CustomerInfoSidebar customer={customer} />
+                <CustomerInfoSidebar customer={customer} onCreateSubscription={() => setSubscriptionFormOpen(true)} />
               </div>
               <Tabs defaultValue="overview">
                 <div className="overflow-x-auto">
@@ -278,13 +272,7 @@ export default function CustomerDetailPage() {
                 <TabsContent value="overview">
                   <div className="space-y-6">
                     <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="text-sm font-medium">Subscriptions</h3>
-                        <Button variant="outline" size="sm" onClick={() => setSubscriptionFormOpen(true)}>
-                          <Plus className="mr-2 h-4 w-4" />
-                          Create Subscription
-                        </Button>
-                      </div>
+                      <h3 className="text-sm font-medium mb-3">Subscriptions</h3>
                       <CustomerSubscriptionsTable customerId={customer.id} plans={plans ?? []} />
                     </div>
                     <div>

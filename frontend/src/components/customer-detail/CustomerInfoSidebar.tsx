@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Copy, Check, ExternalLink } from 'lucide-react'
+import { Copy, Check, ExternalLink, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -11,7 +11,12 @@ import { Separator } from '@/components/ui/separator'
 import { customersApi, billingEntitiesApi } from '@/lib/api'
 import type { Customer } from '@/types/billing'
 
-export function CustomerInfoSidebar({ customer }: { customer: Customer }) {
+interface CustomerInfoSidebarProps {
+  customer: Customer
+  onCreateSubscription: () => void
+}
+
+export function CustomerInfoSidebar({ customer, onCreateSubscription }: CustomerInfoSidebarProps) {
   const [copied, setCopied] = useState(false)
 
   const { data: integrationMappings } = useQuery({
@@ -75,6 +80,17 @@ export function CustomerInfoSidebar({ customer }: { customer: Customer }) {
             <span className="text-muted-foreground">Net Payment Term</span>
             <span>{customer.net_payment_term} days</span>
           </div>
+        </div>
+
+        <Separator className="my-3" />
+
+        {/* Quick Actions */}
+        <div className="space-y-2">
+          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Actions</h4>
+          <Button variant="outline" size="sm" className="w-full justify-start" onClick={onCreateSubscription}>
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            Create Subscription
+          </Button>
         </div>
 
         <Separator className="my-3" />
