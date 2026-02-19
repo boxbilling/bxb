@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { FileText, CreditCard, Tag, ScrollText, Plus, History, ChevronDown } from 'lucide-react'
+import { FileText, CreditCard, Tag, ScrollText, Plus, History, Activity, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -153,9 +153,13 @@ export default function CustomerDetailPage() {
                       <CreditCard className="mr-2 h-4 w-4" />
                       Payments
                     </TabsTrigger>
-                    <TabsTrigger value="coupons">
+                    <TabsTrigger value="addons-coupons">
                       <Tag className="mr-2 h-4 w-4" />
-                      Coupons
+                      Add-ons &amp; Coupons
+                    </TabsTrigger>
+                    <TabsTrigger value="events">
+                      <Activity className="mr-2 h-4 w-4" />
+                      Events
                     </TabsTrigger>
                     <TabsTrigger value="activity">
                       <History className="mr-2 h-4 w-4" />
@@ -214,27 +218,25 @@ export default function CustomerDetailPage() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="coupons">
+                <TabsContent value="addons-coupons">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-medium mb-3">Coupons</h3>
-                      <CustomerCouponsTable customerId={customer.id} />
+                      <h3 className="text-sm font-medium mb-3">Applied Add-ons</h3>
+                      <CustomerAddOnsTable customerId={customer.id} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium mb-3">Applied Add-Ons</h3>
-                      <CustomerAddOnsTable customerId={customer.id} />
+                      <h3 className="text-sm font-medium mb-3">Applied Coupons</h3>
+                      <CustomerCouponsTable customerId={customer.id} />
                     </div>
                   </div>
                 </TabsContent>
 
+                <TabsContent value="events">
+                  <CustomerEventsTable externalId={customer.external_id} />
+                </TabsContent>
+
                 <TabsContent value="activity">
-                  <div className="space-y-6">
-                    <CustomerActivityTab customerId={customer.id} />
-                    <div>
-                      <h3 className="text-sm font-medium mb-3">Events</h3>
-                      <CustomerEventsTable externalId={customer.external_id} />
-                    </div>
-                  </div>
+                  <CustomerActivityTab customerId={customer.id} />
                 </TabsContent>
               </Tabs>
             </div>
@@ -258,9 +260,13 @@ export default function CustomerDetailPage() {
                       <CreditCard className="mr-2 h-4 w-4" />
                       Payments
                     </TabsTrigger>
-                    <TabsTrigger value="coupons">
+                    <TabsTrigger value="addons-coupons">
                       <Tag className="mr-2 h-4 w-4" />
-                      Coupons
+                      Add-ons &amp; Coupons
+                    </TabsTrigger>
+                    <TabsTrigger value="events">
+                      <Activity className="mr-2 h-4 w-4" />
+                      Events
                     </TabsTrigger>
                     <TabsTrigger value="activity">
                       <History className="mr-2 h-4 w-4" />
@@ -319,27 +325,25 @@ export default function CustomerDetailPage() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="coupons">
+                <TabsContent value="addons-coupons">
                   <div className="space-y-6">
                     <div>
-                      <h3 className="text-sm font-medium mb-3">Coupons</h3>
-                      <CustomerCouponsTable customerId={customer.id} />
+                      <h3 className="text-sm font-medium mb-3">Applied Add-ons</h3>
+                      <CustomerAddOnsTable customerId={customer.id} />
                     </div>
                     <div>
-                      <h3 className="text-sm font-medium mb-3">Applied Add-Ons</h3>
-                      <CustomerAddOnsTable customerId={customer.id} />
+                      <h3 className="text-sm font-medium mb-3">Applied Coupons</h3>
+                      <CustomerCouponsTable customerId={customer.id} />
                     </div>
                   </div>
                 </TabsContent>
 
+                <TabsContent value="events">
+                  <CustomerEventsTable externalId={customer.external_id} />
+                </TabsContent>
+
                 <TabsContent value="activity">
-                  <div className="space-y-6">
-                    <CustomerActivityTab customerId={customer.id} />
-                    <div>
-                      <h3 className="text-sm font-medium mb-3">Events</h3>
-                      <CustomerEventsTable externalId={customer.external_id} />
-                    </div>
-                  </div>
+                  <CustomerActivityTab customerId={customer.id} />
                 </TabsContent>
               </Tabs>
             </div>
