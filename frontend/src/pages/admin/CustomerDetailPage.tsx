@@ -29,6 +29,7 @@ import { CustomerFeesTable } from '@/components/customer-detail/CustomerFeesTabl
 import { CustomerKPICards } from '@/components/customer-detail/CustomerKPICards'
 import { CustomerUsageSection } from '@/components/customer-detail/CustomerUsageSection'
 import { CustomerActivityTab } from '@/components/customer-detail/CustomerActivityTab'
+import { CustomerEventsTable } from '@/components/customer-detail/CustomerEventsTable'
 import { CustomerHeader } from '@/components/customer-detail/CustomerHeader'
 import { CustomerInfoSidebar } from '@/components/customer-detail/CustomerInfoSidebar'
 import { customersApi, subscriptionsApi, plansApi, ApiError } from '@/lib/api'
@@ -227,7 +228,13 @@ export default function CustomerDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="activity">
-                  <CustomerActivityTab customerId={customer.id} />
+                  <div className="space-y-6">
+                    <CustomerActivityTab customerId={customer.id} />
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Events</h3>
+                      <CustomerEventsTable externalId={customer.external_id} />
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
@@ -326,7 +333,13 @@ export default function CustomerDetailPage() {
                 </TabsContent>
 
                 <TabsContent value="activity">
-                  <CustomerActivityTab customerId={customer.id} />
+                  <div className="space-y-6">
+                    <CustomerActivityTab customerId={customer.id} />
+                    <div>
+                      <h3 className="text-sm font-medium mb-3">Events</h3>
+                      <CustomerEventsTable externalId={customer.external_id} />
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </div>
