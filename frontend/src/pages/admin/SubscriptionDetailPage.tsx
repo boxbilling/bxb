@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Activity, FileText, Target, ToggleLeft, GitBranch, ScrollText, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { ChangePlanDialog } from '@/components/ChangePlanDialog'
+import { TerminateSubscriptionDialog } from '@/components/TerminateSubscriptionDialog'
 import { SubscriptionHeader } from '@/components/subscription-detail/SubscriptionHeader'
 import { SubscriptionKPICards } from '@/components/subscription-detail/SubscriptionKPICards'
 import { SubscriptionInfoSidebar } from '@/components/subscription-detail/SubscriptionInfoSidebar'
@@ -29,14 +30,16 @@ import { SubscriptionLifecycleTab } from '@/components/subscription-detail/Subsc
 import { SubscriptionActivityTab } from '@/components/subscription-detail/SubscriptionActivityTab'
 import { subscriptionsApi, customersApi, plansApi, ApiError } from '@/lib/api'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { SubscriptionUpdate } from '@/types/billing'
+import type { SubscriptionUpdate, TerminationAction } from '@/types/billing'
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()
   const [editOpen, setEditOpen] = useState(false)
   const [changePlanOpen, setChangePlanOpen] = useState(false)
+  const [terminateOpen, setTerminateOpen] = useState(false)
 
   const { data: subscription, isLoading, error } = useQuery({
     queryKey: ['subscription', id],
@@ -115,6 +118,21 @@ export default function SubscriptionDetailPage() {
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to change plan'
+      toast.error(message)
+    },
+  })
+
+  const terminateMutation = useMutation({
+    mutationFn: ({ action }: { action: TerminationAction }) =>
+      subscriptionsApi.terminate(id!, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      setTerminateOpen(false)
+      toast.success('Subscription terminated')
+      navigate('/admin/subscriptions')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to terminate subscription'
       toast.error(message)
     },
   })
@@ -267,8 +285,10 @@ export default function SubscriptionDetailPage() {
                     onPause={() => pauseMutation.mutate()}
                     onResume={() => resumeMutation.mutate()}
                     onChangePlan={() => setChangePlanOpen(true)}
+                    onTerminate={() => setTerminateOpen(true)}
                     isPauseLoading={pauseMutation.isPending}
                     isResumeLoading={resumeMutation.isPending}
+                    isTerminateLoading={terminateMutation.isPending}
                   />
                 </CollapsibleContent>
               </Collapsible>
@@ -285,8 +305,10 @@ export default function SubscriptionDetailPage() {
                   onPause={() => pauseMutation.mutate()}
                   onResume={() => resumeMutation.mutate()}
                   onChangePlan={() => setChangePlanOpen(true)}
+                  onTerminate={() => setTerminateOpen(true)}
                   isPauseLoading={pauseMutation.isPending}
                   isResumeLoading={resumeMutation.isPending}
+                  isTerminateLoading={terminateMutation.isPending}
                 />
               </div>
               {tabsContent}
@@ -310,6 +332,15 @@ export default function SubscriptionDetailPage() {
             plans={plans ?? []}
             onSubmit={(_id, planId) => changePlanMutation.mutate({ planId })}
             isLoading={changePlanMutation.isPending}
+          />
+
+          {/* Terminate Subscription Dialog */}
+          <TerminateSubscriptionDialog
+            open={terminateOpen}
+            onOpenChange={setTerminateOpen}
+            subscription={subscription}
+            onTerminate={(_id, action) => terminateMutation.mutate({ action })}
+            isLoading={terminateMutation.isPending}
           />
         </>
       ) : null}

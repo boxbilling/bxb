@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Copy, Check, Pencil, Pause, Play, ArrowRightLeft } from 'lucide-react'
+import { Copy, Check, Pencil, Pause, Play, ArrowRightLeft, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -21,8 +21,10 @@ interface SubscriptionInfoSidebarProps {
   onPause?: () => void
   onResume?: () => void
   onChangePlan?: () => void
+  onTerminate?: () => void
   isPauseLoading?: boolean
   isResumeLoading?: boolean
+  isTerminateLoading?: boolean
 }
 
 const statusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -42,8 +44,10 @@ export function SubscriptionInfoSidebar({
   onPause,
   onResume,
   onChangePlan,
+  onTerminate,
   isPauseLoading,
   isResumeLoading,
+  isTerminateLoading,
 }: SubscriptionInfoSidebarProps) {
   const [copied, setCopied] = useState(false)
 
@@ -146,6 +150,18 @@ export function SubscriptionInfoSidebar({
             <Button variant="outline" size="sm" className="w-full justify-start" onClick={onChangePlan}>
               <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
               Change Plan
+            </Button>
+          )}
+          {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (
+            <Button
+              variant="destructive"
+              size="sm"
+              className="w-full justify-start"
+              onClick={onTerminate}
+              disabled={isTerminateLoading}
+            >
+              <Trash2 className="mr-2 h-3.5 w-3.5" />
+              {isTerminateLoading ? 'Terminating...' : 'Terminate'}
             </Button>
           )}
         </div>
