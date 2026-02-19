@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
-import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, Pencil, GitBranch, FileText, Pause, Play, Clock, Activity } from 'lucide-react'
+import { Plus, Trash2, Target, TrendingUp, Calendar, BarChart3, ScrollText, ToggleLeft, AlertTriangle, X, GitBranch, FileText, Activity, ChevronDown } from 'lucide-react'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
 import { toast } from 'sonner'
 
@@ -22,6 +22,8 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import {
   Select,
   SelectContent,
@@ -50,13 +52,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { SubscriptionHeader } from '@/components/subscription-detail/SubscriptionHeader'
+import { SubscriptionKPICards } from '@/components/subscription-detail/SubscriptionKPICards'
+import { SubscriptionInfoSidebar } from '@/components/subscription-detail/SubscriptionInfoSidebar'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, usageAlertsApi, billableMetricsApi, featuresApi, invoicesApi, ApiError } from '@/lib/api'
+import { useIsMobile } from '@/hooks/use-mobile'
 import type { UsageThresholdCreateAPI, UsageAlertCreate, SubscriptionUpdate } from '@/types/billing'
 import { formatCents } from '@/lib/utils'
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const isMobile = useIsMobile()
   const [showAddForm, setShowAddForm] = useState(false)
   const [thresholdForm, setThresholdForm] = useState<UsageThresholdCreateAPI>({
     amount_cents: '',
@@ -78,12 +85,6 @@ export default function SubscriptionDetailPage() {
     queryKey: ['subscription', id],
     queryFn: () => subscriptionsApi.get(id!),
     enabled: !!id,
-  })
-
-  const { data: nextBillingDate } = useQuery({
-    queryKey: ['next-billing-date', id],
-    queryFn: () => subscriptionsApi.getNextBillingDate(id!),
-    enabled: !!id && (subscription?.status === 'active' || subscription?.status === 'pending'),
   })
 
   const { data: customer } = useQuery({
@@ -280,188 +281,40 @@ export default function SubscriptionDetailPage() {
   const customerName = customer?.name ?? 'Loading...'
   const planName = plan?.name ?? 'Loading...'
 
-  return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/subscriptions">Subscriptions</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {isLoading ? (
-                <Skeleton className="h-4 w-48 inline-block" />
-              ) : (
-                `${customerName} \u2014 ${planName}`
-              )}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+  const tabsContent = (
+    <Tabs defaultValue="overview">
+      <div className="overflow-x-auto">
+        <TabsList>
+          <TabsTrigger value="overview">
+            <Activity className="mr-2 h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="invoices">
+            <FileText className="mr-2 h-4 w-4" />
+            Invoices &amp; Payments
+          </TabsTrigger>
+          <TabsTrigger value="thresholds">
+            <Target className="mr-2 h-4 w-4" />
+            Thresholds &amp; Alerts
+          </TabsTrigger>
+          <TabsTrigger value="entitlements">
+            <ToggleLeft className="mr-2 h-4 w-4" />
+            Entitlements
+          </TabsTrigger>
+          <TabsTrigger value="lifecycle">
+            <GitBranch className="mr-2 h-4 w-4" />
+            Lifecycle
+          </TabsTrigger>
+          <TabsTrigger value="activity">
+            <ScrollText className="mr-2 h-4 w-4" />
+            Activity
+          </TabsTrigger>
+        </TabsList>
+      </div>
 
-      {isLoading ? (
+      {/* Overview Tab */}
+      <TabsContent value="overview">
         <div className="space-y-6">
-          <div>
-            <Skeleton className="h-7 w-64 mb-1" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <Skeleton className="h-48 w-full" />
-        </div>
-      ) : subscription ? (
-        <>
-          {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">Subscription Details</h2>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {customerName} \u2014 {planName}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              {subscription.status === 'active' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full md:w-auto"
-                  onClick={() => pauseMutation.mutate()}
-                  disabled={pauseMutation.isPending}
-                >
-                  <Pause className="mr-1 h-3.5 w-3.5" />
-                  {pauseMutation.isPending ? 'Pausing...' : 'Pause'}
-                </Button>
-              )}
-              {subscription.status === 'paused' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full md:w-auto"
-                  onClick={() => resumeMutation.mutate()}
-                  disabled={resumeMutation.isPending}
-                >
-                  <Play className="mr-1 h-3.5 w-3.5" />
-                  {resumeMutation.isPending ? 'Resuming...' : 'Resume'}
-                </Button>
-              )}
-              {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (
-                <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={() => setEditOpen(true)}>
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Edit
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Next Billing Date */}
-          {nextBillingDate && (subscription.status === 'active' || subscription.status === 'pending') && (
-            <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="pt-4 pb-4">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Clock className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">Next Billing Date</p>
-                    <p className="text-lg font-semibold">
-                      {format(new Date(nextBillingDate.next_billing_date), 'MMMM d, yyyy')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary">
-                      {nextBillingDate.days_until_next_billing}
-                    </p>
-                    <p className="text-xs text-muted-foreground">days away</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Subscription Info */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Subscription Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">External ID</span>
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{subscription.external_id}</code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Status</span>
-                  <Badge variant={subscription.status === 'active' ? 'default' : subscription.status === 'terminated' ? 'destructive' : subscription.status === 'paused' ? 'outline' : 'secondary'}>
-                    {subscription.status}
-                  </Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Customer</span>
-                  <Link to={`/admin/customers/${subscription.customer_id}`} className="hover:underline">
-                    {customerName}
-                  </Link>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Plan</span>
-                  <span>{planName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Billing Time</span>
-                  <span className="capitalize">{subscription.billing_time}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pay in Advance</span>
-                  <span>{subscription.pay_in_advance ? 'Yes' : 'No'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">On Termination</span>
-                  <span className="capitalize">{subscription.on_termination_action.replace(/_/g, ' ')}</span>
-                </div>
-                {subscription.trial_period_days > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Trial Period</span>
-                    <span>{subscription.trial_period_days} days</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Started At</span>
-                  <span>{subscription.started_at ? format(new Date(subscription.started_at), 'MMM d, yyyy HH:mm') : '\u2014'}</span>
-                </div>
-                {subscription.paused_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Paused At</span>
-                    <span>{format(new Date(subscription.paused_at), 'MMM d, yyyy HH:mm')}</span>
-                  </div>
-                )}
-                {subscription.resumed_at && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Last Resumed</span>
-                    <span>{format(new Date(subscription.resumed_at), 'MMM d, yyyy HH:mm')}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created</span>
-                  <span>{format(new Date(subscription.created_at), 'MMM d, yyyy HH:mm')}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Lifecycle Timeline */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <GitBranch className="h-4 w-4" />
-                Lifecycle Timeline
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SubscriptionLifecycleTimeline subscriptionId={id!} />
-            </CardContent>
-          </Card>
-
           {/* Current Usage */}
           <Card>
             <CardHeader className="pb-3">
@@ -485,7 +338,7 @@ export default function SubscriptionDetailPage() {
                   </p>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
-                    Billing Period: {format(new Date(usage.billing_period_start), 'MMM d, yyyy')} \u2014 {format(new Date(usage.billing_period_end), 'MMM d, yyyy')}
+                    Billing Period: {format(new Date(usage.billing_period_start), 'MMM d, yyyy')} &mdash; {format(new Date(usage.billing_period_end), 'MMM d, yyyy')}
                   </p>
                 </div>
               )}
@@ -580,7 +433,7 @@ export default function SubscriptionDetailPage() {
                 </CardTitle>
                 {customer && (
                   <Link
-                    to={`/admin/customers/${subscription.customer_id}?tab=usage`}
+                    to={`/admin/customers/${subscription!.customer_id}?tab=usage`}
                     className="text-sm text-primary hover:underline"
                   >
                     View Full Usage
@@ -630,81 +483,86 @@ export default function SubscriptionDetailPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </TabsContent>
 
-          {/* Invoices */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Invoices
-                </CardTitle>
-                <Link
-                  to={`/admin/invoices?subscription_id=${id}`}
-                  className="text-sm text-primary hover:underline"
-                >
-                  View all
-                </Link>
+      {/* Invoices & Payments Tab */}
+      <TabsContent value="invoices">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Invoices
+              </CardTitle>
+              <Link
+                to={`/admin/invoices?subscription_id=${id}`}
+                className="text-sm text-primary hover:underline"
+              >
+                View all
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {invoicesLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
               </div>
-            </CardHeader>
-            <CardContent>
-              {invoicesLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : !invoices?.length ? (
-                <p className="text-sm text-muted-foreground">No invoices generated for this subscription</p>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Number</TableHead>
-                        <TableHead className="hidden md:table-cell">Type</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="hidden md:table-cell">Issue Date</TableHead>
-                        <TableHead className="hidden md:table-cell">Due Date</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoices.map((invoice) => {
-                        const statusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-                          draft: 'secondary',
-                          finalized: 'outline',
-                          paid: 'default',
-                          voided: 'destructive',
-                        }
-                        return (
-                          <TableRow key={invoice.id}>
-                            <TableCell>
-                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                {invoice.invoice_number || '\u2014'}
-                              </code>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell capitalize">{invoice.invoice_type}</TableCell>
-                            <TableCell>
-                              <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
-                            <TableCell className="hidden md:table-cell">{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCents(Number(invoice.total), invoice.currency)}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            ) : !invoices?.length ? (
+              <p className="text-sm text-muted-foreground">No invoices generated for this subscription</p>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Number</TableHead>
+                      <TableHead className="hidden md:table-cell">Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Issue Date</TableHead>
+                      <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((invoice) => {
+                      const statusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
+                        draft: 'secondary',
+                        finalized: 'outline',
+                        paid: 'default',
+                        voided: 'destructive',
+                      }
+                      return (
+                        <TableRow key={invoice.id}>
+                          <TableCell>
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                              {invoice.invoice_number || '\u2014'}
+                            </code>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell capitalize">{invoice.invoice_type}</TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
+                          <TableCell className="hidden md:table-cell">{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCents(Number(invoice.total), invoice.currency)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
 
-          <Separator />
-
+      {/* Thresholds & Alerts Tab */}
+      <TabsContent value="thresholds">
+        <div className="space-y-6">
           {/* Usage Thresholds */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -983,6 +841,209 @@ export default function SubscriptionDetailPage() {
               )}
             </CardContent>
           </Card>
+        </div>
+      </TabsContent>
+
+      {/* Entitlements Tab */}
+      <TabsContent value="entitlements">
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <ToggleLeft className="h-4 w-4" />
+                Entitlements
+              </CardTitle>
+              <Link
+                to="/admin/features"
+                className="text-sm text-primary hover:underline"
+              >
+                Manage Features
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {entitlementsLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            ) : !entitlements?.length ? (
+              <p className="text-sm text-muted-foreground">No features configured for this plan.</p>
+            ) : (
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Feature</TableHead>
+                      <TableHead className="hidden md:table-cell">Code</TableHead>
+                      <TableHead className="hidden md:table-cell">Type</TableHead>
+                      <TableHead>Value</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {entitlements.map((entitlement) => {
+                      const feature = featureMap.get(entitlement.feature_id)
+                      return (
+                        <TableRow key={entitlement.id}>
+                          <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                              {feature?.code ?? entitlement.feature_id}
+                            </code>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {feature ? (
+                              <Badge variant={feature.feature_type === 'boolean' ? 'default' : feature.feature_type === 'quantity' ? 'secondary' : 'outline'}>
+                                {feature.feature_type}
+                              </Badge>
+                            ) : (
+                              '\u2014'
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {feature?.feature_type === 'boolean'
+                              ? entitlement.value === 'true' ? 'Enabled' : 'Disabled'
+                              : entitlement.value}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Lifecycle Tab */}
+      <TabsContent value="lifecycle">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              Lifecycle Timeline
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SubscriptionLifecycleTimeline subscriptionId={id!} />
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      {/* Activity Tab */}
+      <TabsContent value="activity">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ScrollText className="h-4 w-4" />
+              Activity Log
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AuditTrailTimeline
+              resourceType="subscription"
+              resourceId={id!}
+              limit={20}
+              showViewAll
+            />
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
+  )
+
+  return (
+    <div className="space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/admin/subscriptions">Subscriptions</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>
+              {isLoading ? (
+                <Skeleton className="h-4 w-48 inline-block" />
+              ) : (
+                `${customerName} \u2014 ${planName}`
+              )}
+            </BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      {isLoading ? (
+        <div className="space-y-6">
+          <div>
+            <Skeleton className="h-7 w-64 mb-1" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-48 w-full" />
+        </div>
+      ) : subscription ? (
+        <>
+          {/* Header */}
+          <SubscriptionHeader
+            subscription={subscription}
+            customer={customer}
+            plan={plan}
+            isLoading={isLoading}
+          />
+
+          {/* KPI Cards */}
+          <SubscriptionKPICards
+            subscriptionId={id!}
+            subscription={subscription}
+            plan={plan}
+            isLoading={isLoading}
+          />
+
+          {/* Sidebar + Tabs Layout */}
+          {isMobile ? (
+            <div className="space-y-6">
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    Subscription Details
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <SubscriptionInfoSidebar
+                    subscription={subscription}
+                    customer={customer}
+                    plan={plan}
+                    onEdit={() => setEditOpen(true)}
+                    onPause={() => pauseMutation.mutate()}
+                    onResume={() => resumeMutation.mutate()}
+                    isPauseLoading={pauseMutation.isPending}
+                    isResumeLoading={resumeMutation.isPending}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+              {tabsContent}
+            </div>
+          ) : (
+            <div className="grid grid-cols-[280px_1fr] gap-6 items-start">
+              <div className="sticky top-6">
+                <SubscriptionInfoSidebar
+                  subscription={subscription}
+                  customer={customer}
+                  plan={plan}
+                  onEdit={() => setEditOpen(true)}
+                  onPause={() => pauseMutation.mutate()}
+                  onResume={() => resumeMutation.mutate()}
+                  isPauseLoading={pauseMutation.isPending}
+                  isResumeLoading={resumeMutation.isPending}
+                />
+              </div>
+              {tabsContent}
+            </div>
+          )}
 
           {/* Delete Alert Confirmation */}
           <AlertDialog
@@ -1007,98 +1068,6 @@ export default function SubscriptionDetailPage() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-
-          <Separator />
-
-          {/* Entitlements */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <ToggleLeft className="h-4 w-4" />
-                  Entitlements
-                </CardTitle>
-                <Link
-                  to="/admin/features"
-                  className="text-sm text-primary hover:underline"
-                >
-                  Manage Features
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {entitlementsLoading ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              ) : !entitlements?.length ? (
-                <p className="text-sm text-muted-foreground">No features configured for this plan.</p>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Feature</TableHead>
-                        <TableHead className="hidden md:table-cell">Code</TableHead>
-                        <TableHead className="hidden md:table-cell">Type</TableHead>
-                        <TableHead>Value</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {entitlements.map((entitlement) => {
-                        const feature = featureMap.get(entitlement.feature_id)
-                        return (
-                          <TableRow key={entitlement.id}>
-                            <TableCell className="font-medium">{feature?.name ?? 'Unknown'}</TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                                {feature?.code ?? entitlement.feature_id}
-                              </code>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              {feature ? (
-                                <Badge variant={feature.feature_type === 'boolean' ? 'default' : feature.feature_type === 'quantity' ? 'secondary' : 'outline'}>
-                                  {feature.feature_type}
-                                </Badge>
-                              ) : (
-                                '\u2014'
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {feature?.feature_type === 'boolean'
-                                ? entitlement.value === 'true' ? 'Enabled' : 'Disabled'
-                                : entitlement.value}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Separator />
-
-          {/* Activity Log */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <ScrollText className="h-4 w-4" />
-                Activity Log
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AuditTrailTimeline
-                resourceType="subscription"
-                resourceId={id!}
-                limit={20}
-                showViewAll
-              />
-            </CardContent>
-          </Card>
 
           {/* Edit Subscription Dialog */}
           <EditSubscriptionDialog
