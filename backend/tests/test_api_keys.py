@@ -11,8 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from app.core.auth import get_current_organization
 from app.core.database import get_db
 from app.main import app
-from app.models.api_key import ApiKey, generate_uuid
-from app.models.customer import DEFAULT_ORGANIZATION_ID
+from app.models.api_key import ApiKey
+from app.models.shared import DEFAULT_ORGANIZATION_ID, generate_uuid
 from app.models.organization import Organization
 from app.repositories.api_key_repository import (
     ApiKeyRepository,

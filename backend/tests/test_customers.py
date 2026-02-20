@@ -13,7 +13,8 @@ from app.models.add_on import AddOn
 from app.models.applied_add_on import AppliedAddOn
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge, ChargeModel
-from app.models.customer import Customer, UUIDType, generate_uuid, utc_now
+from app.models.customer import Customer
+from app.models.shared import UUIDType, generate_uuid, utc_now
 from app.models.event import Event
 from app.models.integration import Integration
 from app.models.integration_customer import IntegrationCustomer

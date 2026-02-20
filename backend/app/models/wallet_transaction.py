@@ -1,12 +1,11 @@
 """WalletTransaction model for tracking wallet credit movements."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class TransactionType(str, Enum):
@@ -31,11 +30,6 @@ class TransactionSource(str, Enum):
     MANUAL = "manual"
     INTERVAL = "interval"
     THRESHOLD = "threshold"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class WalletTransaction(Base):

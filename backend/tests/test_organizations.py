@@ -5,7 +5,8 @@ import uuid
 import pytest
 
 from app.core.database import get_db
-from app.models.organization import Organization, generate_uuid
+from app.models.organization import Organization
+from app.models.shared import generate_uuid
 from app.repositories.organization_repository import OrganizationRepository
 from app.schemas.organization import OrganizationCreate, OrganizationResponse, OrganizationUpdate
 from tests.conftest import DEFAULT_ORG_ID

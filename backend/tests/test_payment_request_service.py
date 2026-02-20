@@ -10,7 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.audit_log import AuditLog
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.models.invoice import Invoice, InvoiceStatus
 from app.services.payment_request_service import PaymentRequestService
 from tests.conftest import DEFAULT_ORG_ID

@@ -1,7 +1,7 @@
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class UsageAlert(Base):

@@ -1,4 +1,5 @@
 from app.models.add_on import AddOn
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid, utc_now
 from app.models.api_key import ApiKey
 from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
@@ -65,6 +66,10 @@ from app.models.webhook_delivery_attempt import WebhookDeliveryAttempt
 from app.models.webhook_endpoint import WebhookEndpoint
 
 __all__ = [
+    "DEFAULT_ORGANIZATION_ID",
+    "UUIDType",
+    "generate_uuid",
+    "utc_now",
     "AddOn",
     "ApiKey",
     "AggregationType",

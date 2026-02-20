@@ -1,13 +1,12 @@
 """InvoiceSettlement model for tracking how invoices are paid."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, Index, Numeric, String, func
 from sqlalchemy.schema import ForeignKey
 
 from app.core.database import Base
-from app.models.customer import UUIDType
+from app.models.shared import UUIDType, generate_uuid
 
 
 class SettlementType(str, Enum):
@@ -16,11 +15,6 @@ class SettlementType(str, Enum):
     PAYMENT = "payment"
     CREDIT_NOTE = "credit_note"
     WALLET_CREDIT = "wallet_credit"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class InvoiceSettlement(Base):

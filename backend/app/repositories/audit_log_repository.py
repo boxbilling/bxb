@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.sorting import apply_order_by
 from app.models.audit_log import AuditLog
-from app.models.customer import generate_uuid
+from app.models.shared import generate_uuid
 
 
 class AuditLogRepository:

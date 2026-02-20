@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 from app.core.database import get_db
 from app.main import app
 from app.models.billing_entity import BillingEntity
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.models.invoice import Invoice
 from tests.conftest import DEFAULT_ORG_ID
 

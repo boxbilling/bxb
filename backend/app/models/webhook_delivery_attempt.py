@@ -1,16 +1,9 @@
 """WebhookDeliveryAttempt model for tracking individual delivery attempts."""
 
-import uuid
-
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
+from app.models.shared import UUIDType, generate_uuid
 
 
 class WebhookDeliveryAttempt(Base):

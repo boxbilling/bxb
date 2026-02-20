@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.repositories.payment_method_repository import PaymentMethodRepository
 from app.schemas.payment_method import (
     PaymentMethodCreate,

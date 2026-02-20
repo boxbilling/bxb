@@ -1,13 +1,12 @@
 """Fee model for tracking invoice line items as first-class entities."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, func
 from sqlalchemy.dialects.sqlite import JSON
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class FeeType(str, Enum):
@@ -27,11 +26,6 @@ class FeePaymentStatus(str, Enum):
     SUCCEEDED = "succeeded"
     FAILED = "failed"
     REFUNDED = "refunded"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class Fee(Base):

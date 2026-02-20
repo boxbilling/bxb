@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from app.core.database import get_db
 from app.main import app
 from app.models.audit_log import AuditLog
-from app.models.customer import generate_uuid
+from app.models.shared import generate_uuid
 from app.repositories.audit_log_repository import AuditLogRepository
 from tests.conftest import DEFAULT_ORG_ID
 

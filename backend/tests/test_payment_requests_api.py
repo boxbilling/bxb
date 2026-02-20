@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.main import app
 from app.models.audit_log import AuditLog
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.models.invoice import Invoice
 from app.models.payment_request import PaymentRequest
 from app.repositories.payment_request_repository import PaymentRequestRepository

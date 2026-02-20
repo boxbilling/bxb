@@ -1,16 +1,9 @@
 """IntegrationMapping model for mapping bxb resources to external system IDs."""
 
-import uuid
-
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, UniqueConstraint, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
+from app.models.shared import UUIDType, generate_uuid
 
 
 class IntegrationMapping(Base):

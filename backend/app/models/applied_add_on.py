@@ -1,16 +1,9 @@
 """AppliedAddOn model for tracking add-on applications to customers."""
 
-import uuid
-
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
+from app.models.shared import UUIDType, generate_uuid
 
 
 class AppliedAddOn(Base):

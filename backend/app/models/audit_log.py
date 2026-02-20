@@ -4,7 +4,7 @@
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class AuditLog(Base):

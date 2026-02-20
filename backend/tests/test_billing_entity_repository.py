@@ -6,7 +6,8 @@ import pytest
 
 from app.core.database import get_db
 from app.models.billing_entity import BillingEntity
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.models.organization import Organization
 from app.repositories.billing_entity_repository import BillingEntityRepository
 from app.schemas.billing_entity import (

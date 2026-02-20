@@ -3,7 +3,7 @@
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType, generate_uuid
+from app.models.shared import UUIDType, generate_uuid
 
 
 class DunningCampaignThreshold(Base):

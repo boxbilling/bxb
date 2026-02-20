@@ -1,6 +1,5 @@
 """DataExport model for CSV data export tracking."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, Integer, String, Text, func
@@ -8,7 +7,7 @@ from sqlalchemy.dialects.sqlite import JSON
 from sqlalchemy.schema import ForeignKey
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class ExportType(str, Enum):
@@ -30,11 +29,6 @@ class ExportStatus(str, Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class DataExport(Base):

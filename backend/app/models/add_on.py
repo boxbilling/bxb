@@ -1,16 +1,9 @@
 """AddOn model for one-time charges."""
 
-import uuid
-
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class AddOn(Base):

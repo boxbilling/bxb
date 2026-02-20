@@ -1,12 +1,11 @@
 """CreditNote model for refunds, credits, and adjustments."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class CreditNoteType(str, Enum):
@@ -39,11 +38,6 @@ class CreditNoteReason(str, Enum):
     ORDER_CANCELLATION = "order_cancellation"
     FRAUDULENT_CHARGE = "fraudulent_charge"
     OTHER = "other"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class CreditNote(Base):

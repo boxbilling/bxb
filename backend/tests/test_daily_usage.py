@@ -10,7 +10,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.database import get_db
 from app.models.billable_metric import AggregationType
-from app.models.daily_usage import DailyUsage, generate_uuid
+from app.models.daily_usage import DailyUsage
+from app.models.shared import generate_uuid
 from app.models.subscription import SubscriptionStatus
 from app.repositories.billable_metric_repository import BillableMetricRepository
 from app.repositories.charge_repository import ChargeRepository

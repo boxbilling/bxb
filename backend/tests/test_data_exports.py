@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 from app.core.database import get_db
 from app.main import app
 from app.models.credit_note import CreditNoteReason, CreditNoteType
-from app.models.data_export import DataExport, ExportStatus, ExportType, generate_uuid
+from app.models.data_export import DataExport, ExportStatus, ExportType
+from app.models.shared import generate_uuid
 from app.repositories.audit_log_repository import AuditLogRepository
 from app.repositories.credit_note_repository import CreditNoteRepository
 from app.repositories.customer_repository import CustomerRepository

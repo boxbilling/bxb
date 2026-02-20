@@ -6,7 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.database import get_db
-from app.models.customer import generate_uuid
+from app.models.shared import generate_uuid
 from app.models.entitlement import Entitlement
 from app.models.feature import Feature, FeatureType
 from app.models.plan import Plan, PlanInterval

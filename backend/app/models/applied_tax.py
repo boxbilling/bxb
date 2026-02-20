@@ -1,16 +1,9 @@
 """AppliedTax model for polymorphic tax associations."""
 
-import uuid
-
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Numeric, String, UniqueConstraint, func
 
 from app.core.database import Base
-from app.models.customer import UUIDType
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
+from app.models.shared import UUIDType, generate_uuid
 
 
 class AppliedTax(Base):

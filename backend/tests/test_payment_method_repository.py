@@ -5,7 +5,8 @@ import uuid
 import pytest
 
 from app.core.database import get_db
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.models.organization import Organization
 from app.models.payment_method import PaymentMethod
 from app.repositories.payment_method_repository import PaymentMethodRepository

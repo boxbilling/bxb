@@ -1,13 +1,11 @@
 """Payment model for tracking invoice payments."""
 
-import uuid
-from datetime import UTC, datetime
 from enum import Enum
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class PaymentStatus(str, Enum):
@@ -29,16 +27,6 @@ class PaymentProvider(str, Enum):
     UCP = "ucp"  # Universal Commerce Protocol (https://ucp.dev)
     GOCARDLESS = "gocardless"
     ADYEN = "adyen"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
-
-
-def utc_now() -> datetime:
-    """Get current UTC datetime."""
-    return datetime.now(UTC)
 
 
 class Payment(Base):

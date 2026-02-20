@@ -1,12 +1,11 @@
 """Integration model for external system connections."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, String, UniqueConstraint, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class IntegrationType(str, Enum):
@@ -38,11 +37,6 @@ class IntegrationStatus(str, Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     ERROR = "error"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class Integration(Base):

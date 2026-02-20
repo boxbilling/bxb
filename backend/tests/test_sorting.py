@@ -9,7 +9,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.sorting import apply_order_by
 from app.main import app
-from app.models.customer import Customer, generate_uuid
+from app.models.customer import Customer
+from app.models.shared import generate_uuid
 from app.models.invoice import Invoice, InvoiceStatus, InvoiceType
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository

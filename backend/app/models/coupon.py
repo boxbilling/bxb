@@ -1,12 +1,11 @@
 """Coupon model for promotional discounts."""
 
-import uuid
 from enum import Enum
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, Numeric, String, Text, func
 
 from app.core.database import Base
-from app.models.customer import DEFAULT_ORGANIZATION_ID, UUIDType
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid
 
 
 class CouponType(str, Enum):
@@ -28,11 +27,6 @@ class CouponExpiration(str, Enum):
 class CouponStatus(str, Enum):
     ACTIVE = "active"
     TERMINATED = "terminated"
-
-
-def generate_uuid() -> uuid.UUID:
-    """Generate a new UUID."""
-    return uuid.uuid4()
 
 
 class Coupon(Base):

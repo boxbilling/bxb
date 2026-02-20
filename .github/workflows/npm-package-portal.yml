@@ -1,0 +1,58 @@
+name: Generate and Publish Portal SDK
+
+on:
+  push:
+    paths:
+      - 'backend/app/routers/portal.py'
+      - 'backend/app/schemas/portal.py'
+      - 'backend/scripts/generate_portal_openapi.py'
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Generate Portal OpenAPI Spec
+        working-directory: backend/scripts
+        run: python generate_portal_openapi.py > ../portal-openapi.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install OpenAPI Generator
+        run: npm install @openapitools/openapi-generator-cli -g
+
+      - name: Generate SDK
+        run: openapi-generator-cli generate -i backend/portal-openapi.json -g typescript-axios -o sdks/portal --additional-properties=npmName=nxo-portal
+
+      - name: Install and Build SDK
+        working-directory: sdks/portal
+        run: |
+          npm install
+          npm run build
+
+      - name: Patch Version
+        working-directory: sdks/portal
+        run: npm version patch --no-git-tag-version
+
+      - name: Publish to NPM
+        working-directory: sdks/portal
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

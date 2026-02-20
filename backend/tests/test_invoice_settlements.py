@@ -10,7 +10,8 @@ from fastapi.testclient import TestClient
 
 from app.core.database import get_db
 from app.main import app
-from app.models.invoice_settlement import InvoiceSettlement, SettlementType, generate_uuid
+from app.models.invoice_settlement import InvoiceSettlement, SettlementType
+from app.models.shared import generate_uuid
 from app.models.payment import PaymentProvider
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.invoice_repository import InvoiceRepository
