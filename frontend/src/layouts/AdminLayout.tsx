@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import NotificationBell from '@/components/NotificationBell'
 import { CommandPalette } from '@/components/CommandPalette'
-import HeaderBreadcrumb, { BreadcrumbProvider, MobilePageTitle } from '@/components/HeaderBreadcrumb'
+import HeaderBreadcrumb, { BreadcrumbProvider, MobilePageTitle, PageBreadcrumbProvider } from '@/components/HeaderBreadcrumb'
 import Sidebar, { MobileSidebar, navigationGroups, settingsNavItems } from '@/components/Sidebar'
 
 export default function AdminLayout() {
@@ -27,6 +27,7 @@ export default function AdminLayout() {
 
   return (
     <BreadcrumbProvider routeLabels={routeLabels}>
+      <PageBreadcrumbProvider>
       <div className="flex h-screen bg-background">
         <div className="hidden md:flex">
           <Sidebar collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
@@ -63,6 +64,7 @@ export default function AdminLayout() {
 
         <CommandPalette />
       </div>
+      </PageBreadcrumbProvider>
     </BreadcrumbProvider>
   )
 }

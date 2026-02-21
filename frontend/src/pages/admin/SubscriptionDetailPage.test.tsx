@@ -169,6 +169,11 @@ vi.mock('@/components/TerminateSubscriptionDialog', () => ({
   ),
 }))
 
+const mockSetBreadcrumbs = vi.fn()
+vi.mock('@/components/HeaderBreadcrumb', () => ({
+  useSetBreadcrumbs: (...args: unknown[]) => mockSetBreadcrumbs(...args),
+}))
+
 /* ------------------------------------------------------------------ */
 /*  Import after mocks                                                */
 /* ------------------------------------------------------------------ */
@@ -193,6 +198,7 @@ describe('SubscriptionDetailPage', () => {
     capturedMutations = {}
     capturedMutateMap = {}
     mockNavigate.mockClear()
+    mockSetBreadcrumbs.mockClear()
   })
 
   /* ---------------------------------------------------------------- */
@@ -200,23 +206,21 @@ describe('SubscriptionDetailPage', () => {
   /* ---------------------------------------------------------------- */
 
   describe('breadcrumb navigation', () => {
-    it('renders Subscriptions breadcrumb link', () => {
+    it('calls useSetBreadcrumbs with Subscriptions link and customer/plan label', () => {
       render(<SubscriptionDetailPage />)
-      const link = screen.getByRole('link', { name: /Subscriptions/i })
-      expect(link).toHaveAttribute('href', '/admin/subscriptions')
+      expect(mockSetBreadcrumbs).toHaveBeenCalledWith([
+        { label: 'Subscriptions', href: '/admin/subscriptions' },
+        { label: `${mockCustomer!.name} \u2014 ${mockPlan!.name}` },
+      ])
     })
 
-    it('renders current page breadcrumb with customer and plan name', () => {
-      render(<SubscriptionDetailPage />)
-      const breadcrumbPage = screen.getByRole('link', { name: /Acme Corp .* Pro Monthly/ })
-      expect(breadcrumbPage).toBeInTheDocument()
-    })
-
-    it('renders skeleton in breadcrumb when loading', () => {
+    it('calls useSetBreadcrumbs with Loading... label when loading', () => {
       mockSubLoading = true
-      const { container } = render(<SubscriptionDetailPage />)
-      const skeletons = container.querySelectorAll('[class*="animate-pulse"], [data-slot="skeleton"]')
-      expect(skeletons.length).toBeGreaterThan(0)
+      render(<SubscriptionDetailPage />)
+      expect(mockSetBreadcrumbs).toHaveBeenCalledWith([
+        { label: 'Subscriptions', href: '/admin/subscriptions' },
+        { label: 'Loading...' },
+      ])
     })
   })
 
@@ -431,10 +435,10 @@ describe('SubscriptionDetailPage', () => {
   /* ---------------------------------------------------------------- */
 
   describe('when subscription is undefined and not loading', () => {
-    it('renders breadcrumb but not tabs', () => {
+    it('calls useSetBreadcrumbs but does not render tabs', () => {
       mockSubscription = undefined
       render(<SubscriptionDetailPage />)
-      expect(screen.getByRole('link', { name: /Subscriptions/i })).toBeInTheDocument()
+      expect(mockSetBreadcrumbs).toHaveBeenCalled()
       expect(screen.queryByText('Overview')).not.toBeInTheDocument()
     })
   })

@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -237,6 +230,11 @@ export default function CreditNoteFormPage() {
 
   const isPending = createMutation.isPending || updateMutation.isPending
 
+  useSetBreadcrumbs([
+    { label: 'Credit Notes', href: '/admin/credit-notes' },
+    { label: isEdit ? `Edit ${creditNote?.number ?? ''}` : 'New Credit Note' },
+  ])
+
   if (isEdit && loadingCreditNote) {
     return (
       <div className="space-y-6">
@@ -260,23 +258,6 @@ export default function CreditNoteFormPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumbs */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/credit-notes">Credit Notes</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {isEdit ? `Edit ${creditNote?.number ?? ''}` : 'New Credit Note'}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {/* Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
         <Button variant="ghost" size="icon" className="self-start" onClick={() => navigate('/admin/credit-notes')}>

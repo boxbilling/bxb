@@ -1,17 +1,10 @@
 import { useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Activity, FileText, Target, ToggleLeft, GitBranch, ScrollText, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -148,6 +141,11 @@ export default function SubscriptionDetailPage() {
   const customerName = customer?.name ?? 'Loading...'
   const planName = plan?.name ?? 'Loading...'
 
+  useSetBreadcrumbs([
+    { label: 'Subscriptions', href: '/admin/subscriptions' },
+    { label: isLoading ? 'Loading...' : `${customerName} — ${planName}` },
+  ])
+
   const tabsContent = (
     <Tabs defaultValue="overview">
       <div className="overflow-x-auto">
@@ -219,27 +217,6 @@ export default function SubscriptionDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/subscriptions">Subscriptions</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {isLoading ? (
-                <Skeleton className="h-4 w-48 inline-block" />
-              ) : (
-                `${customerName} \u2014 ${planName}`
-              )}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {isLoading ? (
         <div className="space-y-6">
           <div>

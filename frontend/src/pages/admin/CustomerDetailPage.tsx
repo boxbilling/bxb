@@ -1,17 +1,10 @@
 import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { FileText, CreditCard, Tag, ScrollText, History, Activity, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -49,6 +42,11 @@ export default function CustomerDetailPage() {
     queryFn: () => customersApi.get(id!),
     enabled: !!id,
   })
+
+  useSetBreadcrumbs([
+    { label: 'Customers', href: '/admin/customers' },
+    { label: isLoading ? 'Loading...' : (customer?.name ?? 'Customer') },
+  ])
 
   const updateMutation = useMutation({
     mutationFn: (data: CustomerUpdate) => customersApi.update(id!, data),
@@ -91,23 +89,6 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/customers">Customers</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {isLoading ? <Skeleton className="h-4 w-32 inline-block" /> : customer?.name}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {isLoading ? (
         <div className="space-y-6">
           <div>

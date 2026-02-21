@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { createContext, useContext, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -12,6 +12,35 @@ import {
 type RouteLabels = Record<string, string>
 
 const BreadcrumbContext = createContext<RouteLabels>({})
+
+export type BreadcrumbCrumb = { label: string | React.ReactNode; href?: string }
+
+type PageBreadcrumbState = {
+  crumbs: BreadcrumbCrumb[]
+  setCrumbs: (crumbs: BreadcrumbCrumb[]) => void
+}
+
+const PageBreadcrumbContext = createContext<PageBreadcrumbState>({
+  crumbs: [],
+  setCrumbs: () => {},
+})
+
+export function PageBreadcrumbProvider({ children }: { children: React.ReactNode }) {
+  const [crumbs, setCrumbs] = useState<BreadcrumbCrumb[]>([])
+  return (
+    <PageBreadcrumbContext.Provider value={{ crumbs, setCrumbs }}>
+      {children}
+    </PageBreadcrumbContext.Provider>
+  )
+}
+
+export function useSetBreadcrumbs(crumbs: BreadcrumbCrumb[]) {
+  const { setCrumbs } = useContext(PageBreadcrumbContext)
+  useEffect(() => {
+    setCrumbs(crumbs)
+    return () => setCrumbs([])
+  }, [setCrumbs, ...crumbs.map((c) => (typeof c.label === 'string' ? c.label : '')), ...crumbs.map((c) => c.href ?? '')])
+}
 
 export function BreadcrumbProvider({
   routeLabels,
@@ -29,9 +58,21 @@ export function BreadcrumbProvider({
 
 export function MobilePageTitle() {
   const routeLabels = useContext(BreadcrumbContext)
+  const { crumbs: pageCrumbs } = useContext(PageBreadcrumbContext)
   const location = useLocation()
 
   const label = useMemo(() => {
+    if (pageCrumbs.length > 0) {
+      const lastCrumb = pageCrumbs[pageCrumbs.length - 1]
+      const firstCrumb = pageCrumbs[0]
+      if (pageCrumbs.length === 1) {
+        return typeof firstCrumb.label === 'string' ? firstCrumb.label : null
+      }
+      const parentLabel = typeof firstCrumb.label === 'string' ? firstCrumb.label : ''
+      const childLabel = typeof lastCrumb.label === 'string' ? lastCrumb.label : ''
+      return `${parentLabel} — ${childLabel}`
+    }
+
     const path = location.pathname
     if (path === '/admin') return null
 
@@ -46,7 +87,7 @@ export function MobilePageTitle() {
       return `${parentLabel} — ${subLabel}`
     }
     return parentLabel
-  }, [location.pathname, routeLabels])
+  }, [location.pathname, routeLabels, pageCrumbs])
 
   if (!label) return null
 
@@ -59,14 +100,17 @@ export function MobilePageTitle() {
 
 export default function HeaderBreadcrumb() {
   const routeLabels = useContext(BreadcrumbContext)
+  const { crumbs: pageCrumbs } = useContext(PageBreadcrumbContext)
   const location = useLocation()
 
-  const crumbs = useMemo(() => {
+  const crumbs = useMemo((): BreadcrumbCrumb[] => {
+    if (pageCrumbs.length > 0) return pageCrumbs
+
     const path = location.pathname
     if (path === '/admin') return []
 
     const segments = path.replace(/^\/admin\/?/, '').split('/')
-    const result: { label: string; href?: string }[] = []
+    const result: BreadcrumbCrumb[] = []
 
     const parentPath = '/admin/' + segments[0]
     const parentLabel = routeLabels[parentPath]
@@ -82,7 +126,7 @@ export default function HeaderBreadcrumb() {
     }
 
     return result
-  }, [location.pathname, routeLabels])
+  }, [location.pathname, routeLabels, pageCrumbs])
 
   if (crumbs.length === 0) return null
 

@@ -40,13 +40,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { dunningCampaignsApi, ApiError } from '@/lib/api'
 import type {
@@ -444,6 +438,11 @@ export default function DunningCampaignDetailPage() {
     enabled: !!id,
   })
 
+  useSetBreadcrumbs([
+    { label: 'Dunning Campaigns', href: '/admin/dunning-campaigns' },
+    { label: campaign?.name ?? 'Campaign' },
+  ])
+
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -468,19 +467,6 @@ export default function DunningCampaignDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/dunning-campaigns">Dunning Campaigns</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>{campaign.name}</BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

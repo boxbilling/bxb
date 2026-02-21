@@ -20,14 +20,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -202,6 +195,11 @@ export default function InvoiceDetailPage() {
     },
   })
 
+  useSetBreadcrumbs([
+    { label: 'Invoices', href: '/admin/invoices' },
+    { label: invoice?.invoice_number ?? 'Invoice' },
+  ])
+
   const canDownloadOrEmail = invoice?.status === 'finalized' || invoice?.status === 'paid'
   const canFinalize = invoice?.status === 'draft'
   const canVoid = invoice?.status === 'draft' || invoice?.status === 'finalized'
@@ -240,21 +238,6 @@ export default function InvoiceDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumbs */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/invoices">Invoices</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>{invoice.invoice_number}</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>

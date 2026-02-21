@@ -28,14 +28,7 @@ import {
 } from 'recharts'
 import { toast } from 'sonner'
 
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -134,6 +127,11 @@ export default function WalletDetailPage() {
     customers.find((c) => c.id === wallet?.customer_id)?.name ||
     wallet?.customer_id?.slice(0, 8) ||
     ''
+
+  useSetBreadcrumbs([
+    { label: 'Wallets', href: '/admin/wallets' },
+    { label: wallet?.name || wallet?.code || wallet?.id?.slice(0, 8) || 'Wallet' },
+  ])
 
   // Fetch transactions
   const { data: transactions = [], isLoading: txLoading } = useQuery({
@@ -290,29 +288,6 @@ export default function WalletDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin">Admin</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink asChild>
-              <Link to="/admin/wallets">Wallets</Link>
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>
-              {wallet.name || wallet.code || wallet.id.slice(0, 8)}
-            </BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
-
       {/* Header */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="flex items-center gap-3 flex-wrap">
