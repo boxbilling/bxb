@@ -15,7 +15,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <QueryClientProvider client={queryClient}>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <App />
-            <Toaster position="bottom-left" richColors />
+            <Toaster position="bottom-right" richColors />
           </BrowserRouter>
         </QueryClientProvider>
     </HelmetProvider>
