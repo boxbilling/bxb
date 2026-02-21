@@ -11,7 +11,7 @@ export default function PageHeader({ title, description, actions }: PageHeaderPr
         <h2 className="text-xl md:text-2xl font-bold tracking-tight">{title}</h2>
         {description && <p className="text-muted-foreground">{description}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2 w-full md:w-auto">{actions}</div>}
+      {actions && <div className="flex flex-wrap items-center gap-2 w-full md:w-auto [&>a]:w-full [&>a]:md:w-auto [&>button]:w-full [&>button]:md:w-auto">{actions}</div>}
     </div>
   )
 }
