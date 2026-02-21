@@ -61,6 +61,7 @@ const RevenueAnalyticsPage = lazy(
 )
 const SettingsPage = lazy(() => import('./pages/admin/SettingsPage'))
 const ApiKeysPage = lazy(() => import('./pages/admin/ApiKeysPage'))
+const OnboardingPage = lazy(() => import('./pages/admin/OnboardingPage'))
 
 // Portal pages - lazy loaded
 const PortalDashboardPage = lazy(
@@ -158,6 +159,7 @@ function App() {
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="api-keys" element={<ApiKeysPage />} />
+          <Route path="onboarding" element={<OnboardingPage />} />
         </Route>
 
         {/* Customer Portal */}

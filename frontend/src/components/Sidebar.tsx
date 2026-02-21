@@ -33,6 +33,7 @@ import {
   Menu,
   AlertTriangle,
   TrendingUp,
+  Rocket,
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useTheme } from '@/hooks/use-theme.ts'
@@ -59,6 +60,7 @@ export const navigationGroups = [
     label: 'Overview',
     items: [
       { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      { name: 'Get Started', href: '/admin/onboarding', icon: Rocket },
       { name: 'Revenue Analytics', href: '/admin/revenue-analytics', icon: TrendingUp },
     ],
   },
