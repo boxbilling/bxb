@@ -670,6 +670,7 @@ class TestStripeProviderWithMock:
             call_kwargs = mock_create.call_args[1]
             assert call_kwargs["customer_email"] == "real@test.com"
             assert call_kwargs["mode"] == "payment"
+            assert "link" in call_kwargs["payment_method_types"]
 
     def test_stripe_checkout_without_email(self):
         """Test Stripe checkout without customer email."""
@@ -700,6 +701,7 @@ class TestStripeProviderWithMock:
             assert session.expires_at is None
             call_kwargs = mock_create.call_args[1]
             assert "customer_email" not in call_kwargs
+            assert "link" in call_kwargs["payment_method_types"]
 
     @patch("stripe.Webhook.construct_event")
     def test_stripe_verify_webhook_with_real_module(self, mock_construct):

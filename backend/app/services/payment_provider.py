@@ -192,7 +192,7 @@ class StripeProvider(PaymentProviderBase):
         amount_cents = int(amount * 100)
 
         session_params: dict[str, Any] = {
-            "payment_method_types": ["card"],
+            "payment_method_types": ["card", "link"],
             "line_items": [
                 {
                     "price_data": {
@@ -238,7 +238,7 @@ class StripeProvider(PaymentProviderBase):
     ) -> SetupSession:
         """Create a Stripe Checkout Session in setup mode."""
         session_params: dict[str, Any] = {
-            "payment_method_types": ["card"],
+            "payment_method_types": ["card", "link"],
             "mode": "setup",
             "success_url": success_url,
             "cancel_url": cancel_url,
