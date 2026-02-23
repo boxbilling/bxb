@@ -1,4 +1,4 @@
-name: Generate and Publish Python SDKs
+name: Generate and Publish SDKs
 
 on:
   workflow_dispatch:
@@ -27,6 +27,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
 
       - name: Install OpenAPI Generator
         run: npm install @openapitools/openapi-generator-cli -g
@@ -109,3 +110,36 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      # NPM Portal SDK
+      - name: Generate NPM Portal SDK
+        id: gen-npm-portal
+        continue-on-error: true
+        run: |
+          openapi-generator-cli generate \
+            -i backend/portal-openapi.json \
+            -g typescript-axios \
+            -o sdks/portal \
+            --additional-properties=npmName=bxb-portal
+
+      - name: Build NPM Portal SDK
+        if: steps.gen-npm-portal.outcome == 'success'
+        id: build-npm-portal
+        continue-on-error: true
+        working-directory: sdks/portal
+        run: |
+          npm install
+          npm run build
+
+      - name: Patch NPM Portal SDK Version
+        if: steps.build-npm-portal.outcome == 'success'
+        working-directory: sdks/portal
+        run: npm version patch --no-git-tag-version
+
+      - name: Publish NPM Portal SDK
+        if: steps.build-npm-portal.outcome == 'success'
+        continue-on-error: true
+        working-directory: sdks/portal
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
