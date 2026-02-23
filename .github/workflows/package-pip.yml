@@ -1,4 +1,4 @@
-name: Generate and Publish Python SDK
+name: Generate and Publish Python SDKs
 
 on:
   workflow_dispatch:
@@ -35,7 +35,11 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
-      - name: Generate SDK
+      - name: Generate Portal OpenAPI Spec
+        run: python -c "import json, sys; sys.path.insert(0, 'backend/scripts'); from generate_portal_openapi import generate_portal_openapi; spec = generate_portal_openapi(json.load(open('backend/openapi.json'))); print(json.dumps(spec, indent=2))" > backend/portal-openapi.json
+
+      # Full SDK
+      - name: Generate Full SDK
         run: |
           openapi-generator-cli generate \
             -i backend/openapi.json \
@@ -43,17 +47,37 @@ jobs:
             -o sdks/python \
             --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }}
 
-      - name: Build SDK
+      - name: Build Full SDK
         working-directory: sdks/python
         run: |
           uv pip install --system build
           python -m build
 
-      - name: Publish to PyPI
+      - name: Publish Full SDK to PyPI
         working-directory: sdks/python
         run: |
           uv pip install --system twine
           twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      # Portal SDK
+      - name: Generate Portal SDK
+        run: |
+          openapi-generator-cli generate \
+            -i backend/portal-openapi.json \
+            -g python-pydantic-v1 \
+            -o sdks/python-portal \
+            --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }}
+
+      - name: Build Portal SDK
+        working-directory: sdks/python-portal
+        run: python -m build
+
+      - name: Publish Portal SDK to PyPI
+        working-directory: sdks/python-portal
+        run: twine upload dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
