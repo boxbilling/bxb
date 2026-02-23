@@ -1,7 +1,7 @@
 [project]
-name = "app"
-version = "0.1.0"
-description = "MLE"
+name = "bxb"
+version = "0.3.0"
+description = "BoxBilling API"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]<1.0.0,>=0.131.0",

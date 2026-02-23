@@ -63,67 +63,6 @@ wheels = [
 ]
 
 [[package]]
-name = "app"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiosmtplib" },
-    { name = "alembic" },
-    { name = "arq" },
-    { name = "clickhouse-connect" },
-    { name = "fastapi", extra = ["standard"] },
-    { name = "httpx" },
-    { name = "psycopg2-binary" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "pyjwt" },
-    { name = "sentry-sdk", extra = ["fastapi"] },
-    { name = "sqlalchemy" },
-    { name = "stripe" },
-    { name = "weasyprint" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-    { name = "stripe" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiosmtplib", specifier = ">=3.0" },
-    { name = "alembic", specifier = ">=1.18.3" },
-    { name = "arq", specifier = ">=0.25.0" },
-    { name = "clickhouse-connect", specifier = ">=0.8.0" },
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.131.0,<1.0.0" },
-    { name = "httpx", specifier = ">=0.27.0" },
-    { name = "psycopg2-binary", specifier = "==2.9.9" },
-    { name = "pydantic", specifier = ">=2.6.0,<3.0.0" },
-    { name = "pydantic-settings", specifier = ">=2.1.0,<3.0.0" },
-    { name = "pyjwt", specifier = ">=2.8.0" },
-    { name = "sentry-sdk", extras = ["fastapi"] },
-    { name = "sqlalchemy", specifier = "==2.0.23" },
-    { name = "stripe", specifier = ">=14.0.1" },
-    { name = "weasyprint", specifier = ">=62.0" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "mypy", specifier = ">=1.8.0,<2.0.0" },
-    { name = "pre-commit", specifier = ">=3.6.2" },
-    { name = "pytest", specifier = ">=7.4.3,<8.0.0" },
-    { name = "pytest-asyncio", specifier = ">=0.23.0" },
-    { name = "pytest-cov", specifier = ">=4.1.0" },
-    { name = "ruff", specifier = ">=0.2.2,<1.0.0" },
-    { name = "stripe", specifier = ">=14.0.1" },
-]
-
-[[package]]
 name = "arq"
 version = "0.26.3"
 source = { registry = "https://pypi.org/simple" }
@@ -188,6 +127,67 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/9c/d51486bf366fc7d6735f0e46b5b96ca58dc005b250263525a1eea3cd5d21/brotlicffi-1.2.0.0-cp38-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:33cfb408d0cff64cd50bef268c0fed397c46fbb53944aa37264148614a62e990", size = 1536547, upload-time = "2025-11-21T18:17:45.729Z" },
     { url = "https://files.pythonhosted.org/packages/1b/37/293a9a0a7caf17e6e657668bebb92dfe730305999fe8c0e2703b8888789c/brotlicffi-1.2.0.0-cp38-abi3-win32.whl", hash = "sha256:23e5c912fdc6fd37143203820230374d24babd078fc054e18070a647118158f6", size = 343085, upload-time = "2025-11-21T18:17:48.887Z" },
     { url = "https://files.pythonhosted.org/packages/07/6b/6e92009df3b8b7272f85a0992b306b61c34b7ea1c4776643746e61c380ac/brotlicffi-1.2.0.0-cp38-abi3-win_amd64.whl", hash = "sha256:f139a7cdfe4ae7859513067b736eb44d19fae1186f9e99370092f6915216451b", size = 378586, upload-time = "2025-11-21T18:17:50.531Z" },
+]
+
+[[package]]
+name = "bxb"
+version = "0.3.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiosmtplib" },
+    { name = "alembic" },
+    { name = "arq" },
+    { name = "clickhouse-connect" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "httpx" },
+    { name = "psycopg2-binary" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "pyjwt" },
+    { name = "sentry-sdk", extra = ["fastapi"] },
+    { name = "sqlalchemy" },
+    { name = "stripe" },
+    { name = "weasyprint" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "stripe" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiosmtplib", specifier = ">=3.0" },
+    { name = "alembic", specifier = ">=1.18.3" },
+    { name = "arq", specifier = ">=0.25.0" },
+    { name = "clickhouse-connect", specifier = ">=0.8.0" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.131.0,<1.0.0" },
+    { name = "httpx", specifier = ">=0.27.0" },
+    { name = "psycopg2-binary", specifier = "==2.9.9" },
+    { name = "pydantic", specifier = ">=2.6.0,<3.0.0" },
+    { name = "pydantic-settings", specifier = ">=2.1.0,<3.0.0" },
+    { name = "pyjwt", specifier = ">=2.8.0" },
+    { name = "sentry-sdk", extras = ["fastapi"] },
+    { name = "sqlalchemy", specifier = "==2.0.23" },
+    { name = "stripe", specifier = ">=14.0.1" },
+    { name = "weasyprint", specifier = ">=62.0" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.8.0,<2.0.0" },
+    { name = "pre-commit", specifier = ">=3.6.2" },
+    { name = "pytest", specifier = ">=7.4.3,<8.0.0" },
+    { name = "pytest-asyncio", specifier = ">=0.23.0" },
+    { name = "pytest-cov", specifier = ">=4.1.0" },
+    { name = "ruff", specifier = ">=0.2.2,<1.0.0" },
+    { name = "stripe", specifier = ">=14.0.1" },
 ]
 
 [[package]]
