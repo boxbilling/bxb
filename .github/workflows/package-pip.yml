@@ -45,9 +45,10 @@ jobs:
         run: |
           openapi-generator-cli generate \
             -i backend/openapi.json \
-            -g python-pydantic-v1 \
+            -g python \
             -o sdks/python \
-            --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }}
+            --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }} \
+            --global-property=apiTests=false,modelTests=false
 
       - name: Build Full SDK
         if: steps.gen-full.outcome == 'success'
@@ -76,9 +77,10 @@ jobs:
         run: |
           openapi-generator-cli generate \
             -i backend/portal-openapi.json \
-            -g python-pydantic-v1 \
+            -g python \
             -o sdks/python-portal \
-            --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }}
+            --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }} \
+            --global-property=apiTests=false,modelTests=false
 
       - name: Build Portal SDK
         if: steps.gen-portal.outcome == 'success'
