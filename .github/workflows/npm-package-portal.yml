@@ -1,6 +1,7 @@
 name: Generate and Publish Portal SDK
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'backend/app/routers/portal.py'
