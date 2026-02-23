@@ -3619,6 +3619,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/portal/auth/{external_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Generate a portal JWT for a customer
+         * @description Generate a portal JWT token for the given customer (org API-key auth).
+         */
+        get: operations["get_portal_auth_token"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/portal/dashboard_summary": {
         parameters: {
             query?: never;
@@ -8002,6 +8022,11 @@ export interface components {
             created_at: string;
             plan: components["schemas"]["PlanSummary"];
             pending_downgrade_plan?: components["schemas"]["PlanSummary"] | null;
+        };
+        /** PortalTokenResponse */
+        PortalTokenResponse: {
+            /** Token */
+            token: string;
         };
         /** PortalTopUpRequest */
         PortalTopUpRequest: {
@@ -19429,6 +19454,51 @@ export interface operations {
                 content?: never;
             };
             /** @description Usage alert, subscription, plan, or customer not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_portal_auth_token: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                external_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortalTokenResponse"];
+                };
+            };
+            /** @description Invalid or missing API key */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Customer not found */
             404: {
                 headers: {
                     [name: string]: unknown;
