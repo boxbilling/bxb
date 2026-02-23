@@ -52,6 +52,10 @@ jobs:
             --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }} \
             --global-property=apiTests=false,modelTests=false
 
+      - name: Copy Full SDK README
+        if: steps.gen-full.outcome == 'success'
+        run: cp sdks/README-bxb.md sdks/python/README.md
+
       - name: Build Full SDK
         if: steps.gen-full.outcome == 'success'
         id: build-full
@@ -85,6 +89,10 @@ jobs:
             --git-repo-id=bxb \
             --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }} \
             --global-property=apiTests=false,modelTests=false
+
+      - name: Copy Portal SDK README
+        if: steps.gen-portal.outcome == 'success'
+        run: cp sdks/README-bxb-portal.md sdks/python-portal/README.md
 
       - name: Build Portal SDK
         if: steps.gen-portal.outcome == 'success'
