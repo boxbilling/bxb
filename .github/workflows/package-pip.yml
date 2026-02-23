@@ -1,0 +1,58 @@
+name: Generate and Publish Python SDK
+
+on:
+  push:
+    paths:
+      - 'backend/openapi.json'
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install OpenAPI Generator
+        run: npm install @openapitools/openapi-generator-cli -g
+
+      - name: Read Version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SDK
+        run: |
+          openapi-generator-cli generate \
+            -i backend/openapi.json \
+            -g python-pydantic-v1 \
+            -o sdks/python \
+            --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }}
+
+      - name: Build SDK
+        working-directory: sdks/python
+        run: |
+          uv pip install --system build
+          python -m build
+
+      - name: Publish to PyPI
+        working-directory: sdks/python
+        run: |
+          uv pip install --system twine
+          twine upload dist/*
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
