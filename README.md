@@ -170,31 +170,6 @@ API follows Lago's patterns. Core resources:
 
 See [OpenAPI spec](./backend/openapi.json) for full API documentation.
 
-## Roadmap
-
-### Phase 1: Core Foundation ✅
-- [x] Project setup with FastAPI + React
-- [x] CI/CD with 100% coverage enforcement
-- [ ] Customer management
-- [ ] Billable metrics
-
-### Phase 2: Billing Engine
-- [ ] Plans and pricing
-- [ ] Subscriptions
-- [ ] Event ingestion
-- [ ] Usage aggregation
-
-### Phase 3: Invoicing
-- [ ] Invoice generation
-- [ ] Stripe integration
-- [ ] Webhooks
-
-### Phase 4: Advanced Features
-- [ ] All charge models (graduated, volume, package)
-- [ ] Coupons and discounts
-- [ ] Credit notes
-- [ ] Wallets (prepaid credits)
-
 ## Comparison with Alternatives
 
 | Feature | bxb | Lago | Stripe Billing | Chargebee |
