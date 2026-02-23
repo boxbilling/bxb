@@ -3630,7 +3630,7 @@ export interface paths {
          * Get portal dashboard summary
          * @description Aggregated dashboard: billing, charges, usage, actions.
          */
-        get: operations["get_portal_dashboard_summary_portal_dashboard_summary_get"];
+        get: operations["get_portal_dashboard_summary"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3650,7 +3650,7 @@ export interface paths {
          * Get customer profile
          * @description Get the authenticated customer's profile information.
          */
-        get: operations["get_portal_customer_profile_portal_customer_get"];
+        get: operations["get_portal_customer"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3676,7 +3676,7 @@ export interface paths {
          * Update customer profile
          * @description Update the authenticated customer's profile (name, email, timezone).
          */
-        patch: operations["update_portal_profile_portal_profile_patch"];
+        patch: operations["update_portal_profile"];
         trace?: never;
     };
     "/portal/branding": {
@@ -3690,7 +3690,7 @@ export interface paths {
          * Get organization branding for portal
          * @description Get the organization's branding information for portal display.
          */
-        get: operations["get_portal_branding_portal_branding_get"];
+        get: operations["get_portal_branding"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3710,7 +3710,7 @@ export interface paths {
          * List customer invoices
          * @description List invoices for the authenticated customer.
          */
-        get: operations["list_portal_invoices_portal_invoices_get"];
+        get: operations["list_portal_invoices"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3730,7 +3730,7 @@ export interface paths {
          * Get invoice detail
          * @description Get a specific invoice for the authenticated customer.
          */
-        get: operations["get_portal_invoice_portal_invoices__invoice_id__get"];
+        get: operations["get_portal_invoice"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3750,7 +3750,7 @@ export interface paths {
          * Download invoice PDF
          * @description Download a PDF for a finalized or paid invoice.
          */
-        get: operations["download_portal_invoice_pdf_portal_invoices__invoice_id__download_pdf_get"];
+        get: operations["download_portal_invoice_pdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3770,7 +3770,7 @@ export interface paths {
          * Preview invoice PDF inline
          * @description Preview a PDF for a finalized or paid invoice (inline in browser).
          */
-        get: operations["preview_portal_invoice_pdf_portal_invoices__invoice_id__pdf_preview_get"];
+        get: operations["preview_portal_invoice_pdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3792,7 +3792,7 @@ export interface paths {
          * Pay an outstanding invoice
          * @description Create a checkout session to pay an outstanding invoice.
          */
-        post: operations["pay_portal_invoice_portal_invoices__invoice_id__pay_post"];
+        post: operations["pay_portal_invoice"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3810,7 +3810,7 @@ export interface paths {
          * List payments for an invoice
          * @description List payments for a specific invoice belonging to the authenticated customer.
          */
-        get: operations["list_portal_invoice_payments_portal_invoices__invoice_id__payments_get"];
+        get: operations["list_portal_invoice_payments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3830,7 +3830,7 @@ export interface paths {
          * Get current usage
          * @description Get current usage for the authenticated customer's subscription.
          */
-        get: operations["get_portal_current_usage_portal_current_usage_get"];
+        get: operations["get_portal_current_usage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3850,7 +3850,7 @@ export interface paths {
          * List customer payments
          * @description List payments for the authenticated customer.
          */
-        get: operations["list_portal_payments_portal_payments_get"];
+        get: operations["list_portal_payments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3870,7 +3870,7 @@ export interface paths {
          * Get wallet balance and transactions
          * @description Get wallet balance and recent transactions for the authenticated customer.
          */
-        get: operations["get_portal_wallet_portal_wallet_get"];
+        get: operations["get_portal_wallet"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3890,7 +3890,7 @@ export interface paths {
          * List wallet transactions
          * @description List transactions for a customer's wallet.
          */
-        get: operations["list_portal_wallet_transactions_portal_wallet__wallet_id__transactions_get"];
+        get: operations["list_portal_wallet_transactions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3910,7 +3910,7 @@ export interface paths {
          * Get wallet balance timeline
          * @description Get daily balance timeline for a customer's wallet.
          */
-        get: operations["get_portal_wallet_balance_timeline_portal_wallet__wallet_id__balance_timeline_get"];
+        get: operations["get_portal_wallet_balance_timeline"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3932,7 +3932,7 @@ export interface paths {
          * Request a wallet top-up
          * @description Top up a customer's wallet with credits.
          */
-        post: operations["portal_wallet_top_up_portal_wallet__wallet_id__top_up_post"];
+        post: operations["portal_wallet_top_up"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3950,13 +3950,13 @@ export interface paths {
          * List customer payment methods
          * @description List payment methods for the authenticated customer.
          */
-        get: operations["list_portal_payment_methods_portal_payment_methods_get"];
+        get: operations["list_portal_payment_methods"];
         put?: never;
         /**
          * Add a payment method
          * @description Add a new payment method for the authenticated customer.
          */
-        post: operations["add_portal_payment_method_portal_payment_methods_post"];
+        post: operations["add_portal_payment_method"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3977,7 +3977,7 @@ export interface paths {
          * Remove a payment method
          * @description Remove a payment method. Cannot remove the default payment method.
          */
-        delete: operations["remove_portal_payment_method_portal_payment_methods__payment_method_id__delete"];
+        delete: operations["remove_portal_payment_method"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3996,7 +3996,7 @@ export interface paths {
          * Set default payment method
          * @description Set a payment method as the default for the authenticated customer.
          */
-        post: operations["set_portal_default_payment_method_portal_payment_methods__payment_method_id__set_default_post"];
+        post: operations["set_portal_default_payment_method"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4014,7 +4014,7 @@ export interface paths {
          * List customer subscriptions
          * @description List subscriptions for the authenticated customer with plan details.
          */
-        get: operations["list_portal_subscriptions_portal_subscriptions_get"];
+        get: operations["list_portal_subscriptions"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4034,7 +4034,7 @@ export interface paths {
          * Get subscription detail
          * @description Get a specific subscription for the authenticated customer.
          */
-        get: operations["get_portal_subscription_portal_subscriptions__subscription_id__get"];
+        get: operations["get_portal_subscription"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4054,7 +4054,7 @@ export interface paths {
          * List available plans
          * @description List all available plans for the organization.
          */
-        get: operations["list_portal_plans_portal_plans_get"];
+        get: operations["list_portal_plans"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4076,7 +4076,7 @@ export interface paths {
          * Preview plan change with proration
          * @description Preview a plan change showing price comparison and proration details.
          */
-        post: operations["portal_change_plan_preview_portal_subscriptions__subscription_id__change_plan_preview_post"];
+        post: operations["portal_change_plan_preview"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4096,7 +4096,7 @@ export interface paths {
          * Change subscription plan
          * @description Change a subscription's plan (upgrade or downgrade).
          */
-        post: operations["portal_change_plan_portal_subscriptions__subscription_id__change_plan_post"];
+        post: operations["portal_change_plan"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4114,7 +4114,7 @@ export interface paths {
          * List available add-ons
          * @description List all add-ons available for purchase.
          */
-        get: operations["list_portal_add_ons_portal_add_ons_get"];
+        get: operations["list_portal_add_ons"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4134,7 +4134,7 @@ export interface paths {
          * List purchased add-ons
          * @description List all add-ons the customer has purchased.
          */
-        get: operations["list_portal_purchased_add_ons_portal_add_ons_purchased_get"];
+        get: operations["list_portal_purchased_add_ons"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4156,7 +4156,7 @@ export interface paths {
          * Purchase an add-on
          * @description Purchase an add-on. Creates an applied add-on record and a one-off invoice.
          */
-        post: operations["portal_purchase_add_on_portal_add_ons__add_on_id__purchase_post"];
+        post: operations["portal_purchase_add_on"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4174,7 +4174,7 @@ export interface paths {
          * List applied coupons
          * @description List all coupons applied to the authenticated customer.
          */
-        get: operations["list_portal_coupons_portal_coupons_get"];
+        get: operations["list_portal_coupons"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4196,7 +4196,7 @@ export interface paths {
          * Redeem a coupon code
          * @description Redeem a coupon code for the authenticated customer.
          */
-        post: operations["portal_redeem_coupon_portal_coupons_redeem_post"];
+        post: operations["portal_redeem_coupon"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4214,7 +4214,7 @@ export interface paths {
          * Get usage trend for a subscription
          * @description Get daily usage trend for the authenticated customer's subscription.
          */
-        get: operations["get_portal_usage_trend_portal_usage_trend_get"];
+        get: operations["get_portal_usage_trend"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4234,7 +4234,7 @@ export interface paths {
          * Get plan limits vs current usage
          * @description Get plan entitlement limits with current usage for a subscription.
          */
-        get: operations["get_portal_usage_limits_portal_usage_limits_get"];
+        get: operations["get_portal_usage_limits"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4254,7 +4254,7 @@ export interface paths {
          * Get projected end-of-period usage
          * @description Project end-of-period usage based on current consumption rate.
          */
-        get: operations["get_portal_projected_usage_portal_usage_projected_get"];
+        get: operations["get_portal_projected_usage"];
         put?: never;
         post?: never;
         delete?: never;
@@ -19446,7 +19446,7 @@ export interface operations {
             };
         };
     };
-    get_portal_dashboard_summary_portal_dashboard_summary_get: {
+    get_portal_dashboard_summary: {
         parameters: {
             query: {
                 token: string;
@@ -19484,7 +19484,7 @@ export interface operations {
             };
         };
     };
-    get_portal_customer_profile_portal_customer_get: {
+    get_portal_customer: {
         parameters: {
             query: {
                 token: string;
@@ -19529,7 +19529,7 @@ export interface operations {
             };
         };
     };
-    update_portal_profile_portal_profile_patch: {
+    update_portal_profile: {
         parameters: {
             query: {
                 token: string;
@@ -19576,7 +19576,7 @@ export interface operations {
             };
         };
     };
-    get_portal_branding_portal_branding_get: {
+    get_portal_branding: {
         parameters: {
             query: {
                 token: string;
@@ -19621,7 +19621,7 @@ export interface operations {
             };
         };
     };
-    list_portal_invoices_portal_invoices_get: {
+    list_portal_invoices: {
         parameters: {
             query: {
                 skip?: number;
@@ -19661,7 +19661,7 @@ export interface operations {
             };
         };
     };
-    get_portal_invoice_portal_invoices__invoice_id__get: {
+    get_portal_invoice: {
         parameters: {
             query: {
                 token: string;
@@ -19708,7 +19708,7 @@ export interface operations {
             };
         };
     };
-    download_portal_invoice_pdf_portal_invoices__invoice_id__download_pdf_get: {
+    download_portal_invoice_pdf: {
         parameters: {
             query: {
                 token: string;
@@ -19762,7 +19762,7 @@ export interface operations {
             };
         };
     };
-    preview_portal_invoice_pdf_portal_invoices__invoice_id__pdf_preview_get: {
+    preview_portal_invoice_pdf: {
         parameters: {
             query: {
                 token: string;
@@ -19816,7 +19816,7 @@ export interface operations {
             };
         };
     };
-    pay_portal_invoice_portal_invoices__invoice_id__pay_post: {
+    pay_portal_invoice: {
         parameters: {
             query: {
                 token: string;
@@ -19881,7 +19881,7 @@ export interface operations {
             };
         };
     };
-    list_portal_invoice_payments_portal_invoices__invoice_id__payments_get: {
+    list_portal_invoice_payments: {
         parameters: {
             query: {
                 token: string;
@@ -19928,7 +19928,7 @@ export interface operations {
             };
         };
     };
-    get_portal_current_usage_portal_current_usage_get: {
+    get_portal_current_usage: {
         parameters: {
             query: {
                 subscription_id: string;
@@ -19974,7 +19974,7 @@ export interface operations {
             };
         };
     };
-    list_portal_payments_portal_payments_get: {
+    list_portal_payments: {
         parameters: {
             query: {
                 skip?: number;
@@ -20014,7 +20014,7 @@ export interface operations {
             };
         };
     };
-    get_portal_wallet_portal_wallet_get: {
+    get_portal_wallet: {
         parameters: {
             query: {
                 token: string;
@@ -20052,7 +20052,7 @@ export interface operations {
             };
         };
     };
-    list_portal_wallet_transactions_portal_wallet__wallet_id__transactions_get: {
+    list_portal_wallet_transactions: {
         parameters: {
             query: {
                 skip?: number;
@@ -20101,7 +20101,7 @@ export interface operations {
             };
         };
     };
-    get_portal_wallet_balance_timeline_portal_wallet__wallet_id__balance_timeline_get: {
+    get_portal_wallet_balance_timeline: {
         parameters: {
             query: {
                 token: string;
@@ -20148,7 +20148,7 @@ export interface operations {
             };
         };
     };
-    portal_wallet_top_up_portal_wallet__wallet_id__top_up_post: {
+    portal_wallet_top_up: {
         parameters: {
             query: {
                 token: string;
@@ -20206,7 +20206,7 @@ export interface operations {
             };
         };
     };
-    list_portal_payment_methods_portal_payment_methods_get: {
+    list_portal_payment_methods: {
         parameters: {
             query: {
                 token: string;
@@ -20244,7 +20244,7 @@ export interface operations {
             };
         };
     };
-    add_portal_payment_method_portal_payment_methods_post: {
+    add_portal_payment_method: {
         parameters: {
             query: {
                 token: string;
@@ -20284,7 +20284,7 @@ export interface operations {
             };
         };
     };
-    remove_portal_payment_method_portal_payment_methods__payment_method_id__delete: {
+    remove_portal_payment_method: {
         parameters: {
             query: {
                 token: string;
@@ -20336,7 +20336,7 @@ export interface operations {
             };
         };
     };
-    set_portal_default_payment_method_portal_payment_methods__payment_method_id__set_default_post: {
+    set_portal_default_payment_method: {
         parameters: {
             query: {
                 token: string;
@@ -20383,7 +20383,7 @@ export interface operations {
             };
         };
     };
-    list_portal_subscriptions_portal_subscriptions_get: {
+    list_portal_subscriptions: {
         parameters: {
             query: {
                 token: string;
@@ -20421,7 +20421,7 @@ export interface operations {
             };
         };
     };
-    get_portal_subscription_portal_subscriptions__subscription_id__get: {
+    get_portal_subscription: {
         parameters: {
             query: {
                 token: string;
@@ -20468,7 +20468,7 @@ export interface operations {
             };
         };
     };
-    list_portal_plans_portal_plans_get: {
+    list_portal_plans: {
         parameters: {
             query: {
                 token: string;
@@ -20506,7 +20506,7 @@ export interface operations {
             };
         };
     };
-    portal_change_plan_preview_portal_subscriptions__subscription_id__change_plan_preview_post: {
+    portal_change_plan_preview: {
         parameters: {
             query: {
                 token: string;
@@ -20564,7 +20564,7 @@ export interface operations {
             };
         };
     };
-    portal_change_plan_portal_subscriptions__subscription_id__change_plan_post: {
+    portal_change_plan: {
         parameters: {
             query: {
                 token: string;
@@ -20622,7 +20622,7 @@ export interface operations {
             };
         };
     };
-    list_portal_add_ons_portal_add_ons_get: {
+    list_portal_add_ons: {
         parameters: {
             query: {
                 token: string;
@@ -20660,7 +20660,7 @@ export interface operations {
             };
         };
     };
-    list_portal_purchased_add_ons_portal_add_ons_purchased_get: {
+    list_portal_purchased_add_ons: {
         parameters: {
             query: {
                 token: string;
@@ -20698,7 +20698,7 @@ export interface operations {
             };
         };
     };
-    portal_purchase_add_on_portal_add_ons__add_on_id__purchase_post: {
+    portal_purchase_add_on: {
         parameters: {
             query: {
                 token: string;
@@ -20745,7 +20745,7 @@ export interface operations {
             };
         };
     };
-    list_portal_coupons_portal_coupons_get: {
+    list_portal_coupons: {
         parameters: {
             query: {
                 token: string;
@@ -20783,7 +20783,7 @@ export interface operations {
             };
         };
     };
-    portal_redeem_coupon_portal_coupons_redeem_post: {
+    portal_redeem_coupon: {
         parameters: {
             query: {
                 token: string;
@@ -20839,7 +20839,7 @@ export interface operations {
             };
         };
     };
-    get_portal_usage_trend_portal_usage_trend_get: {
+    get_portal_usage_trend: {
         parameters: {
             query: {
                 subscription_id: string;
@@ -20887,7 +20887,7 @@ export interface operations {
             };
         };
     };
-    get_portal_usage_limits_portal_usage_limits_get: {
+    get_portal_usage_limits: {
         parameters: {
             query: {
                 subscription_id: string;
@@ -20933,7 +20933,7 @@ export interface operations {
             };
         };
     };
-    get_portal_projected_usage_portal_usage_projected_get: {
+    get_portal_projected_usage: {
         parameters: {
             query: {
                 subscription_id: string;

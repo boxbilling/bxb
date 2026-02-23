@@ -95,6 +95,7 @@ router = APIRouter()
 @router.get(
     "/dashboard_summary",
     response_model=PortalDashboardSummaryResponse,
+    operation_id="get_portal_dashboard_summary",
     summary="Get portal dashboard summary",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -281,6 +282,7 @@ _PORTAL_INTERVAL_DAYS = {
 @router.get(
     "/customer",
     response_model=CustomerResponse,
+    operation_id="get_portal_customer",
     summary="Get customer profile",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -303,6 +305,7 @@ async def get_portal_customer_profile(
 @router.patch(
     "/profile",
     response_model=CustomerResponse,
+    operation_id="update_portal_profile",
     summary="Update customer profile",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -331,6 +334,7 @@ async def update_portal_profile(
 @router.get(
     "/branding",
     response_model=PortalBrandingResponse,
+    operation_id="get_portal_branding",
     summary="Get organization branding for portal",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -358,6 +362,7 @@ async def get_portal_branding(
 @router.get(
     "/invoices",
     response_model=list[InvoiceResponse],
+    operation_id="list_portal_invoices",
     summary="List customer invoices",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -381,6 +386,7 @@ async def list_portal_invoices(
 @router.get(
     "/invoices/{invoice_id}",
     response_model=InvoiceResponse,
+    operation_id="get_portal_invoice",
     summary="Get invoice detail",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -403,6 +409,7 @@ async def get_portal_invoice(
 
 @router.get(
     "/invoices/{invoice_id}/download_pdf",
+    operation_id="download_portal_invoice_pdf",
     summary="Download invoice PDF",
     responses={
         400: {"description": "Invoice must be finalized or paid to generate PDF"},
@@ -462,6 +469,7 @@ async def download_portal_invoice_pdf(
 
 @router.get(
     "/invoices/{invoice_id}/pdf_preview",
+    operation_id="preview_portal_invoice_pdf",
     summary="Preview invoice PDF inline",
     responses={
         400: {"description": "Invoice must be finalized or paid to generate PDF"},
@@ -522,6 +530,7 @@ async def preview_portal_invoice_pdf(
 @router.post(
     "/invoices/{invoice_id}/pay",
     response_model=PortalPayNowResponse,
+    operation_id="pay_portal_invoice",
     summary="Pay an outstanding invoice",
     responses={
         400: {"description": "Only finalized invoices can be paid"},
@@ -632,6 +641,7 @@ async def pay_portal_invoice(
 @router.get(
     "/invoices/{invoice_id}/payments",
     response_model=list[PaymentResponse],
+    operation_id="list_portal_invoice_payments",
     summary="List payments for an invoice",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -661,6 +671,7 @@ async def list_portal_invoice_payments(
 @router.get(
     "/current_usage",
     response_model=CurrentUsageResponse,
+    operation_id="get_portal_current_usage",
     summary="Get current usage",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -697,6 +708,7 @@ async def get_portal_current_usage(
 @router.get(
     "/payments",
     response_model=list[PaymentResponse],
+    operation_id="list_portal_payments",
     summary="List customer payments",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -720,6 +732,7 @@ async def list_portal_payments(
 @router.get(
     "/wallet",
     response_model=list[WalletResponse],
+    operation_id="get_portal_wallet",
     summary="Get wallet balance and transactions",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -739,6 +752,7 @@ async def get_portal_wallet(
 @router.get(
     "/wallet/{wallet_id}/transactions",
     response_model=list[WalletTransactionResponse],
+    operation_id="list_portal_wallet_transactions",
     summary="List wallet transactions",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -765,6 +779,7 @@ async def list_portal_wallet_transactions(
 @router.get(
     "/wallet/{wallet_id}/balance_timeline",
     response_model=BalanceTimelineResponse,
+    operation_id="get_portal_wallet_balance_timeline",
     summary="Get wallet balance timeline",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -806,6 +821,7 @@ async def get_portal_wallet_balance_timeline(
 @router.post(
     "/wallet/{wallet_id}/top_up",
     response_model=PortalTopUpResponse,
+    operation_id="portal_wallet_top_up",
     summary="Request a wallet top-up",
     responses={
         400: {"description": "Wallet is not active or invalid credits"},
@@ -849,6 +865,7 @@ async def portal_wallet_top_up(
 @router.get(
     "/payment_methods",
     response_model=list[PaymentMethodResponse],
+    operation_id="list_portal_payment_methods",
     summary="List customer payment methods",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -866,6 +883,7 @@ async def list_portal_payment_methods(
     "/payment_methods",
     response_model=PaymentMethodResponse,
     status_code=201,
+    operation_id="add_portal_payment_method",
     summary="Add a payment method",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -891,6 +909,7 @@ async def add_portal_payment_method(
 @router.delete(
     "/payment_methods/{payment_method_id}",
     status_code=204,
+    operation_id="remove_portal_payment_method",
     summary="Remove a payment method",
     responses={
         400: {"description": "Cannot delete default payment method"},
@@ -920,6 +939,7 @@ async def remove_portal_payment_method(
 @router.post(
     "/payment_methods/{payment_method_id}/set_default",
     response_model=PaymentMethodResponse,
+    operation_id="set_portal_default_payment_method",
     summary="Set default payment method",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -1004,6 +1024,7 @@ def _build_portal_subscription(
 @router.get(
     "/subscriptions",
     response_model=list[PortalSubscriptionResponse],
+    operation_id="list_portal_subscriptions",
     summary="List customer subscriptions",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -1025,6 +1046,7 @@ async def list_portal_subscriptions(
 @router.get(
     "/subscriptions/{subscription_id}",
     response_model=PortalSubscriptionResponse,
+    operation_id="get_portal_subscription",
     summary="Get subscription detail",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -1049,6 +1071,7 @@ async def get_portal_subscription(
 @router.get(
     "/plans",
     response_model=list[PortalPlanResponse],
+    operation_id="list_portal_plans",
     summary="List available plans",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -1077,6 +1100,7 @@ async def list_portal_plans(
 @router.post(
     "/subscriptions/{subscription_id}/change_plan_preview",
     response_model=ChangePlanPreviewResponse,
+    operation_id="portal_change_plan_preview",
     summary="Preview plan change with proration",
     responses={
         400: {"description": "Invalid plan or same plan"},
@@ -1158,6 +1182,7 @@ async def portal_change_plan_preview(
 @router.post(
     "/subscriptions/{subscription_id}/change_plan",
     response_model=SubscriptionResponse,
+    operation_id="portal_change_plan",
     summary="Change subscription plan",
     responses={
         400: {"description": "Invalid plan change"},
@@ -1209,6 +1234,7 @@ async def portal_change_plan(
 @router.get(
     "/add_ons",
     response_model=list[PortalAddOnResponse],
+    operation_id="list_portal_add_ons",
     summary="List available add-ons",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -1236,6 +1262,7 @@ async def list_portal_add_ons(
 @router.get(
     "/add_ons/purchased",
     response_model=list[PortalPurchasedAddOnResponse],
+    operation_id="list_portal_purchased_add_ons",
     summary="List purchased add-ons",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -1269,6 +1296,7 @@ async def list_portal_purchased_add_ons(
     "/add_ons/{add_on_id}/purchase",
     response_model=PortalPurchaseAddOnResponse,
     status_code=201,
+    operation_id="portal_purchase_add_on",
     summary="Purchase an add-on",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -1312,6 +1340,7 @@ async def portal_purchase_add_on(
 @router.get(
     "/coupons",
     response_model=list[PortalAppliedCouponResponse],
+    operation_id="list_portal_coupons",
     summary="List applied coupons",
     responses={401: {"description": "Invalid or expired portal token"}},
 )
@@ -1350,6 +1379,7 @@ async def list_portal_coupons(
     "/coupons/redeem",
     response_model=PortalAppliedCouponResponse,
     status_code=201,
+    operation_id="portal_redeem_coupon",
     summary="Redeem a coupon code",
     responses={
         400: {"description": "Coupon is not active, expired, or already applied"},
@@ -1401,6 +1431,7 @@ async def portal_redeem_coupon(
 @router.get(
     "/usage/trend",
     response_model=PortalUsageTrendResponse,
+    operation_id="get_portal_usage_trend",
     summary="Get usage trend for a subscription",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -1452,6 +1483,7 @@ async def get_portal_usage_trend(
 @router.get(
     "/usage/limits",
     response_model=PortalUsageLimitsResponse,
+    operation_id="get_portal_usage_limits",
     summary="Get plan limits vs current usage",
     responses={
         401: {"description": "Invalid or expired portal token"},
@@ -1545,6 +1577,7 @@ async def get_portal_usage_limits(
 @router.get(
     "/usage/projected",
     response_model=PortalProjectedUsageResponse,
+    operation_id="get_portal_projected_usage",
     summary="Get projected end-of-period usage",
     responses={
         401: {"description": "Invalid or expired portal token"},
