@@ -40,6 +40,8 @@ jobs:
 
       # Full SDK
       - name: Generate Full SDK
+        id: gen-full
+        continue-on-error: true
         run: |
           openapi-generator-cli generate \
             -i backend/openapi.json \
@@ -48,12 +50,17 @@ jobs:
             --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }}
 
       - name: Build Full SDK
+        if: steps.gen-full.outcome == 'success'
+        id: build-full
+        continue-on-error: true
         working-directory: sdks/python
         run: |
           uv pip install --system build
           python -m build
 
       - name: Publish Full SDK to PyPI
+        if: steps.build-full.outcome == 'success'
+        continue-on-error: true
         working-directory: sdks/python
         run: |
           uv pip install --system twine
@@ -64,6 +71,8 @@ jobs:
 
       # Portal SDK
       - name: Generate Portal SDK
+        id: gen-portal
+        continue-on-error: true
         run: |
           openapi-generator-cli generate \
             -i backend/portal-openapi.json \
@@ -72,10 +81,15 @@ jobs:
             --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }}
 
       - name: Build Portal SDK
+        if: steps.gen-portal.outcome == 'success'
+        id: build-portal
+        continue-on-error: true
         working-directory: sdks/python-portal
         run: python -m build
 
       - name: Publish Portal SDK to PyPI
+        if: steps.build-portal.outcome == 'success'
+        continue-on-error: true
         working-directory: sdks/python-portal
         run: twine upload dist/*
         env:
