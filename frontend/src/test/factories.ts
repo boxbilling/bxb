@@ -1,4 +1,4 @@
-import type { Subscription, Customer, Plan, BillingEntity } from '@/types/billing'
+import type { Subscription, Customer, Plan, BillingEntity } from '@/lib/api'
 
 export function buildSubscription(overrides: Partial<Subscription> = {}): Subscription {
   return {

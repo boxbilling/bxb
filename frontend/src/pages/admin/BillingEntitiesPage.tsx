@@ -43,7 +43,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { billingEntitiesApi, ApiError } from '@/lib/api'
-import type { BillingEntity } from '@/types/billing'
+import type { BillingEntity } from '@/lib/api'
 
 const PAGE_SIZE = 20
 

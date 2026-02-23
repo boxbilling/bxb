@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { billingEntitiesApi, ApiError } from '@/lib/api'
-import type { BillingEntityCreate, BillingEntityUpdate } from '@/types/billing'
+import type { BillingEntityCreate, BillingEntityUpdate } from '@/lib/api'
 
 const CURRENCIES = [
   'USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'CNY', 'INR', 'BRL',

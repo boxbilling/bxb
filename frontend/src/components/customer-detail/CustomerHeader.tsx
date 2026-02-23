@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import { PortalLinkDialog } from './PortalLinkDialog'
-import type { Customer } from '@/types/billing'
+import type { Customer } from '@/lib/api'
 
 export function CustomerHeader({ customer, onEdit }: { customer: Customer; onEdit: () => void }) {
   return (

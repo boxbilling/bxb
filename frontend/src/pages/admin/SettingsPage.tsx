@@ -8,7 +8,7 @@ import {
   ApiError,
 } from '@/lib/api'
 import { useOrganization } from '@/hooks/use-organization'
-import type { OrganizationUpdate } from '@/types/billing'
+import type { OrganizationUpdate } from '@/lib/api'
 
 import PageHeader from '@/components/PageHeader'
 import { cn } from '@/lib/utils'

@@ -79,7 +79,7 @@ import type {
   Webhook as WebhookType,
   WebhookDeliveryAttempt,
   EndpointDeliveryStats,
-} from '@/types/billing'
+} from '@/lib/api'
 
 const WEBHOOK_EVENT_TYPE_CATEGORIES: Record<string, string[]> = {
   Invoice: [

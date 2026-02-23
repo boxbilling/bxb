@@ -17,7 +17,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { plansApi, ApiError } from '@/lib/api'
-import type { BillableMetric, PlanSimulateResponse } from '@/types/billing'
+import type { BillableMetric, PlanSimulateResponse } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 export function PricingCalculator({

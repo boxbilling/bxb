@@ -54,7 +54,7 @@ import {
 } from '@/components/ui/select'
 import PageHeader from '@/components/PageHeader'
 import { integrationsApi, ApiError } from '@/lib/api'
-import type { Integration, IntegrationCreate, IntegrationUpdate } from '@/types/billing'
+import type { Integration, IntegrationCreate, IntegrationUpdate } from '@/lib/api'
 
 function IntegrationFormDialog({
   open,

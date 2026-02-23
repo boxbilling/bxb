@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, userEvent, waitFor } from '@/test/test-utils'
 import { buildSubscription, buildCustomer, buildPlan } from '@/test/factories'
-import type { Subscription, Customer, Plan } from '@/types/billing'
+import type { Subscription, Customer, Plan } from '@/lib/api'
 
 /* ------------------------------------------------------------------ */
 /*  Mock module-level state                                           */

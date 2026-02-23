@@ -86,7 +86,7 @@ import type {
   TaxCreate,
   TaxUpdate,
   ApplyTaxRequest,
-} from '@/types/billing'
+} from '@/lib/api'
 
 function formatTaxRate(rate: string | number): string {
   const num = typeof rate === 'string' ? parseFloat(rate) : rate

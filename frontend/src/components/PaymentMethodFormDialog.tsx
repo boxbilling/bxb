@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import type { PaymentMethodCreate } from '@/types/billing'
+import type { PaymentMethodCreate } from '@/lib/api'
 
 export function PaymentMethodFormDialog({
   open,

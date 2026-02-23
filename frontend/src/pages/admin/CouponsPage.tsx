@@ -77,7 +77,7 @@ import type {
   CouponUpdate,
   ApplyCouponRequest,
   AppliedCoupon,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const PAGE_SIZE = 20

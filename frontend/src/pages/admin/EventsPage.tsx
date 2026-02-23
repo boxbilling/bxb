@@ -44,7 +44,7 @@ import {
 import PageHeader from '@/components/PageHeader'
 import { eventsApi, subscriptionsApi, billableMetricsApi } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
-import type { EstimateFeesResponse } from '@/types/billing'
+import type { EstimateFeesResponse } from '@/lib/api'
 import type { DateRange } from 'react-day-picker'
 
 function FeeEstimatorPanel({

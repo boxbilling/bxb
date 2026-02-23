@@ -55,7 +55,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { paymentRequestsApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
-import type { PaymentRequest, PaymentRequestCreate, PaymentAttemptEntry } from '@/types/billing'
+import type { PaymentRequest, PaymentRequestCreate, PaymentAttemptEntry } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const PAGE_SIZE = 20

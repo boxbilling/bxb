@@ -53,7 +53,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { feesApi, taxesApi, customersApi, invoicesApi, ApiError } from '@/lib/api'
-import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/types/billing'
+import type { Fee, FeeUpdate, FeeType, FeePaymentStatus } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const feeTypeBadge: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; className: string }> = {

@@ -51,7 +51,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { dataExportsApi, customersApi, ApiError } from '@/lib/api'
-import type { DataExport, DataExportEstimate, ExportType } from '@/types/billing'
+import type { DataExport, DataExportEstimate, ExportType } from '@/lib/api'
 
 const PAGE_SIZE = 20
 

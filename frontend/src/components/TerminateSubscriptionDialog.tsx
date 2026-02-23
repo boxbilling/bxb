@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import type { Subscription, TerminationAction } from '@/types/billing'
+import type { Subscription, TerminationAction } from '@/lib/api'
 
 interface TerminateSubscriptionDialogProps {
   open: boolean

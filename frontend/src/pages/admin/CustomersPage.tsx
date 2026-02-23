@@ -34,7 +34,7 @@ import { CustomerAvatar } from '@/components/CustomerAvatar'
 import { CustomerHealthBadge } from '@/components/CustomerHealthBadge'
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
-import type { Customer, CustomerCreate, CustomerUpdate } from '@/types/billing'
+import type { Customer, CustomerCreate, CustomerUpdate } from '@/lib/api'
 
 const PAGE_SIZE = 20
 

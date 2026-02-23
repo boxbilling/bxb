@@ -72,7 +72,7 @@ import type {
   AddOnUpdate,
   ApplyAddOnRequest,
   AppliedAddOnDetail,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 // --- Create/Edit Add-on Dialog ---

@@ -68,7 +68,7 @@ import type {
   WalletCreate,
   WalletUpdate,
   WalletTopUp,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const PAGE_SIZE = 20

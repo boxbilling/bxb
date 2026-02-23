@@ -85,7 +85,7 @@ import type {
   WalletUpdate,
   WalletTopUp,
   WalletTransaction,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 function formatCredits(value: number | string): string {

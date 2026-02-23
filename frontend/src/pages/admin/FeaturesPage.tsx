@@ -54,7 +54,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { featuresApi, entitlementsApi, plansApi, ApiError } from '@/lib/api'
-import type { Feature, FeatureCreate, Entitlement } from '@/types/billing'
+import type { Feature, FeatureCreate, Entitlement } from '@/lib/api'
 
 const PAGE_SIZE = 20
 

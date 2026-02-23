@@ -47,7 +47,7 @@ import type {
   CampaignTimelineEvent,
   ExecutionHistoryEntry,
   CampaignPreviewInvoiceGroup,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 function StatusBadge({ status }: { status: string }) {

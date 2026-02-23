@@ -44,12 +44,8 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { paymentsApi, customersApi, invoicesApi } from '@/lib/api'
+import type { Payment, PaymentStatus, PaymentProvider } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
-import type { components } from '@/lib/schema'
-
-type PaymentResponse = components['schemas']['PaymentResponse']
-type PaymentStatus = components['schemas']['PaymentStatus']
-type PaymentProvider = components['schemas']['PaymentProvider']
 
 const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pending: 'secondary',
@@ -73,8 +69,8 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | 'all'>('all')
   const [providerFilter, setProviderFilter] = useState<PaymentProvider | 'all'>('all')
-  const [selectedPayment, setSelectedPayment] = useState<PaymentResponse | null>(null)
-  const [confirmAction, setConfirmAction] = useState<{ type: 'refund' | 'markPaid' | 'delete' | 'retry'; payment: PaymentResponse } | null>(null)
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: 'refund' | 'markPaid' | 'delete' | 'retry'; payment: Payment } | null>(null)
   const [refundAmount, setRefundAmount] = useState<string>('')
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full')
   const [page, setPage] = useState(1)

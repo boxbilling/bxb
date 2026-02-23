@@ -49,7 +49,7 @@ import { TerminateSubscriptionDialog } from '@/components/TerminateSubscriptionD
 import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import { subscriptionsApi, customersApi, plansApi, usageThresholdsApi, ApiError } from '@/lib/api'
-import type { Subscription, SubscriptionCreate, SubscriptionUpdate, SubscriptionStatus, TerminationAction, UsageThresholdCreateAPI } from '@/types/billing'
+import type { Subscription, SubscriptionCreate, SubscriptionUpdate, SubscriptionStatus, TerminationAction, UsageThresholdCreateAPI } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const PAGE_SIZE = 20

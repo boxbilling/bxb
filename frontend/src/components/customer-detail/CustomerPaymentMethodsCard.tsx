@@ -20,7 +20,7 @@ import {
 import { CardBrandIcon } from '@/components/CardBrandIcon'
 import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { paymentMethodsApi, ApiError } from '@/lib/api'
-import type { PaymentMethod, PaymentMethodCreate } from '@/types/billing'
+import type { PaymentMethod, PaymentMethodCreate } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 export function CustomerPaymentMethodsCard({ customerId, customerName }: { customerId: string; customerName: string }) {

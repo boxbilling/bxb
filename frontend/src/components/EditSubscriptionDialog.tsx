@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { Subscription, SubscriptionUpdate, BillingTime, TerminationAction } from '@/types/billing'
+import type { Subscription, SubscriptionUpdate, BillingTime, TerminationAction } from '@/lib/api'
 
 export function EditSubscriptionDialog({
   open,

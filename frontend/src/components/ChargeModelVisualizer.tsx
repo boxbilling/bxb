@@ -13,7 +13,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart'
-import type { Charge } from '@/types/billing'
+import type { Charge } from '@/lib/api'
 
 interface TierData {
   label: string

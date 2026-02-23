@@ -74,7 +74,7 @@ import type {
   UsageAlertCreate,
   UsageAlertUpdate,
   UsageAlertTrigger,
-} from '@/types/billing'
+} from '@/lib/api'
 
 function UsageAlertFormDialog({
   open,

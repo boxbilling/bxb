@@ -1,138 +1,188 @@
 // API client for bxb billing platform
+// This file is the single source of truth for all API types.
 import type { components } from '@/lib/schema'
 
-// Type aliases
-type CustomerResponse = components['schemas']['CustomerResponse']
-type CustomerCreate = components['schemas']['CustomerCreate']
-type CustomerUpdate = components['schemas']['CustomerUpdate']
+// --- Customers ---
+export type Customer = components['schemas']['CustomerResponse']
+export type CustomerCreate = components['schemas']['CustomerCreate']
+export type CustomerUpdate = components['schemas']['CustomerUpdate']
+export type CustomerIntegrationMappingResponse = components['schemas']['CustomerIntegrationMappingResponse']
 
-type BillableMetricResponse = components['schemas']['BillableMetricResponse']
-type BillableMetricCreate = components['schemas']['BillableMetricCreate']
-type BillableMetricUpdate = components['schemas']['BillableMetricUpdate']
-type BillableMetricFilterCreate = components['schemas']['BillableMetricFilterCreate']
-type BillableMetricFilterResponse = components['schemas']['BillableMetricFilterResponse']
+// --- Billable Metrics ---
+export type BillableMetric = components['schemas']['BillableMetricResponse']
+export type BillableMetricCreate = components['schemas']['BillableMetricCreate']
+export type BillableMetricUpdate = components['schemas']['BillableMetricUpdate']
+export type AggregationType = components['schemas']['AggregationType']
+export type BillableMetricFilter = components['schemas']['BillableMetricFilterResponse']
+export type BillableMetricFilterCreate = components['schemas']['BillableMetricFilterCreate']
 
-type PlanResponse = components['schemas']['PlanResponse']
-type PlanCreate = components['schemas']['PlanCreate']
-type PlanUpdate = components['schemas']['PlanUpdate']
-type PlanSimulateRequest = components['schemas']['PlanSimulateRequest']
-type PlanSimulateResponse = components['schemas']['PlanSimulateResponse']
+// --- Plans ---
+export type Plan = components['schemas']['PlanResponse']
+export type PlanCreate = components['schemas']['PlanCreate']
+export type PlanUpdate = components['schemas']['PlanUpdate']
+export type PlanInterval = components['schemas']['PlanInterval']
+export type PlanSimulateRequest = components['schemas']['PlanSimulateRequest']
+export type PlanSimulateResponse = components['schemas']['PlanSimulateResponse']
 
-type SubscriptionResponse = components['schemas']['SubscriptionResponse']
-type SubscriptionCreate = components['schemas']['SubscriptionCreate']
-type SubscriptionUpdate = components['schemas']['SubscriptionUpdate']
-type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']
-type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest']
-type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
-type NextBillingDateResponse = components['schemas']['NextBillingDateResponse']
-type UsageTrendResponse = components['schemas']['UsageTrendResponse']
-type BulkSubscriptionRequest = components['schemas']['BulkSubscriptionRequest']
-type BulkTerminateRequest = components['schemas']['BulkTerminateRequest']
-type BulkSubscriptionResponse = components['schemas']['BulkSubscriptionResponse']
+// --- Charges ---
+export type Charge = components['schemas']['ChargeOutput']
+export type ChargeInput = components['schemas']['ChargeInput']
+export type ChargeModel = components['schemas']['ChargeModel']
+export type ChargeFilterInput = components['schemas']['ChargeFilterInput']
+export type ChargeSimulationResult = components['schemas']['ChargeSimulationResult']
 
-type InvoiceResponse = components['schemas']['InvoiceResponse']
-type InvoiceUpdate = components['schemas']['InvoiceUpdate']
-type InvoiceStatus = components['schemas']['InvoiceStatus']
-type OneOffInvoiceCreate = components['schemas']['OneOffInvoiceCreate']
-type BulkFinalizeRequest = components['schemas']['BulkFinalizeRequest']
-type BulkFinalizeResponse = components['schemas']['BulkFinalizeResponse']
-type BulkVoidRequest = components['schemas']['BulkVoidRequest']
-type BulkVoidResponse = components['schemas']['BulkVoidResponse']
-type SendReminderResponse = components['schemas']['SendReminderResponse']
+// --- Subscriptions ---
+export type Subscription = components['schemas']['SubscriptionResponse']
+export type SubscriptionCreate = components['schemas']['SubscriptionCreate']
+export type SubscriptionUpdate = components['schemas']['SubscriptionUpdate']
+export type SubscriptionStatus = components['schemas']['SubscriptionStatus']
+export type BillingTime = components['schemas']['BillingTime']
+export type TerminationAction = components['schemas']['TerminationAction']
+export type ChangePlanPreviewRequest = components['schemas']['ChangePlanPreviewRequest']
+export type ChangePlanPreviewResponse = components['schemas']['ChangePlanPreviewResponse']
+export type PlanSummary = components['schemas']['PlanSummary']
+export type ProrationDetail = components['schemas']['ProrationDetail']
+export type BulkSubscriptionRequest = components['schemas']['BulkSubscriptionRequest']
+export type BulkTerminateRequest = components['schemas']['BulkTerminateRequest']
+export type BulkSubscriptionResponse = components['schemas']['BulkSubscriptionResponse']
+export type LifecycleEvent = components['schemas']['LifecycleEvent']
+export type SubscriptionLifecycleResponse = components['schemas']['SubscriptionLifecycleResponse']
+export type NextBillingDateResponse = components['schemas']['NextBillingDateResponse']
+export type UsageTrendResponse = components['schemas']['UsageTrendResponse']
 
-type PaymentResponse = components['schemas']['PaymentResponse']
-type PaymentStatus = components['schemas']['PaymentStatus']
-type PaymentProvider = components['schemas']['PaymentProvider']
-type CheckoutSessionCreate = components['schemas']['CheckoutSessionCreate']
-type CheckoutSessionResponse = components['schemas']['CheckoutSessionResponse']
-type ManualPaymentCreate = components['schemas']['ManualPaymentCreate']
+// --- Invoices ---
+export type Invoice = components['schemas']['InvoiceResponse']
+export type InvoiceUpdate = components['schemas']['InvoiceUpdate']
+export type InvoiceStatus = components['schemas']['InvoiceStatus']
+export type OneOffInvoiceCreate = components['schemas']['OneOffInvoiceCreate']
+export type BulkFinalizeRequest = components['schemas']['BulkFinalizeRequest']
+export type BulkFinalizeResponse = components['schemas']['BulkFinalizeResponse']
+export type BulkVoidRequest = components['schemas']['BulkVoidRequest']
+export type BulkVoidResponse = components['schemas']['BulkVoidResponse']
+export type SendReminderResponse = components['schemas']['SendReminderResponse']
+export type FeePreview = components['schemas']['FeePreview']
+export type InvoicePreviewResponse = components['schemas']['InvoicePreviewResponse']
+export type InvoicePreviewRequest = components['schemas']['InvoicePreviewRequest']
 
-type FeeResponse = components['schemas']['FeeResponse']
-type FeeUpdate = components['schemas']['FeeUpdate']
-type FeeType = components['schemas']['FeeType']
-type FeePaymentStatus = components['schemas']['FeePaymentStatus']
+// --- Fees ---
+export type Fee = components['schemas']['FeeResponse']
+export type FeeUpdate = components['schemas']['FeeUpdate']
+export type FeeType = components['schemas']['FeeType']
+export type FeePaymentStatus = components['schemas']['FeePaymentStatus']
+export type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
+export type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
 
-type WalletResponse = components['schemas']['WalletResponse']
-type WalletCreate = components['schemas']['WalletCreate']
-type WalletUpdate = components['schemas']['WalletUpdate']
-type WalletTopUp = components['schemas']['WalletTopUp']
-type WalletTransactionResponse = components['schemas']['WalletTransactionResponse']
-type BalanceTimelineResponse = components['schemas']['BalanceTimelineResponse']
-type DepletionForecastResponse = components['schemas']['DepletionForecastResponse']
-type WalletTransferRequest = components['schemas']['WalletTransferRequest']
-type WalletTransferResponse = components['schemas']['WalletTransferResponse']
-type PortalTopUpResponse = components['schemas']['PortalTopUpResponse']
+// --- Payments ---
+export type Payment = components['schemas']['PaymentResponse']
+export type PaymentStatus = components['schemas']['PaymentStatus']
+export type PaymentProvider = components['schemas']['PaymentProvider']
+export type CheckoutSessionCreate = components['schemas']['CheckoutSessionCreate']
+export type CheckoutSessionResponse = components['schemas']['CheckoutSessionResponse']
+export type ManualPaymentCreate = components['schemas']['ManualPaymentCreate']
 
-type CouponResponse = components['schemas']['CouponResponse']
-type CouponCreate = components['schemas']['CouponCreate']
-type CouponUpdate = components['schemas']['CouponUpdate']
-type CouponStatus = components['schemas']['CouponStatus']
-type ApplyCouponRequest = components['schemas']['ApplyCouponRequest']
-type AppliedCouponResponse = components['schemas']['AppliedCouponResponse']
+// --- Wallets ---
+export type Wallet = components['schemas']['WalletResponse']
+export type WalletCreate = components['schemas']['WalletCreate']
+export type WalletUpdate = components['schemas']['WalletUpdate']
+export type WalletTopUp = components['schemas']['WalletTopUp']
+export type WalletStatus = components['schemas']['WalletStatus']
+export type WalletTransaction = components['schemas']['WalletTransactionResponse']
+export type BalanceTimelineResponse = components['schemas']['BalanceTimelineResponse']
+export type BalanceTimelinePoint = components['schemas']['BalanceTimelinePoint']
+export type DepletionForecastResponse = components['schemas']['DepletionForecastResponse']
+export type WalletTransferRequest = components['schemas']['WalletTransferRequest']
+export type WalletTransferResponse = components['schemas']['WalletTransferResponse']
 
-type AddOnResponse = components['schemas']['AddOnResponse']
-type AddOnCreate = components['schemas']['AddOnCreate']
-type AddOnUpdate = components['schemas']['AddOnUpdate']
-type ApplyAddOnRequest = components['schemas']['ApplyAddOnRequest']
-type AppliedAddOnResponse = components['schemas']['AppliedAddOnResponse']
-type AppliedAddOnDetailResponse = components['schemas']['AppliedAddOnDetailResponse']
-type PortalAddOnResponse = components['schemas']['PortalAddOnResponse']
-type PortalPurchasedAddOnResponse = components['schemas']['PortalPurchasedAddOnResponse']
-type PortalPurchaseAddOnResponse = components['schemas']['PortalPurchaseAddOnResponse']
-type CustomerIntegrationMappingResponse = components['schemas']['CustomerIntegrationMappingResponse']
-type PortalAppliedCouponResponse = components['schemas']['PortalAppliedCouponResponse']
-type PortalUsageTrendResponse = components['schemas']['PortalUsageTrendResponse']
-type PortalUsageLimitsResponse = components['schemas']['PortalUsageLimitsResponse']
-type PortalProjectedUsageResponse = components['schemas']['PortalProjectedUsageResponse']
-type PortalPayNowResponse = components['schemas']['PortalPayNowResponse']
+// --- Coupons ---
+export type Coupon = components['schemas']['CouponResponse']
+export type CouponCreate = components['schemas']['CouponCreate']
+export type CouponUpdate = components['schemas']['CouponUpdate']
+export type CouponType = components['schemas']['CouponType']
+export type CouponFrequency = components['schemas']['CouponFrequency']
+export type CouponStatus = components['schemas']['CouponStatus']
+export type ApplyCouponRequest = components['schemas']['ApplyCouponRequest']
+export type AppliedCoupon = components['schemas']['AppliedCouponResponse']
 
-type CreditNoteResponse = components['schemas']['CreditNoteResponse']
-type CreditNoteCreate = components['schemas']['CreditNoteCreate']
-type CreditNoteUpdate = components['schemas']['CreditNoteUpdate']
+// --- Add-ons ---
+export type AddOn = components['schemas']['AddOnResponse']
+export type AddOnCreate = components['schemas']['AddOnCreate']
+export type AddOnUpdate = components['schemas']['AddOnUpdate']
+export type ApplyAddOnRequest = components['schemas']['ApplyAddOnRequest']
+export type AppliedAddOn = components['schemas']['AppliedAddOnResponse']
+export type AppliedAddOnDetail = components['schemas']['AppliedAddOnDetailResponse']
+export type PortalAddOn = components['schemas']['PortalAddOnResponse']
+export type PortalPurchasedAddOn = components['schemas']['PortalPurchasedAddOnResponse']
+export type PortalPurchaseAddOnResult = components['schemas']['PortalPurchaseAddOnResponse']
+export type PortalAppliedCoupon = components['schemas']['PortalAppliedCouponResponse']
 
-type TaxResponse = components['schemas']['TaxResponse']
-type TaxCreate = components['schemas']['TaxCreate']
-type TaxUpdate = components['schemas']['TaxUpdate']
-type ApplyTaxRequest = components['schemas']['ApplyTaxRequest']
-type AppliedTaxResponse = components['schemas']['AppliedTaxResponse']
-type TaxAppliedEntitiesResponse = components['schemas']['TaxAppliedEntitiesResponse']
-type TaxApplicationCountsResponse = components['schemas']['TaxApplicationCountsResponse']
+// --- Credit Notes ---
+export type CreditNote = components['schemas']['CreditNoteResponse']
+export type CreditNoteCreate = components['schemas']['CreditNoteCreate']
+export type CreditNoteUpdate = components['schemas']['CreditNoteUpdate']
+export type CreditNoteItemCreate = components['schemas']['CreditNoteItemCreate']
+export type CreditNoteStatus = components['schemas']['CreditNoteStatus']
+export type CreditNoteType = components['schemas']['CreditNoteType']
+export type CreditNoteReason = components['schemas']['CreditNoteReason']
 
-type WebhookEndpointResponse = components['schemas']['WebhookEndpointResponse']
-type WebhookEndpointCreate = components['schemas']['WebhookEndpointCreate']
-type WebhookEndpointUpdate = components['schemas']['WebhookEndpointUpdate']
-type WebhookResponse = components['schemas']['WebhookResponse']
-type WebhookDeliveryAttemptResponse = components['schemas']['WebhookDeliveryAttemptResponse']
-type EndpointDeliveryStats = components['schemas']['EndpointDeliveryStats']
+// --- Taxes ---
+export type Tax = components['schemas']['TaxResponse']
+export type TaxCreate = components['schemas']['TaxCreate']
+export type TaxUpdate = components['schemas']['TaxUpdate']
+export type ApplyTaxRequest = components['schemas']['ApplyTaxRequest']
+export type AppliedTax = components['schemas']['AppliedTaxResponse']
+export type TaxAppliedEntitiesResponse = components['schemas']['TaxAppliedEntitiesResponse']
+export type TaxApplicationCountsResponse = components['schemas']['TaxApplicationCountsResponse']
 
-type OrganizationResponse = components['schemas']['OrganizationResponse']
-type OrganizationCreate = components['schemas']['OrganizationCreate']
-type OrganizationUpdate = components['schemas']['OrganizationUpdate']
-type PortalBrandingResponse = components['schemas']['PortalBrandingResponse']
-type ApiKeyCreate = components['schemas']['ApiKeyCreate']
-type ApiKeyCreateResponse = components['schemas']['ApiKeyCreateResponse']
-type ApiKeyListResponse = components['schemas']['ApiKeyListResponse']
+// --- Webhooks ---
+export type WebhookEndpoint = components['schemas']['WebhookEndpointResponse']
+export type WebhookEndpointCreate = components['schemas']['WebhookEndpointCreate']
+export type WebhookEndpointUpdate = components['schemas']['WebhookEndpointUpdate']
+export type Webhook = components['schemas']['WebhookResponse']
+export type WebhookDeliveryAttempt = components['schemas']['WebhookDeliveryAttemptResponse']
+export type EndpointDeliveryStats = components['schemas']['EndpointDeliveryStats']
 
-type DunningCampaignResponse = components['schemas']['DunningCampaignResponse']
-type DunningCampaignCreate = components['schemas']['DunningCampaignCreate']
-type DunningCampaignUpdate = components['schemas']['DunningCampaignUpdate']
-type DunningCampaignPerformanceStats = components['schemas']['DunningCampaignPerformanceStats']
-type ExecutionHistoryEntry = components['schemas']['ExecutionHistoryEntry']
-type CampaignTimelineResponse = components['schemas']['CampaignTimelineResponse']
-type CampaignPreviewResponse = components['schemas']['CampaignPreviewResponse']
+// --- Organizations ---
+export type Organization = components['schemas']['OrganizationResponse']
+export type OrganizationCreate = components['schemas']['OrganizationCreate']
+export type OrganizationUpdate = components['schemas']['OrganizationUpdate']
+export type PortalBranding = components['schemas']['PortalBrandingResponse']
+export type ApiKeyCreate = components['schemas']['ApiKeyCreate']
+export type ApiKeyCreateResponse = components['schemas']['ApiKeyCreateResponse']
+export type ApiKey = components['schemas']['ApiKeyListResponse']
 
-type CommitmentResponse = components['schemas']['CommitmentResponse']
-type CommitmentCreateAPI = components['schemas']['CommitmentCreateAPI']
-type CommitmentUpdate = components['schemas']['CommitmentUpdate']
+// --- Dunning Campaigns ---
+export type DunningCampaign = components['schemas']['DunningCampaignResponse']
+export type DunningCampaignCreate = components['schemas']['DunningCampaignCreate']
+export type DunningCampaignUpdate = components['schemas']['DunningCampaignUpdate']
+export type DunningCampaignThreshold = components['schemas']['DunningCampaignThresholdResponse']
+export type DunningCampaignThresholdCreate = components['schemas']['DunningCampaignThresholdCreate']
+export type DunningCampaignPerformanceStats = components['schemas']['DunningCampaignPerformanceStats']
+export type ExecutionHistoryEntry = components['schemas']['ExecutionHistoryEntry']
+export type ExecutionHistoryInvoice = components['schemas']['ExecutionHistoryInvoice']
+export type CampaignTimelineEvent = components['schemas']['CampaignTimelineEvent']
+export type CampaignTimelineResponse = components['schemas']['CampaignTimelineResponse']
+export type CampaignPreviewResponse = components['schemas']['CampaignPreviewResponse']
+export type CampaignPreviewInvoiceGroup = components['schemas']['CampaignPreviewInvoiceGroup']
 
-type UsageThresholdResponse = components['schemas']['UsageThresholdResponse']
-type UsageThresholdCreateAPI = components['schemas']['UsageThresholdCreateAPI']
-type CurrentUsageResponse = components['schemas']['app__schemas__usage_threshold__CurrentUsageResponse']
-type CustomerCurrentUsageResponse = components['schemas']['app__schemas__usage__CurrentUsageResponse']
+// --- Commitments ---
+export type Commitment = components['schemas']['CommitmentResponse']
+export type CommitmentCreateAPI = components['schemas']['CommitmentCreateAPI']
+export type CommitmentUpdate = components['schemas']['CommitmentUpdate']
 
-type IntegrationResponse = components['schemas']['IntegrationResponse']
-type IntegrationCreate = components['schemas']['IntegrationCreate']
-type IntegrationUpdate = components['schemas']['IntegrationUpdate']
+// --- Usage Thresholds ---
+export type UsageThreshold = components['schemas']['UsageThresholdResponse']
+export type UsageThresholdCreateAPI = components['schemas']['UsageThresholdCreateAPI']
+export type CurrentUsage = components['schemas']['app__schemas__usage_threshold__CurrentUsageResponse']
+
+// --- Customer Usage ---
+export type BillableMetricUsage = components['schemas']['BillableMetricUsage']
+export type ChargeUsage = components['schemas']['ChargeUsage']
+export type CustomerCurrentUsageResponse = components['schemas']['app__schemas__usage__CurrentUsageResponse']
+
+// --- Integrations ---
+export type Integration = components['schemas']['IntegrationResponse']
+export type IntegrationCreate = components['schemas']['IntegrationCreate']
+export type IntegrationUpdate = components['schemas']['IntegrationUpdate']
 export type IntegrationCustomerResponse = {
   id: string
   integration_id: string
@@ -142,7 +192,6 @@ export type IntegrationCustomerResponse = {
   created_at: string
   updated_at: string
 }
-
 export type IntegrationMappingResponse = {
   id: string
   integration_id: string
@@ -154,7 +203,6 @@ export type IntegrationMappingResponse = {
   created_at: string
   updated_at: string
 }
-
 export type IntegrationSyncHistoryResponse = {
   id: string
   integration_id: string
@@ -170,51 +218,165 @@ export type IntegrationSyncHistoryResponse = {
   created_at: string
 }
 
-type DataExportResponse = components['schemas']['DataExportResponse']
-type DataExportCreate = components['schemas']['DataExportCreate']
-type DataExportEstimate = { export_type: string; record_count: number }
+// --- Data Exports ---
+export type DataExport = components['schemas']['DataExportResponse']
+export type DataExportCreate = components['schemas']['DataExportCreate']
+export type ExportType = components['schemas']['ExportType']
+export type DataExportEstimate = { export_type: string; record_count: number }
 
-type EventResponse = components['schemas']['EventResponse']
-type EventCreate = components['schemas']['EventCreate']
-type EventBatchCreate = components['schemas']['EventBatchCreate']
-type EventBatchResponse = components['schemas']['EventBatchResponse']
-type EventVolumeResponse = components['schemas']['EventVolumeResponse']
-type EventReprocessResponse = components['schemas']['EventReprocessResponse']
+// --- Events ---
+export type Event = components['schemas']['EventResponse']
+export type EventCreate = components['schemas']['EventCreate']
+export type EventBatchCreate = components['schemas']['EventBatchCreate']
+export type EventBatchResponse = components['schemas']['EventBatchResponse']
+export type EventVolumePoint = components['schemas']['EventVolumePoint']
+export type EventVolumeResponse = components['schemas']['EventVolumeResponse']
+export type EventReprocessResponse = components['schemas']['EventReprocessResponse']
 
-type InvoicePreviewRequest = components['schemas']['InvoicePreviewRequest']
-type InvoicePreviewResponse = components['schemas']['InvoicePreviewResponse']
-type EstimateFeesRequest = components['schemas']['EstimateFeesRequest']
-type EstimateFeesResponse = components['schemas']['EstimateFeesResponse']
+// --- Payment Methods ---
+export type PaymentMethod = components['schemas']['PaymentMethodResponse']
+export type PaymentMethodCreate = components['schemas']['PaymentMethodCreate']
+export type SetupSessionCreate = components['schemas']['SetupSessionCreate']
+export type SetupSessionResponse = components['schemas']['SetupSessionResponse']
 
-type PaymentMethodResponse = components['schemas']['PaymentMethodResponse']
-type PaymentMethodCreate = components['schemas']['PaymentMethodCreate']
-type SetupSessionCreate = components['schemas']['SetupSessionCreate']
-type SetupSessionResponse = components['schemas']['SetupSessionResponse']
+// --- Audit Logs ---
+export type AuditLog = components['schemas']['AuditLogResponse']
 
-type PaymentRequestResponse = components['schemas']['PaymentRequestResponse']
-type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
-type BatchPaymentRequestResponse = components['schemas']['BatchPaymentRequestResponse']
-type PaymentAttemptHistoryResponse = components['schemas']['PaymentAttemptHistoryResponse']
+// --- Billing Entities ---
+export type BillingEntity = components['schemas']['BillingEntityResponse']
+export type BillingEntityCreate = components['schemas']['BillingEntityCreate']
+export type BillingEntityUpdate = components['schemas']['BillingEntityUpdate']
 
-type AuditLogResponse = components['schemas']['AuditLogResponse']
+// --- Features ---
+export type Feature = components['schemas']['FeatureResponse']
+export type FeatureCreate = components['schemas']['FeatureCreate']
+export type FeatureUpdate = components['schemas']['FeatureUpdate']
+export type FeatureType = components['schemas']['FeatureType']
 
-type BillingEntityResponse = components['schemas']['BillingEntityResponse']
-type BillingEntityCreate = components['schemas']['BillingEntityCreate']
-type BillingEntityUpdate = components['schemas']['BillingEntityUpdate']
+// --- Entitlements ---
+export type Entitlement = components['schemas']['EntitlementResponse']
+export type EntitlementCreate = components['schemas']['EntitlementCreate']
+export type EntitlementUpdate = components['schemas']['EntitlementUpdate']
 
-type FeatureResponse = components['schemas']['FeatureResponse']
-type FeatureCreate = components['schemas']['FeatureCreate']
-type FeatureUpdate = components['schemas']['FeatureUpdate']
+// --- Usage Alerts ---
+export type UsageAlert = components['schemas']['UsageAlertResponse']
+export type UsageAlertCreate = components['schemas']['UsageAlertCreate']
+export type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
 
-type EntitlementResponse = components['schemas']['EntitlementResponse']
-type EntitlementCreate = components['schemas']['EntitlementCreate']
-type EntitlementUpdate = components['schemas']['EntitlementUpdate']
+export interface UsageAlertStatus {
+  alert_id: string
+  current_usage: string
+  threshold_value: string
+  usage_percentage: string
+  billing_period_start: string
+  billing_period_end: string
+}
 
-type UsageAlertResponse = components['schemas']['UsageAlertResponse']
-type UsageAlertCreate = components['schemas']['UsageAlertCreate']
-type UsageAlertUpdate = components['schemas']['UsageAlertUpdate']
+export interface UsageAlertTrigger {
+  id: string
+  usage_alert_id: string
+  current_usage: string
+  threshold_value: string
+  metric_code: string
+  triggered_at: string
+}
 
-// Portal-specific types (not generated from OpenAPI schema)
+// --- Payment Requests ---
+export type PaymentRequest = components['schemas']['PaymentRequestResponse']
+export type PaymentRequestCreate = components['schemas']['PaymentRequestCreate']
+export type BatchPaymentRequestResponse = components['schemas']['BatchPaymentRequestResponse']
+export type PaymentAttemptHistoryResponse = components['schemas']['PaymentAttemptHistoryResponse']
+export type PaymentAttemptEntry = components['schemas']['PaymentAttemptEntry']
+
+// --- Customer Health ---
+export interface CustomerHealthResponse {
+  status: 'good' | 'warning' | 'critical'
+  total_invoices: number
+  paid_invoices: number
+  overdue_invoices: number
+  total_payments: number
+  failed_payments: number
+  overdue_amount: number
+}
+
+// --- Dashboard types ---
+export interface TrendIndicator {
+  previous_value: number
+  change_percent: number | null
+}
+
+export interface DashboardStats {
+  total_customers: number
+  active_subscriptions: number
+  monthly_recurring_revenue: number
+  total_invoiced: number
+  total_wallet_credits: number
+  currency: string
+}
+
+export interface RecentActivity {
+  id: string
+  type: 'customer_created' | 'subscription_created' | 'invoice_finalized' | 'payment_received' | 'subscription_canceled' | 'payment_failed' | 'credit_note_created' | 'wallet_topped_up'
+  description: string
+  timestamp: string
+  resource_type?: string | null
+  resource_id?: string | null
+}
+
+export interface RevenueDataPoint {
+  month: string
+  revenue: number
+}
+
+export interface RevenueMetrics {
+  mrr: number
+  total_revenue_this_month: number
+  outstanding_invoices: number
+  overdue_amount: number
+  currency: string
+  monthly_trend: RevenueDataPoint[]
+  mrr_trend: TrendIndicator | null
+}
+
+export interface CustomerMetrics {
+  total: number
+  new_this_month: number
+  churned_this_month: number
+  new_trend: TrendIndicator | null
+  churned_trend: TrendIndicator | null
+}
+
+export interface SubscriptionPlanBreakdown {
+  plan_name: string
+  count: number
+}
+
+export interface SubscriptionMetrics {
+  active: number
+  new_this_month: number
+  canceled_this_month: number
+  by_plan: SubscriptionPlanBreakdown[]
+  new_trend: TrendIndicator | null
+  canceled_trend: TrendIndicator | null
+}
+
+export interface UsageMetricVolume {
+  metric_name: string
+  metric_code: string
+  event_count: number
+}
+
+export interface UsageMetrics {
+  top_metrics: UsageMetricVolume[]
+}
+
+// --- Portal types ---
+export type PortalTopUpResponse = components['schemas']['PortalTopUpResponse']
+export type PortalUsageTrendResponse = components['schemas']['PortalUsageTrendResponse']
+export type PortalUsageLimitsResponse = components['schemas']['PortalUsageLimitsResponse']
+export type PortalProjectedUsageResponse = components['schemas']['PortalProjectedUsageResponse']
+export type PortalPayNowResponse = components['schemas']['PortalPayNowResponse']
+
 export type PortalPlanSummary = {
   id: string
   name: string
@@ -292,6 +454,10 @@ export type PortalDashboardSummaryResponse = {
   usage_progress: PortalUsageProgress[]
   quick_actions: PortalQuickActions
 }
+
+// --- Notification types ---
+export type NotificationResponse = components['schemas']['NotificationResponse']
+export type NotificationCountResponse = components['schemas']['NotificationCountResponse']
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -500,13 +666,13 @@ export const portalApi = {
   getDashboardSummary: (token: string) =>
     portalRequest<PortalDashboardSummaryResponse>('/portal/dashboard_summary', token),
   getCustomer: (token: string) =>
-    portalRequest<CustomerResponse>('/portal/customer', token),
+    portalRequest<Customer>('/portal/customer', token),
   getBranding: (token: string) =>
-    portalRequest<PortalBrandingResponse>('/portal/branding', token),
+    portalRequest<PortalBranding>('/portal/branding', token),
   listInvoices: (token: string) =>
-    portalRequest<InvoiceResponse[]>('/portal/invoices', token),
+    portalRequest<Invoice[]>('/portal/invoices', token),
   getInvoice: (token: string, id: string) =>
-    portalRequest<InvoiceResponse>(`/portal/invoices/${id}`, token),
+    portalRequest<Invoice>(`/portal/invoices/${id}`, token),
   downloadInvoicePdf: (token: string, id: string) =>
     portalRequestBlob(`/portal/invoices/${id}/download_pdf`, token),
   previewInvoicePdf: (token: string, id: string) =>
@@ -517,7 +683,7 @@ export const portalApi = {
       body: JSON.stringify({ success_url: successUrl, cancel_url: cancelUrl }),
     }),
   getInvoicePayments: (token: string, id: string) =>
-    portalRequest<PaymentResponse[]>(`/portal/invoices/${id}/payments`, token),
+    portalRequest<Payment[]>(`/portal/invoices/${id}/payments`, token),
   getCurrentUsage: (token: string, subscriptionId: string) =>
     portalRequest<CustomerCurrentUsageResponse>(`/portal/current_usage?subscription_id=${subscriptionId}`, token),
   getUsageTrend: (token: string, subscriptionId: string, startDate?: string, endDate?: string) => {
@@ -531,13 +697,13 @@ export const portalApi = {
   getProjectedUsage: (token: string, subscriptionId: string) =>
     portalRequest<PortalProjectedUsageResponse>(`/portal/usage/projected?subscription_id=${subscriptionId}`, token),
   listPayments: (token: string) =>
-    portalRequest<PaymentResponse[]>('/portal/payments', token),
+    portalRequest<Payment[]>('/portal/payments', token),
   getWallet: (token: string) =>
-    portalRequest<WalletResponse>('/portal/wallet', token),
+    portalRequest<Wallet>('/portal/wallet', token),
   getWallets: (token: string) =>
-    portalRequest<WalletResponse[]>('/portal/wallet', token),
+    portalRequest<Wallet[]>('/portal/wallet', token),
   getWalletTransactions: (token: string, walletId: string) =>
-    portalRequest<WalletTransactionResponse[]>(`/portal/wallet/${walletId}/transactions`, token),
+    portalRequest<WalletTransaction[]>(`/portal/wallet/${walletId}/transactions`, token),
   getWalletBalanceTimeline: (token: string, walletId: string) =>
     portalRequest<BalanceTimelineResponse>(`/portal/wallet/${walletId}/balance_timeline`, token),
   topUpWallet: (token: string, walletId: string, credits: number) =>
@@ -546,14 +712,14 @@ export const portalApi = {
       body: JSON.stringify({ credits }),
     }),
   updateProfile: (token: string, data: { name?: string; email?: string | null; timezone?: string }) =>
-    portalRequest<CustomerResponse>('/portal/profile', token, {
+    portalRequest<Customer>('/portal/profile', token, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   listPaymentMethods: (token: string) =>
-    portalRequest<PaymentMethodResponse[]>('/portal/payment_methods', token),
+    portalRequest<PaymentMethod[]>('/portal/payment_methods', token),
   addPaymentMethod: (token: string, data: PaymentMethodCreate) =>
-    portalRequest<PaymentMethodResponse>('/portal/payment_methods', token, {
+    portalRequest<PaymentMethod>('/portal/payment_methods', token, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -562,7 +728,7 @@ export const portalApi = {
       method: 'DELETE',
     }),
   setDefaultPaymentMethod: (token: string, id: string) =>
-    portalRequest<PaymentMethodResponse>(`/portal/payment_methods/${id}/set_default`, token, {
+    portalRequest<PaymentMethod>(`/portal/payment_methods/${id}/set_default`, token, {
       method: 'POST',
     }),
   listSubscriptions: (token: string) =>
@@ -577,22 +743,22 @@ export const portalApi = {
       body: JSON.stringify({ new_plan_id: newPlanId }),
     }),
   changePlan: (token: string, subscriptionId: string, newPlanId: string) =>
-    portalRequest<SubscriptionResponse>(`/portal/subscriptions/${subscriptionId}/change_plan`, token, {
+    portalRequest<Subscription>(`/portal/subscriptions/${subscriptionId}/change_plan`, token, {
       method: 'POST',
       body: JSON.stringify({ new_plan_id: newPlanId }),
     }),
   listAddOns: (token: string) =>
-    portalRequest<PortalAddOnResponse[]>('/portal/add_ons', token),
+    portalRequest<PortalAddOn[]>('/portal/add_ons', token),
   listPurchasedAddOns: (token: string) =>
-    portalRequest<PortalPurchasedAddOnResponse[]>('/portal/add_ons/purchased', token),
+    portalRequest<PortalPurchasedAddOn[]>('/portal/add_ons/purchased', token),
   purchaseAddOn: (token: string, addOnId: string) =>
-    portalRequest<PortalPurchaseAddOnResponse>(`/portal/add_ons/${addOnId}/purchase`, token, {
+    portalRequest<PortalPurchaseAddOnResult>(`/portal/add_ons/${addOnId}/purchase`, token, {
       method: 'POST',
     }),
   listCoupons: (token: string) =>
-    portalRequest<PortalAppliedCouponResponse[]>('/portal/coupons', token),
+    portalRequest<PortalAppliedCoupon[]>('/portal/coupons', token),
   redeemCoupon: (token: string, couponCode: string) =>
-    portalRequest<PortalAppliedCouponResponse>('/portal/coupons/redeem', token, {
+    portalRequest<PortalAppliedCoupon>('/portal/coupons/redeem', token, {
       method: 'POST',
       body: JSON.stringify({ coupon_code: couponCode }),
     }),
@@ -601,24 +767,24 @@ export const portalApi = {
 // Customers API
 export const customersApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<CustomerResponse[]>(`/v1/customers/${buildQuery(params)}`),
+    request<Customer[]>(`/v1/customers/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<CustomerResponse>(`/v1/customers/${buildQuery(params)}`),
-  get: (id: string) => request<CustomerResponse>(`/v1/customers/${id}`),
+    requestWithCount<Customer>(`/v1/customers/${buildQuery(params)}`),
+  get: (id: string) => request<Customer>(`/v1/customers/${id}`),
   create: (data: CustomerCreate) =>
-    request<CustomerResponse>('/v1/customers/', {
+    request<Customer>('/v1/customers/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: CustomerUpdate) =>
-    request<CustomerResponse>(`/v1/customers/${id}`, {
+    request<Customer>(`/v1/customers/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   delete: (id: string) =>
     request<void>(`/v1/customers/${id}`, { method: 'DELETE' }),
   getAppliedCoupons: (customerId: string) =>
-    request<AppliedCouponResponse[]>(`/v1/customers/${customerId}/applied_coupons`),
+    request<AppliedCoupon[]>(`/v1/customers/${customerId}/applied_coupons`),
   getCurrentUsage: (externalId: string, subscriptionId: string) =>
     request<CustomerCurrentUsageResponse>(`/v1/customers/${externalId}/current_usage${buildQuery({ subscription_id: subscriptionId })}`),
   getProjectedUsage: (externalId: string, subscriptionId: string) =>
@@ -630,7 +796,7 @@ export const customersApi = {
   getHealth: (customerId: string) =>
     request<{ status: string; total_invoices: number; paid_invoices: number; overdue_invoices: number; total_payments: number; failed_payments: number; overdue_amount: number }>(`/v1/customers/${customerId}/health`),
   getAppliedAddOns: (customerId: string) =>
-    request<AppliedAddOnDetailResponse[]>(`/v1/customers/${customerId}/applied_add_ons`),
+    request<AppliedAddOnDetail[]>(`/v1/customers/${customerId}/applied_add_ons`),
   getIntegrationMappings: (customerId: string) =>
     request<CustomerIntegrationMappingResponse[]>(`/v1/customers/${customerId}/integration_mappings`),
 }
@@ -638,17 +804,17 @@ export const customersApi = {
 // Billable Metrics API
 export const billableMetricsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<BillableMetricResponse[]>(`/v1/billable_metrics/${buildQuery(params)}`),
+    request<BillableMetric[]>(`/v1/billable_metrics/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<BillableMetricResponse>(`/v1/billable_metrics/${buildQuery(params)}`),
-  get: (id: string) => request<BillableMetricResponse>(`/v1/billable_metrics/${id}`),
+    requestWithCount<BillableMetric>(`/v1/billable_metrics/${buildQuery(params)}`),
+  get: (id: string) => request<BillableMetric>(`/v1/billable_metrics/${id}`),
   create: (data: BillableMetricCreate) =>
-    request<BillableMetricResponse>('/v1/billable_metrics/', {
+    request<BillableMetric>('/v1/billable_metrics/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: BillableMetricUpdate) =>
-    request<BillableMetricResponse>(`/v1/billable_metrics/${id}`, {
+    request<BillableMetric>(`/v1/billable_metrics/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -659,12 +825,12 @@ export const billableMetricsApi = {
   planCounts: () =>
     request<Record<string, number>>('/v1/billable_metrics/plan_counts'),
   createFilter: (code: string, data: BillableMetricFilterCreate) =>
-    request<BillableMetricFilterResponse>(`/v1/billable_metrics/${code}/filters`, {
+    request<BillableMetricFilter>(`/v1/billable_metrics/${code}/filters`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   listFilters: (code: string) =>
-    request<BillableMetricFilterResponse[]>(`/v1/billable_metrics/${code}/filters`),
+    request<BillableMetricFilter[]>(`/v1/billable_metrics/${code}/filters`),
   deleteFilter: (code: string, filterId: string) =>
     request<void>(`/v1/billable_metrics/${code}/filters/${filterId}`, { method: 'DELETE' }),
 }
@@ -672,17 +838,17 @@ export const billableMetricsApi = {
 // Plans API
 export const plansApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<PlanResponse[]>(`/v1/plans/${buildQuery(params)}`),
+    request<Plan[]>(`/v1/plans/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<PlanResponse>(`/v1/plans/${buildQuery(params)}`),
-  get: (id: string) => request<PlanResponse>(`/v1/plans/${id}`),
+    requestWithCount<Plan>(`/v1/plans/${buildQuery(params)}`),
+  get: (id: string) => request<Plan>(`/v1/plans/${id}`),
   create: (data: PlanCreate) =>
-    request<PlanResponse>('/v1/plans/', {
+    request<Plan>('/v1/plans/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: PlanUpdate) =>
-    request<PlanResponse>(`/v1/plans/${id}`, {
+    request<Plan>(`/v1/plans/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -700,32 +866,32 @@ export const plansApi = {
 // Subscriptions API
 export const subscriptionsApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string }) =>
-    request<SubscriptionResponse[]>(`/v1/subscriptions/${buildQuery(params)}`),
+    request<Subscription[]>(`/v1/subscriptions/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; order_by?: string }) =>
-    requestWithCount<SubscriptionResponse>(`/v1/subscriptions/${buildQuery(params)}`),
-  get: (id: string) => request<SubscriptionResponse>(`/v1/subscriptions/${id}`),
+    requestWithCount<Subscription>(`/v1/subscriptions/${buildQuery(params)}`),
+  get: (id: string) => request<Subscription>(`/v1/subscriptions/${id}`),
   create: (data: SubscriptionCreate) =>
-    request<SubscriptionResponse>('/v1/subscriptions/', {
+    request<Subscription>('/v1/subscriptions/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: SubscriptionUpdate) =>
-    request<SubscriptionResponse>(`/v1/subscriptions/${id}`, {
+    request<Subscription>(`/v1/subscriptions/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   cancel: (id: string, onTerminationAction?: string) =>
-    request<SubscriptionResponse>(`/v1/subscriptions/${id}/cancel${buildQuery({ on_termination_action: onTerminationAction })}`, {
+    request<Subscription>(`/v1/subscriptions/${id}/cancel${buildQuery({ on_termination_action: onTerminationAction })}`, {
       method: 'POST',
     }),
   terminate: (id: string, onTerminationAction?: string) =>
     request<void>(`/v1/subscriptions/${id}${buildQuery({ on_termination_action: onTerminationAction })}`, { method: 'DELETE' }),
   pause: (id: string) =>
-    request<SubscriptionResponse>(`/v1/subscriptions/${id}/pause`, { method: 'POST' }),
+    request<Subscription>(`/v1/subscriptions/${id}/pause`, { method: 'POST' }),
   resume: (id: string) =>
-    request<SubscriptionResponse>(`/v1/subscriptions/${id}/resume`, { method: 'POST' }),
+    request<Subscription>(`/v1/subscriptions/${id}/resume`, { method: 'POST' }),
   getEntitlements: (externalId: string) =>
-    request<EntitlementResponse[]>(`/v1/subscriptions/${externalId}/entitlements`),
+    request<Entitlement[]>(`/v1/subscriptions/${externalId}/entitlements`),
   getLifecycle: (id: string) =>
     request<SubscriptionLifecycleResponse>(`/v1/subscriptions/${id}/lifecycle`),
   changePlanPreview: (id: string, data: ChangePlanPreviewRequest) =>
@@ -757,12 +923,12 @@ export const subscriptionsApi = {
 // Events API
 export const eventsApi = {
   list: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string }) =>
-    request<EventResponse[]>(`/v1/events/${buildQuery(params)}`),
+    request<Event[]>(`/v1/events/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; external_customer_id?: string; code?: string; from_timestamp?: string; to_timestamp?: string; order_by?: string }) =>
-    requestWithCount<EventResponse>(`/v1/events/${buildQuery(params)}`),
-  get: (id: string) => request<EventResponse>(`/v1/events/${id}`),
+    requestWithCount<Event>(`/v1/events/${buildQuery(params)}`),
+  get: (id: string) => request<Event>(`/v1/events/${id}`),
   create: (data: EventCreate) =>
-    request<EventResponse>('/v1/events/', {
+    request<Event>('/v1/events/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -792,7 +958,7 @@ export const feesApi = {
     subscription_id?: string
     fee_type?: FeeType
     payment_status?: FeePaymentStatus
-  }) => request<FeeResponse[]>(`/v1/fees/${buildQuery(params)}`),
+  }) => request<Fee[]>(`/v1/fees/${buildQuery(params)}`),
   listPaginated: (params?: {
     skip?: number
     limit?: number
@@ -802,10 +968,10 @@ export const feesApi = {
     fee_type?: FeeType
     payment_status?: FeePaymentStatus
     order_by?: string
-  }) => requestWithCount<FeeResponse>(`/v1/fees/${buildQuery(params)}`),
-  get: (id: string) => request<FeeResponse>(`/v1/fees/${id}`),
+  }) => requestWithCount<Fee>(`/v1/fees/${buildQuery(params)}`),
+  get: (id: string) => request<Fee>(`/v1/fees/${id}`),
   update: (id: string, data: FeeUpdate) =>
-    request<FeeResponse>(`/v1/fees/${id}`, {
+    request<Fee>(`/v1/fees/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -814,18 +980,18 @@ export const feesApi = {
 // Invoices API
 export const invoicesApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string; status?: InvoiceStatus; subscription_id?: string }) =>
-    request<InvoiceResponse[]>(`/v1/invoices/${buildQuery(params)}`),
+    request<Invoice[]>(`/v1/invoices/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; status?: InvoiceStatus; subscription_id?: string; order_by?: string }) =>
-    requestWithCount<InvoiceResponse>(`/v1/invoices/${buildQuery(params)}`),
-  get: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}`),
+    requestWithCount<Invoice>(`/v1/invoices/${buildQuery(params)}`),
+  get: (id: string) => request<Invoice>(`/v1/invoices/${id}`),
   update: (id: string, data: InvoiceUpdate) =>
-    request<InvoiceResponse>(`/v1/invoices/${id}`, {
+    request<Invoice>(`/v1/invoices/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  finalize: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/finalize`, { method: 'POST' }),
-  pay: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/pay`, { method: 'POST' }),
-  void: (id: string) => request<InvoiceResponse>(`/v1/invoices/${id}/void`, { method: 'POST' }),
+  finalize: (id: string) => request<Invoice>(`/v1/invoices/${id}/finalize`, { method: 'POST' }),
+  pay: (id: string) => request<Invoice>(`/v1/invoices/${id}/pay`, { method: 'POST' }),
+  void: (id: string) => request<Invoice>(`/v1/invoices/${id}/void`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/v1/invoices/${id}`, { method: 'DELETE' }),
   listSettlements: (invoiceId: string) =>
     request<{ id: string; invoice_id: string; settlement_type: string; source_id: string; amount_cents: string; created_at: string }[]>(
@@ -841,7 +1007,7 @@ export const invoicesApi = {
       body: JSON.stringify(data),
     }),
   createOneOff: (data: OneOffInvoiceCreate) =>
-    request<InvoiceResponse>('/v1/invoices/one_off', {
+    request<Invoice>('/v1/invoices/one_off', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -870,7 +1036,7 @@ export const paymentsApi = {
     customer_id?: string
     status?: PaymentStatus
     provider?: PaymentProvider
-  }) => request<PaymentResponse[]>(`/v1/payments/${buildQuery(params)}`),
+  }) => request<Payment[]>(`/v1/payments/${buildQuery(params)}`),
   listPaginated: (params?: {
     skip?: number
     limit?: number
@@ -879,25 +1045,25 @@ export const paymentsApi = {
     status?: PaymentStatus
     provider?: PaymentProvider
     order_by?: string
-  }) => requestWithCount<PaymentResponse>(`/v1/payments/${buildQuery(params)}`),
-  get: (id: string) => request<PaymentResponse>(`/v1/payments/${id}`),
+  }) => requestWithCount<Payment>(`/v1/payments/${buildQuery(params)}`),
+  get: (id: string) => request<Payment>(`/v1/payments/${id}`),
   createCheckout: (data: CheckoutSessionCreate) =>
     request<CheckoutSessionResponse>('/v1/payments/checkout', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   markPaid: (id: string) =>
-    request<PaymentResponse>(`/v1/payments/${id}/mark-paid`, { method: 'POST' }),
+    request<Payment>(`/v1/payments/${id}/mark-paid`, { method: 'POST' }),
   refund: (id: string, amount?: number) =>
-    request<PaymentResponse>(`/v1/payments/${id}/refund`, {
+    request<Payment>(`/v1/payments/${id}/refund`, {
       method: 'POST',
       body: amount !== undefined ? JSON.stringify({ amount }) : undefined,
     }),
   retry: (id: string) =>
-    request<PaymentResponse>(`/v1/payments/${id}/retry`, { method: 'POST' }),
+    request<Payment>(`/v1/payments/${id}/retry`, { method: 'POST' }),
   delete: (id: string) => request<void>(`/v1/payments/${id}`, { method: 'DELETE' }),
   recordManual: (data: ManualPaymentCreate) =>
-    request<PaymentResponse>('/v1/payments/record', {
+    request<Payment>('/v1/payments/record', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -906,19 +1072,19 @@ export const paymentsApi = {
 // Payment Methods API
 export const paymentMethodsApi = {
   list: (params?: { customer_id?: string; skip?: number; limit?: number }) =>
-    request<PaymentMethodResponse[]>(`/v1/payment_methods/${buildQuery(params)}`),
+    request<PaymentMethod[]>(`/v1/payment_methods/${buildQuery(params)}`),
   listPaginated: (params?: { customer_id?: string; skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<PaymentMethodResponse>(`/v1/payment_methods/${buildQuery(params)}`),
-  get: (id: string) => request<PaymentMethodResponse>(`/v1/payment_methods/${id}`),
+    requestWithCount<PaymentMethod>(`/v1/payment_methods/${buildQuery(params)}`),
+  get: (id: string) => request<PaymentMethod>(`/v1/payment_methods/${id}`),
   create: (data: PaymentMethodCreate) =>
-    request<PaymentMethodResponse>('/v1/payment_methods/', {
+    request<PaymentMethod>('/v1/payment_methods/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   delete: (id: string) =>
     request<void>(`/v1/payment_methods/${id}`, { method: 'DELETE' }),
   setDefault: (id: string) =>
-    request<PaymentMethodResponse>(`/v1/payment_methods/${id}/set_default`, {
+    request<PaymentMethod>(`/v1/payment_methods/${id}/set_default`, {
       method: 'POST',
     }),
   createSetupSession: (data: SetupSessionCreate) =>
@@ -931,29 +1097,29 @@ export const paymentMethodsApi = {
 // Wallets API
 export const walletsApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string }) =>
-    request<WalletResponse[]>(`/v1/wallets/${buildQuery(params)}`),
+    request<Wallet[]>(`/v1/wallets/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; order_by?: string }) =>
-    requestWithCount<WalletResponse>(`/v1/wallets/${buildQuery(params)}`),
-  get: (id: string) => request<WalletResponse>(`/v1/wallets/${id}`),
+    requestWithCount<Wallet>(`/v1/wallets/${buildQuery(params)}`),
+  get: (id: string) => request<Wallet>(`/v1/wallets/${id}`),
   create: (data: WalletCreate) =>
-    request<WalletResponse>('/v1/wallets/', {
+    request<Wallet>('/v1/wallets/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: WalletUpdate) =>
-    request<WalletResponse>(`/v1/wallets/${id}`, {
+    request<Wallet>(`/v1/wallets/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   terminate: (id: string) =>
     request<void>(`/v1/wallets/${id}`, { method: 'DELETE' }),
   topUp: (id: string, data: WalletTopUp) =>
-    request<WalletTransactionResponse>(`/v1/wallets/${id}/top_up`, {
+    request<WalletTransaction>(`/v1/wallets/${id}/top_up`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   listTransactions: (walletId: string, params?: { skip?: number; limit?: number }) =>
-    request<WalletTransactionResponse[]>(`/v1/wallets/${walletId}/transactions${buildQuery(params)}`),
+    request<WalletTransaction[]>(`/v1/wallets/${walletId}/transactions${buildQuery(params)}`),
   getBalanceTimeline: (walletId: string, params?: { start_date?: string; end_date?: string }) =>
     request<BalanceTimelineResponse>(`/v1/wallets/${walletId}/balance_timeline${buildQuery(params)}`),
   getDepletionForecast: (walletId: string, params?: { days?: number }) =>
@@ -968,24 +1134,24 @@ export const walletsApi = {
 // Coupons API
 export const couponsApi = {
   list: (params?: { skip?: number; limit?: number; status?: CouponStatus }) =>
-    request<CouponResponse[]>(`/v1/coupons/${buildQuery(params)}`),
+    request<Coupon[]>(`/v1/coupons/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; status?: CouponStatus; order_by?: string }) =>
-    requestWithCount<CouponResponse>(`/v1/coupons/${buildQuery(params)}`),
-  get: (code: string) => request<CouponResponse>(`/v1/coupons/${code}`),
+    requestWithCount<Coupon>(`/v1/coupons/${buildQuery(params)}`),
+  get: (code: string) => request<Coupon>(`/v1/coupons/${code}`),
   create: (data: CouponCreate) =>
-    request<CouponResponse>('/v1/coupons/', {
+    request<Coupon>('/v1/coupons/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (code: string, data: CouponUpdate) =>
-    request<CouponResponse>(`/v1/coupons/${code}`, {
+    request<Coupon>(`/v1/coupons/${code}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   terminate: (code: string) =>
     request<void>(`/v1/coupons/${code}`, { method: 'DELETE' }),
   apply: (data: ApplyCouponRequest) =>
-    request<AppliedCouponResponse>('/v1/coupons/apply', {
+    request<AppliedCoupon>('/v1/coupons/apply', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -1002,7 +1168,7 @@ export const couponsApi = {
       remaining_uses: number | null
     }>(`/v1/coupons/${code}/analytics`),
   duplicate: (code: string) =>
-    request<CouponResponse>(`/v1/coupons/${code}/duplicate`, {
+    request<Coupon>(`/v1/coupons/${code}/duplicate`, {
       method: 'POST',
     }),
 }
@@ -1010,54 +1176,54 @@ export const couponsApi = {
 // Add-ons API
 export const addOnsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<AddOnResponse[]>(`/v1/add_ons/${buildQuery(params)}`),
+    request<AddOn[]>(`/v1/add_ons/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<AddOnResponse>(`/v1/add_ons/${buildQuery(params)}`),
-  get: (code: string) => request<AddOnResponse>(`/v1/add_ons/${code}`),
+    requestWithCount<AddOn>(`/v1/add_ons/${buildQuery(params)}`),
+  get: (code: string) => request<AddOn>(`/v1/add_ons/${code}`),
   create: (data: AddOnCreate) =>
-    request<AddOnResponse>('/v1/add_ons/', {
+    request<AddOn>('/v1/add_ons/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (code: string, data: AddOnUpdate) =>
-    request<AddOnResponse>(`/v1/add_ons/${code}`, {
+    request<AddOn>(`/v1/add_ons/${code}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   delete: (code: string) =>
     request<void>(`/v1/add_ons/${code}`, { method: 'DELETE' }),
   apply: (data: ApplyAddOnRequest) =>
-    request<AppliedAddOnResponse>('/v1/add_ons/apply', {
+    request<AppliedAddOn>('/v1/add_ons/apply', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   applicationCounts: () =>
     request<Record<string, number>>('/v1/add_ons/application_counts'),
   applications: (code: string) =>
-    request<AppliedAddOnDetailResponse[]>(`/v1/add_ons/${code}/applications`),
+    request<AppliedAddOnDetail[]>(`/v1/add_ons/${code}/applications`),
 }
 
 // Credit Notes API
 export const creditNotesApi = {
   list: (params?: { skip?: number; limit?: number; customer_id?: string; invoice_id?: string }) =>
-    request<CreditNoteResponse[]>(`/v1/credit_notes/${buildQuery(params)}`),
+    request<CreditNote[]>(`/v1/credit_notes/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; customer_id?: string; invoice_id?: string; order_by?: string }) =>
-    requestWithCount<CreditNoteResponse>(`/v1/credit_notes/${buildQuery(params)}`),
-  get: (id: string) => request<CreditNoteResponse>(`/v1/credit_notes/${id}`),
+    requestWithCount<CreditNote>(`/v1/credit_notes/${buildQuery(params)}`),
+  get: (id: string) => request<CreditNote>(`/v1/credit_notes/${id}`),
   create: (data: CreditNoteCreate) =>
-    request<CreditNoteResponse>('/v1/credit_notes/', {
+    request<CreditNote>('/v1/credit_notes/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: CreditNoteUpdate) =>
-    request<CreditNoteResponse>(`/v1/credit_notes/${id}`, {
+    request<CreditNote>(`/v1/credit_notes/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   finalize: (id: string) =>
-    request<CreditNoteResponse>(`/v1/credit_notes/${id}/finalize`, { method: 'POST' }),
+    request<CreditNote>(`/v1/credit_notes/${id}/finalize`, { method: 'POST' }),
   void: (id: string) =>
-    request<CreditNoteResponse>(`/v1/credit_notes/${id}/void`, { method: 'POST' }),
+    request<CreditNote>(`/v1/credit_notes/${id}/void`, { method: 'POST' }),
   downloadPdf: (id: string): Promise<Blob> =>
     requestBlob(`/v1/credit_notes/${id}/download_pdf`, { method: 'POST' }),
   sendEmail: (id: string) =>
@@ -1067,31 +1233,31 @@ export const creditNotesApi = {
 // Taxes API
 export const taxesApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<TaxResponse[]>(`/v1/taxes/${buildQuery(params)}`),
+    request<Tax[]>(`/v1/taxes/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<TaxResponse>(`/v1/taxes/${buildQuery(params)}`),
-  get: (code: string) => request<TaxResponse>(`/v1/taxes/${code}`),
+    requestWithCount<Tax>(`/v1/taxes/${buildQuery(params)}`),
+  get: (code: string) => request<Tax>(`/v1/taxes/${code}`),
   create: (data: TaxCreate) =>
-    request<TaxResponse>('/v1/taxes/', {
+    request<Tax>('/v1/taxes/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (code: string, data: TaxUpdate) =>
-    request<TaxResponse>(`/v1/taxes/${code}`, {
+    request<Tax>(`/v1/taxes/${code}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   delete: (code: string) =>
     request<void>(`/v1/taxes/${code}`, { method: 'DELETE' }),
   apply: (data: ApplyTaxRequest) =>
-    request<AppliedTaxResponse>('/v1/taxes/apply', {
+    request<AppliedTax>('/v1/taxes/apply', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   removeApplied: (appliedTaxId: string) =>
     request<void>(`/v1/taxes/applied/${appliedTaxId}`, { method: 'DELETE' }),
   listApplied: (params: { taxable_type: string; taxable_id: string }) =>
-    request<AppliedTaxResponse[]>(`/v1/taxes/applied${buildQuery(params)}`),
+    request<AppliedTax[]>(`/v1/taxes/applied${buildQuery(params)}`),
   applicationCounts: () =>
     request<TaxApplicationCountsResponse>('/v1/taxes/application_counts'),
   appliedEntities: (code: string) =>
@@ -1101,32 +1267,32 @@ export const taxesApi = {
 // Webhook Endpoints API
 export const webhookEndpointsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<WebhookEndpointResponse[]>(`/v1/webhook_endpoints/${buildQuery(params)}`),
+    request<WebhookEndpoint[]>(`/v1/webhook_endpoints/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<WebhookEndpointResponse>(`/v1/webhook_endpoints/${buildQuery(params)}`),
-  get: (id: string) => request<WebhookEndpointResponse>(`/v1/webhook_endpoints/${id}`),
+    requestWithCount<WebhookEndpoint>(`/v1/webhook_endpoints/${buildQuery(params)}`),
+  get: (id: string) => request<WebhookEndpoint>(`/v1/webhook_endpoints/${id}`),
   create: (data: WebhookEndpointCreate) =>
-    request<WebhookEndpointResponse>('/v1/webhook_endpoints/', {
+    request<WebhookEndpoint>('/v1/webhook_endpoints/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: WebhookEndpointUpdate) =>
-    request<WebhookEndpointResponse>(`/v1/webhook_endpoints/${id}`, {
+    request<WebhookEndpoint>(`/v1/webhook_endpoints/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
   delete: (id: string) =>
     request<void>(`/v1/webhook_endpoints/${id}`, { method: 'DELETE' }),
   listWebhooks: (params?: { skip?: number; limit?: number; endpoint_id?: string; status?: string; webhook_type?: string }) =>
-    request<WebhookResponse[]>(`/v1/webhook_endpoints/hooks/list${buildQuery(params)}`),
+    request<Webhook[]>(`/v1/webhook_endpoints/hooks/list${buildQuery(params)}`),
   listWebhooksPaginated: (params?: { skip?: number; limit?: number; endpoint_id?: string; status?: string; webhook_type?: string }) =>
-    requestWithCount<WebhookResponse>(`/v1/webhook_endpoints/hooks/list${buildQuery(params)}`),
+    requestWithCount<Webhook>(`/v1/webhook_endpoints/hooks/list${buildQuery(params)}`),
   getWebhook: (webhookId: string) =>
-    request<WebhookResponse>(`/v1/webhook_endpoints/hooks/${webhookId}`),
+    request<Webhook>(`/v1/webhook_endpoints/hooks/${webhookId}`),
   retryWebhook: (webhookId: string) =>
-    request<WebhookResponse>(`/v1/webhook_endpoints/hooks/${webhookId}/retry`, { method: 'POST' }),
+    request<Webhook>(`/v1/webhook_endpoints/hooks/${webhookId}/retry`, { method: 'POST' }),
   deliveryAttempts: (webhookId: string) =>
-    request<WebhookDeliveryAttemptResponse[]>(`/v1/webhook_endpoints/hooks/${webhookId}/delivery_attempts`),
+    request<WebhookDeliveryAttempt[]>(`/v1/webhook_endpoints/hooks/${webhookId}/delivery_attempts`),
   deliveryStats: () =>
     request<EndpointDeliveryStats[]>('/v1/webhook_endpoints/delivery_stats'),
 }
@@ -1134,14 +1300,14 @@ export const webhookEndpointsApi = {
 // Organizations API
 export const organizationsApi = {
   create: (data: OrganizationCreate) =>
-    request<OrganizationResponse & { api_key: ApiKeyCreateResponse }>('/v1/organizations/', {
+    request<Organization & { api_key: ApiKeyCreateResponse }>('/v1/organizations/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  list: () => request<OrganizationResponse[]>('/v1/organizations/'),
-  getCurrent: () => request<OrganizationResponse>('/v1/organizations/current'),
+  list: () => request<Organization[]>('/v1/organizations/'),
+  getCurrent: () => request<Organization>('/v1/organizations/current'),
   updateCurrent: (data: OrganizationUpdate) =>
-    request<OrganizationResponse>('/v1/organizations/current', {
+    request<Organization>('/v1/organizations/current', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -1151,7 +1317,7 @@ export const organizationsApi = {
       body: JSON.stringify(data),
     }),
   listApiKeys: () =>
-    request<ApiKeyListResponse[]>('/v1/organizations/current/api_keys'),
+    request<ApiKey[]>('/v1/organizations/current/api_keys'),
   revokeApiKey: (apiKeyId: string) =>
     request<void>(`/v1/organizations/current/api_keys/${apiKeyId}`, { method: 'DELETE' }),
   rotateApiKey: (apiKeyId: string) =>
@@ -1161,17 +1327,17 @@ export const organizationsApi = {
 // Dunning Campaigns API
 export const dunningCampaignsApi = {
   list: (params?: { skip?: number; limit?: number; status?: string }) =>
-    request<DunningCampaignResponse[]>(`/v1/dunning_campaigns/${buildQuery(params)}`),
+    request<DunningCampaign[]>(`/v1/dunning_campaigns/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; status?: string; order_by?: string }) =>
-    requestWithCount<DunningCampaignResponse>(`/v1/dunning_campaigns/${buildQuery(params)}`),
-  get: (id: string) => request<DunningCampaignResponse>(`/v1/dunning_campaigns/${id}`),
+    requestWithCount<DunningCampaign>(`/v1/dunning_campaigns/${buildQuery(params)}`),
+  get: (id: string) => request<DunningCampaign>(`/v1/dunning_campaigns/${id}`),
   create: (data: DunningCampaignCreate) =>
-    request<DunningCampaignResponse>('/v1/dunning_campaigns/', {
+    request<DunningCampaign>('/v1/dunning_campaigns/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: DunningCampaignUpdate) =>
-    request<DunningCampaignResponse>(`/v1/dunning_campaigns/${id}`, {
+    request<DunningCampaign>(`/v1/dunning_campaigns/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -1190,14 +1356,14 @@ export const dunningCampaignsApi = {
 // Commitments API
 export const commitmentsApi = {
   listForPlan: (planCode: string) =>
-    request<CommitmentResponse[]>(`/v1/plans/${planCode}/commitments`),
+    request<Commitment[]>(`/v1/plans/${planCode}/commitments`),
   createForPlan: (planCode: string, data: CommitmentCreateAPI) =>
-    request<CommitmentResponse>(`/v1/plans/${planCode}/commitments`, {
+    request<Commitment>(`/v1/plans/${planCode}/commitments`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: CommitmentUpdate) =>
-    request<CommitmentResponse>(`/v1/commitments/${id}`, {
+    request<Commitment>(`/v1/commitments/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -1208,21 +1374,21 @@ export const commitmentsApi = {
 // Usage Thresholds API
 export const usageThresholdsApi = {
   listForPlan: (planCode: string) =>
-    request<UsageThresholdResponse[]>(`/v1/plans/${planCode}/usage_thresholds`),
+    request<UsageThreshold[]>(`/v1/plans/${planCode}/usage_thresholds`),
   createForPlan: (planCode: string, data: UsageThresholdCreateAPI) =>
-    request<UsageThresholdResponse>(`/v1/plans/${planCode}/usage_thresholds`, {
+    request<UsageThreshold>(`/v1/plans/${planCode}/usage_thresholds`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   createForSubscription: (subscriptionId: string, data: UsageThresholdCreateAPI) =>
-    request<UsageThresholdResponse>(`/v1/subscriptions/${subscriptionId}/usage_thresholds`, {
+    request<UsageThreshold>(`/v1/subscriptions/${subscriptionId}/usage_thresholds`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   listForSubscription: (subscriptionId: string) =>
-    request<UsageThresholdResponse[]>(`/v1/subscriptions/${subscriptionId}/usage_thresholds`),
+    request<UsageThreshold[]>(`/v1/subscriptions/${subscriptionId}/usage_thresholds`),
   getCurrentUsage: (subscriptionId: string) =>
-    request<CurrentUsageResponse>(`/v1/subscriptions/${subscriptionId}/current_usage`),
+    request<CurrentUsage>(`/v1/subscriptions/${subscriptionId}/current_usage`),
   delete: (thresholdId: string) =>
     request<void>(`/v1/usage_thresholds/${thresholdId}`, { method: 'DELETE' }),
 }
@@ -1230,15 +1396,15 @@ export const usageThresholdsApi = {
 // Integrations API
 export const integrationsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<IntegrationResponse[]>(`/v1/integrations/${buildQuery(params)}`),
-  get: (id: string) => request<IntegrationResponse>(`/v1/integrations/${id}`),
+    request<Integration[]>(`/v1/integrations/${buildQuery(params)}`),
+  get: (id: string) => request<Integration>(`/v1/integrations/${id}`),
   create: (data: IntegrationCreate) =>
-    request<IntegrationResponse>('/v1/integrations/', {
+    request<Integration>('/v1/integrations/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: IntegrationUpdate) =>
-    request<IntegrationResponse>(`/v1/integrations/${id}`, {
+    request<Integration>(`/v1/integrations/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
@@ -1259,12 +1425,12 @@ export const integrationsApi = {
 // Data Exports API
 export const dataExportsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<DataExportResponse[]>(`/v1/data_exports/${buildQuery(params)}`),
+    request<DataExport[]>(`/v1/data_exports/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<DataExportResponse>(`/v1/data_exports/${buildQuery(params)}`),
-  get: (id: string) => request<DataExportResponse>(`/v1/data_exports/${id}`),
+    requestWithCount<DataExport>(`/v1/data_exports/${buildQuery(params)}`),
+  get: (id: string) => request<DataExport>(`/v1/data_exports/${id}`),
   create: (data: DataExportCreate) =>
-    request<DataExportResponse>('/v1/data_exports/', {
+    request<DataExport>('/v1/data_exports/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -1279,12 +1445,12 @@ export const dataExportsApi = {
 // Payment Requests API
 export const paymentRequestsApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<PaymentRequestResponse[]>(`/v1/payment_requests/${buildQuery(params)}`),
+    request<PaymentRequest[]>(`/v1/payment_requests/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<PaymentRequestResponse>(`/v1/payment_requests/${buildQuery(params)}`),
-  get: (id: string) => request<PaymentRequestResponse>(`/v1/payment_requests/${id}`),
+    requestWithCount<PaymentRequest>(`/v1/payment_requests/${buildQuery(params)}`),
+  get: (id: string) => request<PaymentRequest>(`/v1/payment_requests/${id}`),
   create: (data: PaymentRequestCreate) =>
-    request<PaymentRequestResponse>('/v1/payment_requests/', {
+    request<PaymentRequest>('/v1/payment_requests/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -1299,27 +1465,27 @@ export const paymentRequestsApi = {
 // Audit Logs API
 export const auditLogsApi = {
   list: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string; actor_type?: string }) =>
-    request<AuditLogResponse[]>(`/v1/audit_logs/${buildQuery(params)}`),
+    request<AuditLog[]>(`/v1/audit_logs/${buildQuery(params)}`),
   listPaginated: (params?: { resource_type?: string; resource_id?: string; action?: string; skip?: number; limit?: number; start_date?: string; end_date?: string; actor_type?: string; order_by?: string }) =>
-    requestWithCount<AuditLogResponse>(`/v1/audit_logs/${buildQuery(params)}`),
+    requestWithCount<AuditLog>(`/v1/audit_logs/${buildQuery(params)}`),
   getForResource: (resourceType: string, resourceId: string) =>
-    request<AuditLogResponse[]>(`/v1/audit_logs/${resourceType}/${resourceId}`),
+    request<AuditLog[]>(`/v1/audit_logs/${resourceType}/${resourceId}`),
 }
 
 // Billing Entities API
 export const billingEntitiesApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<BillingEntityResponse[]>(`/v1/billing_entities/${buildQuery(params)}`),
+    request<BillingEntity[]>(`/v1/billing_entities/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<BillingEntityResponse>(`/v1/billing_entities/${buildQuery(params)}`),
-  get: (code: string) => request<BillingEntityResponse>(`/v1/billing_entities/${code}`),
+    requestWithCount<BillingEntity>(`/v1/billing_entities/${buildQuery(params)}`),
+  get: (code: string) => request<BillingEntity>(`/v1/billing_entities/${code}`),
   create: (data: BillingEntityCreate) =>
-    request<BillingEntityResponse>('/v1/billing_entities/', {
+    request<BillingEntity>('/v1/billing_entities/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (code: string, data: BillingEntityUpdate) =>
-    request<BillingEntityResponse>(`/v1/billing_entities/${code}`, {
+    request<BillingEntity>(`/v1/billing_entities/${code}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
@@ -1332,17 +1498,17 @@ export const billingEntitiesApi = {
 // Features API
 export const featuresApi = {
   list: (params?: { skip?: number; limit?: number }) =>
-    request<FeatureResponse[]>(`/v1/features/${buildQuery(params)}`),
+    request<Feature[]>(`/v1/features/${buildQuery(params)}`),
   listPaginated: (params?: { skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<FeatureResponse>(`/v1/features/${buildQuery(params)}`),
-  get: (code: string) => request<FeatureResponse>(`/v1/features/${code}`),
+    requestWithCount<Feature>(`/v1/features/${buildQuery(params)}`),
+  get: (code: string) => request<Feature>(`/v1/features/${code}`),
   create: (data: FeatureCreate) =>
-    request<FeatureResponse>('/v1/features/', {
+    request<Feature>('/v1/features/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (code: string, data: FeatureUpdate) =>
-    request<FeatureResponse>(`/v1/features/${code}`, {
+    request<Feature>(`/v1/features/${code}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
@@ -1355,21 +1521,21 @@ export const featuresApi = {
 // Entitlements API
 export const entitlementsApi = {
   list: (params?: { plan_id?: string }) =>
-    request<EntitlementResponse[]>(`/v1/entitlements/${buildQuery(params)}`),
+    request<Entitlement[]>(`/v1/entitlements/${buildQuery(params)}`),
   create: (data: EntitlementCreate) =>
-    request<EntitlementResponse>('/v1/entitlements/', {
+    request<Entitlement>('/v1/entitlements/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: EntitlementUpdate) =>
-    request<EntitlementResponse>(`/v1/entitlements/${id}`, {
+    request<Entitlement>(`/v1/entitlements/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
   delete: (id: string) =>
     request<void>(`/v1/entitlements/${id}`, { method: 'DELETE' }),
   copy: (data: { source_plan_id: string; target_plan_id: string }) =>
-    request<EntitlementResponse[]>('/v1/entitlements/copy', {
+    request<Entitlement[]>('/v1/entitlements/copy', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
@@ -1378,17 +1544,17 @@ export const entitlementsApi = {
 // Usage Alerts API
 export const usageAlertsApi = {
   list: (params?: { subscription_id?: string; skip?: number; limit?: number }) =>
-    request<UsageAlertResponse[]>(`/v1/usage_alerts/${buildQuery(params)}`),
+    request<UsageAlert[]>(`/v1/usage_alerts/${buildQuery(params)}`),
   listPaginated: (params?: { subscription_id?: string; skip?: number; limit?: number; order_by?: string }) =>
-    requestWithCount<UsageAlertResponse>(`/v1/usage_alerts/${buildQuery(params)}`),
-  get: (id: string) => request<UsageAlertResponse>(`/v1/usage_alerts/${id}`),
+    requestWithCount<UsageAlert>(`/v1/usage_alerts/${buildQuery(params)}`),
+  get: (id: string) => request<UsageAlert>(`/v1/usage_alerts/${id}`),
   create: (data: UsageAlertCreate) =>
-    request<UsageAlertResponse>('/v1/usage_alerts/', {
+    request<UsageAlert>('/v1/usage_alerts/', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   update: (id: string, data: UsageAlertUpdate) =>
-    request<UsageAlertResponse>(`/v1/usage_alerts/${id}`, {
+    request<UsageAlert>(`/v1/usage_alerts/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
@@ -1404,23 +1570,8 @@ export const usageAlertsApi = {
     }),
 }
 
-type UsageAlertStatusResponse = {
-  alert_id: string
-  current_usage: string
-  threshold_value: string
-  usage_percentage: string
-  billing_period_start: string
-  billing_period_end: string
-}
-
-type UsageAlertTriggerResponse = {
-  id: string
-  usage_alert_id: string
-  current_usage: string
-  threshold_value: string
-  metric_code: string
-  triggered_at: string
-}
+type UsageAlertStatusResponse = UsageAlertStatus
+type UsageAlertTriggerResponse = UsageAlertTrigger
 
 // Dashboard API
 export type DashboardDateRange = { start_date?: string; end_date?: string }
@@ -1546,9 +1697,6 @@ export const searchApi = {
 }
 
 // Notifications API
-type NotificationResponse = components['schemas']['NotificationResponse']
-type NotificationCountResponse = components['schemas']['NotificationCountResponse']
-
 export const notificationsApi = {
   list: (params?: { skip?: number; limit?: number; category?: string; is_read?: boolean; order_by?: string }) =>
     request<NotificationResponse[]>(`/v1/notifications/${buildQuery(params as Record<string, string | number | undefined>)}`),

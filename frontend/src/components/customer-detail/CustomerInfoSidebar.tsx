@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { customersApi, billingEntitiesApi } from '@/lib/api'
-import type { Customer } from '@/types/billing'
+import type { Customer } from '@/lib/api'
 
 interface CustomerInfoSidebarProps {
   customer: Customer

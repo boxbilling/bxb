@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { ChangesSummary } from '@/components/JsonDiffDisplay'
 import { auditLogsApi } from '@/lib/api'
-import type { AuditLog } from '@/types/billing'
+import type { AuditLog } from '@/lib/api'
 
 function ActionBadge({ action }: { action: string }) {
   const styles: Record<string, string> = {

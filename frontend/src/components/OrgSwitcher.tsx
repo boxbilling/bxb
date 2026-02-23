@@ -44,7 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { organizationsApi, ApiError, setActiveOrganizationId } from '@/lib/api'
-import type { Organization, OrganizationCreate } from '@/types/billing'
+import type { Organization, OrganizationCreate } from '@/lib/api'
 import { useOrganization } from '@/hooks/use-organization'
 
 const DEFAULT_FORM: OrganizationCreate = {

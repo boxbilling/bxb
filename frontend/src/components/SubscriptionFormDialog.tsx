@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import type { SubscriptionCreate, Customer, Plan, BillingTime, TerminationAction } from '@/types/billing'
+import type { SubscriptionCreate, Customer, Plan, BillingTime, TerminationAction } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 export function SubscriptionFormDialog({

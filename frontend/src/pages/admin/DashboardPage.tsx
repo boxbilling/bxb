@@ -66,7 +66,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { dashboardApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
-import type { RecentActivity } from '@/types/billing'
+import type { RecentActivity } from '@/lib/api'
 import type { DateRange } from 'react-day-picker'
 
 function formatRelativeTime(timestamp: string) {

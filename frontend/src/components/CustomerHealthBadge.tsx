@@ -3,7 +3,7 @@ import { Circle } from 'lucide-react'
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { customersApi } from '@/lib/api'
-import type { CustomerHealthResponse } from '@/types/billing'
+import type { CustomerHealthResponse } from '@/lib/api'
 
 const healthConfig: Record<
   string,

@@ -67,7 +67,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { integrationsApi, ApiError } from '@/lib/api'
-import type { Integration, IntegrationUpdate } from '@/types/billing'
+import type { Integration, IntegrationUpdate } from '@/lib/api'
 import type { IntegrationCustomerResponse, IntegrationMappingResponse, IntegrationSyncHistoryResponse } from '@/lib/api'
 
 // Provider-specific settings field definitions

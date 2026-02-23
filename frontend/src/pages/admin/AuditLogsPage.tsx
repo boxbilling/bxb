@@ -38,7 +38,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { auditLogsApi, dataExportsApi, ApiError } from '@/lib/api'
-import type { AuditLog } from '@/types/billing'
+import type { AuditLog } from '@/lib/api'
 
 const PAGE_SIZE = 20
 

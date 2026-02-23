@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { subscriptionsApi } from '@/lib/api'
-import type { Subscription, Plan, ChangePlanPreviewResponse } from '@/types/billing'
+import type { Subscription, Plan, ChangePlanPreviewResponse } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 interface ChangePlanDialogProps {

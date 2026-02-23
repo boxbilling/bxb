@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { invoicesApi, subscriptionsApi, usageThresholdsApi } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
-import type { Subscription, Plan } from '@/types/billing'
+import type { Subscription, Plan } from '@/lib/api'
 
 interface SubscriptionKPICardsProps {
   subscriptionId: string

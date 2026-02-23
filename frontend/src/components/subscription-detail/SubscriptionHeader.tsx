@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { plansApi } from '@/lib/api'
-import type { Subscription, Customer, Plan } from '@/types/billing'
+import type { Subscription, Customer, Plan } from '@/lib/api'
 
 interface SubscriptionHeaderProps {
   subscription?: Subscription

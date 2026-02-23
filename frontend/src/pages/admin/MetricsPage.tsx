@@ -53,7 +53,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { billableMetricsApi, ApiError } from '@/lib/api'
-import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/types/billing'
+import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/lib/api'
 
 const aggregationTypes: { value: AggregationType; label: string; description: string; icon: React.ElementType }[] = [
   { value: 'count', label: 'Count', description: 'Count total events', icon: Hash },

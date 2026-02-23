@@ -47,7 +47,7 @@ import PageHeader from '@/components/PageHeader'
 import { CardBrandIcon } from '@/components/CardBrandIcon'
 import { PaymentMethodFormDialog } from '@/components/PaymentMethodFormDialog'
 import { customersApi, paymentMethodsApi, ApiError } from '@/lib/api'
-import type { PaymentMethod, PaymentMethodCreate } from '@/types/billing'
+import type { PaymentMethod, PaymentMethodCreate } from '@/lib/api'
 
 const providerLabels: Record<string, string> = {
   stripe: 'Stripe',

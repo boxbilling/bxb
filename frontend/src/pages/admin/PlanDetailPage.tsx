@@ -80,7 +80,7 @@ import type {
   Feature,
   Subscription,
   Customer,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 function intervalLabel(interval: string) {

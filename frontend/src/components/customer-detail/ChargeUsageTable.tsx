@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCents } from '@/lib/utils'
-import type { CustomerCurrentUsageResponse } from '@/types/billing'
+import type { CustomerCurrentUsageResponse } from '@/lib/api'
 
 export function ChargeUsageTable({ charges, currency }: { charges: CustomerCurrentUsageResponse['charges']; currency: string }) {
   if (!charges.length) {

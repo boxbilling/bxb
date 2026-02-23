@@ -21,7 +21,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { portalApi, ApiError } from '@/lib/api'
 import { usePortalToken } from '@/layouts/PortalLayout'
-import type { PortalAddOn, PortalPurchasedAddOn } from '@/types/billing'
+import type { PortalAddOn, PortalPurchasedAddOn } from '@/lib/api'
 
 function formatCurrency(cents: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {

@@ -20,7 +20,7 @@ import { portalApi } from '@/lib/api'
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { PortalBranding } from '@/types/billing'
+import type { PortalBranding } from '@/lib/api'
 
 const PORTAL_TOKEN_KEY = 'bxb_portal_token'
 

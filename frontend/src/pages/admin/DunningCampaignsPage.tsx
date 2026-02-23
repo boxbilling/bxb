@@ -71,7 +71,7 @@ import type {
   DunningCampaign,
   DunningCampaignCreate,
   DunningCampaignUpdate,
-} from '@/types/billing'
+} from '@/lib/api'
 
 // --- Create/Edit Dunning Campaign Dialog ---
 function DunningCampaignFormDialog({

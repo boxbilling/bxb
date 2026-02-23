@@ -18,7 +18,7 @@ import { Link } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { subscriptionsApi } from '@/lib/api'
-import type { LifecycleEvent } from '@/types/billing'
+import type { LifecycleEvent } from '@/lib/api'
 
 const EVENT_CONFIG: Record<string, {
   icon: typeof Calendar

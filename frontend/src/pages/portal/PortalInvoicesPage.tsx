@@ -26,10 +26,7 @@ import { portalApi } from '@/lib/api'
 import { formatCurrency } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { components } from '@/lib/schema'
-
-type InvoiceResponse = components['schemas']['InvoiceResponse']
-type PaymentResponse = components['schemas']['PaymentResponse']
+import type { Invoice, Payment } from '@/lib/api'
 
 const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   draft: 'outline',
@@ -60,7 +57,7 @@ const paymentStatusColors: Record<string, 'default' | 'secondary' | 'destructive
 
 export default function PortalInvoicesPage() {
   const token = usePortalToken()
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceResponse | null>(null)
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false)
   const [pdfUrl, setPdfUrl] = useState<string | null>(null)
 
@@ -343,7 +340,7 @@ export default function PortalInvoicesPage() {
                   <div>
                     <h4 className="text-sm font-medium mb-3">Payment History</h4>
                     <div className="space-y-2">
-                      {invoicePayments.map((payment: PaymentResponse) => {
+                      {invoicePayments.map((payment: Payment) => {
                         const StatusIcon = paymentStatusIcons[payment.status] || AlertCircle
                         return (
                           <div

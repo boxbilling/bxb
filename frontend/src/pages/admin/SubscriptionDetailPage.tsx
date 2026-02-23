@@ -23,7 +23,7 @@ import { SubscriptionLifecycleTab } from '@/components/subscription-detail/Subsc
 import { SubscriptionActivityTab } from '@/components/subscription-detail/SubscriptionActivityTab'
 import { subscriptionsApi, customersApi, plansApi, ApiError } from '@/lib/api'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { SubscriptionUpdate, TerminationAction } from '@/types/billing'
+import type { SubscriptionUpdate, TerminationAction } from '@/lib/api'
 
 export default function SubscriptionDetailPage() {
   const { id } = useParams<{ id: string }>()

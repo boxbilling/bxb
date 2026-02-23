@@ -37,7 +37,7 @@ import {
 import { CardBrandIcon } from '@/components/CardBrandIcon'
 import { portalApi, ApiError } from '@/lib/api'
 import { usePortalToken } from '@/layouts/PortalLayout'
-import type { PaymentMethod } from '@/types/billing'
+import type { PaymentMethod } from '@/lib/api'
 
 type PaymentMethodDetails = {
   last4?: string

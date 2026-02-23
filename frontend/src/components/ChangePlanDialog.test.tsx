@@ -3,7 +3,7 @@ import { render, screen, userEvent, waitFor } from '@/test/test-utils'
 
 import { ChangePlanDialog } from './ChangePlanDialog'
 import { buildSubscription, buildPlan } from '@/test/factories'
-import type { ChangePlanPreviewResponse } from '@/types/billing'
+import type { ChangePlanPreviewResponse } from '@/lib/api'
 
 const mockChangePlanPreview = vi.fn()
 

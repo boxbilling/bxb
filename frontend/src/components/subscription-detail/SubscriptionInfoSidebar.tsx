@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { billingEntitiesApi } from '@/lib/api'
-import type { Subscription, Customer, Plan } from '@/types/billing'
+import type { Subscription, Customer, Plan } from '@/lib/api'
 
 interface SubscriptionInfoSidebarProps {
   subscription?: Subscription

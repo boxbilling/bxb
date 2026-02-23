@@ -28,7 +28,7 @@ import { CustomerInfoSidebar } from '@/components/customer-detail/CustomerInfoSi
 import { customersApi, subscriptionsApi, plansApi, ApiError } from '@/lib/api'
 import { SubscriptionFormDialog } from '@/components/SubscriptionFormDialog'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { CustomerUpdate, SubscriptionCreate } from '@/types/billing'
+import type { CustomerUpdate, SubscriptionCreate } from '@/lib/api'
 
 export default function CustomerDetailPage() {
   const { id } = useParams<{ id: string }>()

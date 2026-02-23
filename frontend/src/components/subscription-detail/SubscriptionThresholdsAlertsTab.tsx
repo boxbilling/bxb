@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { usageThresholdsApi, usageAlertsApi, billableMetricsApi, ApiError } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
-import type { UsageThresholdCreateAPI, UsageAlertCreate } from '@/types/billing'
+import type { UsageThresholdCreateAPI, UsageAlertCreate } from '@/lib/api'
 
 interface SubscriptionThresholdsAlertsTabProps {
   subscriptionId: string

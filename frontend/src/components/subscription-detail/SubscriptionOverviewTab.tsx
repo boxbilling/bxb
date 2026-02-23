@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/table'
 import { usageThresholdsApi, customersApi, subscriptionsApi, plansApi, billableMetricsApi } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
-import type { BillableMetric } from '@/types/billing'
+import type { BillableMetric } from '@/lib/api'
 
 function intervalLabel(interval: string) {
   return (

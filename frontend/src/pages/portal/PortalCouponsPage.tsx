@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { portalApi, ApiError } from '@/lib/api'
 import { usePortalToken } from '@/layouts/PortalLayout'
-import type { PortalAppliedCoupon } from '@/types/billing'
+import type { PortalAppliedCoupon } from '@/lib/api'
 
 function formatDiscount(coupon: PortalAppliedCoupon): string {
   if (coupon.coupon_type === 'percentage' && coupon.percentage_rate) {

@@ -43,7 +43,7 @@ import { portalApi, ApiError } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import { useIsMobile } from '@/hooks/use-mobile'
-import type { WalletTransaction } from '@/types/billing'
+import type { WalletTransaction } from '@/lib/api'
 
 function formatCredits(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value

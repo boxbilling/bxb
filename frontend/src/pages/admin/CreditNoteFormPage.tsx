@@ -34,7 +34,7 @@ import type {
   Customer,
   Invoice,
   Fee,
-} from '@/types/billing'
+} from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const REASON_LABELS: Record<string, string> = {

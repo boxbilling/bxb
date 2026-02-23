@@ -40,7 +40,7 @@ import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { invoicesApi, customersApi, subscriptionsApi } from '@/lib/api'
 import { formatCurrency, formatCents } from '@/lib/utils'
-import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/types/billing'
+import type { Invoice, InvoiceStatus, InvoicePreviewResponse } from '@/lib/api'
 
 const PAGE_SIZE = 20
 

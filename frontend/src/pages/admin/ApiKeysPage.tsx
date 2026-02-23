@@ -20,7 +20,7 @@ import type {
   ApiKeyCreate,
   ApiKeyCreateResponse,
   ApiKey,
-} from '@/types/billing'
+} from '@/lib/api'
 
 import PageHeader from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'

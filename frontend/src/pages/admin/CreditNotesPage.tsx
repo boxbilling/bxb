@@ -64,7 +64,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { creditNotesApi, customersApi, ApiError } from '@/lib/api'
-import type { CreditNote, Customer } from '@/types/billing'
+import type { CreditNote, Customer } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const PAGE_SIZE = 20
