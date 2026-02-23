@@ -5,6 +5,10 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 
+class PortalTokenResponse(BaseModel):
+    token: str
+
+
 class PortalUrlResponse(BaseModel):
     portal_url: str
 

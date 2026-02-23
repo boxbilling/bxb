@@ -49,6 +49,21 @@ def customer(db_session):
 class TestPortalService:
     """Tests for PortalService methods."""
 
+    def test_generate_token(self, db_session):
+        """Test that generate_token returns a valid JWT string."""
+        service = PortalService(db_session)
+        customer_id = uuid.uuid4()
+        org_id = DEFAULT_ORG_ID
+
+        token = service.generate_token(customer_id, org_id)
+
+        assert isinstance(token, str)
+        payload = jwt.decode(token, settings.PORTAL_JWT_SECRET, algorithms=["HS256"])
+        assert payload["customer_id"] == str(customer_id)
+        assert payload["organization_id"] == str(org_id)
+        assert payload["type"] == "portal"
+        assert "exp" in payload
+
     def test_generate_portal_url(self, db_session):
         """Test that generate_portal_url returns a valid URL with a JWT."""
         service = PortalService(db_session)

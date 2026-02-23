@@ -3739,3 +3739,50 @@ class TestPortalUsageSchemas:
         )
         assert resp.currency == "USD"
         assert resp.days_elapsed == 15
+
+
+# ── Portal Auth Endpoint ──────────────────────────────────────────────
+
+
+class TestPortalAuthEndpoint:
+    """Tests for GET /portal/auth/{external_id} (org API-key auth)."""
+
+    @pytest.fixture
+    def authed_client(self, db_session):
+        """Client with a valid API key for the default org."""
+        from app.repositories.api_key_repository import ApiKeyRepository
+        from app.schemas.api_key import ApiKeyCreate
+
+        repo = ApiKeyRepository(db_session)
+        _, raw_key = repo.create(DEFAULT_ORG_ID, ApiKeyCreate(name="Portal Auth Key"))
+        c = TestClient(app)
+        c.headers["Authorization"] = f"Bearer {raw_key}"
+        return c
+
+    def test_success(self, authed_client, customer):
+        """Valid API key + valid external_id returns 200 with token."""
+        response = authed_client.get(f"/portal/auth/{customer.external_id}")
+        assert response.status_code == 200
+        data = response.json()
+        assert "token" in data
+
+        # Verify JWT claims
+        payload = jwt.decode(data["token"], settings.PORTAL_JWT_SECRET, algorithms=["HS256"])
+        assert payload["customer_id"] == str(customer.id)
+        assert payload["organization_id"] == str(DEFAULT_ORG_ID)
+        assert payload["type"] == "portal"
+        assert "exp" in payload
+
+    def test_customer_not_found(self, authed_client):
+        """Valid API key + nonexistent external_id returns 404."""
+        response = authed_client.get("/portal/auth/nonexistent-customer-id")
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Customer not found"
+
+    def test_invalid_api_key(self, client):
+        """Invalid API key returns 401."""
+        response = client.get(
+            "/portal/auth/any-id",
+            headers={"Authorization": "Bearer bxb_invalidkey"},
+        )
+        assert response.status_code == 401

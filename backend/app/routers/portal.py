@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_portal_customer
+from app.core.auth import get_current_organization, get_portal_customer
 from app.core.database import get_db
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
@@ -49,6 +49,7 @@ from app.schemas.payment import PaymentResponse
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse
 from app.schemas.portal import (
     PortalDashboardSummaryResponse,
+    PortalTokenResponse,
     PortalNextBillingInfo,
     PortalPayNowRequest,
     PortalPayNowResponse,
@@ -87,6 +88,37 @@ from app.services.usage_query_service import UsageQueryService
 from app.services.wallet_service import WalletService
 
 router = APIRouter()
+
+
+# ── Portal Auth (org API-key) ─────────────────────────────────────────
+
+
+@router.get(
+    "/auth/{external_id}",
+    response_model=PortalTokenResponse,
+    operation_id="get_portal_auth_token",
+    summary="Generate a portal JWT for a customer",
+    responses={
+        401: {"description": "Invalid or missing API key"},
+        404: {"description": "Customer not found"},
+    },
+)
+async def get_portal_auth_token(
+    external_id: str,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> PortalTokenResponse:
+    """Generate a portal JWT token for the given customer (org API-key auth)."""
+    from app.services.portal_service import PortalService
+
+    customer_repo = CustomerRepository(db)
+    customer = customer_repo.get_by_external_id(external_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    service = PortalService(db)
+    token = service.generate_token(customer.id, organization_id)  # type: ignore[arg-type]
+    return PortalTokenResponse(token=token)
 
 
 # ── Dashboard Summary ─────────────────────────────────────────────────
