@@ -47,6 +47,8 @@ jobs:
             -i backend/openapi.json \
             -g python \
             -o sdks/python \
+            --git-user-id=boxbilling \
+            --git-repo-id=bxb \
             --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }} \
             --global-property=apiTests=false,modelTests=false
 
@@ -79,6 +81,8 @@ jobs:
             -i backend/portal-openapi.json \
             -g python \
             -o sdks/python-portal \
+            --git-user-id=boxbilling \
+            --git-repo-id=bxb \
             --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }} \
             --global-property=apiTests=false,modelTests=false
 
