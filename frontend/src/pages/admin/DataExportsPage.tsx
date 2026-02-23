@@ -206,7 +206,7 @@ function ViewDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Export Details</DialogTitle>
           <DialogDescription>
@@ -246,7 +246,7 @@ function ViewDetailsDialog({
           {exportItem.file_path && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">File Path</span>
-              <span className="font-mono text-xs max-w-[250px] truncate">
+              <span className="font-mono text-xs max-w-[350px] truncate">
                 {exportItem.file_path}
               </span>
             </div>
@@ -435,7 +435,7 @@ function NewExportDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>New Export</DialogTitle>
@@ -525,6 +525,22 @@ export default function DataExportsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const { sort, setSort, orderBy } = useSortState()
+
+  const handleDownload = async (exportItem: DataExport) => {
+    try {
+      const blob = await dataExportsApi.download(exportItem.id)
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${exportItem.export_type}_${exportItem.id}.csv`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      a.remove()
+    } catch {
+      toast.error('Failed to download export')
+    }
+  }
 
   // Fetch exports with auto-refresh when exports are in progress
   const {
@@ -756,12 +772,7 @@ export default function DataExportsPage() {
                       <DropdownMenuContent align="end">
                         {exportItem.status === 'completed' && (
                           <DropdownMenuItem
-                            onClick={() =>
-                              window.open(
-                                dataExportsApi.downloadUrl(exportItem.id),
-                                '_blank'
-                              )
-                            }
+                            onClick={() => handleDownload(exportItem)}
                           >
                             <Download className="mr-2 h-4 w-4" />
                             Download

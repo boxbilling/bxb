@@ -1273,7 +1273,7 @@ export const dataExportsApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  downloadUrl: (id: string) => `${API_BASE_URL}/v1/data_exports/${id}/download`,
+  download: (id: string) => requestBlob(`/v1/data_exports/${id}/download`),
 }
 
 // Payment Requests API
