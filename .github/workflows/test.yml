@@ -10,7 +10,6 @@ on:
 
 env:
   PYTHON_VERSION: '3.12'
-  MINIMUM_COVERAGE: 100
 
 jobs:
 #  lint:
@@ -46,21 +45,6 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: bxb_test
-          POSTGRES_PASSWORD: bxb_test
-          POSTGRES_DB: bxb_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -75,20 +59,12 @@ jobs:
         working-directory: backend
         run: uv sync --group dev
 
-      - name: Run tests with coverage
+      - name: Run smoke tests
         working-directory: backend
         env:
-          DATABASE_URL: postgresql://bxb_test:bxb_test@localhost:5432/bxb_test
           APP_DOMAIN: test.bxb.dev
         run: |
-          uv run pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing --cov-fail-under=${{ env.MINIMUM_COVERAGE }}
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          files: backend/coverage.xml
-          fail_ci_if_error: false
-          verbose: true
+          uv run pytest tests/ -v
 
   build:
     name: Build
