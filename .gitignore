@@ -105,3 +105,4 @@ dmypy.json
 reference/
 Auto Run Docs/*
 work/*
+work/_internal_staging/
