@@ -31,7 +31,7 @@ Inspired by [Lago](https://github.com/getlago/lago), built with Python/FastAPI f
 - **💰 Any Pricing Model**: Usage-based, subscription, hybrid, volume, graduated
 - **🔒 Self-Hosted**: Your data stays on your infrastructure
 - **📊 Real-Time Metering**: Instant usage tracking and billing
-- **✅ 100% Test Coverage**: Enforced on every commit
+- **✅ Tested**: Smoke tests included, full suite available separately
 
 ## Tech Stack
 
@@ -115,13 +115,11 @@ make frontend-dev
 
 ### Running Tests
 
-⚠️ **This project requires 100% test coverage.** CI will fail if coverage drops below 100%.
-
 ```bash
-# Run tests
+# Run smoke tests
 make test
 
-# Run tests with coverage check (enforces 100%)
+# Run smoke tests with coverage report
 make test-cov
 
 # Run linting
@@ -178,20 +176,17 @@ See [OpenAPI spec](./backend/openapi.json) for full API documentation.
 | Self-Hosted | ✅ | ✅ | ❌ | ❌ |
 | Usage-Based Billing | ✅ | ✅ | ✅ | ✅ |
 | Python/FastAPI | ✅ | ❌ (Ruby) | N/A | N/A |
-| 100% Test Coverage | ✅ | ❌ | N/A | N/A |
+| Smoke Tests Included | ✅ | ✅ | N/A | N/A |
 | No Revenue Share | ✅ | ✅ | ❌ | ❌ |
 
 ## Contributing
 
 We love contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-### Testing Requirements
-
-All code must have tests. Coverage is enforced at 100%.
+### Before Pushing
 
 ```bash
-# Before pushing
-make test-cov
+make test
 make lint
 ```
 
