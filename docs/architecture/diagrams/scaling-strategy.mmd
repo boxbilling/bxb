@@ -1,0 +1,57 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'lineColor': '#5C6370'}}}%%
+
+graph TB
+    subgraph Phase1["Phase 1: Current — 10k events/sec"]
+        direction LR
+        P1_API[API Server<br/>Single Instance]
+        P1_K[Kafka<br/>3 Brokers<br/>12 Partitions]
+        P1_C[1 Consumer]
+        P1_CH[(ClickHouse<br/>Single Node)]
+        P1_COST["~$1,000/month"]
+
+        P1_API --> P1_K --> P1_C --> P1_CH
+    end
+
+    subgraph Phase2["Phase 2: Growth — 20-50k events/sec"]
+        direction LR
+        P2_API[API Servers<br/>2-3 Instances<br/>Load Balanced]
+        P2_K[Kafka<br/>5 Brokers<br/>24 Partitions]
+        P2_C[3 Consumers<br/>Consumer Group]
+        P2_CH[(ClickHouse<br/>2-Node Cluster<br/>+ Replica)]
+        P2_COST["~$2,000/month"]
+
+        P2_API --> P2_K --> P2_C --> P2_CH
+    end
+
+    subgraph Phase3["Phase 3: Real-time — 50-100k events/sec"]
+        direction LR
+        P3_API[API Servers<br/>5+ Instances]
+        P3_K[Kafka<br/>8 Brokers<br/>48 Partitions]
+        P3_KS[Kafka Streams<br/>Enrichment]
+        P3_C[6 Consumers]
+        P3_CH[(ClickHouse<br/>3-Node Sharded<br/>+ Replicas)]
+        P3_COST["~$3,300/month"]
+
+        P3_API --> P3_K
+        P3_K --> P3_KS --> P3_C --> P3_CH
+    end
+
+    subgraph Phase4["Phase 4: Complex Processing — 100k+ events/sec"]
+        direction LR
+        P4_API[API Servers<br/>Horizontally Scaled]
+        P4_K[Kafka<br/>12+ Brokers<br/>96 Partitions]
+        P4_F[Apache Flink<br/>Pre-aggregation<br/>Windowed Processing]
+        P4_CH[(ClickHouse<br/>Sharded Cluster<br/>6+ Nodes)]
+        P4_COST["~$5,300/month"]
+
+        P4_API --> P4_K --> P4_F --> P4_CH
+    end
+
+    Phase1 -->|"Scale Trigger:<br/>Sustained >15k/sec<br/>Consumer lag >30s"| Phase2
+    Phase2 -->|"Scale Trigger:<br/>Sustained >40k/sec<br/>Need real-time enrichment"| Phase3
+    Phase3 -->|"Scale Trigger:<br/>Sustained >80k/sec<br/>Need complex event correlation"| Phase4
+
+    style Phase1 fill:#2F855A,stroke:#276749,color:#E2E8F0
+    style Phase2 fill:#2C5282,stroke:#2B6CB0,color:#E2E8F0
+    style Phase3 fill:#B7791F,stroke:#975A16,color:#E2E8F0
+    style Phase4 fill:#9B2C2C,stroke:#822727,color:#E2E8F0

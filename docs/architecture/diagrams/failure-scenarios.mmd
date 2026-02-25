@@ -1,0 +1,67 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'lineColor': '#5C6370'}}}%%
+
+graph TD
+    subgraph NormalFlow["Normal Flow"]
+        API[API Server]
+        PG[(PostgreSQL)]
+        KAFKA[Kafka]
+        CONSUMER[Batch Consumer]
+        CH[(ClickHouse)]
+    end
+
+    API -->|"1. Sync write<br/>(always succeeds first)"| PG
+    API -->|"2. Async produce<br/>(fire-and-forget)"| KAFKA
+    KAFKA --> CONSUMER
+    CONSUMER --> CH
+
+    subgraph Scenario1["Scenario A: Kafka Producer Failure"]
+        S1_DETECT["Detection:<br/>Producer callback error"]
+        S1_ACTION["Action:<br/>Log error + increment counter<br/>Event safe in PostgreSQL"]
+        S1_RECOVER["Recovery:<br/>Reconciliation job detects<br/>missing events in ClickHouse<br/>Replays from PostgreSQL"]
+        S1_ALERT["Alert:<br/>Kafka produce failure rate<br/>&gt; 0.1% over 5 min"]
+    end
+
+    subgraph Scenario2["Scenario B: ClickHouse Down"]
+        S2_DETECT["Detection:<br/>Consumer INSERT fails<br/>HTTP 503 / connection refused"]
+        S2_ACTION["Action:<br/>Consumer pauses &amp; retries<br/>with exponential backoff<br/>Kafka retains events (7 days)"]
+        S2_FALLBACK["Fallback:<br/>Aggregation queries<br/>route to PostgreSQL<br/>(slower but correct)"]
+        S2_RECOVER["Recovery:<br/>ClickHouse comes back online<br/>Consumer resumes from<br/>last committed offset"]
+    end
+
+    subgraph Scenario3["Scenario C: Consumer Crash"]
+        S3_DETECT["Detection:<br/>Consumer group rebalance<br/>heartbeat timeout"]
+        S3_ACTION["Action:<br/>Kafka reassigns partitions<br/>to remaining consumers<br/>(if consumer group &gt; 1)"]
+        S3_RECOVER["Recovery:<br/>New consumer picks up<br/>from last committed offset<br/>At-most-once uncommitted<br/>batch may replay (deduped<br/>by ReplacingMergeTree)"]
+    end
+
+    subgraph Scenario4["Scenario D: Duplicate Events"]
+        S4_DETECT["Detection:<br/>At-least-once delivery<br/>produces duplicates"]
+        S4_ACTION["Action:<br/>ReplacingMergeTree deduplicates<br/>by ORDER BY key at merge time"]
+        S4_QUERY["Billing Queries:<br/>Use SELECT ... FINAL<br/>to force dedup at read time"]
+        S4_DASH["Dashboard Queries:<br/>Slight over-count acceptable<br/>Skip FINAL for performance"]
+    end
+
+    subgraph MonitoringAlerts["Monitoring & Alerts"]
+        M1["Kafka consumer lag<br/>&gt; 10,000 messages"]
+        M2["ClickHouse insert<br/>failure rate &gt; 0.1%"]
+        M3["PostgreSQL vs ClickHouse<br/>event count divergence"]
+        M4["Consumer heartbeat<br/>timeout"]
+        M5["Kafka disk usage<br/>&gt; 80%"]
+    end
+
+    API -.->|"Failure A"| Scenario1
+    CONSUMER -.->|"Failure B"| Scenario2
+    CONSUMER -.->|"Failure C"| Scenario3
+    CH -.->|"Failure D"| Scenario4
+
+    S1_DETECT --> S1_ACTION --> S1_RECOVER --> S1_ALERT
+    S2_DETECT --> S2_ACTION --> S2_FALLBACK --> S2_RECOVER
+    S3_DETECT --> S3_ACTION --> S3_RECOVER
+    S4_DETECT --> S4_ACTION --> S4_QUERY --> S4_DASH
+
+    style NormalFlow fill:#2F855A,stroke:#276749,color:#E2E8F0
+    style Scenario1 fill:#B7791F,stroke:#975A16,color:#E2E8F0
+    style Scenario2 fill:#9B2C2C,stroke:#822727,color:#E2E8F0
+    style Scenario3 fill:#6B46C1,stroke:#553C9A,color:#E2E8F0
+    style Scenario4 fill:#2C5282,stroke:#2B6CB0,color:#E2E8F0
+    style MonitoringAlerts fill:#4A5568,stroke:#2D3748,color:#E2E8F0

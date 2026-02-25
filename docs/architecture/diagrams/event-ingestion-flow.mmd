@@ -1,0 +1,55 @@
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2C5F8A', 'lineColor': '#5C6370', 'secondaryColor': '#61AFEF', 'tertiaryColor': '#E5C07B'}}}%%
+
+graph TD
+    subgraph ClientLayer["Client Layer"]
+        C1[Client Application]
+        C2[SDK / HTTP Client]
+    end
+
+    subgraph APILayer["API Layer (FastAPI)"]
+        API[REST API Endpoint<br/>/api/v1/events]
+        VAL[Validation & Dedup<br/>transaction_id check]
+    end
+
+    subgraph DurabilityLayer["Durability Layer"]
+        PG[(PostgreSQL<br/>Source of Truth<br/>ACID Compliant)]
+        K[Kafka Cluster<br/>3 Brokers / 12 Partitions<br/>topic: billing-events]
+    end
+
+    subgraph ProcessingLayer["Processing Layer"]
+        BC[Batch Consumer<br/>Python Process<br/>5,000-10,000 rows / 5s flush]
+    end
+
+    subgraph AnalyticsLayer["Analytics Layer (ClickHouse)"]
+        CH[(ClickHouse<br/>events_raw<br/>ReplacingMergeTree)]
+        MV[Materialized Views<br/>Pre-aggregated Metrics]
+    end
+
+    subgraph QueryLayer["Query & Aggregation"]
+        AGG[Aggregation Engine<br/>COUNT / SUM / MAX<br/>UNIQUE_COUNT / LATEST<br/>WEIGHTED_SUM / CUSTOM]
+        BILL[Billing System<br/>Invoice Generation]
+        DASH[Dashboards<br/>Real-time Metrics]
+    end
+
+    C1 --> C2
+    C2 -->|HTTP POST| API
+    API --> VAL
+    VAL -->|Sync Write| PG
+    VAL -->|Async Produce<br/>fire-and-forget| K
+
+    K -->|Consumer Group:<br/>billing-events-clickhouse-writer| BC
+    BC -->|Batch INSERT<br/>JSONEachRow| CH
+    CH --> MV
+
+    CH --> AGG
+    AGG --> BILL
+    AGG --> DASH
+
+    PG -.->|Fallback Path<br/>ClickHouse downtime| AGG
+
+    style ClientLayer fill:#2D3748,stroke:#4A5568,color:#E2E8F0
+    style APILayer fill:#2C5282,stroke:#2B6CB0,color:#E2E8F0
+    style DurabilityLayer fill:#2F855A,stroke:#276749,color:#E2E8F0
+    style ProcessingLayer fill:#9B2C2C,stroke:#822727,color:#E2E8F0
+    style AnalyticsLayer fill:#6B46C1,stroke:#553C9A,color:#E2E8F0
+    style QueryLayer fill:#B7791F,stroke:#975A16,color:#E2E8F0
