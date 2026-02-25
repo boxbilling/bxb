@@ -49,13 +49,13 @@ from app.schemas.payment import PaymentResponse
 from app.schemas.payment_method import PaymentMethodCreate, PaymentMethodResponse
 from app.schemas.portal import (
     PortalDashboardSummaryResponse,
-    PortalTokenResponse,
     PortalNextBillingInfo,
     PortalPayNowRequest,
     PortalPayNowResponse,
     PortalProjectedUsageItem,
     PortalProjectedUsageResponse,
     PortalQuickActions,
+    PortalTokenResponse,
     PortalUpcomingCharge,
     PortalUsageLimitItem,
     PortalUsageLimitsResponse,

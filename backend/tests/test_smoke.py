@@ -13,7 +13,6 @@ from starlette.testclient import TestClient
 from app.core.database import get_db
 from app.main import app
 from app.models.billable_metric import AggregationType, BillableMetric
-from tests.conftest import DEFAULT_ORG_ID
 
 
 @pytest.fixture

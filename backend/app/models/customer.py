@@ -1,7 +1,9 @@
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, func
 
 from app.core.database import Base
-from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid, utc_now  # noqa: F401
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid, utc_now
+
+__all__ = ["DEFAULT_ORGANIZATION_ID", "UUIDType", "generate_uuid", "utc_now", "Customer"]
 
 
 class Customer(Base):

@@ -7,8 +7,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.sorting import apply_order_by
-from app.models.shared import generate_uuid
 from app.models.notification import Notification
+from app.models.shared import generate_uuid
 
 
 class NotificationRepository:

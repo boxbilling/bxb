@@ -1,5 +1,4 @@
 from app.models.add_on import AddOn
-from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid, utc_now
 from app.models.api_key import ApiKey
 from app.models.applied_add_on import AppliedAddOn
 from app.models.applied_coupon import AppliedCoupon, AppliedCouponStatus
@@ -48,6 +47,7 @@ from app.models.payment_method import PaymentMethod
 from app.models.payment_request import PaymentRequest
 from app.models.payment_request_invoice import PaymentRequestInvoice
 from app.models.plan import Plan, PlanInterval
+from app.models.shared import DEFAULT_ORGANIZATION_ID, UUIDType, generate_uuid, utc_now
 from app.models.subscription import BillingTime, Subscription, SubscriptionStatus, TerminationAction
 from app.models.tax import Tax
 from app.models.usage_alert import UsageAlert

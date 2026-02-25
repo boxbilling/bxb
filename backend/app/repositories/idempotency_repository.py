@@ -6,8 +6,8 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.models.shared import generate_uuid
 from app.models.idempotency_record import IdempotencyRecord
+from app.models.shared import generate_uuid
 
 
 class IdempotencyRepository:
