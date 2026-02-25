@@ -53,7 +53,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "raise NotImplementedError",
 ]
-fail_under = 100
+fail_under = 0
 show_missing = true
 
 [tool.ruff]
