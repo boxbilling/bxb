@@ -1,3 +1,6 @@
+# NOTE: Full test suite with 100% coverage enforcement is in the bxb-internal repo.
+# Public repo runs smoke tests only.
+
 .PHONY: help install dev test test-cov lint format migrate run clean openapi
 
 help:
@@ -10,7 +13,7 @@ help:
 	@echo "  dev         Run development server"
 	@echo "  worker      Run worker server"
 	@echo "  test        Run tests"
-	@echo "  test-cov    Run tests with 100% coverage check"
+	@echo "  test-cov    Run tests with coverage report"
 	@echo "  lint        Run linters"
 	@echo "  format      Format code"
 	@echo "  openapi     Generate OpenAPI schema and sync frontend client"
@@ -40,7 +43,7 @@ test:
 	cd frontend && npx vitest run
 
 test-cov:
-	cd backend && uv run pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=100
+	cd backend && uv run pytest tests/ -v --cov=app --cov-report=term-missing
 	cd frontend && npx vitest run
 
 lint:
