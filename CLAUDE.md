@@ -1,7 +1,9 @@
 # Instructions
 
-All code must have tests. Coverage is enforced at 100%.
+Run smoke tests before committing:
 
 ```bash
-make test-cov
+make test
 ```
+
+Full test suite with 100% coverage enforcement is maintained in the private `bxb-internal` repository.
