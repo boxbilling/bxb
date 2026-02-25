@@ -6,6 +6,9 @@ tags:
   - architecture
   - comparison
   - decision-record
+author: bxb Engineering
+reviewed_by: bxb Engineering
+version: "1.0"
 related:
   - "[[Ingestion-Pattern-Comparison]]"
   - "[[Event-Ingestion-Architecture]]"

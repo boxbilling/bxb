@@ -6,10 +6,14 @@ tags:
   - clickhouse
   - ingestion
   - architecture-comparison
+author: bxb Engineering
+reviewed_by: bxb Engineering
+version: "1.0"
 related:
   - "[[API-Direct-Write]]"
   - "[[Streaming-Ingestion]]"
   - "[[Ingestion-Pattern-Comparison]]"
+  - "[[Event-Ingestion-Architecture]]"
 ---
 
 # Direct ClickHouse Ingestion Patterns

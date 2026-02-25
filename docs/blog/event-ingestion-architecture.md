@@ -3,6 +3,8 @@ type: report
 title: "Building a Cost-Effective Event Ingestion Pipeline: Kafka + ClickHouse at 10k Events/sec"
 created: 2026-02-25
 author: bxb Engineering
+reviewed_by: bxb Engineering
+version: "1.0"
 tags:
   - blog-post
   - architecture
@@ -14,6 +16,8 @@ related:
   - "[[API-Direct-Write]]"
   - "[[Streaming-Ingestion]]"
   - "[[Kafka-Event-Pipeline]]"
+  - "[[Capacity-Planning]]"
+  - "[[Comparison-Matrix]]"
 ---
 
 # Building a Cost-Effective Event Ingestion Pipeline: Kafka + ClickHouse at 10k Events/sec
@@ -21,6 +25,7 @@ related:
 ## Table of Contents
 
 - [Introduction](#introduction)
+- [Prerequisites](#prerequisites)
 - [Requirements](#requirements)
 - [Architecture Overview](#architecture-overview)
 - [Detailed Design](#detailed-design)
@@ -39,6 +44,7 @@ related:
 - [Troubleshooting](#troubleshooting)
 - [Future Optimizations: Scaling to 100k/sec](#future-optimizations-scaling-to-100ksec)
 - [Team Recommendations](#team-recommendations)
+- [Next Steps](#next-steps)
 
 ---
 
@@ -51,6 +57,31 @@ The "deceptively simple" part breaks down at scale. At **10,000 events per secon
 This post describes the event ingestion architecture we chose for bxb: **API → Kafka → Batch Consumer → ClickHouse**. We explain why we picked this pattern over four alternatives, how the components fit together, what configuration decisions matter, and what we'd do differently next time.
 
 **Target audience:** Backend engineers familiar with event-driven systems who are evaluating architectures for high-volume event ingestion.
+
+---
+
+## Prerequisites
+
+To follow along with this post and implement the described architecture, you'll need:
+
+**Infrastructure:**
+- Apache Kafka 3.x+ (3-broker cluster recommended for production)
+- ClickHouse 23.x+ (single node sufficient for 10k/sec)
+- PostgreSQL 15+ (existing transactional database)
+- Python 3.11+
+
+**Dependencies:**
+- `clickhouse-connect` — HTTP-based ClickHouse client for Python
+- `confluent-kafka` or `aiokafka` — Kafka producer/consumer client
+- `FastAPI` — API framework (or any Python web framework)
+
+**Knowledge:**
+- Familiarity with event-driven architecture concepts (producers, consumers, topics, partitions)
+- Basic SQL knowledge (ClickHouse SQL is ANSI-compatible with extensions)
+- Understanding of at-least-once delivery semantics
+- Experience with Python async patterns (for the batch consumer)
+
+**Skill level:** Intermediate backend engineering. No prior Kafka or ClickHouse experience required, but familiarity with distributed systems concepts will help.
 
 ---
 
@@ -631,6 +662,33 @@ Revisit the architecture when:
 3. **Design the ORDER BY key for your most common query.** In ClickHouse, the physical data layout is your most powerful performance lever.
 4. **Always have a fallback path.** ClickHouse is fast but not as operationally mature as PostgreSQL. A PostgreSQL fallback for aggregation queries ensures billing never stops.
 5. **Batch your writes.** This is the single most impactful optimization for ClickHouse insert performance. 5,000 rows per INSERT vs. 1 row per INSERT is the difference between a healthy system and "too many parts" errors.
+
+---
+
+## Next Steps
+
+### Phase 05 Preview: Implementation and Integration
+
+With the architecture designed and documented, the next phase focuses on implementation:
+
+- **Kafka cluster provisioning:** Deploy the 3-broker Kafka cluster with the topic configuration described in this post (12 partitions, replication factor 3, lz4 compression).
+- **Batch consumer implementation:** Build the Python batch consumer that reads from Kafka and bulk-inserts into ClickHouse, starting with the batching strategy outlined above (5,000–10,000 rows, 5-second flush interval).
+- **Migration from dual-write:** Transition from the current fire-and-forget ClickHouse dual-write to the Kafka-mediated pipeline, with a parallel-run period to validate correctness.
+- **Monitoring and alerting:** Deploy the monitoring alerts described in the Troubleshooting section (consumer lag, insert failure rate, event count drift).
+- **Load testing:** Validate the architecture under sustained 10k events/sec and burst scenarios up to 20k/sec.
+
+### Future Enhancements
+
+- **Materialized views:** Pre-compute common aggregations (hourly counts per org/code) to reduce query latency for dashboards.
+- **Partitioning by month:** Add `PARTITION BY toYYYYMM(timestamp)` to `events_raw` for efficient data lifecycle management as volume grows.
+- **Schema registry:** Introduce a Kafka schema registry (Avro or Protobuf) to enforce event schema evolution and prevent breaking changes.
+- **Dead letter queue:** Route events that fail ClickHouse insertion after retries to a dedicated Kafka topic for investigation.
+
+### Open Questions
+
+- **Retention policy:** Should Kafka retention be 7 days or 30 days? Longer retention provides more replay window but increases storage costs.
+- **Partition key evolution:** If some organizations generate disproportionate event volume, should the partition key include a sub-key to avoid hot partitions?
+- **ClickHouse cluster timing:** At what sustained throughput should we provision the second ClickHouse node — 20k/sec or wait until 30k/sec?
 
 ---
 

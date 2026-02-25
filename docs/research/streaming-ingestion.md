@@ -7,10 +7,14 @@ tags:
   - flink
   - streaming
   - real-time
+author: bxb Engineering
+reviewed_by: bxb Engineering
+version: "1.0"
 related:
   - "[[Direct-Clickhouse-Ingestion]]"
   - "[[API-Direct-Write]]"
   - "[[Ingestion-Pattern-Comparison]]"
+  - "[[Event-Ingestion-Architecture]]"
 ---
 
 # Streaming Ingestion Patterns
@@ -52,10 +56,10 @@ API Server → Pulsar → Pulsar Functions → ClickHouse
 
 Compared to bxb's chosen pattern:
 ```
-API Server → Kafka → Consumer (simple batch writer) → ClickHouse
+API Server → Kafka → Batch Consumer → ClickHouse
 ```
 
-The key distinction: bxb's current consumer is a simple batch writer that reads from Kafka and writes to ClickHouse. A stream processor adds stateful computation — windowed aggregations, joins, deduplication, and complex event processing — between the broker and the sink.
+The key distinction: bxb's current batch consumer is a simple process that reads from Kafka and writes to ClickHouse. A stream processor adds stateful computation — windowed aggregations, joins, deduplication, and complex event processing — between the broker and the sink.
 
 ---
 
@@ -689,7 +693,7 @@ class EnrichEvent(Function):
 | Checkpoint storage (S3) | N/A | ~$5–10/month |
 | **Total Flink overhead** | — | **~$500–1,000/month** |
 
-- **vs. simple Kafka consumer**: bxb's current batch-writer consumer runs as a single lightweight process. Adding Flink increases infrastructure cost by ~$500–1,000/month with no throughput benefit for simple ingestion.
+- **vs. simple Kafka consumer**: bxb's current batch consumer runs as a single lightweight process. Adding Flink increases infrastructure cost by ~$500–1,000/month with no throughput benefit for simple ingestion.
 
 ### 3. Steeper Learning Curve
 

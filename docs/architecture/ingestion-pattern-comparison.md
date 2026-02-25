@@ -6,11 +6,15 @@ tags:
   - architecture
   - decision-record
   - comparison
+author: bxb Engineering
+reviewed_by: bxb Engineering
+version: "1.0"
 related:
   - "[[Direct-Clickhouse-Ingestion]]"
   - "[[API-Direct-Write]]"
   - "[[Streaming-Ingestion]]"
   - "[[Kafka-Event-Pipeline]]"
+  - "[[Event-Ingestion-Architecture]]"
 ---
 
 # Ingestion Pattern Comparison and Decision Framework

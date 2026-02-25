@@ -6,10 +6,14 @@ tags:
   - postgresql
   - scaling
   - architecture-comparison
+author: bxb Engineering
+reviewed_by: bxb Engineering
+version: "1.0"
 related:
   - "[[Direct-Clickhouse-Ingestion]]"
   - "[[Streaming-Ingestion]]"
   - "[[Ingestion-Pattern-Comparison]]"
+  - "[[Event-Ingestion-Architecture]]"
 ---
 
 # API Direct-Write Patterns
