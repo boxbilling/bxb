@@ -23,10 +23,10 @@ make test
 These smoke tests are designed to run fast (seconds, not minutes) and are executed
 before every commit.
 
-## The Full Test Suite Lives Elsewhere
+## The Full Test Suite Is Private
 
 The complete test suite — with **100% code coverage enforcement** — is maintained in
-the private `bxb-internal` repository. It is not part of this open-source release.
+the private repository. It is not part of this open-source release.
 
 This is a deliberate architectural decision, not an oversight.
 
@@ -47,12 +47,11 @@ application it verifies. The internal test infrastructure includes:
 
 The sheer volume of this test code — the fixtures, the helpers, the scenario
 generators, the assertion libraries — constitutes a larger engineering effort than
-the billing engine itself. Releasing it would effectively mean maintaining two
-large open-source projects instead of one.
+the billing engine itself.
 
 ### Why not open-source the tests?
 
-A few practical reasons:
+A few reasons:
 
 1. **Maintenance burden.** Keeping a test suite of this scale healthy requires
    continuous investment. Decoupling it from the internal CI/CD pipeline and
