@@ -168,6 +168,25 @@ API follows Lago's patterns. Core resources:
 
 See [OpenAPI spec](./backend/openapi.json) for full API documentation.
 
+## Python SDK
+
+The `bxb` Python SDK is auto-generated from the OpenAPI spec and published to PyPI. It includes all endpoints — billing, metering, and customer portal.
+
+### Installation
+
+```bash
+pip install bxb
+```
+
+### Usage
+
+```python
+import bxb
+
+config = bxb.Configuration(host="https://your-bxb-instance.com")
+client = bxb.ApiClient(config)
+```
+
 ## Comparison with Alternatives
 
 | Feature | bxb | Lago | Stripe Billing | Chargebee |

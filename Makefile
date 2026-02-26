@@ -59,10 +59,6 @@ openapi:
 	cd backend && uv run python -c "import app.main; import json; print(json.dumps(app.main.app.openapi()))" > ./openapi.json
 	cd frontend && npx openapi-typescript ../backend/openapi.json -o ./src/lib/schema.d.ts
 
-# OpenAPI - Generate schema for portal
-openapi-portal:
-	cd backend && uv run python scripts/generate_portal_openapi.py > ./openapi-portal.json
-
 # Database
 migrate:
 	cd backend && uv run alembic upgrade head

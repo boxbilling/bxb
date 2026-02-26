@@ -23,12 +23,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-
       - name: Install OpenAPI Generator
         run: npm install @openapitools/openapi-generator-cli -g
 
@@ -36,12 +30,8 @@ jobs:
         id: version
         run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
 
-      - name: Generate Portal OpenAPI Spec
-        run: python -c "import json, sys; sys.path.insert(0, 'backend/scripts'); from generate_portal_openapi import generate_portal_openapi; spec = generate_portal_openapi(json.load(open('backend/openapi.json'))); print(json.dumps(spec, indent=2))" > backend/portal-openapi.json
-
-      # Full SDK
-      - name: Generate Full SDK
-        id: gen-full
+      - name: Generate Python SDK
+        id: gen-sdk
         continue-on-error: true
         run: |
           openapi-generator-cli generate \
@@ -53,21 +43,17 @@ jobs:
             --additional-properties=packageName=bxb,projectName=bxb,packageVersion=${{ steps.version.outputs.version }} \
             --global-property=apiTests=false,modelTests=false
 
-      - name: Copy Full SDK README
-        if: steps.gen-full.outcome == 'success'
-        run: cp sdks/README-bxb.md sdks/python/README.md
-
-      - name: Build Full SDK
-        if: steps.gen-full.outcome == 'success'
-        id: build-full
+      - name: Build Python SDK
+        if: steps.gen-sdk.outcome == 'success'
+        id: build-sdk
         continue-on-error: true
         working-directory: sdks/python
         run: |
           uv pip install --system build
           python -m build
 
-      - name: Publish Full SDK to PyPI
-        if: steps.build-full.outcome == 'success'
+      - name: Publish Python SDK to PyPI
+        if: steps.build-sdk.outcome == 'success'
         continue-on-error: true
         working-directory: sdks/python
         run: |
@@ -76,70 +62,3 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-
-      # Portal SDK
-      - name: Generate Portal SDK
-        id: gen-portal
-        continue-on-error: true
-        run: |
-          openapi-generator-cli generate \
-            -i backend/portal-openapi.json \
-            -g python \
-            -o sdks/python-portal \
-            --git-user-id=boxbilling \
-            --git-repo-id=bxb \
-            --additional-properties=packageName=bxb_portal,projectName=bxb-portal,packageVersion=${{ steps.version.outputs.version }} \
-            --global-property=apiTests=false,modelTests=false
-
-      - name: Copy Portal SDK README
-        if: steps.gen-portal.outcome == 'success'
-        run: cp sdks/README-bxb-portal.md sdks/python-portal/README.md
-
-      - name: Build Portal SDK
-        if: steps.gen-portal.outcome == 'success'
-        id: build-portal
-        continue-on-error: true
-        working-directory: sdks/python-portal
-        run: python -m build
-
-      - name: Publish Portal SDK to PyPI
-        if: steps.build-portal.outcome == 'success'
-        continue-on-error: true
-        working-directory: sdks/python-portal
-        run: twine upload dist/*
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-
-      # NPM Portal SDK
-      - name: Generate NPM Portal SDK
-        id: gen-npm-portal
-        continue-on-error: true
-        run: |
-          openapi-generator-cli generate \
-            -i backend/portal-openapi.json \
-            -g typescript-axios \
-            -o sdks/portal \
-            --additional-properties=npmName=bxb-portal
-
-      - name: Build NPM Portal SDK
-        if: steps.gen-npm-portal.outcome == 'success'
-        id: build-npm-portal
-        continue-on-error: true
-        working-directory: sdks/portal
-        run: |
-          npm install
-          npm run build
-
-      - name: Patch NPM Portal SDK Version
-        if: steps.build-npm-portal.outcome == 'success'
-        working-directory: sdks/portal
-        run: npm version patch --no-git-tag-version
-
-      - name: Publish NPM Portal SDK
-        if: steps.build-npm-portal.outcome == 'success'
-        continue-on-error: true
-        working-directory: sdks/portal
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
