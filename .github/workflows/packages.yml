@@ -23,6 +23,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Install OpenAPI Generator
         run: npm install @openapitools/openapi-generator-cli -g
 
@@ -62,3 +68,31 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+
+      # NPM SDK
+      - name: Generate NPM SDK
+        id: gen-npm
+        continue-on-error: true
+        run: |
+          openapi-generator-cli generate \
+            -i backend/openapi.json \
+            -g typescript-axios \
+            -o sdks/typescript \
+            --additional-properties=npmName=bxb,npmVersion=${{ steps.version.outputs.version }}
+
+      - name: Build NPM SDK
+        if: steps.gen-npm.outcome == 'success'
+        id: build-npm
+        continue-on-error: true
+        working-directory: sdks/typescript
+        run: |
+          npm install
+          npm run build
+
+      - name: Publish NPM SDK
+        if: steps.build-npm.outcome == 'success'
+        continue-on-error: true
+        working-directory: sdks/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
