@@ -1,18 +1,11 @@
 import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Code, Hash, ArrowUp, CircleDot, BarChart3, Search, Layers, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +38,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -53,7 +45,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { billableMetricsApi, ApiError } from '@/lib/api'
-import type { BillableMetric, BillableMetricCreate, BillableMetricUpdate, AggregationType } from '@/lib/api'
+import type { BillableMetric, AggregationType } from '@/lib/api'
 
 const aggregationTypes: { value: AggregationType; label: string; description: string; icon: React.ElementType }[] = [
   { value: 'count', label: 'Count', description: 'Count total events', icon: Hash },
@@ -81,168 +73,14 @@ function AggregationBadge({ type }: { type: AggregationType }) {
   )
 }
 
-function MetricFormDialog({
-  open,
-  onOpenChange,
-  metric,
-  onSubmit,
-  isLoading,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  metric?: BillableMetric | null
-  onSubmit: (data: BillableMetricCreate | BillableMetricUpdate) => void
-  isLoading: boolean
-}) {
-  const [formData, setFormData] = useState<BillableMetricCreate>({
-    code: metric?.code ?? '',
-    name: metric?.name ?? '',
-    description: metric?.description ?? undefined,
-    aggregation_type: metric?.aggregation_type ?? 'count',
-    field_name: metric?.field_name ?? undefined,
-    recurring: metric?.recurring ?? false,
-  })
-
-  const needsFieldName = formData.aggregation_type !== 'count'
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSubmit({
-      ...formData,
-      field_name: needsFieldName ? formData.field_name : null,
-    })
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              {metric ? 'Edit Billable Metric' : 'Create Billable Metric'}
-            </DialogTitle>
-            <DialogDescription>
-              {metric
-                ? 'Update metric configuration'
-                : 'Define a new billable metric for usage tracking'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="code">Code *</Label>
-                <Input
-                  id="code"
-                  value={formData.code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
-                  placeholder="api_requests"
-                  required
-                  disabled={!!metric}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Unique identifier for this metric
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="name">Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="API Requests"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Input
-                id="description"
-                value={formData.description ?? ''}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value || undefined })
-                }
-                placeholder="Number of API calls made"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Aggregation Type *</Label>
-              <Select
-                value={formData.aggregation_type}
-                onValueChange={(value: AggregationType) =>
-                  setFormData({ ...formData, aggregation_type: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {aggregationTypes.map((agg) => (
-                    <SelectItem key={agg.value} value={agg.value}>
-                      <div className="flex items-center gap-2">
-                        <agg.icon className="h-4 w-4" />
-                        <span>{agg.label}</span>
-                        <span className="text-muted-foreground">
-                          — {agg.description}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {needsFieldName && (
-              <div className="space-y-2">
-                <Label htmlFor="field_name">Field Name *</Label>
-                <Input
-                  id="field_name"
-                  value={formData.field_name ?? ''}
-                  onChange={(e) =>
-                    setFormData({ ...formData, field_name: e.target.value || undefined })
-                  }
-                  placeholder="bytes_transferred"
-                  required={needsFieldName}
-                />
-                <p className="text-xs text-muted-foreground">
-                  The property name in event payloads to aggregate
-                </p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : metric ? 'Update' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 const PAGE_SIZE = 20
 
 export default function MetricsPage() {
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [formOpen, setFormOpen] = useState(false)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const { sort, setSort, orderBy } = useSortState()
-  const [editingMetric, setEditingMetric] = useState<BillableMetric | null>(null)
   const [deleteMetric, setDeleteMetric] = useState<BillableMetric | null>(null)
   const [search, setSearch] = useState('')
   const [aggregationFilter, setAggregationFilter] = useState<string>('all')
@@ -280,40 +118,6 @@ export default function MetricsPage() {
     return matchesSearch && matchesAggregation
   }) ?? []
 
-  // Create mutation
-  const createMutation = useMutation({
-    mutationFn: (data: BillableMetricCreate) => billableMetricsApi.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
-      queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['billable-metrics-plan-counts'] })
-      setFormOpen(false)
-      toast.success('Billable metric created successfully')
-    },
-    onError: (error) => {
-      const message = error instanceof ApiError ? error.message : 'Failed to create billable metric'
-      toast.error(message)
-    },
-  })
-
-  // Update mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: BillableMetricUpdate }) =>
-      billableMetricsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['billable-metrics'] })
-      queryClient.invalidateQueries({ queryKey: ['billable-metrics-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['billable-metrics-plan-counts'] })
-      setEditingMetric(null)
-      setFormOpen(false)
-      toast.success('Billable metric updated successfully')
-    },
-    onError: (error) => {
-      const message = error instanceof ApiError ? error.message : 'Failed to update billable metric'
-      toast.error(message)
-    },
-  })
-
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => billableMetricsApi.delete(id),
@@ -330,26 +134,6 @@ export default function MetricsPage() {
     },
   })
 
-  const handleSubmit = (data: BillableMetricCreate | BillableMetricUpdate) => {
-    if (editingMetric) {
-      updateMutation.mutate({ id: editingMetric.id, data })
-    } else {
-      createMutation.mutate(data as BillableMetricCreate)
-    }
-  }
-
-  const handleEdit = (metric: BillableMetric) => {
-    setEditingMetric(metric)
-    setFormOpen(true)
-  }
-
-  const handleCloseForm = (open: boolean) => {
-    if (!open) {
-      setEditingMetric(null)
-    }
-    setFormOpen(open)
-  }
-
   if (error) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -364,9 +148,11 @@ export default function MetricsPage() {
         title="Billable Metrics"
         description="Define how usage events are aggregated for billing"
         actions={
-          <Button onClick={() => setFormOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Metric
+          <Button asChild>
+            <Link to="/admin/metrics/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Metric
+            </Link>
           </Button>
         }
       />
@@ -466,10 +252,12 @@ export default function MetricsPage() {
                         variant="outline"
                         size="sm"
                         className="mt-2"
-                        onClick={() => setFormOpen(true)}
+                        asChild
                       >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Create your first metric
+                        <Link to="/admin/metrics/new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Create your first metric
+                        </Link>
                       </Button>
                     )}
                   </div>
@@ -513,7 +301,7 @@ export default function MetricsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(metric)}>
+                          <DropdownMenuItem onClick={() => navigate(`/admin/metrics/${metric.id}/edit`)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit
                           </DropdownMenuItem>
@@ -542,15 +330,6 @@ export default function MetricsPage() {
           onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
         />
       </div>
-
-      {/* Create/Edit Dialog */}
-      <MetricFormDialog
-        open={formOpen}
-        onOpenChange={handleCloseForm}
-        metric={editingMetric}
-        onSubmit={handleSubmit}
-        isLoading={createMutation.isPending || updateMutation.isPending}
-      />
 
       {/* Delete Confirmation */}
       <AlertDialog

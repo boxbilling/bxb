@@ -9,6 +9,7 @@ const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'))
 const CustomersPage = lazy(() => import('./pages/admin/CustomersPage'))
 const CustomerDetailPage = lazy(() => import('./pages/admin/CustomerDetailPage'))
 const MetricsPage = lazy(() => import('./pages/admin/MetricsPage'))
+const MetricFormPage = lazy(() => import('./pages/admin/MetricFormPage'))
 const PlansPage = lazy(() => import('./pages/admin/PlansPage'))
 const PlanDetailPage = lazy(() => import('./pages/admin/PlanDetailPage'))
 const PlanFormPage = lazy(() => import('./pages/admin/PlanFormPage'))
@@ -108,6 +109,8 @@ function App() {
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />
           <Route path="metrics" element={<MetricsPage />} />
+          <Route path="metrics/new" element={<MetricFormPage />} />
+          <Route path="metrics/:id/edit" element={<MetricFormPage />} />
           <Route path="plans" element={<PlansPage />} />
           <Route path="plans/new" element={<PlanFormPage />} />
           <Route path="plans/:id" element={<PlanDetailPage />} />
