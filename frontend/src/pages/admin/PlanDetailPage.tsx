@@ -439,6 +439,7 @@ export default function PlanDetailPage() {
   }
 
   return (
+    <>
     <div className="space-y-6">
       {isLoading ? (
         <div className="space-y-6">
@@ -1280,61 +1281,63 @@ export default function PlanDetailPage() {
         </>
       ) : null}
 
-      {/* Delete Commitment Confirmation */}
-      <AlertDialog
-        open={!!deleteCommitment}
-        onOpenChange={(open) => !open && setDeleteCommitment(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Commitment</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this commitment? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                deleteCommitment &&
-                deleteCommitmentMutation.mutate(deleteCommitment.id)
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteCommitmentMutation.isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Delete Threshold Confirmation */}
-      <AlertDialog
-        open={!!deleteThreshold}
-        onOpenChange={(open) => !open && setDeleteThreshold(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Usage Threshold</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this usage threshold? This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() =>
-                deleteThreshold &&
-                deleteThresholdMutation.mutate(deleteThreshold.id)
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteThresholdMutation.isPending ? 'Deleting...' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
+
+    {/* Delete Commitment Confirmation */}
+    <AlertDialog
+      open={!!deleteCommitment}
+      onOpenChange={(open) => !open && setDeleteCommitment(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Commitment</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this commitment? This action
+            cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() =>
+              deleteCommitment &&
+              deleteCommitmentMutation.mutate(deleteCommitment.id)
+            }
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleteCommitmentMutation.isPending ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    {/* Delete Threshold Confirmation */}
+    <AlertDialog
+      open={!!deleteThreshold}
+      onOpenChange={(open) => !open && setDeleteThreshold(null)}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Usage Threshold</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to delete this usage threshold? This action
+            cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() =>
+              deleteThreshold &&
+              deleteThresholdMutation.mutate(deleteThreshold.id)
+            }
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleteThresholdMutation.isPending ? 'Deleting...' : 'Delete'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
