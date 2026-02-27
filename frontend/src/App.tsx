@@ -11,6 +11,7 @@ const CustomerDetailPage = lazy(() => import('./pages/admin/CustomerDetailPage')
 const MetricsPage = lazy(() => import('./pages/admin/MetricsPage'))
 const PlansPage = lazy(() => import('./pages/admin/PlansPage'))
 const PlanDetailPage = lazy(() => import('./pages/admin/PlanDetailPage'))
+const PlanFormPage = lazy(() => import('./pages/admin/PlanFormPage'))
 const SubscriptionsPage = lazy(() => import('./pages/admin/SubscriptionsPage'))
 const SubscriptionDetailPage = lazy(
   () => import('./pages/admin/SubscriptionDetailPage'),
@@ -108,7 +109,9 @@ function App() {
           <Route path="customers/:id" element={<CustomerDetailPage />} />
           <Route path="metrics" element={<MetricsPage />} />
           <Route path="plans" element={<PlansPage />} />
+          <Route path="plans/new" element={<PlanFormPage />} />
           <Route path="plans/:id" element={<PlanDetailPage />} />
+          <Route path="plans/:id/edit" element={<PlanFormPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />
           <Route
             path="subscriptions/:id"
