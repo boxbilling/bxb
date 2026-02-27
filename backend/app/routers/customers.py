@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -236,7 +236,7 @@ async def get_customer_health(
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    now = datetime.now()
+    now = datetime.now(UTC)
 
     # Query invoices for this customer
     invoices = (
