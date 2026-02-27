@@ -341,7 +341,7 @@ export default function CreditNoteFormPage() {
                     <SelectContent>
                       {invoices.map((inv: Invoice) => (
                         <SelectItem key={inv.id} value={inv.id}>
-                          {inv.invoice_number} — {formatCents(inv.total, inv.currency)}
+                          {inv.invoice_number} — {formatCents(inv.total_cents, inv.currency)}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -45,7 +45,7 @@ import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { paymentsApi, customersApi, invoicesApi } from '@/lib/api'
 import type { Payment, PaymentStatus, PaymentProvider } from '@/lib/api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 
 const statusColors: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
   pending: 'secondary',
@@ -339,7 +339,7 @@ export default function PaymentsPage() {
                     <code className="text-xs">{getInvoiceNumber(payment.invoice_id)}</code>
                   </TableCell>
                   <TableCell>
-                    {formatCurrency(payment.amount, payment.currency)}
+                    {formatCents(payment.amount_cents, payment.currency)}
                   </TableCell>
                   <TableCell className="hidden md:table-cell">
                     <Badge variant="outline">
@@ -439,7 +439,7 @@ export default function PaymentsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Amount</p>
                   <p className="text-lg font-semibold">
-                    {formatCurrency(selectedPayment.amount, selectedPayment.currency)}
+                    {formatCents(selectedPayment.amount_cents, selectedPayment.currency)}
                   </p>
                 </div>
                 <div>
@@ -553,7 +553,7 @@ export default function PaymentsPage() {
               <div className="space-y-1">
                 <p className="text-sm">
                   <span className="text-muted-foreground">Amount:</span>{' '}
-                  {formatCurrency(confirmAction.payment.amount, confirmAction.payment.currency)}
+                  {formatCents(confirmAction.payment.amount_cents, confirmAction.payment.currency)}
                 </p>
                 <p className="text-sm">
                   <span className="text-muted-foreground">Customer:</span>{' '}
@@ -597,10 +597,10 @@ export default function PaymentsPage() {
                         type="number"
                         step="0.01"
                         min="0.01"
-                        max={confirmAction.payment.amount}
+                        max={confirmAction.payment.amount_cents}
                         value={refundAmount}
                         onChange={(e) => setRefundAmount(e.target.value)}
-                        placeholder={`Max ${formatCurrency(confirmAction.payment.amount, confirmAction.payment.currency)}`}
+                        placeholder={`Max ${formatCents(confirmAction.payment.amount_cents, confirmAction.payment.currency)}`}
                       />
                     </div>
                   )}
@@ -633,7 +633,7 @@ export default function PaymentsPage() {
                   deleteMutation.mutate(confirmAction.payment.id)
                 }
               }}
-              disabled={isActionPending || (confirmAction?.type === 'refund' && refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0 || parseFloat(refundAmount) > parseFloat(confirmAction.payment.amount)))}
+              disabled={isActionPending || (confirmAction?.type === 'refund' && refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0 || parseFloat(refundAmount) > parseFloat(confirmAction.payment.amount_cents)))}
             >
               {isActionPending ? 'Processing...' : 'Confirm'}
             </Button>
@@ -669,7 +669,7 @@ export default function PaymentsPage() {
                 setRecordInvoiceId(id)
                 const inv = invoices.find(i => i.id === id)
                 if (inv) {
-                  setRecordAmount(String(inv.total))
+                  setRecordAmount(String(inv.total_cents))
                   setRecordCurrency(inv.currency)
                 }
               }}>
@@ -681,7 +681,7 @@ export default function PaymentsPage() {
                     .filter(inv => inv.status === 'finalized')
                     .map(inv => (
                       <SelectItem key={inv.id} value={inv.id}>
-                        {inv.invoice_number || inv.id.slice(0, 8)} — {formatCurrency(inv.total, inv.currency)}
+                        {inv.invoice_number || inv.id.slice(0, 8)} — {formatCents(inv.total_cents, inv.currency)}
                       </SelectItem>
                     ))}
                 </SelectContent>

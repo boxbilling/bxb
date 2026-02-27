@@ -171,4 +171,4 @@ def test_create_invoice(client: TestClient):
     data = response.json()
     assert data["status"] == "draft"
     assert data["customer_id"] == customer["id"]
-    assert Decimal(data["subtotal"]) == Decimal("49.99")
+    assert Decimal(data["subtotal_cents"]) == Decimal("49.99")

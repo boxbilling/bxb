@@ -64,7 +64,7 @@ import { Badge } from '@/components/ui/badge'
 import PageHeader from '@/components/PageHeader'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { dashboardApi } from '@/lib/api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
 import type { RecentActivity } from '@/lib/api'
 import type { DateRange } from 'react-day-picker'
@@ -489,7 +489,7 @@ export default function DashboardPage() {
           title="MRR"
           value={
             revenue
-              ? formatCurrency(revenue.mrr, revenue.currency)
+              ? formatCents(revenue.mrr_cents, revenue.currency)
               : '-'
           }
           description={`recurring revenue (${periodLabel})`}
@@ -505,7 +505,7 @@ export default function DashboardPage() {
           title="Outstanding Invoices"
           value={
             revenue
-              ? formatCurrency(revenue.outstanding_invoices, revenue.currency)
+              ? formatCents(revenue.outstanding_invoices_cents, revenue.currency)
               : '-'
           }
           description="awaiting payment"
@@ -518,7 +518,7 @@ export default function DashboardPage() {
           title="Overdue Amount"
           value={
             revenue
-              ? formatCurrency(revenue.overdue_amount, revenue.currency)
+              ? formatCents(revenue.overdue_amount_cents, revenue.currency)
               : '-'
           }
           description="past due date"
@@ -644,7 +644,7 @@ export default function DashboardPage() {
                         <InvoiceStatusBadge status={inv.status} />
                       </TableCell>
                       <TableCell className="text-xs text-right py-2 font-mono">
-                        {formatCurrency(inv.total, inv.currency)}
+                        {formatCents(inv.total_cents, inv.currency)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -804,7 +804,7 @@ export default function DashboardPage() {
                 <PieChart accessibilityLayer>
                   <Pie
                     data={revenueByPlan.by_plan}
-                    dataKey="revenue"
+                    dataKey="revenue_cents"
                     nameKey="plan_name"
                     cx="50%"
                     cy="50%"
@@ -824,7 +824,7 @@ export default function DashboardPage() {
                       <ChartTooltipContent
                         nameKey="plan_name"
                         formatter={(value) =>
-                          formatCurrency(Number(value), revenueByPlan.currency)
+                          formatCents(Number(value), revenueByPlan.currency)
                         }
                       />
                     }
@@ -851,7 +851,7 @@ export default function DashboardPage() {
                       <span className="text-muted-foreground truncate max-w-[120px]">{plan.plan_name}</span>
                     </div>
                     <span className="font-mono font-medium">
-                      {formatCurrency(plan.revenue, revenueByPlan.currency)}
+                      {formatCents(plan.revenue_cents, revenueByPlan.currency)}
                     </span>
                   </div>
                 ))}

@@ -20,15 +20,9 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { portalApi, ApiError } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import type { PortalAddOn, PortalPurchasedAddOn } from '@/lib/api'
-
-function formatCurrency(cents: number, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(cents / 100)
-}
 
 export default function PortalAddOnsPage() {
   const token = usePortalToken()
@@ -142,7 +136,7 @@ export default function PortalAddOnsPage() {
                 <>
                   You are about to purchase <strong>{purchaseTarget.name}</strong> for{' '}
                   <strong>
-                    {formatCurrency(Number(purchaseTarget.amount_cents), purchaseTarget.amount_currency)}
+                    {formatCents(Number(purchaseTarget.amount_cents), purchaseTarget.amount_currency)}
                   </strong>
                   . An invoice will be created for this purchase.
                 </>
@@ -195,7 +189,7 @@ function AddOnCard({
         )}
         <div className="flex items-center justify-between">
           <span className="text-2xl font-bold">
-            {formatCurrency(Number(addOn.amount_cents), addOn.amount_currency)}
+            {formatCents(Number(addOn.amount_cents), addOn.amount_currency)}
           </span>
           <Button size="sm" onClick={onPurchase}>
             <ShoppingCart className="mr-2 h-4 w-4" />
@@ -224,7 +218,7 @@ function PurchasedAddOnCard({ item }: { item: PortalPurchasedAddOn }) {
         </div>
         <div className="text-right">
           <div className="font-semibold">
-            {formatCurrency(Number(item.amount_cents), item.amount_currency)}
+            {formatCents(Number(item.amount_cents), item.amount_currency)}
           </div>
           <Badge variant="outline" className="text-xs">
             {item.amount_currency}

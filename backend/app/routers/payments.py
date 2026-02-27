@@ -53,7 +53,7 @@ def _record_settlement_and_maybe_mark_paid(
     invoice = invoice_repo.get_by_id(invoice_id)
     if invoice and invoice.status == InvoiceStatus.FINALIZED.value:
         total_settled = settlement_repo.get_total_settled(invoice_id)
-        if total_settled >= Decimal(str(invoice.total)):
+        if total_settled >= Decimal(str(invoice.total_cents)):
             invoice_repo.mark_paid(invoice_id)
 
 
@@ -272,7 +272,7 @@ async def create_checkout_session(
     payment = payment_repo.create(
         invoice_id=invoice.id,  # type: ignore[arg-type]
         customer_id=invoice.customer_id,  # type: ignore[arg-type]
-        amount=float(invoice.total),
+        amount=float(invoice.total_cents),
         currency=invoice.currency,  # type: ignore[arg-type]
         provider=data.provider,
     )
@@ -282,7 +282,7 @@ async def create_checkout_session(
     try:
         session = provider_svc.create_checkout_session(
             payment_id=payment.id,  # type: ignore[arg-type]
-            amount=invoice.total,  # type: ignore[arg-type]
+            amount=invoice.total_cents,  # type: ignore[arg-type]
             currency=invoice.currency,  # type: ignore[arg-type]
             customer_email=customer_email,
             invoice_number=invoice.invoice_number,  # type: ignore[arg-type]
@@ -425,7 +425,7 @@ async def handle_webhook(
             invoice_id=payment.invoice_id,  # type: ignore[arg-type]
             settlement_type=SettlementType.PAYMENT,
             source_id=payment.id,  # type: ignore[arg-type]
-            amount_cents=float(payment.amount),
+            amount_cents=float(payment.amount_cents),
         )
 
         webhook_service.send_webhook(
@@ -508,7 +508,7 @@ async def mark_payment_paid(
         invoice_id=payment.invoice_id,  # type: ignore[arg-type]
         settlement_type=SettlementType.PAYMENT,
         source_id=payment_id,
-        amount_cents=float(payment.amount),
+        amount_cents=float(payment.amount_cents),
     )
 
     webhook_service = WebhookService(db)
@@ -546,7 +546,7 @@ async def refund_payment(
         raise HTTPException(status_code=404, detail="Payment not found")
 
     refund_amount = data.amount if data and data.amount is not None else None
-    if refund_amount is not None and refund_amount > payment.amount:
+    if refund_amount is not None and refund_amount > payment.amount_cents:
         raise HTTPException(
             status_code=400,
             detail="Refund amount cannot exceed payment amount",

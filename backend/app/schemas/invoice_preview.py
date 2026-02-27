@@ -22,11 +22,11 @@ class FeePreview(BaseModel):
 class InvoicePreviewResponse(BaseModel):
     """Response for an invoice preview."""
 
-    subtotal: Decimal
-    tax_amount: Decimal
-    coupons_amount: Decimal
-    prepaid_credit_amount: Decimal
-    total: Decimal
+    subtotal_cents: Decimal
+    tax_amount_cents: Decimal
+    coupons_amount_cents: Decimal
+    prepaid_credit_amount_cents: Decimal
+    total_cents: Decimal
     currency: str
     fees: list[FeePreview]
 

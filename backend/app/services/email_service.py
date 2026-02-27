@@ -119,7 +119,7 @@ class EmailService:
             f"<table>"
             f"<tr><td><strong>Invoice #:</strong></td><td>{invoice.invoice_number}</td></tr>"
             f"<tr><td><strong>Amount:</strong></td>"
-            f"<td>{_format_amount(invoice.total)} {invoice.currency}</td></tr>"
+            f"<td>{_format_amount(invoice.total_cents)} {invoice.currency}</td></tr>"
             f"<tr><td><strong>Due Date:</strong></td>"
             f"<td>{_format_date(invoice.due_date)}</td></tr>"
             f"<tr><td><strong>Status:</strong></td><td>{invoice.status}</td></tr>"

@@ -260,14 +260,14 @@ class PdfService:
             customer_name=customer.name or "",
             customer_email=customer.email or "",
             fee_rows=fee_rows,
-            subtotal=_format_amount(invoice.subtotal),
+            subtotal=_format_amount(invoice.subtotal_cents),
             coupons_amount=_format_amount(invoice.coupons_amount_cents),
-            tax_amount=_format_amount(invoice.tax_amount),
-            prepaid_credit_amount=_format_amount(invoice.prepaid_credit_amount),
+            tax_amount=_format_amount(invoice.tax_amount_cents),
+            prepaid_credit_amount=_format_amount(invoice.prepaid_credit_amount_cents),
             progressive_billing_credits=_format_amount(
                 invoice.progressive_billing_credit_amount_cents
             ),
-            total=_format_amount(invoice.total),
+            total=_format_amount(invoice.total_cents),
         )
 
         import weasyprint

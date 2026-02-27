@@ -13,7 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { portalApi } from '@/lib/api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import { useIsMobile } from '@/hooks/use-mobile'
 
@@ -66,7 +66,7 @@ export default function PortalPaymentsPage() {
               <div key={payment.id} className="rounded-lg border p-4">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-lg font-bold">
-                    {formatCurrency(payment.amount, payment.currency)}
+                    {formatCents(payment.amount_cents, payment.currency)}
                   </span>
                   <Badge variant={statusColors[payment.status] || 'secondary'}>
                     {payment.status}
@@ -116,7 +116,7 @@ export default function PortalPaymentsPage() {
                       {format(new Date(payment.created_at), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(payment.amount, payment.currency)}
+                      {formatCents(payment.amount_cents, payment.currency)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusColors[payment.status] || 'secondary'}>

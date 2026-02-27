@@ -56,7 +56,7 @@ import { Progress } from '@/components/ui/progress'
 import PageHeader from '@/components/PageHeader'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { dashboardApi } from '@/lib/api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 import type { DashboardDateRange } from '@/lib/api'
 import type { DateRange } from 'react-day-picker'
 
@@ -154,10 +154,10 @@ export default function RevenueAnalyticsPage() {
   const netRevenueBarData = useMemo(() => {
     if (!data) return []
     return [
-      { name: 'Gross', value: data.net_revenue.gross_revenue, fill: 'var(--primary)' },
-      { name: 'Refunds', value: data.net_revenue.refunds, fill: 'var(--destructive)' },
-      { name: 'Credits', value: data.net_revenue.credit_notes, fill: 'var(--chart-4)' },
-      { name: 'Net', value: data.net_revenue.net_revenue, fill: 'var(--chart-3)' },
+      { name: 'Gross', value: data.net_revenue.gross_revenue_cents, fill: 'var(--primary)' },
+      { name: 'Refunds', value: data.net_revenue.refunds_cents, fill: 'var(--destructive)' },
+      { name: 'Credits', value: data.net_revenue.credit_notes_cents, fill: 'var(--chart-4)' },
+      { name: 'Net', value: data.net_revenue.net_revenue_cents, fill: 'var(--chart-3)' },
     ]
   }, [data])
 
@@ -220,7 +220,7 @@ export default function RevenueAnalyticsPage() {
       <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard
           title="Net Revenue"
-          value={data ? formatCurrency(data.net_revenue.net_revenue, data.currency) : '—'}
+          value={data ? formatCents(data.net_revenue.net_revenue_cents, data.currency) : '—'}
           icon={DollarSign}
           loading={isLoading}
           description="After refunds & credits"
@@ -230,7 +230,7 @@ export default function RevenueAnalyticsPage() {
           value={data ? `${data.collection.collection_rate}%` : '—'}
           icon={TrendingUp}
           loading={isLoading}
-          description={data ? `${formatCurrency(data.collection.total_collected, data.currency)} collected` : ''}
+          description={data ? `${formatCents(data.collection.total_collected_cents, data.currency)} collected` : ''}
           color={data ? (data.collection.collection_rate >= 90 ? 'green' : data.collection.collection_rate >= 70 ? 'yellow' : 'red') : undefined}
         />
         <StatCard
@@ -242,7 +242,7 @@ export default function RevenueAnalyticsPage() {
         />
         <StatCard
           title="Overdue"
-          value={data ? formatCurrency(data.collection.overdue_amount, data.currency) : '—'}
+          value={data ? formatCents(data.collection.overdue_amount_cents, data.currency) : '—'}
           icon={AlertTriangle}
           loading={isLoading}
           description={data ? `${data.collection.overdue_count} invoice${data.collection.overdue_count !== 1 ? 's' : ''}` : ''}
@@ -279,7 +279,7 @@ export default function RevenueAnalyticsPage() {
                   axisLine={false}
                 />
                 <YAxis
-                  tickFormatter={(v) => `$${(v / 1).toLocaleString()}`}
+                  tickFormatter={(v) => formatCents(v, data?.currency ?? 'USD')}
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
@@ -288,13 +288,13 @@ export default function RevenueAnalyticsPage() {
                 <ChartTooltip
                   content={
                     <ChartTooltipContent
-                      formatter={(value) => formatCurrency(Number(value), data.currency)}
+                      formatter={(value) => formatCents(Number(value), data.currency)}
                     />
                   }
                 />
                 <Area
                   type="monotone"
-                  dataKey="revenue"
+                  dataKey="revenue_cents"
                   stroke="var(--color-revenue)"
                   strokeWidth={2}
                   fill="url(#revenueFill)"
@@ -333,7 +333,7 @@ export default function RevenueAnalyticsPage() {
                       cy="50%"
                       innerRadius={50}
                       outerRadius={80}
-                      dataKey="revenue"
+                      dataKey="revenue_cents"
                       nameKey="invoice_type"
                     >
                       {data.revenue_by_type.map((_, i) => (
@@ -343,7 +343,7 @@ export default function RevenueAnalyticsPage() {
                     <ChartTooltip
                       content={
                         <ChartTooltipContent
-                          formatter={(value) => formatCurrency(Number(value), data.currency)}
+                          formatter={(value) => formatCents(Number(value), data.currency)}
                         />
                       }
                     />
@@ -359,7 +359,7 @@ export default function RevenueAnalyticsPage() {
                       <span className="text-muted-foreground">
                         {INVOICE_TYPE_LABELS[item.invoice_type] || item.invoice_type}
                       </span>
-                      <span className="font-medium">{formatCurrency(item.revenue, data.currency)}</span>
+                      <span className="font-medium">{formatCents(item.revenue_cents, data.currency)}</span>
                       <Badge variant="outline" className="text-xs ml-1">{item.count}</Badge>
                     </div>
                   ))}
@@ -391,7 +391,7 @@ export default function RevenueAnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
                     <YAxis
-                      tickFormatter={(v) => `$${(v / 1).toLocaleString()}`}
+                      tickFormatter={(v) => formatCents(v, data.currency)}
                       tick={{ fontSize: 12 }}
                       tickLine={false}
                       axisLine={false}
@@ -400,7 +400,7 @@ export default function RevenueAnalyticsPage() {
                     <ChartTooltip
                       content={
                         <ChartTooltipContent
-                          formatter={(value) => formatCurrency(Number(value), data.currency)}
+                          formatter={(value) => formatCents(Number(value), data.currency)}
                         />
                       }
                     />
@@ -414,23 +414,23 @@ export default function RevenueAnalyticsPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Gross Revenue</span>
-                    <span className="font-medium">{formatCurrency(data.net_revenue.gross_revenue, data.currency)}</span>
+                    <span className="font-medium">{formatCents(data.net_revenue.gross_revenue_cents, data.currency)}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Refunds</span>
                     <span className="font-medium text-destructive">
-                      {data.net_revenue.refunds > 0 ? '-' : ''}{formatCurrency(data.net_revenue.refunds, data.currency)}
+                      {data.net_revenue.refunds_cents > 0 ? '-' : ''}{formatCents(data.net_revenue.refunds_cents, data.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Credit Notes</span>
                     <span className="font-medium text-orange-600 dark:text-orange-400">
-                      {data.net_revenue.credit_notes > 0 ? '-' : ''}{formatCurrency(data.net_revenue.credit_notes, data.currency)}
+                      {data.net_revenue.credit_notes_cents > 0 ? '-' : ''}{formatCents(data.net_revenue.credit_notes_cents, data.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t pt-2">
                     <span className="font-semibold">Net Revenue</span>
-                    <span className="font-semibold">{formatCurrency(data.net_revenue.net_revenue, data.currency)}</span>
+                    <span className="font-semibold">{formatCents(data.net_revenue.net_revenue_cents, data.currency)}</span>
                   </div>
                 </div>
               </div>
@@ -475,12 +475,12 @@ export default function RevenueAnalyticsPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Invoiced</p>
-                  <p className="text-lg font-semibold">{formatCurrency(data.collection.total_invoiced, data.currency)}</p>
+                  <p className="text-lg font-semibold">{formatCents(data.collection.total_invoiced_cents, data.currency)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Total Collected</p>
                   <p className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">
-                    {formatCurrency(data.collection.total_collected, data.currency)}
+                    {formatCents(data.collection.total_collected_cents, data.currency)}
                   </p>
                 </div>
                 <div>
@@ -494,7 +494,7 @@ export default function RevenueAnalyticsPage() {
                 <div>
                   <p className="text-xs text-muted-foreground">Overdue Amount</p>
                   <p className={`text-lg font-semibold ${data.collection.overdue_count > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
-                    {formatCurrency(data.collection.overdue_amount, data.currency)}
+                    {formatCents(data.collection.overdue_amount_cents, data.currency)}
                   </p>
                 </div>
               </div>
@@ -531,8 +531,8 @@ export default function RevenueAnalyticsPage() {
               </TableHeader>
               <TableBody>
                 {data.top_customers.map((customer, i) => {
-                  const totalRevenue = data.top_customers.reduce((sum, c) => sum + c.revenue, 0)
-                  const share = totalRevenue > 0 ? ((customer.revenue / totalRevenue) * 100).toFixed(1) : '0.0'
+                  const totalRevenue = data.top_customers.reduce((sum, c) => sum + c.revenue_cents, 0)
+                  const share = totalRevenue > 0 ? ((customer.revenue_cents / totalRevenue) * 100).toFixed(1) : '0.0'
                   return (
                     <TableRow key={customer.customer_id}>
                       <TableCell className="font-medium text-muted-foreground">{i + 1}</TableCell>
@@ -545,7 +545,7 @@ export default function RevenueAnalyticsPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="text-right font-mono font-medium">
-                        {formatCurrency(customer.revenue, data.currency)}
+                        {formatCents(customer.revenue_cents, data.currency)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-right">{customer.invoice_count}</TableCell>
                       <TableCell className="hidden md:table-cell text-right">

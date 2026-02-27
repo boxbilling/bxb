@@ -542,7 +542,7 @@ function CreatePaymentRequestDialog({
                             </Badge>
                           )}
                           <span className="text-sm text-muted-foreground">
-                            {formatCents(parseInt(inv.total as unknown as string), inv.currency)}
+                            {formatCents(parseInt(inv.total_cents as unknown as string), inv.currency)}
                           </span>
                         </label>
                       )

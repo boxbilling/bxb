@@ -54,11 +54,11 @@ class Invoice(Base):
     billing_period_start = Column(DateTime(timezone=True), nullable=False)
     billing_period_end = Column(DateTime(timezone=True), nullable=False)
 
-    # Amounts (stored as Decimal with 4 decimal places for precision)
-    subtotal = Column(Numeric(12, 4), nullable=False, default=0)
-    tax_amount = Column(Numeric(12, 4), nullable=False, default=0)
-    total = Column(Numeric(12, 4), nullable=False, default=0)
-    prepaid_credit_amount = Column(Numeric(12, 4), nullable=False, default=0)
+    # Amounts (stored in cents as Decimal with 4 decimal places for precision)
+    subtotal_cents = Column(Numeric(12, 4), nullable=False, default=0)
+    tax_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
+    total_cents = Column(Numeric(12, 4), nullable=False, default=0)
+    prepaid_credit_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
     coupons_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
     progressive_billing_credit_amount_cents = Column(Numeric(12, 4), nullable=False, default=0)
 

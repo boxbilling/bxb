@@ -126,10 +126,10 @@ class TaxCalculationService:
         for fee in fees:
             total_tax += Decimal(str(fee.taxes_amount_cents))
 
-        invoice.tax_amount = total_tax  # type: ignore[assignment]
-        subtotal = Decimal(str(invoice.subtotal))
+        invoice.tax_amount_cents = total_tax  # type: ignore[assignment]
+        subtotal = Decimal(str(invoice.subtotal_cents))
         coupons = Decimal(str(invoice.coupons_amount_cents))
-        invoice.total = subtotal - coupons + total_tax  # type: ignore[assignment]
+        invoice.total_cents = subtotal - coupons + total_tax  # type: ignore[assignment]
         self.db.commit()
         self.db.refresh(invoice)
 

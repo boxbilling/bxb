@@ -26,14 +26,14 @@ class RecentActivityResponse(BaseModel):
 
 class RevenueDataPoint(BaseModel):
     month: str
-    revenue: float
+    revenue_cents: float
 
 
 class RevenueResponse(BaseModel):
-    mrr: float
-    total_revenue_this_month: float
-    outstanding_invoices: float
-    overdue_amount: float
+    mrr_cents: float
+    total_revenue_this_month_cents: float
+    outstanding_invoices_cents: float
+    overdue_amount_cents: float
     currency: str
     monthly_trend: list[RevenueDataPoint]
     mrr_trend: TrendIndicator | None = None
@@ -63,7 +63,7 @@ class SubscriptionMetricsResponse(BaseModel):
 
 class PlanRevenueBreakdown(BaseModel):
     plan_name: str
-    revenue: float
+    revenue_cents: float
 
 
 class RevenueByPlanResponse(BaseModel):
@@ -86,7 +86,7 @@ class RecentInvoiceItem(BaseModel):
     invoice_number: str
     customer_name: str
     status: str
-    total: float
+    total_cents: float
     currency: str
     created_at: str
 
@@ -116,36 +116,36 @@ class SparklineData(BaseModel):
 
 class DailyRevenuePoint(BaseModel):
     date: str
-    revenue: float
+    revenue_cents: float
 
 
 class RevenueByTypeBreakdown(BaseModel):
     invoice_type: str
-    revenue: float
+    revenue_cents: float
     count: int
 
 
 class TopCustomerRevenue(BaseModel):
     customer_id: str
     customer_name: str
-    revenue: float
+    revenue_cents: float
     invoice_count: int
 
 
 class CollectionMetrics(BaseModel):
-    total_invoiced: float
-    total_collected: float
+    total_invoiced_cents: float
+    total_collected_cents: float
     collection_rate: float
     average_days_to_payment: float | None
     overdue_count: int
-    overdue_amount: float
+    overdue_amount_cents: float
 
 
 class NetRevenueMetrics(BaseModel):
-    gross_revenue: float
-    refunds: float
-    credit_notes: float
-    net_revenue: float
+    gross_revenue_cents: float
+    refunds_cents: float
+    credit_notes_cents: float
+    net_revenue_cents: float
     currency: str
 
 

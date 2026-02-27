@@ -377,7 +377,7 @@ async def finalize_invoice(
             raise HTTPException(status_code=404, detail="Invoice not found")
 
         # Apply wallet credits after finalization
-        invoice_total = Decimal(str(invoice.total))
+        invoice_total = Decimal(str(invoice.total_cents))
         if invoice_total > 0:
             wallet_service = WalletService(db)
             result = wallet_service.consume_credits(
@@ -387,7 +387,7 @@ async def finalize_invoice(
             )
 
             if result.total_consumed > 0:
-                invoice.prepaid_credit_amount = result.total_consumed  # type: ignore[assignment]
+                invoice.prepaid_credit_amount_cents = result.total_consumed  # type: ignore[assignment]
 
                 if result.remaining_amount <= 0:
                     # Wallet covers full amount — mark as paid
@@ -401,8 +401,8 @@ async def finalize_invoice(
 
         # Auto-charge using default payment method if invoice still not paid
         if invoice.status == InvoiceStatus.FINALIZED.value:
-            remaining = Decimal(str(invoice.total)) - Decimal(
-                str(invoice.prepaid_credit_amount)
+            remaining = Decimal(str(invoice.total_cents)) - Decimal(
+                str(invoice.prepaid_credit_amount_cents)
             )
             if remaining > 0:
                 pm_repo = PaymentMethodRepository(db)
@@ -702,7 +702,7 @@ async def send_invoice_reminder(
         f"<table>"
         f"<tr><td><strong>Invoice #:</strong></td><td>{invoice.invoice_number}</td></tr>"
         f"<tr><td><strong>Amount Due:</strong></td>"
-        f"<td>{_format_amount(invoice.total)} {invoice.currency}</td></tr>"
+        f"<td>{_format_amount(invoice.total_cents)} {invoice.currency}</td></tr>"
         f"<tr><td><strong>Due Date:</strong></td>"
         f"<td>{_format_date(invoice.due_date)}</td></tr>"
         f"</table>"

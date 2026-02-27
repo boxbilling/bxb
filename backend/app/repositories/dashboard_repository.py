@@ -112,7 +112,7 @@ class DashboardRepository:
     ) -> float:
         start_dt, end_dt = _resolve_period(start_date, end_date, default_days=30)
         result = (
-            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
+            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0))
             .filter(
                 Invoice.organization_id == organization_id,
                 Invoice.status.in_(["finalized", "paid"]),
@@ -126,7 +126,7 @@ class DashboardRepository:
 
     def sum_total_invoiced(self, organization_id: UUID) -> float:
         result = (
-            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
+            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0))
             .filter(Invoice.organization_id == organization_id)
             .scalar()
             or 0
@@ -232,7 +232,7 @@ class DashboardRepository:
     def outstanding_invoices_total(self, organization_id: UUID) -> float:
         """Sum of finalized (unpaid) invoices."""
         result = (
-            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
+            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0))
             .filter(
                 Invoice.organization_id == organization_id,
                 Invoice.status == "finalized",
@@ -246,7 +246,7 @@ class DashboardRepository:
         """Sum of finalized invoices whose due_date has passed."""
         now = datetime.now(UTC)
         result = (
-            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
+            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0))
             .filter(
                 Invoice.organization_id == organization_id,
                 Invoice.status == "finalized",
@@ -289,7 +289,7 @@ class DashboardRepository:
         rows = (
             self.db.query(
                 month_expr.label("month"),
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("revenue"),
             )
             .filter(
                 Invoice.organization_id == organization_id,
@@ -494,7 +494,7 @@ class DashboardRepository:
         rows = (
             self.db.query(
                 Plan.name.label("plan_name"),
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("revenue"),
             )
             .join(Subscription, Invoice.subscription_id == Subscription.id)
             .join(Plan, Subscription.plan_id == Plan.id)
@@ -506,7 +506,7 @@ class DashboardRepository:
                 Invoice.issued_at <= end_dt,
             )
             .group_by(Plan.name)
-            .order_by(sa_func.sum(Invoice.total).desc())
+            .order_by(sa_func.sum(Invoice.total_cents).desc())
             .all()
         )
         return [
@@ -526,7 +526,7 @@ class DashboardRepository:
                 Invoice.invoice_number,
                 Customer.name.label("customer_name"),
                 Invoice.status,
-                Invoice.total,
+                Invoice.total_cents,
                 Invoice.currency,
                 Invoice.created_at,
             )
@@ -542,7 +542,7 @@ class DashboardRepository:
                 invoice_number=r.invoice_number,
                 customer_name=r.customer_name,
                 status=r.status,
-                total=float(r.total),
+                total=float(r.total_cents),
                 currency=r.currency,
                 created_at=r.created_at.isoformat() if r.created_at else "",
             )
@@ -605,7 +605,7 @@ class DashboardRepository:
         rows = (
             self.db.query(
                 day_expr.label("day"),
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("total"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("total"),
             )
             .filter(
                 Invoice.organization_id == organization_id,
@@ -723,7 +723,7 @@ class DashboardRepository:
         rows = (
             self.db.query(
                 Invoice.invoice_type.label("invoice_type"),
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("revenue"),
                 sa_func.count(Invoice.id).label("cnt"),
             )
             .filter(
@@ -734,7 +734,7 @@ class DashboardRepository:
                 Invoice.issued_at <= end_dt,
             )
             .group_by(Invoice.invoice_type)
-            .order_by(sa_func.sum(Invoice.total).desc())
+            .order_by(sa_func.sum(Invoice.total_cents).desc())
             .all()
         )
         return [
@@ -766,7 +766,7 @@ class DashboardRepository:
             self.db.query(
                 Customer.id.label("customer_id"),
                 Customer.name.label("customer_name"),
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("revenue"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("revenue"),
                 sa_func.count(Invoice.id).label("invoice_count"),
             )
             .join(Customer, Invoice.customer_id == Customer.id)
@@ -778,7 +778,7 @@ class DashboardRepository:
                 Invoice.issued_at <= end_dt,
             )
             .group_by(Customer.id, Customer.name)
-            .order_by(sa_func.sum(Invoice.total).desc())
+            .order_by(sa_func.sum(Invoice.total_cents).desc())
             .limit(limit)
             .all()
         )
@@ -813,11 +813,11 @@ class DashboardRepository:
         # Total invoiced (finalized + paid)
         totals = (
             self.db.query(
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("total_invoiced"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("total_invoiced"),
                 sa_func.coalesce(
                     sa_func.sum(
                         sa_case(
-                            (Invoice.status == "paid", Invoice.total),
+                            (Invoice.status == "paid", Invoice.total_cents),
                             else_=0,
                         )
                     ),
@@ -863,7 +863,7 @@ class DashboardRepository:
         overdue = (
             self.db.query(
                 sa_func.count(Invoice.id).label("cnt"),
-                sa_func.coalesce(sa_func.sum(Invoice.total), 0).label("amount"),
+                sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0).label("amount"),
             )
             .filter(
                 Invoice.organization_id == organization_id,
@@ -902,7 +902,7 @@ class DashboardRepository:
 
         # Gross revenue
         gross = (
-            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total), 0))
+            self.db.query(sa_func.coalesce(sa_func.sum(Invoice.total_cents), 0))
             .filter(
                 Invoice.organization_id == organization_id,
                 Invoice.status.in_(["finalized", "paid"]),
@@ -916,7 +916,7 @@ class DashboardRepository:
 
         # Refunds (payments with refunded status)
         refunds = (
-            self.db.query(sa_func.coalesce(sa_func.sum(Payment.amount), 0))
+            self.db.query(sa_func.coalesce(sa_func.sum(Payment.amount_cents), 0))
             .filter(
                 Payment.organization_id == organization_id,
                 Payment.status == PaymentStatus.REFUNDED.value,

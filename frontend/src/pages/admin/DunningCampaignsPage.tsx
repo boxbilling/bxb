@@ -67,6 +67,7 @@ import { TablePagination } from '@/components/TablePagination'
 import { SortableTableHead, useSortState } from '@/components/SortableTableHead'
 import PageHeader from '@/components/PageHeader'
 import { dunningCampaignsApi, ApiError } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import type {
   DunningCampaign,
   DunningCampaignCreate,
@@ -568,7 +569,7 @@ export default function DunningCampaignsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              ${((Number(perfStats?.total_recovered_amount_cents ?? 0)) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatCents(Number(perfStats?.total_recovered_amount_cents ?? 0))}
             </div>
             <p className="text-xs text-muted-foreground">
               from succeeded requests

@@ -1599,12 +1599,12 @@ export const dashboardApi = {
     >(`/dashboard/activity${buildQuery(params)}`),
   getRevenue: (params?: DashboardDateRange) =>
     request<{
-      mrr: number
-      total_revenue_this_month: number
-      outstanding_invoices: number
-      overdue_amount: number
+      mrr_cents: number
+      total_revenue_this_month_cents: number
+      outstanding_invoices_cents: number
+      overdue_amount_cents: number
       currency: string
-      monthly_trend: { month: string; revenue: number }[]
+      monthly_trend: { month: string; revenue_cents: number }[]
       mrr_trend: { previous_value: number; change_percent: number | null } | null
     }>(`/dashboard/revenue${buildQuery(params)}`),
   getCustomerMetrics: (params?: DashboardDateRange) =>
@@ -1630,7 +1630,7 @@ export const dashboardApi = {
     }>(`/dashboard/usage${buildQuery(params)}`),
   getRevenueByPlan: (params?: DashboardDateRange) =>
     request<{
-      by_plan: { plan_name: string; revenue: number }[]
+      by_plan: { plan_name: string; revenue_cents: number }[]
       currency: string
     }>(`/dashboard/revenue_by_plan${buildQuery(params)}`),
   getRecentInvoices: () =>
@@ -1639,7 +1639,7 @@ export const dashboardApi = {
       invoice_number: string
       customer_name: string
       status: string
-      total: number
+      total_cents: number
       currency: string
       created_at: string
     }[]>('/dashboard/recent_invoices'),
@@ -1660,22 +1660,22 @@ export const dashboardApi = {
     }>(`/dashboard/sparklines${buildQuery(params)}`),
   getRevenueAnalytics: (params?: DashboardDateRange) =>
     request<{
-      daily_revenue: { date: string; revenue: number }[]
-      revenue_by_type: { invoice_type: string; revenue: number; count: number }[]
-      top_customers: { customer_id: string; customer_name: string; revenue: number; invoice_count: number }[]
+      daily_revenue: { date: string; revenue_cents: number }[]
+      revenue_by_type: { invoice_type: string; revenue_cents: number; count: number }[]
+      top_customers: { customer_id: string; customer_name: string; revenue_cents: number; invoice_count: number }[]
       collection: {
-        total_invoiced: number
-        total_collected: number
+        total_invoiced_cents: number
+        total_collected_cents: number
         collection_rate: number
         average_days_to_payment: number | null
         overdue_count: number
-        overdue_amount: number
+        overdue_amount_cents: number
       }
       net_revenue: {
-        gross_revenue: number
-        refunds: number
-        credit_notes: number
-        net_revenue: number
+        gross_revenue_cents: number
+        refunds_cents: number
+        credit_notes_cents: number
+        net_revenue_cents: number
         currency: string
       }
       currency: string

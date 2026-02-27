@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { billingEntitiesApi } from '@/lib/api'
+import { formatCents } from '@/lib/utils'
 import type { Subscription, Customer, Plan } from '@/lib/api'
 
 interface SubscriptionInfoSidebarProps {
@@ -195,7 +196,7 @@ export function SubscriptionInfoSidebar({
                   <ExternalLink className="h-3 w-3" />
                 </Link>
                 <span className="text-xs text-muted-foreground">
-                  {(plan.amount_cents / 100).toLocaleString(undefined, { style: 'currency', currency: plan.currency })} / {plan.interval}
+                  {formatCents(plan.amount_cents, plan.currency)} / {plan.interval}
                 </span>
               </div>
             ) : (

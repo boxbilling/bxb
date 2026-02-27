@@ -68,7 +68,7 @@ export function CustomerInvoicesTable({ customerId }: { customerId: string }) {
               <TableCell>
                 <Badge variant={statusVariant[invoice.status] ?? 'outline'}>{invoice.status}</Badge>
               </TableCell>
-              <TableCell className="font-mono">{formatCents(Number(invoice.total), invoice.currency)}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(invoice.total_cents), invoice.currency)}</TableCell>
               <TableCell>{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
             </TableRow>
           ))}

@@ -216,7 +216,7 @@ class CreditNoteService:
 
         # Auto-mark invoice as paid if fully settled
         total_settled = settlement_repo.get_total_settled(invoice_id)
-        if total_settled >= Decimal(str(invoice.total)):
+        if total_settled >= Decimal(str(invoice.total_cents)):
             self.invoice_repo.mark_paid(invoice_id)
 
         # We already validated the credit note exists and has available credit,

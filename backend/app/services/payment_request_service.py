@@ -65,7 +65,7 @@ class PaymentRequestService:
             elif str(invoice.currency) != currency:
                 raise ValueError("All invoices must have the same currency")
 
-            total_amount += Decimal(str(invoice.total))
+            total_amount += Decimal(str(invoice.total_cents))
 
         if currency is None:
             raise ValueError("No invoices provided")
@@ -104,7 +104,7 @@ class PaymentRequestService:
             status=InvoiceStatus.FINALIZED,
         )
         return sum(
-            (Decimal(str(inv.total)) for inv in invoices),
+            (Decimal(str(inv.total_cents)) for inv in invoices),
             Decimal("0"),
         )
 
@@ -154,7 +154,7 @@ class PaymentRequestService:
             customer_name = str(customer.name) if customer else str(customer_id)
             total = Decimal("0")
             for inv in group_invoices:
-                total += Decimal(str(inv.total))
+                total += Decimal(str(inv.total_cents))
             invoice_ids: list[UUID] = [inv.id for inv in group_invoices]  # type: ignore[misc]
 
             try:

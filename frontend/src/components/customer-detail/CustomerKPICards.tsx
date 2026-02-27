@@ -18,15 +18,15 @@ export function CustomerKPICards({ customerId, currency }: { customerId: string;
 
   const outstanding = (invoices ?? [])
     .filter((i) => i.status === 'finalized')
-    .reduce((sum, i) => sum + Number(i.total), 0)
+    .reduce((sum, i) => sum + Number(i.total_cents), 0)
 
   const overdue = (invoices ?? [])
     .filter((i) => i.status === 'finalized' && i.due_date && new Date(i.due_date) < new Date())
-    .reduce((sum, i) => sum + Number(i.total), 0)
+    .reduce((sum, i) => sum + Number(i.total_cents), 0)
 
   const lifetimeRevenue = (invoices ?? [])
     .filter((i) => i.status === 'paid')
-    .reduce((sum, i) => sum + Number(i.total), 0)
+    .reduce((sum, i) => sum + Number(i.total_cents), 0)
 
   const activeSubscriptions = (subscriptions ?? []).filter((s) => s.status === 'active').length
 

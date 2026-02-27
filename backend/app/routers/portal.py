@@ -278,7 +278,7 @@ async def get_portal_dashboard_summary(
         status=InvoiceStatus.FINALIZED,
         limit=1000,
     )
-    outstanding_total = sum(int(inv.total) for inv in invoices)
+    outstanding_total = sum(int(inv.total_cents) for inv in invoices)
 
     wallets = wallet_repo.get_by_customer_id(customer_id)
     active_wallets = [w for w in wallets if str(w.status) == "active"]
@@ -606,7 +606,7 @@ async def pay_portal_invoice(
                 checkout_url=existing.provider_checkout_url,  # type: ignore[arg-type]
                 provider=existing.provider,  # type: ignore[arg-type]
                 invoice_id=invoice_id,
-                amount=invoice.total,  # type: ignore[arg-type]
+                amount=invoice.total_cents,  # type: ignore[arg-type]
                 currency=invoice.currency,  # type: ignore[arg-type]
             )
 
@@ -619,7 +619,7 @@ async def pay_portal_invoice(
     payment = payment_repo.create(
         invoice_id=invoice_id,
         customer_id=customer_id,
-        amount=float(invoice.total),
+        amount=float(invoice.total_cents),
         currency=invoice.currency,  # type: ignore[arg-type]
         provider=PaymentProvider.STRIPE,
         organization_id=organization_id,
@@ -632,7 +632,7 @@ async def pay_portal_invoice(
         provider_svc = get_payment_provider(PaymentProvider.STRIPE)
         session = provider_svc.create_checkout_session(
             payment_id=payment.id,  # type: ignore[arg-type]
-            amount=invoice.total,  # type: ignore[arg-type]
+            amount=invoice.total_cents,  # type: ignore[arg-type]
             currency=invoice.currency,  # type: ignore[arg-type]
             customer_email=customer_email,
             invoice_number=invoice.invoice_number,  # type: ignore[arg-type]
@@ -665,7 +665,7 @@ async def pay_portal_invoice(
         checkout_url=session.checkout_url,
         provider=PaymentProvider.STRIPE.value,
         invoice_id=invoice_id,
-        amount=invoice.total,  # type: ignore[arg-type]
+        amount=invoice.total_cents,  # type: ignore[arg-type]
         currency=invoice.currency,  # type: ignore[arg-type]
     )
 

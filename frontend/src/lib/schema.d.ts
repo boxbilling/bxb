@@ -5470,18 +5470,18 @@ export interface components {
         };
         /** CollectionMetrics */
         CollectionMetrics: {
-            /** Total Invoiced */
-            total_invoiced: number;
-            /** Total Collected */
-            total_collected: number;
+            /** Total Invoiced Cents */
+            total_invoiced_cents: number;
+            /** Total Collected Cents */
+            total_collected_cents: number;
             /** Collection Rate */
             collection_rate: number;
             /** Average Days To Payment */
             average_days_to_payment: number | null;
             /** Overdue Count */
             overdue_count: number;
-            /** Overdue Amount */
-            overdue_amount: number;
+            /** Overdue Amount Cents */
+            overdue_amount_cents: number;
         };
         /** CommitmentCreateAPI */
         CommitmentCreateAPI: {
@@ -5954,8 +5954,8 @@ export interface components {
         DailyRevenuePoint: {
             /** Date */
             date: string;
-            /** Revenue */
-            revenue: number;
+            /** Revenue Cents */
+            revenue_cents: number;
         };
         /** DashboardStatsResponse */
         DashboardStatsResponse: {
@@ -6852,16 +6852,16 @@ export interface components {
          * @description Response for an invoice preview.
          */
         InvoicePreviewResponse: {
-            /** Subtotal */
-            subtotal: string;
-            /** Tax Amount */
-            tax_amount: string;
-            /** Coupons Amount */
-            coupons_amount: string;
-            /** Prepaid Credit Amount */
-            prepaid_credit_amount: string;
-            /** Total */
-            total: string;
+            /** Subtotal Cents */
+            subtotal_cents: string;
+            /** Tax Amount Cents */
+            tax_amount_cents: string;
+            /** Coupons Amount Cents */
+            coupons_amount_cents: string;
+            /** Prepaid Credit Amount Cents */
+            prepaid_credit_amount_cents: string;
+            /** Total Cents */
+            total_cents: string;
             /** Currency */
             currency: string;
             /** Fees */
@@ -6897,14 +6897,14 @@ export interface components {
              * Format: date-time
              */
             billing_period_end: string;
-            /** Subtotal */
-            subtotal: string;
-            /** Tax Amount */
-            tax_amount: string;
-            /** Total */
-            total: string;
-            /** Prepaid Credit Amount */
-            prepaid_credit_amount: string;
+            /** Subtotal Cents */
+            subtotal_cents: string;
+            /** Tax Amount Cents */
+            tax_amount_cents: string;
+            /** Total Cents */
+            total_cents: string;
+            /** Prepaid Credit Amount Cents */
+            prepaid_credit_amount_cents: string;
             /** Coupons Amount Cents */
             coupons_amount_cents: string;
             /** Progressive Billing Credit Amount Cents */
@@ -7087,14 +7087,14 @@ export interface components {
         };
         /** NetRevenueMetrics */
         NetRevenueMetrics: {
-            /** Gross Revenue */
-            gross_revenue: number;
-            /** Refunds */
-            refunds: number;
-            /** Credit Notes */
-            credit_notes: number;
-            /** Net Revenue */
-            net_revenue: number;
+            /** Gross Revenue Cents */
+            gross_revenue_cents: number;
+            /** Refunds Cents */
+            refunds_cents: number;
+            /** Credit Notes Cents */
+            credit_notes_cents: number;
+            /** Net Revenue Cents */
+            net_revenue_cents: number;
             /** Currency */
             currency: string;
         };
@@ -7493,8 +7493,8 @@ export interface components {
              * Format: uuid
              */
             customer_id: string;
-            /** Amount */
-            amount: string;
+            /** Amount Cents */
+            amount_cents: string;
             /** Currency */
             currency: string;
             /** Status */
@@ -7601,8 +7601,8 @@ export interface components {
         PlanRevenueBreakdown: {
             /** Plan Name */
             plan_name: string;
-            /** Revenue */
-            revenue: number;
+            /** Revenue Cents */
+            revenue_cents: number;
         };
         /**
          * PlanSimulateRequest
@@ -8203,8 +8203,8 @@ export interface components {
             customer_name: string;
             /** Status */
             status: string;
-            /** Total */
-            total: number;
+            /** Total Cents */
+            total_cents: number;
             /** Currency */
             currency: string;
             /** Created At */
@@ -8265,8 +8265,8 @@ export interface components {
         RevenueByTypeBreakdown: {
             /** Invoice Type */
             invoice_type: string;
-            /** Revenue */
-            revenue: number;
+            /** Revenue Cents */
+            revenue_cents: number;
             /** Count */
             count: number;
         };
@@ -8274,19 +8274,19 @@ export interface components {
         RevenueDataPoint: {
             /** Month */
             month: string;
-            /** Revenue */
-            revenue: number;
+            /** Revenue Cents */
+            revenue_cents: number;
         };
         /** RevenueResponse */
         RevenueResponse: {
-            /** Mrr */
-            mrr: number;
-            /** Total Revenue This Month */
-            total_revenue_this_month: number;
-            /** Outstanding Invoices */
-            outstanding_invoices: number;
-            /** Overdue Amount */
-            overdue_amount: number;
+            /** Mrr Cents */
+            mrr_cents: number;
+            /** Total Revenue This Month Cents */
+            total_revenue_this_month_cents: number;
+            /** Outstanding Invoices Cents */
+            outstanding_invoices_cents: number;
+            /** Overdue Amount Cents */
+            overdue_amount_cents: number;
             /** Currency */
             currency: string;
             /** Monthly Trend */
@@ -8627,8 +8627,8 @@ export interface components {
             customer_id: string;
             /** Customer Name */
             customer_name: string;
-            /** Revenue */
-            revenue: number;
+            /** Revenue Cents */
+            revenue_cents: number;
             /** Invoice Count */
             invoice_count: number;
         };

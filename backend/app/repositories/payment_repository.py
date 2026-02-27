@@ -93,7 +93,7 @@ class PaymentRepository:
         payment = Payment(
             invoice_id=invoice_id,
             customer_id=customer_id,
-            amount=amount,
+            amount_cents=amount,
             currency=currency,
             provider=provider.value,
             status=PaymentStatus.PENDING.value,
@@ -215,7 +215,7 @@ class PaymentRepository:
 
         payment.status = PaymentStatus.REFUNDED.value  # type: ignore[assignment]
         if refund_amount is not None:
-            payment.amount = payment.amount - refund_amount  # type: ignore[assignment]
+            payment.amount_cents = payment.amount_cents - refund_amount  # type: ignore[assignment]
             payment.payment_metadata = {  # type: ignore[assignment]
                 **(payment.payment_metadata or {}),
                 "refunded_amount": str(refund_amount),
