@@ -1,6 +1,6 @@
 """rename monetary fields to add _cents suffix
 
-Revision ID: a1b2c3d4e5f6
+Revision ID: c1aef6cad7d1
 Revises: h4i5j6k7l8m9
 Create Date: 2026-02-27
 
@@ -9,7 +9,7 @@ Create Date: 2026-02-27
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "a1b2c3d4e5f6"
+revision = "c1aef6cad7d1"
 down_revision = "h4i5j6k7l8m9"
 branch_labels = None
 depends_on = None
