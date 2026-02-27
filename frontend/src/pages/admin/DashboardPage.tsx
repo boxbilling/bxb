@@ -483,8 +483,8 @@ export default function DashboardPage() {
         }
       />
 
-      {/* Revenue Metrics Cards */}
-      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+      {/* Key Trends */}
+      <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-3">
         <StatCard
           title="MRR"
           value={
@@ -501,6 +501,32 @@ export default function DashboardPage() {
           sparklineData={sparklines?.mrr}
           sparklineColor="var(--primary)"
         />
+        <StatCard
+          title="New Customers"
+          value={customerMetrics?.new_this_month.toLocaleString() ?? '-'}
+          description={periodLabel}
+          icon={UserPlus}
+          loading={customersLoading}
+          trend={customerMetrics?.new_trend}
+          href="/admin/customers"
+          sparklineData={sparklines?.new_customers}
+          sparklineColor="var(--chart-2)"
+        />
+        <StatCard
+          title="New Subscriptions"
+          value={subscriptionMetrics?.new_this_month.toLocaleString() ?? '-'}
+          description={periodLabel}
+          icon={CreditCard}
+          loading={subscriptionsLoading}
+          trend={subscriptionMetrics?.new_trend}
+          href="/admin/subscriptions"
+          sparklineData={sparklines?.new_subscriptions}
+          sparklineColor="var(--chart-3)"
+        />
+      </div>
+
+      {/* Revenue Metrics */}
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
         <StatCard
           title="Outstanding Invoices"
           value={
@@ -540,10 +566,6 @@ export default function DashboardPage() {
           loading={statsLoading}
           href="/admin/wallets"
         />
-      </div>
-
-      {/* Customer & Subscription Metrics */}
-      <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Customers"
           value={customerMetrics?.total.toLocaleString() ?? '-'}
@@ -552,30 +574,9 @@ export default function DashboardPage() {
           loading={customersLoading}
           href="/admin/customers"
         />
-        <StatCard
-          title="New Customers"
-          value={customerMetrics?.new_this_month.toLocaleString() ?? '-'}
-          description={periodLabel}
-          icon={UserPlus}
-          loading={customersLoading}
-          trend={customerMetrics?.new_trend}
-          href="/admin/customers"
-          sparklineData={sparklines?.new_customers}
-          sparklineColor="var(--chart-2)"
-        />
-        <StatCard
-          title="Churned"
-          value={customerMetrics?.churned_this_month.toLocaleString() ?? '-'}
-          description={periodLabel}
-          icon={UserMinus}
-          loading={customersLoading}
-          trend={customerMetrics?.churned_trend}
-          invertTrendColor
-          href="/admin/customers"
-        />
       </div>
 
-      {/* Subscription Metrics Row */}
+      {/* Subscription & Churn Metrics */}
       <div className="grid grid-cols-1 gap-3 md:gap-4 md:grid-cols-3">
         <StatCard
           title="Active Subscriptions"
@@ -586,15 +587,14 @@ export default function DashboardPage() {
           href="/admin/subscriptions?status=active"
         />
         <StatCard
-          title="New Subscriptions"
-          value={subscriptionMetrics?.new_this_month.toLocaleString() ?? '-'}
+          title="Churned"
+          value={customerMetrics?.churned_this_month.toLocaleString() ?? '-'}
           description={periodLabel}
-          icon={CreditCard}
-          loading={subscriptionsLoading}
-          trend={subscriptionMetrics?.new_trend}
-          href="/admin/subscriptions"
-          sparklineData={sparklines?.new_subscriptions}
-          sparklineColor="var(--chart-3)"
+          icon={UserMinus}
+          loading={customersLoading}
+          trend={customerMetrics?.churned_trend}
+          invertTrendColor
+          href="/admin/customers"
         />
         <StatCard
           title="Canceled"
