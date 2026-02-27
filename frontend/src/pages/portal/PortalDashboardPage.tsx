@@ -160,11 +160,13 @@ export default function PortalDashboardPage() {
     enabled: !!token,
   })
 
-  const { data: wallet, isLoading: walletLoading } = useQuery({
-    queryKey: ['portal-wallet', token],
-    queryFn: () => portalApi.getWallet(token),
+  const { data: wallets = [], isLoading: walletLoading } = useQuery({
+    queryKey: ['portal-wallets', token],
+    queryFn: () => portalApi.getWallets(token),
     enabled: !!token,
   })
+
+  const wallet = wallets.length > 0 ? wallets[0] : null
 
   const { data: dashboardSummary, isLoading: summaryLoading } = useQuery({
     queryKey: ['portal-dashboard-summary', token],
