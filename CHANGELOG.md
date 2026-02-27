@@ -1,3 +1,57 @@
+## [0.4.0] - 2026-02-27
+
+- Bump version to 0.3.6 and update release workflow to trigger on pushes to `main` affecting `VERSION`.
+- Update `openapi.json` to enhance API documentation with detailed paths and response schemas for dashboard and customer operations.
+- Fix duplicate Alembic revision ID in monetary fields migration.
+- Migrate from `amount` to `amount_cents` across all models and APIs to standardize monetary values representation. (#1)
+- Fix improper JSX structure and ensure proper wrapping for AlertDialogs in PlanDetailPage.
+- Add MetricFormPage and routes for metric creation/editing in the admin panel.
+- Add PlanFormPage and routes for plan creation/editing in the admin panel.
+- Add PlanFormPage and routes for plan creation/editing in the admin panel.
+- Use UTC timezone for datetime operations in customer router.
+- Bump version to 0.3.5 and add Node.js setup in packages.yml workflow.
+- BXB: Test readme update to clarify
+- move docs
+- BXB: Add testing strategy README for backend/tests
+- BXB: Remove unused generate_openapi.py script
+- BXB: Remove Portal SDK, consolidate to single bxb package
+- BXB: Update README to reflect public smoke-test-only strategy
+- BXB: Add pre-commit hook and fix lint errors for clean hook execution
+- BXB: Add explicit work/_internal_staging/ entry to .gitignore
+- BXB: Strip coverage enforcement and Postgres from CI test workflow
+- BXB: Update CLAUDE.md for public repo smoke-test workflow
+- BXB: Replace full frontend test suite with minimal smoke tests
+- BXB: Remove 100% coverage enforcement from Makefile test-cov target
+- BXB: Remove 100% coverage enforcement from public repo pyproject.toml
+- BXB: Replace full backend test suite with minimal smoke tests
+- BXB: Add executive summary for event ingestion architecture
+- BXB: Review and refine documentation for team publication
+- BXB: Add data flow diagrams and capacity planning visualization assets
+- BXB: Add technical blog post on Kafka + ClickHouse event ingestion architecture
+- BXB: Add ingestion pattern comparison matrix and decision framework
+- BXB: Add streaming ingestion patterns research document
+- BXB: Add API direct-write patterns research document
+- BXB: Add direct ClickHouse ingestion research document
+- Update openapi to generate and publish Python SDKs.
+- update openapi
+- Generate portal JWT token for auth endpoint.
+- package update
+- package update
+- version
+- consolidate
+- names
+- Merge remote-tracking branch 'origin/main'
+- workflow
+- Update README.md
+- workflow
+- workflow
+- workflow
+- Merge remote-tracking branch 'origin/main'
+- add script
+- add script
+- pip package
+- version
+
 ## [0.3.0] - 2026-02-23
 
 - fastapi
