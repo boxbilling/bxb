@@ -280,7 +280,7 @@ class DunningCampaignRepository:
                 ExecutionHistoryInvoice(
                     id=UUID(str(inv.id)),
                     invoice_number=str(inv.invoice_number),
-                    amount_cents=Decimal(str(inv.total)),
+                    amount_cents=Decimal(str(inv.total_cents)),
                     currency=str(inv.currency),
                     status=str(inv.status),
                 )
@@ -421,7 +421,7 @@ class DunningCampaignRepository:
         total_overdue = len(overdue_invoices)
         total_overdue_amount = Decimal("0")
         for inv, _ in overdue_invoices:
-            total_overdue_amount += Decimal(str(inv.total))
+            total_overdue_amount += Decimal(str(inv.total_cents))
 
         # Count existing pending PRs for this campaign
         existing_pending: int = (
@@ -470,7 +470,7 @@ class DunningCampaignRepository:
 
             outstanding = Decimal("0")
             for inv, _ in new_invoices:
-                outstanding += Decimal(str(inv.total))
+                outstanding += Decimal(str(inv.total_cents))
 
             # Check thresholds
             matching_threshold = None
@@ -491,7 +491,7 @@ class DunningCampaignRepository:
                 ExecutionHistoryInvoice(
                     id=inv.id,
                     invoice_number=str(inv.invoice_number),
-                    amount_cents=Decimal(str(inv.total)),
+                    amount_cents=Decimal(str(inv.total_cents)),
                     currency=str(inv.currency),
                     status=str(inv.status),
                 )

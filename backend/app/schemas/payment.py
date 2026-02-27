@@ -35,7 +35,7 @@ class PaymentResponse(BaseModel):
     id: UUID
     invoice_id: UUID
     customer_id: UUID
-    amount: Decimal
+    amount_cents: Decimal
     currency: str
     status: str
     provider: str

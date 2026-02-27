@@ -251,13 +251,13 @@ async def get_revenue(
         organization_id, start_date=prev_start, end_date=prev_end
     )
     return RevenueResponse(
-        mrr=mrr,
-        total_revenue_this_month=mrr,
-        outstanding_invoices=repo.outstanding_invoices_total(organization_id),
-        overdue_amount=repo.overdue_invoices_total(organization_id),
+        mrr_cents=mrr,
+        total_revenue_this_month_cents=mrr,
+        outstanding_invoices_cents=repo.outstanding_invoices_total(organization_id),
+        overdue_amount_cents=repo.overdue_invoices_total(organization_id),
         currency="USD",
         monthly_trend=[
-            RevenueDataPoint(month=m.month, revenue=m.revenue)
+            RevenueDataPoint(month=m.month, revenue_cents=m.revenue)
             for m in trend
         ],
         mrr_trend=_compute_trend(mrr, prev_mrr),
@@ -389,7 +389,7 @@ async def get_revenue_by_plan(
     )
     return RevenueByPlanResponse(
         by_plan=[
-            PlanRevenueBreakdown(plan_name=p.plan_name, revenue=p.revenue)
+            PlanRevenueBreakdown(plan_name=p.plan_name, revenue_cents=p.revenue)
             for p in by_plan
         ],
         currency="USD",
@@ -415,7 +415,7 @@ async def get_recent_invoices(
             invoice_number=r.invoice_number,
             customer_name=r.customer_name,
             status=r.status,
-            total=r.total,
+            total_cents=r.total,
             currency=r.currency,
             created_at=r.created_at,
         )
@@ -525,11 +525,11 @@ async def get_revenue_analytics(
 
     return RevenueAnalyticsResponse(
         daily_revenue=[
-            DailyRevenuePoint(date=p.date, revenue=p.value) for p in daily
+            DailyRevenuePoint(date=p.date, revenue_cents=p.value) for p in daily
         ],
         revenue_by_type=[
             RevenueByTypeBreakdown(
-                invoice_type=r.invoice_type, revenue=r.revenue, count=r.count
+                invoice_type=r.invoice_type, revenue_cents=r.revenue, count=r.count
             )
             for r in by_type
         ],
@@ -537,24 +537,24 @@ async def get_revenue_analytics(
             TopCustomerRevenue(
                 customer_id=r.customer_id,
                 customer_name=r.customer_name,
-                revenue=r.revenue,
+                revenue_cents=r.revenue,
                 invoice_count=r.invoice_count,
             )
             for r in top_custs
         ],
         collection=CollectionMetrics(
-            total_invoiced=coll.total_invoiced,
-            total_collected=coll.total_collected,
+            total_invoiced_cents=coll.total_invoiced,
+            total_collected_cents=coll.total_collected,
             collection_rate=collection_rate,
             average_days_to_payment=coll.avg_days_to_payment,
             overdue_count=coll.overdue_count,
-            overdue_amount=coll.overdue_amount,
+            overdue_amount_cents=coll.overdue_amount,
         ),
         net_revenue=NetRevenueMetrics(
-            gross_revenue=net.gross_revenue,
-            refunds=net.refunds,
-            credit_notes=net.credit_notes_total,
-            net_revenue=net.gross_revenue - net.refunds - net.credit_notes_total,
+            gross_revenue_cents=net.gross_revenue,
+            refunds_cents=net.refunds,
+            credit_notes_cents=net.credit_notes_total,
+            net_revenue_cents=net.gross_revenue - net.refunds - net.credit_notes_total,
             currency="USD",
         ),
         currency="USD",

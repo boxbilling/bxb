@@ -59,7 +59,7 @@ export function CustomerPaymentsTable({ customerId }: { customerId: string }) {
         <TableBody>
           {payments.map((payment) => (
             <TableRow key={payment.id}>
-              <TableCell className="font-mono">{formatCents(Number(payment.amount), payment.currency)}</TableCell>
+              <TableCell className="font-mono">{formatCents(Number(payment.amount_cents), payment.currency)}</TableCell>
               <TableCell>
                 <Badge variant={statusVariant[payment.status] ?? 'outline'}>{payment.status}</Badge>
               </TableCell>

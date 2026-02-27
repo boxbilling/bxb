@@ -182,9 +182,9 @@ class DataExportService:
                     inv.invoice_number,
                     str(inv.customer_id),
                     inv.status,
-                    str(inv.subtotal),
-                    str(inv.tax_amount),
-                    str(inv.total),
+                    str(inv.subtotal_cents),
+                    str(inv.tax_amount_cents),
+                    str(inv.total_cents),
                     inv.currency,
                     _fmt_dt(inv.issued_at),  # type: ignore[arg-type]
                     _fmt_dt(inv.due_date),  # type: ignore[arg-type]

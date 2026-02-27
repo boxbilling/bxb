@@ -51,7 +51,7 @@ import {
 import { AuditTrailTimeline } from '@/components/AuditTrailTimeline'
 import { useIsMobile } from '@/components/ui/use-mobile'
 import { invoicesApi, feesApi, taxesApi, creditNotesApi, customersApi } from '@/lib/api'
-import { formatCurrency, formatCents } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 
 type StatusKey = 'draft' | 'finalized' | 'paid' | 'voided'
 
@@ -227,7 +227,7 @@ export default function InvoiceDetailPage() {
     )
   }
 
-  const walletCredit = Number(invoice.prepaid_credit_amount)
+  const walletCredit = Number(invoice.prepaid_credit_amount_cents)
   const couponDiscount = Number(invoice.coupons_amount_cents)
 
   const cnStatusVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
@@ -503,7 +503,7 @@ export default function InvoiceDetailPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold">
-              {formatCurrency(invoice.total, invoice.currency)}
+              {formatCents(invoice.total_cents, invoice.currency)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {invoice.currency} · {invoice.status}
@@ -593,7 +593,7 @@ export default function InvoiceDetailPage() {
               <div className="space-y-3 w-full md:max-w-md md:ml-auto">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal</span>
-                  <span>{formatCurrency(invoice.subtotal, invoice.currency)}</span>
+                  <span>{formatCents(invoice.subtotal_cents, invoice.currency)}</span>
                 </div>
 
                 {couponDiscount > 0 && (
@@ -605,7 +605,7 @@ export default function InvoiceDetailPage() {
 
                 <div className="flex justify-between text-sm">
                   <span>Tax</span>
-                  <span>{formatCurrency(invoice.tax_amount, invoice.currency)}</span>
+                  <span>{formatCents(invoice.tax_amount_cents, invoice.currency)}</span>
                 </div>
 
                 {appliedTaxes.length > 0 && (
@@ -622,7 +622,7 @@ export default function InvoiceDetailPage() {
                 {walletCredit > 0 && (
                   <div className="flex justify-between text-sm text-blue-600">
                     <span>Wallet Credits Applied</span>
-                    <span>-{formatCurrency(walletCredit, invoice.currency)}</span>
+                    <span>-{formatCents(walletCredit, invoice.currency)}</span>
                   </div>
                 )}
 
@@ -636,7 +636,7 @@ export default function InvoiceDetailPage() {
                 <Separator />
                 <div className="flex justify-between font-medium text-lg">
                   <span>Total</span>
-                  <span>{formatCurrency(invoice.total, invoice.currency)}</span>
+                  <span>{formatCents(invoice.total_cents, invoice.currency)}</span>
                 </div>
               </div>
             </CardContent>

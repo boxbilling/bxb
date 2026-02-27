@@ -16,7 +16,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { invoicesApi, paymentsApi, creditNotesApi } from '@/lib/api'
-import { formatCents, formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 
 interface SubscriptionInvoicesTabProps {
   subscriptionId: string
@@ -188,7 +188,7 @@ export function SubscriptionInvoicesTab({
                           <TableCell className="hidden md:table-cell">{invoice.issued_at ? format(new Date(invoice.issued_at), 'MMM d, yyyy') : '\u2014'}</TableCell>
                           <TableCell className="hidden md:table-cell">{invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}</TableCell>
                           <TableCell className="text-right font-mono">
-                            {formatCents(Number(invoice.total), invoice.currency)}
+                            {formatCents(Number(invoice.total_cents), invoice.currency)}
                           </TableCell>
                         </TableRow>
                         {isExpanded && invoicePayments.map((payment) => (
@@ -220,7 +220,7 @@ export function SubscriptionInvoicesTab({
                               </div>
                             </TableCell>
                             <TableCell className="text-right font-mono text-xs">
-                              {formatCurrency(payment.amount, payment.currency)}
+                              {formatCents(payment.amount_cents, payment.currency)}
                             </TableCell>
                           </TableRow>
                         ))}

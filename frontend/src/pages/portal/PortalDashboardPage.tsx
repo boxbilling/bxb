@@ -24,7 +24,7 @@ import type {
   PortalUpcomingCharge,
   PortalUsageProgress,
 } from '@/lib/api'
-import { formatCents, formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 import { usePortalToken, usePortalBranding } from '@/layouts/PortalLayout'
 
 function ProgressBar({ value, className }: { value: number; className?: string }) {
@@ -176,7 +176,7 @@ export default function PortalDashboardPage() {
     (inv) => inv.status === 'finalized' || inv.status === 'pending'
   )
   const totalOutstanding = outstandingInvoices.reduce(
-    (sum, inv) => sum + parseFloat(inv.total),
+    (sum, inv) => sum + parseFloat(inv.total_cents),
     0
   )
 
@@ -241,7 +241,7 @@ export default function PortalDashboardPage() {
               <Skeleton className="h-7 w-24" />
             ) : (
               <div className="text-2xl font-bold">
-                {formatCurrency(
+                {formatCents(
                   totalOutstanding,
                   customer?.currency || 'USD'
                 )}
@@ -436,7 +436,7 @@ export default function PortalDashboardPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-medium">
-                      {formatCurrency(invoice.total, invoice.currency)}
+                      {formatCents(invoice.total_cents, invoice.currency)}
                     </span>
                     <Badge
                       variant={

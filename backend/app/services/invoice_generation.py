@@ -167,7 +167,7 @@ class InvoiceGenerationService:
                 self.tax_service.apply_taxes_to_fee(fee_id, taxes)
 
         # Apply coupon discounts
-        subtotal = Decimal(str(invoice.subtotal))
+        subtotal = Decimal(str(invoice.subtotal_cents))
         if subtotal > 0:
             coupon_discount = self.coupon_service.calculate_coupon_discount(
                 customer_id=customer_id,
@@ -175,7 +175,7 @@ class InvoiceGenerationService:
             )
             if coupon_discount.total_discount_cents > 0:
                 invoice.coupons_amount_cents = coupon_discount.total_discount_cents  # type: ignore[assignment]
-                invoice.total = subtotal - coupon_discount.total_discount_cents  # type: ignore[assignment]
+                invoice.total_cents = subtotal - coupon_discount.total_discount_cents  # type: ignore[assignment]
                 self.db.commit()
                 self.db.refresh(invoice)
 
@@ -198,10 +198,10 @@ class InvoiceGenerationService:
             billing_period_end=billing_period_end,
         )
         if progressive_credit > 0:
-            current_total = Decimal(str(invoice.total))
+            current_total = Decimal(str(invoice.total_cents))
             invoice.progressive_billing_credit_amount_cents = progressive_credit  # type: ignore[assignment]
             adjusted = current_total - progressive_credit
-            invoice.total = adjusted if adjusted > 0 else Decimal("0")  # type: ignore[assignment]
+            invoice.total_cents = adjusted if adjusted > 0 else Decimal("0")  # type: ignore[assignment]
             self.db.commit()
             self.db.refresh(invoice)
 

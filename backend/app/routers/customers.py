@@ -259,7 +259,7 @@ async def get_customer_health(
         and i.due_date < now
     )
     overdue_amount = sum(
-        float(i.total)
+        float(i.total_cents)
         for i in invoices
         if i.status == InvoiceStatus.FINALIZED.value
         and i.due_date is not None

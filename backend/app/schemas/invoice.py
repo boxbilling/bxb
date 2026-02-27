@@ -91,10 +91,10 @@ class InvoiceResponse(BaseModel):
     invoice_type: str
     billing_period_start: datetime
     billing_period_end: datetime
-    subtotal: Decimal
-    tax_amount: Decimal
-    total: Decimal
-    prepaid_credit_amount: Decimal
+    subtotal_cents: Decimal
+    tax_amount_cents: Decimal
+    total_cents: Decimal
+    prepaid_credit_amount_cents: Decimal
     coupons_amount_cents: Decimal
     progressive_billing_credit_amount_cents: Decimal
     currency: str

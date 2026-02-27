@@ -404,28 +404,28 @@ function InvoicePreviewDialog({
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>{formatCurrency(previewResult.subtotal, previewResult.currency)}</span>
+                      <span>{formatCents(previewResult.subtotal_cents, previewResult.currency)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span>Tax</span>
-                      <span>{formatCurrency(previewResult.tax_amount, previewResult.currency)}</span>
+                      <span>{formatCents(previewResult.tax_amount_cents, previewResult.currency)}</span>
                     </div>
-                    {parseFloat(previewResult.coupons_amount) > 0 && (
+                    {parseFloat(previewResult.coupons_amount_cents) > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Coupon Discount</span>
-                        <span>-{formatCurrency(previewResult.coupons_amount, previewResult.currency)}</span>
+                        <span>-{formatCents(previewResult.coupons_amount_cents, previewResult.currency)}</span>
                       </div>
                     )}
-                    {parseFloat(previewResult.prepaid_credit_amount) > 0 && (
+                    {parseFloat(previewResult.prepaid_credit_amount_cents) > 0 && (
                       <div className="flex justify-between text-blue-600">
                         <span>Prepaid Credits</span>
-                        <span>-{formatCurrency(previewResult.prepaid_credit_amount, previewResult.currency)}</span>
+                        <span>-{formatCents(previewResult.prepaid_credit_amount_cents, previewResult.currency)}</span>
                       </div>
                     )}
                     <Separator />
                     <div className="flex justify-between font-medium text-lg">
                       <span>Total</span>
-                      <span>{formatCurrency(previewResult.total, previewResult.currency)}</span>
+                      <span>{formatCents(previewResult.total_cents, previewResult.currency)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -501,7 +501,7 @@ export default function InvoicesPage() {
   // Calculate totals
   const totals = (data ?? []).reduce(
     (acc, inv) => {
-      const total = parseFloat(inv.total)
+      const total = parseFloat(inv.total_cents)
       if (inv.status === 'paid') {
         acc.paid += total
       } else if (inv.status === 'finalized') {
@@ -581,7 +581,7 @@ export default function InvoicesPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(totals.paid)}
+              {formatCents(totals.paid)}
             </p>
           </CardContent>
         </Card>
@@ -593,7 +593,7 @@ export default function InvoicesPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-orange-600">
-              {formatCurrency(totals.outstanding)}
+              {formatCents(totals.outstanding)}
             </p>
           </CardContent>
         </Card>
@@ -605,7 +605,7 @@ export default function InvoicesPage() {
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-bold text-muted-foreground">
-              {formatCurrency(totals.draft)}
+              {formatCents(totals.draft)}
             </p>
           </CardContent>
         </Card>
@@ -754,7 +754,7 @@ export default function InvoicesPage() {
                     {invoice.due_date ? format(new Date(invoice.due_date), 'MMM d, yyyy') : '\u2014'}
                   </TableCell>
                   <TableCell className="text-right font-medium">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                    {formatCents(invoice.total_cents, invoice.currency)}
                   </TableCell>
                 </TableRow>
               ))

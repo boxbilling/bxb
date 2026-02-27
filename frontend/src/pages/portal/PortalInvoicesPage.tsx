@@ -23,7 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { portalApi } from '@/lib/api'
-import { formatCurrency } from '@/lib/utils'
+import { formatCents } from '@/lib/utils'
 import { usePortalToken } from '@/layouts/PortalLayout'
 import { useIsMobile } from '@/hooks/use-mobile'
 import type { Invoice, Payment } from '@/lib/api'
@@ -139,7 +139,7 @@ export default function PortalInvoicesPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-bold">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                    {formatCents(invoice.total_cents, invoice.currency)}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {format(new Date(invoice.created_at), 'MMM d, yyyy')}
@@ -189,7 +189,7 @@ export default function PortalInvoicesPage() {
                       {format(new Date(invoice.created_at), 'MMM d, yyyy')}
                     </TableCell>
                     <TableCell>
-                      {formatCurrency(invoice.total, invoice.currency)}
+                      {formatCents(invoice.total_cents, invoice.currency)}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusColors[invoice.status] || 'secondary'}>
@@ -264,7 +264,7 @@ export default function PortalInvoicesPage() {
                 <div>
                   <p className="text-xs md:text-sm text-muted-foreground">Amount</p>
                   <p className="text-base md:text-lg font-semibold">
-                    {formatCurrency(selectedInvoice.total, selectedInvoice.currency)}
+                    {formatCents(selectedInvoice.total_cents, selectedInvoice.currency)}
                   </p>
                 </div>
                 <div>
@@ -351,7 +351,7 @@ export default function PortalInvoicesPage() {
                               <StatusIcon className={`h-4 w-4 ${payment.status === 'succeeded' ? 'text-green-600' : payment.status === 'failed' ? 'text-red-600' : 'text-muted-foreground'}`} />
                               <div>
                                 <p className="text-sm font-medium">
-                                  {formatCurrency(payment.amount, payment.currency)}
+                                  {formatCents(payment.amount_cents, payment.currency)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
                                   {format(new Date(payment.created_at), 'MMM d, yyyy h:mm a')} via {payment.provider}
