@@ -1,3 +1,7 @@
+## [0.5.0] - 2026-03-02
+
+- Refactor dashboard metrics layout: reorganize sections, add "New Customers" and "New Subscriptions" cards, and improve grid responsiveness.
+
 ## [0.4.0] - 2026-02-27
 
 - Bump version to 0.3.6 and update release workflow to trigger on pushes to `main` affecting `VERSION`.
