@@ -153,7 +153,7 @@ async def get_recent_activity(
 
     if "payment_received" in include_types:
         for p in repo.recent_payments(organization_id):
-            amount_str = f" ${float(p.amount):,.2f}" if p.amount else ""
+            amount_str = f" ${float(p.amount_cents) / 100:,.2f}" if p.amount_cents else ""
             activities.append(
                 RecentActivityResponse(
                     id=str(p.id),
@@ -183,7 +183,7 @@ async def get_recent_activity(
 
     if "payment_failed" in include_types:
         for p in repo.recent_failed_payments(organization_id):
-            amount_str = f" ${float(p.amount):,.2f}" if p.amount else ""
+            amount_str = f" ${float(p.amount_cents) / 100:,.2f}" if p.amount_cents else ""
             activities.append(
                 RecentActivityResponse(
                     id=str(p.id),

@@ -160,11 +160,11 @@ class InvoicePreviewService:
         fees = self._build_fee_previews(fee_creates, charges)
 
         return InvoicePreviewResponse(
-            subtotal=subtotal,
-            tax_amount=tax_amount,
-            coupons_amount=coupons_amount,
-            prepaid_credit_amount=prepaid_credit_amount,
-            total=total,
+            subtotal_cents=subtotal,
+            tax_amount_cents=tax_amount,
+            coupons_amount_cents=coupons_amount,
+            prepaid_credit_amount_cents=prepaid_credit_amount,
+            total_cents=total,
             currency="USD",
             fees=fees,
         )
