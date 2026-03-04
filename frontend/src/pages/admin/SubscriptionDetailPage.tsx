@@ -12,6 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { EditSubscriptionDialog } from '@/components/EditSubscriptionDialog'
 import { ChangePlanDialog } from '@/components/ChangePlanDialog'
 import { TerminateSubscriptionDialog } from '@/components/TerminateSubscriptionDialog'
+import { CancelSubscriptionDialog } from '@/components/CancelSubscriptionDialog'
 import { SubscriptionHeader } from '@/components/subscription-detail/SubscriptionHeader'
 import { SubscriptionKPICards } from '@/components/subscription-detail/SubscriptionKPICards'
 import { SubscriptionInfoSidebar } from '@/components/subscription-detail/SubscriptionInfoSidebar'
@@ -33,6 +34,7 @@ export default function SubscriptionDetailPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [changePlanOpen, setChangePlanOpen] = useState(false)
   const [terminateOpen, setTerminateOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
 
   const { data: subscription, isLoading, error } = useQuery({
     queryKey: ['subscription', id],
@@ -66,6 +68,19 @@ export default function SubscriptionDetailPage() {
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to update subscription'
+      toast.error(message)
+    },
+  })
+
+  const activateMutation = useMutation({
+    mutationFn: () => subscriptionsApi.activate(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      toast.success('Subscription activated')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to activate subscription'
       toast.error(message)
     },
   })
@@ -111,6 +126,21 @@ export default function SubscriptionDetailPage() {
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to change plan'
+      toast.error(message)
+    },
+  })
+
+  const cancelMutation = useMutation({
+    mutationFn: ({ action }: { action: TerminationAction }) =>
+      subscriptionsApi.cancel(id!, action),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscription', id] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      setCancelOpen(false)
+      toast.success('Subscription canceled')
+    },
+    onError: (error) => {
+      const message = error instanceof ApiError ? error.message : 'Failed to cancel subscription'
       toast.error(message)
     },
   })
@@ -259,12 +289,16 @@ export default function SubscriptionDetailPage() {
                     customer={customer}
                     plan={plan}
                     onEdit={() => setEditOpen(true)}
+                    onActivate={() => activateMutation.mutate()}
                     onPause={() => pauseMutation.mutate()}
                     onResume={() => resumeMutation.mutate()}
                     onChangePlan={() => setChangePlanOpen(true)}
+                    onCancel={() => setCancelOpen(true)}
                     onTerminate={() => setTerminateOpen(true)}
+                    isActivateLoading={activateMutation.isPending}
                     isPauseLoading={pauseMutation.isPending}
                     isResumeLoading={resumeMutation.isPending}
+                    isCancelLoading={cancelMutation.isPending}
                     isTerminateLoading={terminateMutation.isPending}
                   />
                 </CollapsibleContent>
@@ -309,6 +343,15 @@ export default function SubscriptionDetailPage() {
             plans={plans ?? []}
             onSubmit={(_id, planId) => changePlanMutation.mutate({ planId })}
             isLoading={changePlanMutation.isPending}
+          />
+
+          {/* Cancel Subscription Dialog */}
+          <CancelSubscriptionDialog
+            open={cancelOpen}
+            onOpenChange={setCancelOpen}
+            subscription={subscription}
+            onCancel={(_id, action) => cancelMutation.mutate({ action })}
+            isLoading={cancelMutation.isPending}
           />
 
           {/* Terminate Subscription Dialog */}

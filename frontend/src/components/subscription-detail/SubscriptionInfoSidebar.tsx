@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { format } from 'date-fns'
-import { Copy, Check, Pencil, Pause, Play, ArrowRightLeft, Trash2, ExternalLink, Users, FileText, Radio } from 'lucide-react'
+import { Copy, Check, Pencil, Pause, Play, ArrowRightLeft, Trash2, ExternalLink, Users, FileText, Radio, CheckCircle, Ban } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -19,12 +19,16 @@ interface SubscriptionInfoSidebarProps {
   plan?: Plan
   isLoading?: boolean
   onEdit?: () => void
+  onActivate?: () => void
   onPause?: () => void
   onResume?: () => void
   onChangePlan?: () => void
+  onCancel?: () => void
   onTerminate?: () => void
+  isActivateLoading?: boolean
   isPauseLoading?: boolean
   isResumeLoading?: boolean
+  isCancelLoading?: boolean
   isTerminateLoading?: boolean
 }
 
@@ -42,12 +46,16 @@ export function SubscriptionInfoSidebar({
   plan,
   isLoading,
   onEdit,
+  onActivate,
   onPause,
   onResume,
   onChangePlan,
+  onCancel,
   onTerminate,
+  isActivateLoading,
   isPauseLoading,
   isResumeLoading,
+  isCancelLoading,
   isTerminateLoading,
 }: SubscriptionInfoSidebarProps) {
   const [copied, setCopied] = useState(false)
@@ -117,6 +125,18 @@ export function SubscriptionInfoSidebar({
         {/* Quick Actions */}
         <div className="space-y-2">
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Quick Actions</h4>
+          {subscription.status === 'pending' && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start"
+              onClick={onActivate}
+              disabled={isActivateLoading}
+            >
+              <CheckCircle className="mr-2 h-3.5 w-3.5" />
+              {isActivateLoading ? 'Activating...' : 'Activate'}
+            </Button>
+          )}
           {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (
             <Button variant="outline" size="sm" className="w-full justify-start" onClick={onEdit}>
               <Pencil className="mr-2 h-3.5 w-3.5" />
@@ -151,6 +171,18 @@ export function SubscriptionInfoSidebar({
             <Button variant="outline" size="sm" className="w-full justify-start" onClick={onChangePlan}>
               <ArrowRightLeft className="mr-2 h-3.5 w-3.5" />
               Change Plan
+            </Button>
+          )}
+          {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-destructive hover:text-destructive"
+              onClick={onCancel}
+              disabled={isCancelLoading}
+            >
+              <Ban className="mr-2 h-3.5 w-3.5" />
+              {isCancelLoading ? 'Canceling...' : 'Cancel'}
             </Button>
           )}
           {(subscription.status === 'active' || subscription.status === 'pending' || subscription.status === 'paused') && (

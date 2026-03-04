@@ -547,6 +547,46 @@ async def change_plan_preview(
 
 
 @router.post(
+    "/{subscription_id}/activate",
+    response_model=SubscriptionResponse,
+    summary="Activate pending subscription",
+    responses={
+        400: {"description": "Subscription cannot be activated"},
+        401: {"description": "Unauthorized – invalid or missing API key"},
+        404: {"description": "Subscription not found"},
+    },
+)
+async def activate_subscription(
+    subscription_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> Subscription:
+    """Activate a pending subscription."""
+    lifecycle_service = SubscriptionLifecycleService(db)
+    try:
+        lifecycle_service.activate_pending_subscription(subscription_id)
+    except ValueError as e:
+        msg = str(e)
+        if "not found" in msg:
+            raise HTTPException(status_code=404, detail=msg) from e
+        raise HTTPException(status_code=400, detail=msg) from e
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="subscription",
+        resource_id=subscription_id,
+        organization_id=organization_id,
+        old_status="pending",
+        new_status="active",
+        actor_type="api_key",
+    )
+
+    repo = SubscriptionRepository(db)
+    subscription = repo.get_by_id(subscription_id, organization_id)
+    return subscription  # type: ignore[return-value]
+
+
+@router.post(
     "/{subscription_id}/pause",
     response_model=SubscriptionResponse,
     summary="Pause subscription",

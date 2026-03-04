@@ -890,6 +890,8 @@ export const subscriptionsApi = {
     request<Subscription>(`/v1/subscriptions/${id}/pause`, { method: 'POST' }),
   resume: (id: string) =>
     request<Subscription>(`/v1/subscriptions/${id}/resume`, { method: 'POST' }),
+  activate: (id: string) =>
+    request<Subscription>(`/v1/subscriptions/${id}/activate`, { method: 'POST' }),
   getEntitlements: (externalId: string) =>
     request<Entitlement[]>(`/v1/subscriptions/${externalId}/entitlements`),
   getLifecycle: (id: string) =>
