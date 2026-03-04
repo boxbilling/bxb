@@ -21,7 +21,6 @@ from app.routers import (
     fees,
     integrations,
     invoices,
-    items,
     notifications,
     organizations,
     payment_methods,
@@ -65,7 +64,6 @@ OPENAPI_TAGS = [
     {"name": "Thresholds", "description": "Configure usage-based billing thresholds."},
     {"name": "Data Exports", "description": "Export billing data as CSV files."},
     {"name": "Integrations", "description": "Connect and manage external system integrations."},
-    {"name": "Items", "description": "Internal item management."},
     {"name": "Audit Logs", "description": "Query the audit trail for billing entities."},
     {
         "name": "Billing Entities",
@@ -134,7 +132,6 @@ async def options_handler(request: Request, call_next):  # type: ignore[no-untyp
 
 
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
-app.include_router(items.router, prefix="/items", tags=["Items"])
 app.include_router(customers.router, prefix="/v1/customers", tags=["Customers"])
 app.include_router(
     billable_metrics.router, prefix="/v1/billable_metrics", tags=["Billable Metrics"]

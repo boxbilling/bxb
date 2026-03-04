@@ -9,7 +9,6 @@ from app.core.database import SessionLocal
 from app.models.subscription import Subscription, SubscriptionStatus
 from app.repositories.customer_repository import CustomerRepository
 from app.repositories.idempotency_repository import IdempotencyRepository
-from app.repositories.item_repository import ItemRepository
 from app.repositories.plan_repository import PlanRepository
 from app.repositories.subscription_repository import SubscriptionRepository
 from app.services.daily_usage_service import DailyUsageService
@@ -22,18 +21,6 @@ from app.services.webhook_service import WebhookService
 from app.tasks import redis_settings
 
 logger = logging.getLogger(__name__)
-
-
-async def update_item_prices(ctx: dict[str, Any]) -> int:
-    """Example task: apply a 10% discount to all items with quantity > 100."""
-    db = SessionLocal()
-    try:
-        repo = ItemRepository(db)
-        count = repo.apply_bulk_discount(min_quantity=100, discount=0.1)
-        logger.info("Updated prices for %d items", count)
-        return count
-    finally:
-        db.close()
 
 
 async def retry_failed_webhooks_task(ctx: dict[str, Any]) -> int:
@@ -366,7 +353,6 @@ async def cleanup_idempotency_records_task(ctx: dict[str, Any]) -> int:
 
 class WorkerSettings:
     functions = [
-        update_item_prices,
         retry_failed_webhooks_task,
         process_pending_downgrades_task,
         process_trial_expirations_task,
@@ -378,7 +364,6 @@ class WorkerSettings:
         cleanup_idempotency_records_task,
     ]
     cron_jobs = [
-        cron(update_item_prices, hour=0, minute=0),  # midnight daily
         cron(
             retry_failed_webhooks_task,
             minute={0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55},

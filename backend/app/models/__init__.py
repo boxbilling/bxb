@@ -39,7 +39,6 @@ from app.models.integration_customer import IntegrationCustomer
 from app.models.integration_mapping import IntegrationMapping
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_settlement import InvoiceSettlement, SettlementType
-from app.models.item import Item
 from app.models.notification import Notification
 from app.models.organization import Organization
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
@@ -118,7 +117,6 @@ __all__ = [
     "Invoice",
     "InvoiceSettlement",
     "InvoiceStatus",
-    "Item",
     "SettlementType",
     "Organization",
     "Payment",

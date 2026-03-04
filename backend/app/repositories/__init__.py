@@ -17,7 +17,6 @@ from app.repositories.integration_customer_repository import IntegrationCustomer
 from app.repositories.integration_mapping_repository import IntegrationMappingRepository
 from app.repositories.integration_repository import IntegrationRepository
 from app.repositories.invoice_settlement_repository import InvoiceSettlementRepository
-from app.repositories.item_repository import ItemRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.payment_request_repository import PaymentRequestRepository
 from app.repositories.plan_repository import PlanRepository
@@ -48,7 +47,6 @@ __all__ = [
     "IntegrationMappingRepository",
     "IntegrationRepository",
     "InvoiceSettlementRepository",
-    "ItemRepository",
     "PaymentRepository",
     "PaymentRequestRepository",
     "PlanRepository",
