@@ -8,7 +8,11 @@ from app.core.config import settings
 
 engine = create_engine(
     settings.APP_DATABASE_DSN,
-    connect_args=({"check_same_thread": False} if "sqlite" in settings.APP_DATABASE_DSN else {}),
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=60,
+    pool_recycle=1800,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
