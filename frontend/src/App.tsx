@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AdminLayout from './layouts/AdminLayout'
 import PortalLayout from './layouts/PortalLayout'
+
 import { Spinner } from './components/ui/spinner'
 
 // Admin pages - lazy loaded
@@ -90,6 +91,7 @@ const PortalAddOnsPage = lazy(() => import('./pages/portal/PortalAddOnsPage'))
 const PortalCouponsPage = lazy(
   () => import('./pages/portal/PortalCouponsPage'),
 )
+
 
 function PageFallback() {
   return (

@@ -105,6 +105,39 @@
   --sidebar-accent-foreground: oklch(0.75 0.12 75);
 }
 
+/* Force light theme on a subtree, even when .dark is active on :root */
+.portal-light {
+  --background: oklch(0.98 0.004 75);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(0.995 0.002 75);
+  --card-foreground: oklch(0.15 0 0);
+  --popover: oklch(0.995 0.002 75);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.75 0.145 75);
+  --primary-foreground: oklch(0.15 0 0);
+  --secondary: oklch(0.95 0.005 75);
+  --secondary-foreground: oklch(0.25 0 0);
+  --muted: oklch(0.95 0.005 75);
+  --muted-foreground: oklch(0.50 0 0);
+  --accent: oklch(0.95 0.005 75);
+  --accent-foreground: oklch(0.25 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.55 0.22 25);
+  --border: oklch(0.91 0.004 75);
+  --input: oklch(0.92 0.004 75);
+  --ring: oklch(0.75 0.145 75);
+  --chart-1: oklch(0.75 0.145 75);
+  --chart-2: oklch(0.60 0.17 145);
+  --chart-3: oklch(0.62 0.10 200);
+  --chart-4: oklch(0.84 0.17 85);
+  --chart-5: oklch(0.55 0.22 25);
+  --sidebar: oklch(0.98 0.004 75);
+  --sidebar-foreground: oklch(0.50 0 0);
+  --sidebar-accent: oklch(0.94 0.02 75);
+  --sidebar-accent-foreground: oklch(0.60 0.12 75);
+  color-scheme: light;
+}
+
 @layer base {
   * {
     @apply border-border;

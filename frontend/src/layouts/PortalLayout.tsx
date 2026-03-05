@@ -183,7 +183,7 @@ function AccessDeniedPage() {
   )
 }
 
-export default function PortalLayout() {
+export default function PortalLayout({ variant }: { variant?: 'light' } = {}) {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -266,7 +266,7 @@ export default function PortalLayout() {
   return (
     <PortalTokenContext.Provider value={token}>
       <PortalBrandingContext.Provider value={branding ?? null}>
-        <div className="flex h-screen flex-col bg-background" style={accentStyle}>
+        <div className={cn('flex h-screen flex-col bg-background', variant === 'light' && 'portal-light')} style={accentStyle}>
           {/* Top navigation bar */}
           <header
             className="border-b"
