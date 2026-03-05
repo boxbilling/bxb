@@ -1,7 +1,7 @@
 """drop items table
 
 Revision ID: a1b2c3d4e5g7
-Revises: h4i5j6k7l8m9
+Revises: c1aef6cad7d1
 Create Date: 2026-03-04
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a1b2c3d4e5g7"
-down_revision = "h4i5j6k7l8m9"
+down_revision = "c1aef6cad7d1"
 branch_labels = None
 depends_on = None
 
