@@ -74,14 +74,14 @@ def _get_customer_by_external_id(
 
 
 def _get_verified_subscription(
-    subscription_id: UUID,
+    external_subscription_id: str,
     customer_id: UUID,
     db: Session,
     organization_id: UUID,
 ) -> Subscription:
-    """Look up subscription and verify it belongs to the customer."""
+    """Look up subscription by external_id and verify it belongs to the customer."""
     sub_repo = SubscriptionRepository(db)
-    subscription = sub_repo.get_by_id(subscription_id, organization_id)
+    subscription = sub_repo.get_by_external_id(external_subscription_id, organization_id)
     if not subscription:
         raise HTTPException(status_code=404, detail="Subscription not found")
     if UUID(str(subscription.customer_id)) != UUID(str(customer_id)):
@@ -102,16 +102,18 @@ def _get_verified_subscription(
 )
 async def get_current_usage(
     external_id: str,
-    subscription_id: UUID = Query(...),
+    subscription_id: str = Query(...),
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> CurrentUsageResponse:
     """Get current usage for a customer's subscription."""
     customer = _get_customer_by_external_id(external_id, db, organization_id)
-    _get_verified_subscription(subscription_id, UUID(str(customer.id)), db, organization_id)
+    subscription = _get_verified_subscription(
+        subscription_id, UUID(str(customer.id)), db, organization_id
+    )
     service = UsageQueryService(db)
     return service.get_current_usage(
-        subscription_id=subscription_id,
+        subscription_id=UUID(str(subscription.id)),
         external_customer_id=str(customer.external_id),
     )
 
@@ -127,16 +129,18 @@ async def get_current_usage(
 )
 async def get_projected_usage(
     external_id: str,
-    subscription_id: UUID = Query(...),
+    subscription_id: str = Query(...),
     db: Session = Depends(get_db),
     organization_id: UUID = Depends(get_current_organization),
 ) -> CurrentUsageResponse:
     """Get projected usage for a customer's subscription."""
     customer = _get_customer_by_external_id(external_id, db, organization_id)
-    _get_verified_subscription(subscription_id, UUID(str(customer.id)), db, organization_id)
+    subscription = _get_verified_subscription(
+        subscription_id, UUID(str(customer.id)), db, organization_id
+    )
     service = UsageQueryService(db)
     return service.get_projected_usage(
-        subscription_id=subscription_id,
+        subscription_id=UUID(str(subscription.id)),
         external_customer_id=str(customer.external_id),
     )
 
