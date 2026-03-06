@@ -1008,7 +1008,7 @@ export default function PlanDetailPage() {
                     <p className="text-xs font-medium">
                       Add Usage Threshold
                     </p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Amount (cents) *</Label>
                         <Input

@@ -145,7 +145,7 @@ function OneOffInvoiceDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Customer</Label>
               <Select value={customerId} onValueChange={setCustomerId}>
@@ -195,8 +195,8 @@ function OneOffInvoiceDialog({
             </div>
 
             {lineItems.map((item, index) => (
-              <div key={index} className="grid grid-cols-12 gap-2 items-end">
-                <div className="col-span-5 space-y-1">
+              <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                <div className="sm:col-span-5 space-y-1">
                   {index === 0 && <Label className="text-xs">Description</Label>}
                   <Input
                     placeholder="Description"
@@ -204,7 +204,7 @@ function OneOffInvoiceDialog({
                     onChange={(e) => updateLineItem(index, 'description', e.target.value)}
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   {index === 0 && <Label className="text-xs">Qty</Label>}
                   <Input
                     type="number"
@@ -214,7 +214,7 @@ function OneOffInvoiceDialog({
                     onChange={(e) => updateLineItem(index, 'quantity', e.target.value)}
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   {index === 0 && <Label className="text-xs">Unit Price</Label>}
                   <Input
                     type="number"
@@ -224,7 +224,7 @@ function OneOffInvoiceDialog({
                     onChange={(e) => updateLineItem(index, 'unit_price', e.target.value)}
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
+                <div className="sm:col-span-2 space-y-1">
                   {index === 0 && <Label className="text-xs">Amount</Label>}
                   <Input
                     readOnly
@@ -232,7 +232,7 @@ function OneOffInvoiceDialog({
                     className="bg-muted"
                   />
                 </div>
-                <div className="col-span-1">
+                <div className="sm:col-span-1">
                   <Button
                     type="button"
                     variant="ghost"
@@ -333,7 +333,7 @@ function InvoicePreviewDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Billing Period Start</Label>
               <Input
@@ -638,7 +638,7 @@ export default function InvoicesPage() {
 
       {/* Floating Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 p-3">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <Separator orientation="vertical" className="h-6" />
           {hasDraftSelected && (

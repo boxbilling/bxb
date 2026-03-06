@@ -171,7 +171,7 @@ function CreditNoteDetailDialog({
 
         <div className="space-y-6">
           {/* Header Info */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Customer</p>
               <p className="font-medium">{customer?.name ?? creditNote.customer_id}</p>
@@ -182,7 +182,7 @@ function CreditNoteDetailDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Type</p>
               <Badge variant="outline">
@@ -241,7 +241,7 @@ function CreditNoteDetailDialog({
           <Separator />
 
           {/* Status details */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Credit Status</p>
               <CreditStatusBadge status={creditNote.credit_status} />
@@ -256,7 +256,7 @@ function CreditNoteDetailDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">Issued At</p>
               <p className="font-medium">

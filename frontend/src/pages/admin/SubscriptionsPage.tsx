@@ -233,7 +233,7 @@ function SubscriptionThresholdsDialog({
           {/* Add threshold form */}
           <form onSubmit={handleSubmit} className="border rounded-lg p-3 bg-muted/50 space-y-3">
             <p className="text-xs font-medium">Add Threshold</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Amount (cents) *</Label>
                 <Input
@@ -555,7 +555,7 @@ export default function SubscriptionsPage() {
 
       {/* Floating Bulk Action Bar */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-muted/50 p-3">
           <span className="text-sm font-medium">{selectedIds.size} selected</span>
           <Separator orientation="vertical" className="h-6" />
           {hasActiveSelected && (

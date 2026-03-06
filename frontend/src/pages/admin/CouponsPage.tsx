@@ -1141,7 +1141,7 @@ export default function CouponsPage() {
             </DialogDescription>
           </DialogHeader>
           {analyticsLoading ? (
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="space-y-2">
                   <Skeleton className="h-4 w-20" />
@@ -1150,7 +1150,7 @@ export default function CouponsPage() {
               ))}
             </div>
           ) : analytics ? (
-            <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
               <div className="rounded-lg border p-4 space-y-1">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="h-4 w-4" />

@@ -657,8 +657,8 @@ export default function PlanFormPage() {
                           editingCommitment?.id === c.id ? (
                             <tr key={c.id} className="border-b">
                               <td colSpan={4} className="p-2">
-                                <form onSubmit={handleUpdateCommitment} className="flex items-end gap-2">
-                                  <div className="space-y-1">
+                                <form onSubmit={handleUpdateCommitment} className="flex flex-col sm:flex-row sm:items-end gap-2">
+                                  <div className="space-y-1 sm:flex-1">
                                     <Label className="text-xs">Type</Label>
                                     <Select
                                       value={commitmentForm.commitment_type}
@@ -666,7 +666,7 @@ export default function PlanFormPage() {
                                         setCommitmentForm({ ...commitmentForm, commitment_type: value })
                                       }
                                     >
-                                      <SelectTrigger className="w-[180px]">
+                                      <SelectTrigger>
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
@@ -674,7 +674,7 @@ export default function PlanFormPage() {
                                       </SelectContent>
                                     </Select>
                                   </div>
-                                  <div className="space-y-1">
+                                  <div className="space-y-1 sm:flex-1">
                                     <Label className="text-xs">Amount (cents)</Label>
                                     <Input
                                       type="number"
@@ -682,26 +682,26 @@ export default function PlanFormPage() {
                                       onChange={(e) =>
                                         setCommitmentForm({ ...commitmentForm, amount_cents: e.target.value })
                                       }
-                                      className="w-[120px]"
                                       required
                                     />
                                   </div>
-                                  <div className="space-y-1">
+                                  <div className="space-y-1 sm:flex-1">
                                     <Label className="text-xs">Display Name</Label>
                                     <Input
                                       value={commitmentForm.invoice_display_name}
                                       onChange={(e) =>
                                         setCommitmentForm({ ...commitmentForm, invoice_display_name: e.target.value })
                                       }
-                                      className="w-[140px]"
                                     />
                                   </div>
-                                  <Button type="submit" size="sm" disabled={updateCommitmentMutation.isPending}>
-                                    {updateCommitmentMutation.isPending ? 'Saving...' : 'Save'}
-                                  </Button>
-                                  <Button type="button" size="sm" variant="outline" onClick={cancelEditCommitment}>
-                                    Cancel
-                                  </Button>
+                                  <div className="flex items-center gap-2">
+                                    <Button type="submit" size="sm" disabled={updateCommitmentMutation.isPending}>
+                                      {updateCommitmentMutation.isPending ? 'Saving...' : 'Save'}
+                                    </Button>
+                                    <Button type="button" size="sm" variant="outline" onClick={cancelEditCommitment}>
+                                      Cancel
+                                    </Button>
+                                  </div>
                                 </form>
                               </td>
                             </tr>
@@ -748,7 +748,7 @@ export default function PlanFormPage() {
                 {/* Add Commitment Inline Form */}
                 {showAddCommitment && (
                   <form onSubmit={handleCreateCommitment} className="border rounded-lg p-3 bg-muted/50 space-y-3 mt-4">
-                    <div className="flex items-end gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="space-y-1">
                         <Label className="text-xs">Commitment Type</Label>
                         <Select
@@ -757,7 +757,7 @@ export default function PlanFormPage() {
                             setCommitmentForm({ ...commitmentForm, commitment_type: value })
                           }
                         >
-                          <SelectTrigger className="w-[180px]">
+                          <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -773,7 +773,6 @@ export default function PlanFormPage() {
                           onChange={(e) =>
                             setCommitmentForm({ ...commitmentForm, amount_cents: e.target.value })
                           }
-                          className="w-[120px]"
                           required
                         />
                       </div>
@@ -784,7 +783,6 @@ export default function PlanFormPage() {
                           onChange={(e) =>
                             setCommitmentForm({ ...commitmentForm, invoice_display_name: e.target.value })
                           }
-                          className="w-[140px]"
                         />
                       </div>
                     </div>
@@ -872,7 +870,7 @@ export default function PlanFormPage() {
                 <Separator />
                 <form onSubmit={handleCreateThreshold} className="border rounded-lg p-3 bg-muted/50 space-y-3">
                   <p className="text-xs font-medium">Add Usage Threshold</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <Label className="text-xs">Amount (cents) *</Label>
                       <Input

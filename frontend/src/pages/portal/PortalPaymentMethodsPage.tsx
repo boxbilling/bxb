@@ -415,7 +415,7 @@ function AddPaymentMethodDialog({
             />
           </div>
           {type === 'card' && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="pm-brand">Card Brand</Label>
                 <Select value={brand} onValueChange={setBrand}>

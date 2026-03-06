@@ -112,7 +112,7 @@ export function PaymentMethodFormDialog({
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="pm-provider">Provider *</Label>
                 <Select
@@ -167,7 +167,7 @@ export function PaymentMethodFormDialog({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="pm-brand">Card Brand</Label>
                 <Input
@@ -189,7 +189,7 @@ export function PaymentMethodFormDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="pm-exp-month">Expiry Month</Label>
                 <Input

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import type { DateRange } from 'react-day-picker'
 
 import { Button } from '@/components/ui/button'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Input } from '@/components/ui/input'
 import {
   Table,
@@ -136,6 +137,7 @@ function CopyableId({ id }: { id: string }) {
 }
 
 export default function AuditLogsPage() {
+  const isMobile = useIsMobile()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [resourceTypeFilter, setResourceTypeFilter] = useState(searchParams.get('resource_type') || 'all')
@@ -344,7 +346,7 @@ export default function AuditLogsPage() {
                       mode="range"
                       selected={customRange}
                       onSelect={setCustomRange}
-                      numberOfMonths={2}
+                      numberOfMonths={isMobile ? 1 : 2}
                       disabled={{ after: new Date() }}
                     />
                   </PopoverContent>

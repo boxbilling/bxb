@@ -42,6 +42,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import PageHeader from '@/components/PageHeader'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { eventsApi, subscriptionsApi, billableMetricsApi } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 import type { EstimateFeesResponse } from '@/lib/api'
@@ -239,6 +240,7 @@ const ROW_HEIGHT = 41
 const EXPANDED_ROW_HEIGHT = 160
 
 export default function EventsPage() {
+  const isMobile = useIsMobile()
   const [customerFilter, setCustomerFilter] = useState('')
   const [codeFilter, setCodeFilter] = useState('')
   const [isPolling, setIsPolling] = useState(true)
@@ -505,7 +507,7 @@ export default function EventsPage() {
                   mode="range"
                   selected={customRange}
                   onSelect={setCustomRange}
-                  numberOfMonths={2}
+                  numberOfMonths={isMobile ? 1 : 2}
                   disabled={{ after: new Date() }}
                 />
               </PopoverContent>

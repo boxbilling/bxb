@@ -188,7 +188,7 @@ function ChangePlanDialog({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <PlanComparisonCard label="Current Plan" plan={preview.current_plan} />
               <PlanComparisonCard label="New Plan" plan={preview.new_plan} />
             </div>
