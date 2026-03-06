@@ -313,12 +313,16 @@ export default function SubscriptionDetailPage() {
                   customer={customer}
                   plan={plan}
                   onEdit={() => setEditOpen(true)}
+                  onActivate={() => activateMutation.mutate()}
                   onPause={() => pauseMutation.mutate()}
                   onResume={() => resumeMutation.mutate()}
                   onChangePlan={() => setChangePlanOpen(true)}
+                  onCancel={() => setCancelOpen(true)}
                   onTerminate={() => setTerminateOpen(true)}
+                  isActivateLoading={activateMutation.isPending}
                   isPauseLoading={pauseMutation.isPending}
                   isResumeLoading={resumeMutation.isPending}
+                  isCancelLoading={cancelMutation.isPending}
                   isTerminateLoading={terminateMutation.isPending}
                 />
               </div>
