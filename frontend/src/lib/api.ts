@@ -1693,9 +1693,19 @@ export type SearchResult = {
   url: string
 }
 
+type GlobalSearchResponse = {
+  query: string
+  results: SearchResult[]
+  total_count: number
+}
+
 export const searchApi = {
-  search: (query: string, limit?: number) =>
-    request<SearchResult[]>(`/v1/search${buildQuery({ q: query, limit })}`),
+  search: async (query: string, limit?: number): Promise<SearchResult[]> => {
+    const res = await request<GlobalSearchResponse>(
+      `/v1/search${buildQuery({ q: query, limit })}`
+    )
+    return res.results
+  },
 }
 
 // Notifications API
