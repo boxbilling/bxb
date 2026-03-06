@@ -1702,7 +1702,7 @@ type GlobalSearchResponse = {
 export const searchApi = {
   search: async (query: string, limit?: number): Promise<SearchResult[]> => {
     const res = await request<GlobalSearchResponse>(
-      `/v1/search${buildQuery({ q: query, limit })}`
+      `/v1/search/${buildQuery({ q: query, limit })}`
     )
     return res.results
   },
