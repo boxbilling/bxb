@@ -20,8 +20,8 @@ export function CustomerHeader({ customer, onEdit }: { customer: Customer; onEdi
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={onEdit}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <Button variant="outline" size="sm" onClick={onEdit}>
           <Pencil className="mr-2 h-3.5 w-3.5" />
           Edit
         </Button>

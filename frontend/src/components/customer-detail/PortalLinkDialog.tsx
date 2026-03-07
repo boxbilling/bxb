@@ -48,7 +48,7 @@ export function PortalLinkDialog({ externalId }: { externalId: string }) {
 
   return (
     <>
-      <Button variant="default" size="sm" className="w-full md:w-auto" onClick={handleOpen}>
+      <Button variant="default" size="sm" onClick={handleOpen}>
         <ExternalLink className="mr-2 h-4 w-4" />
         Portal Link
       </Button>
