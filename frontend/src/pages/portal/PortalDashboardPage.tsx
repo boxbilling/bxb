@@ -424,9 +424,10 @@ export default function PortalDashboardPage() {
           ) : (
             <div className="space-y-3">
               {invoices.slice(0, 5).map((invoice) => (
-                <div
+                <Link
                   key={invoice.id}
-                  className="flex items-center justify-between rounded-md border p-3"
+                  to="/portal/invoices"
+                  className="flex items-center justify-between rounded-md border p-3 hover:bg-muted/50 transition-colors"
                 >
                   <div>
                     <p className="text-sm font-medium">
@@ -452,7 +453,7 @@ export default function PortalDashboardPage() {
                       {invoice.status}
                     </Badge>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

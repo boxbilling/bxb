@@ -638,7 +638,9 @@ export default function DashboardPage() {
                 <TableBody>
                   {recentInvoices.map((inv) => (
                     <TableRow key={inv.id}>
-                      <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">{inv.invoice_number}</TableCell>
+                      <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">
+                        <Link to={`/admin/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
+                      </TableCell>
                       <TableCell className="text-xs py-2 truncate max-w-[120px] hidden md:table-cell">{inv.customer_name}</TableCell>
                       <TableCell className="py-2">
                         <InvoiceStatusBadge status={inv.status} />
