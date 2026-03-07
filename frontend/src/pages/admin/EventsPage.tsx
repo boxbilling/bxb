@@ -593,21 +593,17 @@ export default function EventsPage() {
       )}
 
       {/* Virtualized Table */}
-      <div className="rounded-md border">
-        {/* Fixed table header */}
+      <div className="rounded-md border text-sm">
+        {/* Fixed header */}
         <div className="border-b">
-          <table className="w-full caption-bottom text-sm">
-            <thead className="[&_tr]:border-b">
-              <tr className="border-b transition-colors hover:bg-muted/50">
-                <th className="hidden md:table-cell h-10 px-4 text-left align-middle font-medium text-muted-foreground w-[180px]">Timestamp</th>
-                <th className="hidden md:table-cell h-10 px-4 text-left align-middle font-medium text-muted-foreground">Transaction ID</th>
-                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Customer ID</th>
-                <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Code</th>
-                <th className="hidden md:table-cell h-10 px-4 text-left align-middle font-medium text-muted-foreground">Properties</th>
-                <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground w-[80px]">Actions</th>
-              </tr>
-            </thead>
-          </table>
+          <div className="grid grid-cols-[1fr_1fr_60px] md:grid-cols-[180px_1fr_1fr_140px_1.5fr_80px] items-center h-10">
+            <div className="hidden md:block px-4 font-medium text-muted-foreground">Timestamp</div>
+            <div className="hidden md:block px-4 font-medium text-muted-foreground">Transaction ID</div>
+            <div className="px-4 font-medium text-muted-foreground">Customer ID</div>
+            <div className="px-4 font-medium text-muted-foreground">Code</div>
+            <div className="hidden md:block px-4 font-medium text-muted-foreground">Properties</div>
+            <div className="px-4 font-medium text-muted-foreground text-right">Actions</div>
+          </div>
         </div>
 
         {/* Scrollable virtual body */}
@@ -617,20 +613,18 @@ export default function EventsPage() {
           style={{ maxHeight: 'calc(100vh - 380px)', minHeight: '200px' }}
         >
           {isLoading ? (
-            <table className="w-full caption-bottom text-sm">
-              <tbody>
-                {[...Array(10)].map((_, i) => (
-                  <tr key={i} className="border-b transition-colors">
-                    <td className="hidden md:table-cell p-4 align-middle w-[180px]"><Skeleton className="h-5 w-36" /></td>
-                    <td className="hidden md:table-cell p-4 align-middle"><Skeleton className="h-5 w-48" /></td>
-                    <td className="p-4 align-middle"><Skeleton className="h-5 w-28" /></td>
-                    <td className="p-4 align-middle"><Skeleton className="h-5 w-24" /></td>
-                    <td className="hidden md:table-cell p-4 align-middle"><Skeleton className="h-5 w-32" /></td>
-                    <td className="p-4 align-middle text-right"><Skeleton className="h-7 w-7 ml-auto" /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div>
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_60px] md:grid-cols-[180px_1fr_1fr_140px_1.5fr_80px] items-center border-b h-[41px]">
+                  <div className="hidden md:block px-4"><Skeleton className="h-5 w-36" /></div>
+                  <div className="hidden md:block px-4"><Skeleton className="h-5 w-48" /></div>
+                  <div className="px-4"><Skeleton className="h-5 w-28" /></div>
+                  <div className="px-4"><Skeleton className="h-5 w-24" /></div>
+                  <div className="hidden md:block px-4"><Skeleton className="h-5 w-32" /></div>
+                  <div className="px-4 flex justify-end"><Skeleton className="h-7 w-7" /></div>
+                </div>
+              ))}
+            </div>
           ) : allEvents.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground h-24">
               <Activity className="h-8 w-8" />
@@ -660,102 +654,96 @@ export default function EventsPage() {
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    <table className="w-full caption-bottom text-sm">
-                      <tbody>
-                        <tr
-                          className="border-b transition-colors hover:bg-muted/50 cursor-pointer"
-                          onClick={() => setExpandedRow(isExpanded ? null : event.id)}
-                        >
-                          <td className="hidden md:table-cell p-4 align-middle w-[180px]">
-                            <span className="text-sm">
-                              {format(new Date(event.timestamp), 'MMM d, yyyy HH:mm:ss')}
-                            </span>
-                          </td>
-                          <td className="hidden md:table-cell p-4 align-middle">
-                            <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
-                              {event.transaction_id}
-                            </code>
-                          </td>
-                          <td className="p-4 align-middle">
-                            <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
-                              {event.external_customer_id}
-                            </code>
-                          </td>
-                          <td className="p-4 align-middle">
-                            <Badge variant="outline">{event.code}</Badge>
-                          </td>
-                          <td className="hidden md:table-cell p-4 align-middle">
-                            {Object.keys(event.properties).length > 0 ? (
-                              <div className="flex flex-wrap gap-1 max-w-[300px]">
-                                {Object.entries(event.properties).slice(0, 3).map(([key, value]) => (
-                                  <Badge key={key} variant="outline" className="text-xs font-normal gap-0.5 py-0">
-                                    <span className="font-medium">{key}:</span>{' '}
-                                    <span className="text-muted-foreground truncate max-w-[80px]">
-                                      {String(value)}
-                                    </span>
-                                  </Badge>
-                                ))}
-                                {Object.keys(event.properties).length > 3 && (
-                                  <Badge variant="secondary" className="text-xs font-normal py-0">
-                                    +{Object.keys(event.properties).length - 3}
-                                  </Badge>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
+                    <div
+                      className="grid grid-cols-[1fr_1fr_60px] md:grid-cols-[180px_1fr_1fr_140px_1.5fr_80px] items-center border-b transition-colors hover:bg-muted/50 cursor-pointer h-[41px]"
+                      onClick={() => setExpandedRow(isExpanded ? null : event.id)}
+                    >
+                      <div className="hidden md:block px-4 truncate">
+                        <span className="text-sm">
+                          {format(new Date(event.timestamp), 'MMM d, yyyy HH:mm:ss')}
+                        </span>
+                      </div>
+                      <div className="hidden md:block px-4 truncate">
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono">
+                          {event.transaction_id}
+                        </code>
+                      </div>
+                      <div className="px-4 truncate">
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                          {event.external_customer_id}
+                        </code>
+                      </div>
+                      <div className="px-4">
+                        <Badge variant="outline">{event.code}</Badge>
+                      </div>
+                      <div className="hidden md:block px-4">
+                        {Object.keys(event.properties).length > 0 ? (
+                          <div className="flex flex-wrap gap-1 max-w-[300px]">
+                            {Object.entries(event.properties).slice(0, 3).map(([key, value]) => (
+                              <Badge key={key} variant="outline" className="text-xs font-normal gap-0.5 py-0">
+                                <span className="font-medium">{key}:</span>{' '}
+                                <span className="text-muted-foreground truncate max-w-[80px]">
+                                  {String(value)}
+                                </span>
+                              </Badge>
+                            ))}
+                            {Object.keys(event.properties).length > 3 && (
+                              <Badge variant="secondary" className="text-xs font-normal py-0">
+                                +{Object.keys(event.properties).length - 3}
+                              </Badge>
                             )}
-                          </td>
-                          <td className="p-4 align-middle text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  disabled={reprocessMutation.isPending}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    reprocessMutation.mutate(event.id)
-                                  }}
-                                >
-                                  <RefreshCw className={`mr-2 h-4 w-4 ${reprocessMutation.isPending && reprocessMutation.variables === event.id ? 'animate-spin' : ''}`} />
-                                  Reprocess
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </td>
-                        </tr>
-                        {isExpanded && (
-                          <tr className="border-b">
-                            <td colSpan={6} className="bg-muted/50 p-4">
-                              {Object.keys(event.properties).length > 0 ? (
-                                <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 max-w-lg">
-                                  {Object.entries(event.properties).map(([key, value]) => (
-                                    <div key={key} className="contents">
-                                      <span className="text-xs font-medium text-muted-foreground">{key}</span>
-                                      <span className="text-xs font-mono break-all">
-                                        {typeof value === 'object' && value !== null
-                                          ? JSON.stringify(value)
-                                          : String(value)}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">No properties</span>
-                              )}
-                            </td>
-                          </tr>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
                         )}
-                      </tbody>
-                    </table>
+                      </div>
+                      <div className="px-4 flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              disabled={reprocessMutation.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                reprocessMutation.mutate(event.id)
+                              }}
+                            >
+                              <RefreshCw className={`mr-2 h-4 w-4 ${reprocessMutation.isPending && reprocessMutation.variables === event.id ? 'animate-spin' : ''}`} />
+                              Reprocess
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </div>
+                    {isExpanded && (
+                      <div className="border-b bg-muted/50 p-4">
+                        {Object.keys(event.properties).length > 0 ? (
+                          <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 max-w-lg">
+                            {Object.entries(event.properties).map(([key, value]) => (
+                              <div key={key} className="contents">
+                                <span className="text-xs font-medium text-muted-foreground">{key}</span>
+                                <span className="text-xs font-mono break-all">
+                                  {typeof value === 'object' && value !== null
+                                    ? JSON.stringify(value)
+                                    : String(value)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No properties</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )
               })}
