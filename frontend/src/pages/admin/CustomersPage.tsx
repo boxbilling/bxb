@@ -224,6 +224,7 @@ export default function CustomersPage() {
               <SortableTableHead label="Email" sortKey="email" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <SortableTableHead label="Timezone" sortKey="timezone" sort={sort} onSort={setSort} className="hidden md:table-cell" />
               <SortableTableHead label="Currency" sortKey="currency" sort={sort} onSort={setSort} />
+              <SortableTableHead label="Created" sortKey="created_at" sort={sort} onSort={setSort} className="hidden lg:table-cell" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -235,11 +236,12 @@ export default function CustomersPage() {
                   <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-5 w-20" /></TableCell>
                 </TableRow>
               ))
             ) : filteredCustomers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No customers found
                 </TableCell>
               </TableRow>
@@ -277,6 +279,11 @@ export default function CustomersPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{customer.currency}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(customer.created_at).toLocaleDateString()}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))
