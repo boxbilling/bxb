@@ -8099,6 +8099,8 @@ export interface components {
             id: string;
             /** Invoice Number */
             invoice_number: string;
+            /** Customer Id */
+            customer_id: string;
             /** Customer Name */
             customer_name: string;
             /** Status */
@@ -8116,6 +8118,8 @@ export interface components {
             id: string;
             /** External Id */
             external_id: string;
+            /** Customer Id */
+            customer_id: string;
             /** Customer Name */
             customer_name: string;
             /** Plan Name */

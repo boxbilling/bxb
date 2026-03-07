@@ -413,6 +413,7 @@ async def get_recent_invoices(
         RecentInvoiceItem(
             id=r.id,
             invoice_number=r.invoice_number,
+            customer_id=r.customer_id,
             customer_name=r.customer_name,
             status=r.status,
             total_cents=r.total,
@@ -440,6 +441,7 @@ async def get_recent_subscriptions(
         RecentSubscriptionItem(
             id=r.id,
             external_id=r.external_id,
+            customer_id=r.customer_id,
             customer_name=r.customer_name,
             plan_name=r.plan_name,
             status=r.status,

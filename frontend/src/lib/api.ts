@@ -1639,6 +1639,7 @@ export const dashboardApi = {
     request<{
       id: string
       invoice_number: string
+      customer_id: string
       customer_name: string
       status: string
       total_cents: number
@@ -1649,6 +1650,7 @@ export const dashboardApi = {
     request<{
       id: string
       external_id: string
+      customer_id: string
       customer_name: string
       plan_name: string
       status: string

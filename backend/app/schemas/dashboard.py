@@ -84,6 +84,7 @@ class UsageMetricsResponse(BaseModel):
 class RecentInvoiceItem(BaseModel):
     id: str
     invoice_number: str
+    customer_id: str
     customer_name: str
     status: str
     total_cents: float
@@ -94,6 +95,7 @@ class RecentInvoiceItem(BaseModel):
 class RecentSubscriptionItem(BaseModel):
     id: str
     external_id: str
+    customer_id: str
     customer_name: str
     plan_name: str
     status: str

@@ -64,6 +64,7 @@ class MetricUsage:
 class RecentInvoiceRow:
     id: str
     invoice_number: str
+    customer_id: str
     customer_name: str
     status: str
     total: float
@@ -75,6 +76,7 @@ class RecentInvoiceRow:
 class RecentSubscriptionRow:
     id: str
     external_id: str
+    customer_id: str
     customer_name: str
     plan_name: str
     status: str
@@ -524,6 +526,7 @@ class DashboardRepository:
             self.db.query(
                 Invoice.id,
                 Invoice.invoice_number,
+                Invoice.customer_id,
                 Customer.name.label("customer_name"),
                 Invoice.status,
                 Invoice.total_cents,
@@ -540,6 +543,7 @@ class DashboardRepository:
             RecentInvoiceRow(
                 id=str(r.id),
                 invoice_number=r.invoice_number,
+                customer_id=str(r.customer_id),
                 customer_name=r.customer_name,
                 status=r.status,
                 total=float(r.total_cents),
@@ -557,6 +561,7 @@ class DashboardRepository:
             self.db.query(
                 Subscription.id,
                 Subscription.external_id,
+                Subscription.customer_id,
                 Customer.name.label("customer_name"),
                 Plan.name.label("plan_name"),
                 Subscription.status,
@@ -573,6 +578,7 @@ class DashboardRepository:
             RecentSubscriptionRow(
                 id=str(r.id),
                 external_id=r.external_id,
+                customer_id=str(r.customer_id),
                 customer_name=r.customer_name,
                 plan_name=r.plan_name,
                 status=r.status,

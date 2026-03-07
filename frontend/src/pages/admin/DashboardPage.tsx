@@ -641,7 +641,9 @@ export default function DashboardPage() {
                       <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">
                         <Link to={`/admin/invoices/${inv.id}`} className="text-primary hover:underline">{inv.invoice_number}</Link>
                       </TableCell>
-                      <TableCell className="text-xs py-2 truncate max-w-[120px] hidden md:table-cell">{inv.customer_name}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[120px] hidden md:table-cell">
+                        <Link to={`/admin/customers/${inv.customer_id}`} className="text-primary hover:underline">{inv.customer_name}</Link>
+                      </TableCell>
                       <TableCell className="py-2">
                         <InvoiceStatusBadge status={inv.status} />
                       </TableCell>
@@ -691,7 +693,9 @@ export default function DashboardPage() {
                       <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">
                         <Link to={`/admin/subscriptions/${sub.id}`} className="text-primary hover:underline">{sub.external_id}</Link>
                       </TableCell>
-                      <TableCell className="text-xs py-2 truncate max-w-[120px]">{sub.customer_name}</TableCell>
+                      <TableCell className="text-xs py-2 truncate max-w-[120px]">
+                        <Link to={`/admin/customers/${sub.customer_id}`} className="text-primary hover:underline">{sub.customer_name}</Link>
+                      </TableCell>
                       <TableCell className="text-xs py-2 truncate max-w-[100px] hidden md:table-cell">{sub.plan_name}</TableCell>
                       <TableCell className="py-2">
                         <SubStatusBadge status={sub.status} />
