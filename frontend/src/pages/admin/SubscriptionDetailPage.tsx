@@ -212,7 +212,6 @@ export default function SubscriptionDetailPage() {
           subscriptionId={id!}
           customerExternalId={customer?.external_id}
           subscriptionExternalId={subscription?.external_id}
-          customerId={subscription?.customer_id}
           planId={subscription?.plan_id}
           previousPlanId={subscription?.previous_plan_id}
           downgradedAt={subscription?.downgraded_at}
