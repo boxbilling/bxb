@@ -915,6 +915,7 @@ export default function TaxesPage() {
 
         {/* Create/Edit Dialog */}
         <TaxFormDialog
+          key={editingTax?.code ?? 'new'}
           open={formOpen}
           onOpenChange={handleCloseForm}
           tax={editingTax}
