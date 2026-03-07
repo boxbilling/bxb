@@ -4,10 +4,18 @@ import { ArrowUpDown, Check, ChevronRight, Clock, Pause, XCircle } from 'lucide-
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -62,8 +70,8 @@ export default function PortalSubscriptionsPage() {
 
       {isLoading ? (
         <div className="space-y-4">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full" />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
       ) : !subscriptions?.length ? (
@@ -74,51 +82,65 @@ export default function PortalSubscriptionsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {subscriptions.map((sub) => (
-            <Card key={sub.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{sub.plan.name}</CardTitle>
-                  <StatusBadge status={sub.status} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="text-xl md:text-2xl font-bold">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Plan</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead className="hidden md:table-cell">Started</TableHead>
+                <TableHead className="hidden md:table-cell">Note</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {subscriptions.map((sub) => (
+                <TableRow key={sub.id}>
+                  <TableCell>
+                    <div className="font-medium">{sub.plan.name}</div>
+                    <div className="text-xs text-muted-foreground">{sub.plan.code}</div>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={sub.status} />
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-medium">
                       {formatCents(sub.plan.amount_cents, sub.plan.currency)}
-                      <span className="text-sm font-normal text-muted-foreground ml-1">
-                        / {sub.plan.interval}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground">
-                      <span>Plan: {sub.plan.code}</span>
-                      {sub.started_at && (
-                        <span>Since {format(new Date(sub.started_at), 'MMM d, yyyy')}</span>
-                      )}
-                    </div>
-                    {sub.pending_downgrade_plan && (
-                      <div className="flex items-center gap-1 text-xs md:text-sm text-amber-600">
+                    </span>
+                    <span className="text-muted-foreground text-xs ml-1">
+                      / {sub.plan.interval}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {sub.started_at
+                      ? format(new Date(sub.started_at), 'MMM d, yyyy')
+                      : '—'}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    {sub.pending_downgrade_plan ? (
+                      <div className="flex items-center gap-1 text-xs text-amber-600">
                         <Clock className="h-3.5 w-3.5 shrink-0" />
                         Downgrade to {sub.pending_downgrade_plan.name} pending
                       </div>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {sub.status === 'active' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setChangePlanSub(sub)}
+                      >
+                        <ArrowUpDown className="mr-2 h-3.5 w-3.5" />
+                        Change Plan
+                      </Button>
                     )}
-                  </div>
-                  {sub.status === 'active' && (
-                    <Button
-                      variant="outline"
-                      className="w-full md:w-auto min-h-[44px] md:min-h-0"
-                      onClick={() => setChangePlanSub(sub)}
-                    >
-                      <ArrowUpDown className="mr-2 h-4 w-4" />
-                      Change Plan
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </div>
       )}
 

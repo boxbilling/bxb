@@ -688,7 +688,9 @@ export default function DashboardPage() {
                 <TableBody>
                   {recentSubscriptions.map((sub) => (
                     <TableRow key={sub.id}>
-                      <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">{sub.external_id}</TableCell>
+                      <TableCell className="text-xs font-mono py-2 truncate max-w-[80px] md:max-w-[120px]">
+                        <Link to={`/admin/subscriptions/${sub.id}`} className="text-primary hover:underline">{sub.external_id}</Link>
+                      </TableCell>
                       <TableCell className="text-xs py-2 truncate max-w-[120px]">{sub.customer_name}</TableCell>
                       <TableCell className="text-xs py-2 truncate max-w-[100px] hidden md:table-cell">{sub.plan_name}</TableCell>
                       <TableCell className="py-2">
