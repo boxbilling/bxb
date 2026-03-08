@@ -1,6 +1,8 @@
 {
-  "name": "bxb",
+  "name": "BoxBilling",
   "short_name": "bxb",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/web-app-manifest-192x192.png",
@@ -16,6 +18,6 @@
     }
   ],
   "theme_color": "#0A0A0A",
-  "background_color": "#ffffff",
+  "background_color": "#0A0A0A",
   "display": "standalone"
 }
