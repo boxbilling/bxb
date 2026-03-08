@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { ChargePropertiesEditor } from '@/components/ChargePropertiesEditor'
+import { ChargeModelVisualizer } from '@/components/ChargeModelVisualizer'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,7 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { plansApi, billableMetricsApi, commitmentsApi, usageThresholdsApi, ApiError } from '@/lib/api'
-import type { PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThreshold, UsageThresholdCreateAPI } from '@/lib/api'
+import type { PlanCreate, PlanUpdate, PlanInterval, ChargeModel, ChargeInput, Charge, Commitment, CommitmentCreateAPI, CommitmentUpdate, UsageThreshold, UsageThresholdCreateAPI } from '@/lib/api'
 import { formatCents } from '@/lib/utils'
 
 const CHARGE_MODELS: { value: ChargeModel; label: string }[] = [
@@ -613,6 +614,18 @@ export default function PlanFormPage() {
                         value={charge.properties}
                         onChange={(val) => updateCharge(index, { properties: val })}
                       />
+                      {(() => {
+                        let properties = {}
+                        try { properties = JSON.parse(charge.properties) } catch {}
+                        return (
+                          <ChargeModelVisualizer
+                            charge={{
+                              charge_model: charge.charge_model,
+                              properties,
+                            } as Charge}
+                          />
+                        )
+                      })()}
                     </div>
                   ))}
                 </div>

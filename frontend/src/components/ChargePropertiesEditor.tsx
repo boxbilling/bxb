@@ -1,8 +1,10 @@
-import { useMemo, useCallback } from 'react'
-import { Trash2, Plus } from 'lucide-react'
+import { useState, useMemo, useCallback } from 'react'
+import { Trash2, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import type { ChargeModel } from '@/lib/api'
 
 interface ChargePropertiesEditorProps {
@@ -33,10 +35,12 @@ function StandardFields({ props, onChange }: { props: Record<string, unknown>; o
         <Input
           type="number"
           step={0.01}
+          min={0}
           value={(props.amount as number) ?? ''}
           onChange={(e) => emit({ ...props, amount: e.target.value === '' ? '' : Number(e.target.value) }, onChange)}
           placeholder="0.00"
         />
+        <p className="text-xs text-muted-foreground">Price charged per single unit of usage</p>
       </div>
     </div>
   )
@@ -44,35 +48,9 @@ function StandardFields({ props, onChange }: { props: Record<string, unknown>; o
 
 function PackageFields({ props, onChange }: { props: Record<string, unknown>; onChange: (json: string) => void }) {
   const fields = [
-    { key: 'amount', label: 'Amount per package' },
-    { key: 'package_size', label: 'Package size (units)' },
-    { key: 'free_units', label: 'Free units' },
-  ]
-  return (
-    <div className="space-y-3">
-      {fields.map((f) => (
-        <div key={f.key} className="space-y-2">
-          <Label>{f.label}</Label>
-          <Input
-            type="number"
-            step={0.01}
-            value={(props[f.key] as number) ?? ''}
-            onChange={(e) => emit({ ...props, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }, onChange)}
-            placeholder="0"
-          />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function PercentageFields({ props, onChange }: { props: Record<string, unknown>; onChange: (json: string) => void }) {
-  const fields = [
-    { key: 'rate', label: 'Rate %', step: 0.01 },
-    { key: 'fixed_amount', label: 'Fixed amount per event', step: 0.01 },
-    { key: 'free_units_per_events', label: 'Free events', step: 1 },
-    { key: 'per_transaction_min_amount', label: 'Min amount per transaction', step: 0.01 },
-    { key: 'per_transaction_max_amount', label: 'Max amount per transaction', step: 0.01 },
+    { key: 'amount', label: 'Amount per package', step: 0.01, hint: 'Price charged per package of units' },
+    { key: 'package_size', label: 'Package size (units)', step: 1, hint: 'Number of units in each package' },
+    { key: 'free_units', label: 'Free units', step: 1, hint: 'Units included at no charge before billing starts' },
   ]
   return (
     <div className="space-y-3">
@@ -82,10 +60,40 @@ function PercentageFields({ props, onChange }: { props: Record<string, unknown>;
           <Input
             type="number"
             step={f.step}
+            min={0}
             value={(props[f.key] as number) ?? ''}
             onChange={(e) => emit({ ...props, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }, onChange)}
             placeholder="0"
           />
+          <p className="text-xs text-muted-foreground">{f.hint}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function PercentageFields({ props, onChange }: { props: Record<string, unknown>; onChange: (json: string) => void }) {
+  const fields = [
+    { key: 'rate', label: 'Rate %', step: 0.01, hint: 'Percentage of transaction amount to charge (0-100)' },
+    { key: 'fixed_amount', label: 'Fixed amount per event', step: 0.01, hint: 'Additional fixed amount charged per event' },
+    { key: 'free_units_per_events', label: 'Free events', step: 1, hint: 'Number of events before charges begin' },
+    { key: 'per_transaction_min_amount', label: 'Min amount per transaction', step: 0.01, hint: 'Minimum charge per transaction (leave empty for none)' },
+    { key: 'per_transaction_max_amount', label: 'Max amount per transaction', step: 0.01, hint: 'Maximum charge per transaction (leave empty for none)' },
+  ]
+  return (
+    <div className="space-y-3">
+      {fields.map((f) => (
+        <div key={f.key} className="space-y-2">
+          <Label>{f.label}</Label>
+          <Input
+            type="number"
+            step={f.step}
+            min={0}
+            value={(props[f.key] as number) ?? ''}
+            onChange={(e) => emit({ ...props, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }, onChange)}
+            placeholder="0"
+          />
+          <p className="text-xs text-muted-foreground">{f.hint}</p>
         </div>
       ))}
     </div>
@@ -94,8 +102,8 @@ function PercentageFields({ props, onChange }: { props: Record<string, unknown>;
 
 function DynamicFields({ props, onChange }: { props: Record<string, unknown>; onChange: (json: string) => void }) {
   const fields = [
-    { key: 'price_field', label: 'Price field name' },
-    { key: 'quantity_field', label: 'Quantity field name' },
+    { key: 'price_field', label: 'Price field name', hint: 'Name of the event property containing the price' },
+    { key: 'quantity_field', label: 'Quantity field name', hint: 'Name of the event property containing the quantity' },
   ]
   return (
     <div className="space-y-3">
@@ -107,6 +115,7 @@ function DynamicFields({ props, onChange }: { props: Record<string, unknown>; on
             value={(props[f.key] as string) ?? ''}
             onChange={(e) => emit({ ...props, [f.key]: e.target.value }, onChange)}
           />
+          <p className="text-xs text-muted-foreground">{f.hint}</p>
         </div>
       ))}
     </div>
@@ -126,6 +135,7 @@ function CustomFields({ props, onChange }: { props: Record<string, unknown>; onC
           <Input
             type="number"
             step={0.01}
+            min={0}
             value={(props[f.key] as number) ?? ''}
             onChange={(e) => emit({ ...props, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }, onChange)}
             placeholder="0"
@@ -144,7 +154,7 @@ interface Tier {
   flat_amount: number
 }
 
-function TierBuilder({ props, onChange }: { props: Record<string, unknown>; onChange: (json: string) => void }) {
+function TierBuilder({ props, onChange, chargeModel }: { props: Record<string, unknown>; onChange: (json: string) => void; chargeModel: 'graduated' | 'volume' }) {
   const tiers: Tier[] = useMemo(() => {
     const raw = props.tiers
     if (Array.isArray(raw) && raw.length > 0) return raw as Tier[]
@@ -180,8 +190,13 @@ function TierBuilder({ props, onChange }: { props: Record<string, unknown>; onCh
     emitTiers(newTiers)
   }
 
+  const description = chargeModel === 'graduated'
+    ? "Define pricing tiers \u2014 each tier's rate applies only to units within that range"
+    : "Define volume tiers \u2014 the tier matching total usage applies its rate to ALL units"
+
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">{description}</p>
       <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
         <Label className="text-xs text-muted-foreground">Up to (units)</Label>
         <Label className="text-xs text-muted-foreground">Unit price</Label>
@@ -203,6 +218,7 @@ function TierBuilder({ props, onChange }: { props: Record<string, unknown>; onCh
               key={`unit_price_${index}`}
               type="number"
               step={0.01}
+              min={0}
               value={tier.unit_price}
               onChange={(e) => updateTier(index, 'unit_price', Number(e.target.value))}
             />
@@ -210,6 +226,7 @@ function TierBuilder({ props, onChange }: { props: Record<string, unknown>; onCh
               key={`flat_amount_${index}`}
               type="number"
               step={0.01}
+              min={0}
               value={tier.flat_amount}
               onChange={(e) => updateTier(index, 'flat_amount', Number(e.target.value))}
             />
@@ -292,6 +309,7 @@ function GraduatedPercentageTierBuilder({ props, onChange }: { props: Record<str
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">Define percentage tiers &mdash; each tier&apos;s rate applies to the transaction amount within that range</p>
       <div className="grid grid-cols-[1fr_1fr_1fr_1fr_auto] gap-2 items-center">
         <Label className="text-xs text-muted-foreground">From value</Label>
         <Label className="text-xs text-muted-foreground">To value</Label>
@@ -320,6 +338,7 @@ function GraduatedPercentageTierBuilder({ props, onChange }: { props: Record<str
               key={`rate_${index}`}
               type="number"
               step={0.01}
+              min={0}
               value={range.rate}
               onChange={(e) => updateRange(index, 'rate', Number(e.target.value))}
             />
@@ -327,6 +346,7 @@ function GraduatedPercentageTierBuilder({ props, onChange }: { props: Record<str
               key={`flat_${index}`}
               type="number"
               step={0.01}
+              min={0}
               value={range.flat_amount}
               onChange={(e) => updateRange(index, 'flat_amount', Number(e.target.value))}
             />
@@ -352,28 +372,110 @@ function GraduatedPercentageTierBuilder({ props, onChange }: { props: Record<str
   )
 }
 
+// --- Advanced JSON Toggle ---
+
+function AdvancedJsonToggle({ value, onChange }: { value: string; onChange: (json: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [localJson, setLocalJson] = useState(value)
+  const [jsonError, setJsonError] = useState(false)
+
+  // Sync from structured form → JSON textarea when value changes externally
+  const formattedValue = useMemo(() => {
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2)
+    } catch {
+      return value
+    }
+  }, [value])
+
+  // Update local JSON when the structured form changes (and textarea isn't focused with errors)
+  if (!jsonError && localJson !== formattedValue) {
+    setLocalJson(formattedValue)
+  }
+
+  const handleJsonChange = (text: string) => {
+    setLocalJson(text)
+    try {
+      JSON.parse(text)
+      setJsonError(false)
+    } catch {
+      setJsonError(true)
+    }
+  }
+
+  const handleJsonBlur = () => {
+    if (jsonError) return
+    try {
+      const parsed = JSON.parse(localJson)
+      onChange(JSON.stringify(parsed, null, 2))
+    } catch {
+      // shouldn't happen since we checked above
+    }
+  }
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="gap-1 text-xs">
+          Advanced JSON
+          {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-2 space-y-1">
+          <Textarea
+            className={`font-mono text-sm ${jsonError ? 'border-red-500' : ''}`}
+            rows={4}
+            value={localJson}
+            onChange={(e) => handleJsonChange(e.target.value)}
+            onBlur={handleJsonBlur}
+          />
+          {jsonError && (
+            <p className="text-xs text-red-500">Invalid JSON</p>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}
+
 // --- Main Component ---
 
 export function ChargePropertiesEditor({ chargeModel, value, onChange }: ChargePropertiesEditorProps) {
   const props = useMemo(() => parseProps(value), [value])
 
+  let fields: React.ReactNode = null
   switch (chargeModel) {
     case 'standard':
-      return <StandardFields props={props} onChange={onChange} />
+      fields = <StandardFields props={props} onChange={onChange} />
+      break
     case 'package':
-      return <PackageFields props={props} onChange={onChange} />
+      fields = <PackageFields props={props} onChange={onChange} />
+      break
     case 'percentage':
-      return <PercentageFields props={props} onChange={onChange} />
+      fields = <PercentageFields props={props} onChange={onChange} />
+      break
     case 'dynamic':
-      return <DynamicFields props={props} onChange={onChange} />
+      fields = <DynamicFields props={props} onChange={onChange} />
+      break
     case 'custom':
-      return <CustomFields props={props} onChange={onChange} />
+      fields = <CustomFields props={props} onChange={onChange} />
+      break
     case 'graduated':
     case 'volume':
-      return <TierBuilder props={props} onChange={onChange} />
+      fields = <TierBuilder props={props} onChange={onChange} chargeModel={chargeModel} />
+      break
     case 'graduated_percentage':
-      return <GraduatedPercentageTierBuilder props={props} onChange={onChange} />
+      fields = <GraduatedPercentageTierBuilder props={props} onChange={onChange} />
+      break
     default:
       return null
   }
+
+  return (
+    <div className="space-y-3">
+      {fields}
+      <AdvancedJsonToggle value={value} onChange={onChange} />
+    </div>
+  )
 }
