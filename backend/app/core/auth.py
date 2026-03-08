@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -5,10 +6,21 @@ import jwt
 from fastapi import Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.customer import DEFAULT_ORGANIZATION_ID
 from app.repositories.api_key_repository import ApiKeyRepository, hash_api_key
 from app.services.portal_service import PortalService
+
+
+def require_admin_secret(request: Request) -> None:
+    """Validate the X-Admin-Secret header against BXB_ADMIN_SECRET."""
+    configured = settings.BXB_ADMIN_SECRET
+    if not configured or len(configured) < 32:
+        raise HTTPException(status_code=401, detail="Admin secret not configured")
+    provided = request.headers.get("X-Admin-Secret", "")
+    if not provided or not secrets.compare_digest(configured, provided):
+        raise HTTPException(status_code=401, detail="Invalid admin secret")
 
 
 def get_current_organization(

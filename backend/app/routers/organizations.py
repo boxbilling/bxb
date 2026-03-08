@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
-from app.core.auth import get_current_organization
+from app.core.auth import get_current_organization, require_admin_secret
 from app.core.database import get_db
 from app.models.api_key import ApiKey
 from app.models.organization import Organization
@@ -44,6 +44,7 @@ async def list_organizations(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=100, ge=1, le=1000),
     db: Session = Depends(get_db),
+    _admin: None = Depends(require_admin_secret),
 ) -> list[Organization]:
     """List all organizations."""
     repo = OrganizationRepository(db)
@@ -62,6 +63,7 @@ async def list_organizations(
 async def create_organization(
     data: OrganizationCreate,
     db: Session = Depends(get_db),
+    _admin: None = Depends(require_admin_secret),
 ) -> dict[str, Any]:
     """Create a new organization with an initial API key."""
     org_repo = OrganizationRepository(db)
