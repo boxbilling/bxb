@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, Plus, Trash2, Target } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -77,6 +78,7 @@ export default function PlanFormPage() {
   const queryClient = useQueryClient()
   const { id } = useParams<{ id: string }>()
   const isEdit = !!id
+  const backPath = isEdit ? `/admin/plans/${id}` : '/admin/plans'
 
   const [form, setForm] = useState<FormState>(defaultFormState)
   const [initialized, setInitialized] = useState(false)
@@ -106,6 +108,19 @@ export default function PlanFormPage() {
     queryFn: () => plansApi.get(id!),
     enabled: isEdit,
   })
+
+  useSetBreadcrumbs(
+    isEdit
+      ? [
+          { label: 'Plans', href: '/admin/plans' },
+          { label: loadingPlan ? 'Loading...' : (plan?.name ?? 'Plan'), href: `/admin/plans/${id}` },
+          { label: 'Edit' },
+        ]
+      : [
+          { label: 'Plans', href: '/admin/plans' },
+          { label: 'New' },
+        ]
+  )
 
   // Fetch billable metrics
   const { data: metrics } = useQuery({
@@ -171,7 +186,7 @@ export default function PlanFormPage() {
       queryClient.invalidateQueries({ queryKey: ['plans'] })
       queryClient.invalidateQueries({ queryKey: ['plan', id] })
       toast.success('Plan updated successfully')
-      navigate('/admin/plans')
+      navigate(`/admin/plans/${id}`)
     },
     onError: (error) => {
       const message = error instanceof ApiError ? error.message : 'Failed to update plan'
@@ -380,8 +395,10 @@ export default function PlanFormPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/admin/plans')}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" asChild>
+          <Link to={backPath}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         </Button>
         <div>
           <h2 className="text-2xl font-bold tracking-tight">
@@ -936,7 +953,7 @@ export default function PlanFormPage() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => navigate('/admin/plans')}
+            onClick={() => navigate(backPath)}
           >
             Cancel
           </Button>
