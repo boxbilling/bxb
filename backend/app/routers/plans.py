@@ -18,6 +18,7 @@ from app.schemas.plan import (
     PlanSimulateResponse,
     PlanUpdate,
 )
+from app.services.audit_service import AuditService
 from app.services.charge_models import custom as custom_charge
 from app.services.charge_models import (
     graduated,
@@ -167,6 +168,21 @@ async def create_plan(
     _validate_charge_filters(data.charges, filter_repo)
 
     plan = repo.create(data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="plan",
+        resource_id=plan.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": plan.code,
+            "name": plan.name,
+            "interval": plan.interval,
+            "amount_cents": plan.amount_cents,
+        },
+    )
+
     return _plan_to_response(repo, plan)
 
 
@@ -203,9 +219,37 @@ async def update_plan(
         filter_repo = BillableMetricFilterRepository(db)
         _validate_charge_filters(data.charges, filter_repo)
 
-    plan = repo.update(plan_id, data, organization_id)
-    if not plan:
+    old_plan = repo.get_by_id(plan_id, organization_id)
+    if not old_plan:
         raise HTTPException(status_code=404, detail="Plan not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_plan, k))
+        for k in fields
+        if hasattr(old_plan, k)
+    }
+
+    plan = repo.update(plan_id, data, organization_id)
+    if not plan:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    new_data = {
+        k: str(getattr(plan, k)) if getattr(plan, k) is not None else None
+        for k in data.model_dump(exclude_unset=True)
+        if hasattr(plan, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="plan",
+        resource_id=plan_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return _plan_to_response(repo, plan)
 
 
@@ -302,5 +346,23 @@ async def delete_plan(
 ) -> None:
     """Delete a plan."""
     repo = PlanRepository(db)
-    if not repo.delete(plan_id, organization_id):
+    plan = repo.get_by_id(plan_id, organization_id)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="plan",
+        resource_id=plan_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": plan.code,
+            "name": plan.name,
+            "interval": plan.interval,
+            "amount_cents": plan.amount_cents,
+        },
+    )
+
+    if not repo.delete(plan_id, organization_id):  # pragma: no cover
         raise HTTPException(status_code=404, detail="Plan not found")

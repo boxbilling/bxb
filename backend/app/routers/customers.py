@@ -33,6 +33,7 @@ from app.schemas.customer import (
 )
 from app.schemas.portal import PortalUrlResponse
 from app.schemas.usage import CurrentUsageResponse
+from app.services.audit_service import AuditService
 from app.services.portal_service import PortalService
 from app.services.subscription_dates import SubscriptionDatesService
 from app.services.usage_query_service import UsageQueryService
@@ -444,6 +445,19 @@ async def create_customer(
         raise HTTPException(status_code=409, detail="Customer with this external_id already exists")
     customer = repo.create(data, organization_id)
 
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="customer",
+        resource_id=customer.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "email": customer.email,
+            "name": customer.name,
+            "external_id": customer.external_id,
+        },
+    )
+
     if isinstance(idempotency, IdempotencyResult):
         body = CustomerResponse.model_validate(customer).model_dump(mode="json")
         record_idempotency_response(db, organization_id, idempotency.key, 201, body)
@@ -469,9 +483,37 @@ async def update_customer(
 ) -> Customer:
     """Update a customer."""
     repo = CustomerRepository(db)
-    customer = repo.update(customer_id, data, organization_id)
-    if not customer:
+    old_customer = repo.get_by_id(customer_id, organization_id)
+    if not old_customer:
         raise HTTPException(status_code=404, detail="Customer not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_customer, k))
+        for k in fields
+        if hasattr(old_customer, k)
+    }
+
+    customer = repo.update(customer_id, data, organization_id)
+    if not customer:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    new_data = {
+        k: str(getattr(customer, k)) if getattr(customer, k) is not None else None
+        for k in data.model_dump(exclude_unset=True)
+        if hasattr(customer, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="customer",
+        resource_id=customer_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return customer
 
 
@@ -491,7 +533,24 @@ async def delete_customer(
 ) -> None:
     """Delete a customer."""
     repo = CustomerRepository(db)
-    if not repo.delete(customer_id, organization_id):
+    customer = repo.get_by_id(customer_id, organization_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="customer",
+        resource_id=customer_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "email": customer.email,
+            "name": customer.name,
+            "external_id": customer.external_id,
+        },
+    )
+
+    if not repo.delete(customer_id, organization_id):  # pragma: no cover
         raise HTTPException(status_code=404, detail="Customer not found")
 
 

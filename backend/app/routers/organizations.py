@@ -23,6 +23,7 @@ from app.schemas.organization import (
     OrganizationResponse,
     OrganizationUpdate,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -77,6 +78,18 @@ async def create_organization(
         raw_key=raw_key,
     )
 
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="organization",
+        resource_id=org.id,  # type: ignore[arg-type]
+        organization_id=org.id,  # type: ignore[arg-type]
+        actor_type="system",
+        data={
+            "name": org.name,
+            "slug": org.slug,
+        },
+    )
+
     org_response = OrganizationResponse.model_validate(org).model_dump()
     org_response["api_key"] = api_key_response
 
@@ -121,9 +134,37 @@ async def update_current_org(
 ) -> Organization:
     """Update the current organization."""
     repo = OrganizationRepository(db)
-    org = repo.update(organization_id, data)
-    if not org:
+    old_org = repo.get_by_id(organization_id)
+    if not old_org:
         raise HTTPException(status_code=404, detail="Organization not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_org, k))
+        for k in fields
+        if hasattr(old_org, k)
+    }
+
+    org = repo.update(organization_id, data)
+    if not org:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    new_data = {
+        k: str(getattr(org, k)) if getattr(org, k) is not None else None
+        for k in data.model_dump(exclude_unset=True)
+        if hasattr(org, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="organization",
+        resource_id=organization_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return org
 
 
@@ -145,6 +186,15 @@ async def create_api_key(
     """Generate a new API key for the current organization."""
     repo = ApiKeyRepository(db)
     api_key, raw_key = repo.create(organization_id, data)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="api_key",
+        resource_id=api_key.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={"name": data.name},
+    )
 
     response = ApiKeyResponse.model_validate(api_key).model_dump()
     response["raw_key"] = raw_key
@@ -190,6 +240,17 @@ async def rotate_api_key(
     if not result:
         raise HTTPException(status_code=404, detail="API key not found or not active")
     new_key, raw_key = result
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="api_key",
+        resource_id=api_key_id,
+        organization_id=organization_id,
+        old_status="active",
+        new_status="rotated",
+        actor_type="api_key",
+    )
+
     response = ApiKeyResponse.model_validate(new_key).model_dump()
     response["raw_key"] = raw_key
     return response
@@ -214,3 +275,12 @@ async def revoke_api_key(
     result = repo.revoke(api_key_id, organization_id)
     if not result:
         raise HTTPException(status_code=404, detail="API key not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="api_key",
+        resource_id=api_key_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={"id": str(api_key_id)},
+    )

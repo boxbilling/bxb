@@ -19,6 +19,7 @@ from app.schemas.billable_metric_filter import (
     BillableMetricFilterCreate,
     BillableMetricFilterResponse,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -133,7 +134,22 @@ async def create_billable_metric(
     repo = BillableMetricRepository(db)
     if repo.code_exists(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Billable metric with this code already exists")
-    return repo.create(data, organization_id)
+    metric = repo.create(data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="billable_metric",
+        resource_id=metric.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": metric.code,
+            "name": metric.name,
+            "aggregation_type": metric.aggregation_type,
+        },
+    )
+
+    return metric
 
 
 @router.put(
@@ -154,9 +170,37 @@ async def update_billable_metric(
 ) -> BillableMetric:
     """Update a billable metric."""
     repo = BillableMetricRepository(db)
-    metric = repo.update(metric_id, data, organization_id)
-    if not metric:
+    old_metric = repo.get_by_id(metric_id, organization_id)
+    if not old_metric:
         raise HTTPException(status_code=404, detail="Billable metric not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_metric, k))
+        for k in fields
+        if hasattr(old_metric, k)
+    }
+
+    metric = repo.update(metric_id, data, organization_id)
+    if not metric:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Billable metric not found")
+
+    new_data = {
+        k: str(getattr(metric, k)) if getattr(metric, k) is not None else None
+        for k in data.model_dump(exclude_unset=True)
+        if hasattr(metric, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="billable_metric",
+        resource_id=metric_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return metric
 
 
@@ -176,7 +220,24 @@ async def delete_billable_metric(
 ) -> None:
     """Delete a billable metric."""
     repo = BillableMetricRepository(db)
-    if not repo.delete(metric_id, organization_id):
+    metric = repo.get_by_id(metric_id, organization_id)
+    if not metric:
+        raise HTTPException(status_code=404, detail="Billable metric not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="billable_metric",
+        resource_id=metric_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": metric.code,
+            "name": metric.name,
+            "aggregation_type": metric.aggregation_type,
+        },
+    )
+
+    if not repo.delete(metric_id, organization_id):  # pragma: no cover
         raise HTTPException(status_code=404, detail="Billable metric not found")
 
 
@@ -204,7 +265,22 @@ async def create_billable_metric_filter(
         raise HTTPException(status_code=404, detail="Billable metric not found")
 
     filter_repo = BillableMetricFilterRepository(db)
-    return filter_repo.create(metric.id, data)  # type: ignore[arg-type]
+    bmf = filter_repo.create(metric.id, data)  # type: ignore[arg-type]
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="billable_metric_filter",
+        resource_id=bmf.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "key": bmf.key,
+            "values": bmf.values,
+            "metric_code": code,
+        },
+    )
+
+    return bmf
 
 
 @router.get(
@@ -253,5 +329,22 @@ async def delete_billable_metric_filter(
         raise HTTPException(status_code=404, detail="Billable metric not found")
 
     filter_repo = BillableMetricFilterRepository(db)
-    if not filter_repo.delete(filter_id):
+    bmf = filter_repo.get_by_id(filter_id)
+    if not bmf:
+        raise HTTPException(status_code=404, detail="Filter not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="billable_metric_filter",
+        resource_id=filter_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "key": bmf.key,
+            "values": bmf.values,
+            "metric_code": code,
+        },
+    )
+
+    if not filter_repo.delete(filter_id):  # pragma: no cover
         raise HTTPException(status_code=404, detail="Filter not found")

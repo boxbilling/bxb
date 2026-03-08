@@ -66,6 +66,26 @@ class AuditService:
             actor_id=actor_id,
         )
 
+    def log_delete(
+        self,
+        resource_type: str,
+        resource_id: UUID,
+        organization_id: UUID,
+        actor_type: str = "system",
+        actor_id: str | None = None,
+        data: dict[str, Any] | None = None,
+    ) -> None:
+        """Log a resource deletion event."""
+        self.repo.create(
+            organization_id=organization_id,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            action="deleted",
+            changes=data or {},
+            actor_type=actor_type,
+            actor_id=actor_id,
+        )
+
     def log_status_change(
         self,
         resource_type: str,
