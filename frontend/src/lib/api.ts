@@ -1303,12 +1303,16 @@ export const webhookEndpointsApi = {
 
 // Organizations API
 export const organizationsApi = {
-  create: (data: OrganizationCreate) =>
+  create: (data: OrganizationCreate, adminSecret?: string) =>
     request<Organization & { api_key: ApiKeyCreateResponse }>('/v1/organizations/', {
       method: 'POST',
       body: JSON.stringify(data),
+      ...(adminSecret ? { headers: { 'X-Admin-Secret': adminSecret } } : {}),
     }),
-  list: () => request<Organization[]>('/v1/organizations/'),
+  list: (adminSecret?: string) =>
+    request<Organization[]>('/v1/organizations/', {
+      ...(adminSecret ? { headers: { 'X-Admin-Secret': adminSecret } } : {}),
+    }),
   getCurrent: () => request<Organization>('/v1/organizations/current'),
   updateCurrent: (data: OrganizationUpdate) =>
     request<Organization>('/v1/organizations/current', {
