@@ -149,7 +149,7 @@ class WebhookService:
             return False
 
         payload_bytes = json.dumps(webhook.payload, default=str).encode("utf-8")
-        signature = generate_hmac_signature(payload_bytes, settings.webhook_secret)
+        signature = generate_hmac_signature(payload_bytes, settings.BXB_WEBHOOK_SECRET)
 
         headers = {
             "Content-Type": "application/json",

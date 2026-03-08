@@ -41,7 +41,7 @@ router = APIRouter()
 
 # Module-level rate limiter instance for event ingestion
 event_rate_limiter = RateLimiter(
-    max_requests=settings.RATE_LIMIT_EVENTS_PER_MINUTE,
+    max_requests=settings.BXB_RATE_LIMIT_EVENTS_PER_MINUTE,
     window_seconds=60,
 )
 
@@ -55,7 +55,7 @@ def _check_rate_limit(
         raise HTTPException(
             status_code=429,
             detail="Rate limit exceeded. Maximum "
-            f"{settings.RATE_LIMIT_EVENTS_PER_MINUTE} events per minute.",
+            f"{settings.BXB_RATE_LIMIT_EVENTS_PER_MINUTE} events per minute.",
         )
     return organization_id
 

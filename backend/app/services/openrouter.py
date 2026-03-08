@@ -32,8 +32,8 @@ class OpenRouterClient:
                 base_url=self.BASE_URL,
                 headers={
                     "Authorization": f"Bearer {self.api_key}",
-                    "HTTP-Referer": f"https://{settings.APP_DOMAIN}",
-                    "X-Title": settings.APP_DOMAIN,
+                    "HTTP-Referer": f"https://{settings.BXB_DOMAIN}",
+                    "X-Title": settings.BXB_DOMAIN,
                     "Content-Type": "application/json",
                 },
                 timeout=httpx.Timeout(300.0, connect=10.0),  # 5 min for long responses

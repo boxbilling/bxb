@@ -7,12 +7,16 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    DEBUG: bool = False
     BXB_ENVIRONMENT: Literal["local", "staging", "production"] = "production"
-    APP_NAME: str = "bxb API"
-    APP_DOMAIN: str = "example.com"
-    APP_DATA_PATH: str = "/tmp"
-    APP_DATABASE_DSN: str = "sqlite:///./bxb.db"
+    BXB_APP_NAME: str = "BoxBilling"
+    BXB_DOMAIN: str = "example.com"
+    BXB_DATA_PATH: str = "/var/lib/bxb"
+    BXB_DATABASE_DSN: str = "postgresql://user:pass@host:5432/database"
+    BXB_CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    BXB_WEBHOOK_SECRET: str = "whsec_default_secret"                            # Webhook signing
+    BXB_PORTAL_JWT_SECRET: str = "portal-secret-change-me"                      # Portal JWT secret
+    BXB_RATE_LIMIT_EVENTS_PER_MINUTE: int = 1000                                # Rate limiting
+
     REDIS_URL: str = "redis://localhost:6379"
     OPENROUTER_API_KEY: str = ""
     SENTRY_DSN: str = ""
@@ -21,9 +25,6 @@ class Settings(BaseSettings):
     stripe_api_key: str = ""
     stripe_webhook_secret: str = ""
     manual_webhook_secret: str = ""
-
-    # Webhook signing
-    webhook_secret: str = "whsec_default_secret"
 
     # UCP (Universal Commerce Protocol) settings
     ucp_base_url: str = ""  # Business's UCP base URL
@@ -51,15 +52,6 @@ class Settings(BaseSettings):
     SMTP_FROM_EMAIL: str = "billing@example.com"
     SMTP_FROM_NAME: str = "Billing"
     SMTP_USE_TLS: bool = True
-
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
-
-    # Portal
-    PORTAL_JWT_SECRET: str = "portal-secret-change-me"
-
-    # Rate limiting
-    RATE_LIMIT_EVENTS_PER_MINUTE: int = 1000
 
     # ClickHouse settings
     CLICKHOUSE_URL: str = ""  # e.g. clickhouse://user:pass@host:port/database

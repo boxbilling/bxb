@@ -92,7 +92,7 @@ def init_sentry() -> None:
 init_sentry()
 
 app = FastAPI(
-    title=settings.APP_NAME,
+    title=settings.BXB_APP_NAME,
     version=settings.version,
     description=(
         "A comprehensive usage-based billing platform API. "
@@ -105,7 +105,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()
+        o.strip() for o in settings.BXB_CORS_ORIGINS.split(",") if o.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -219,8 +219,8 @@ app.include_router(
 @app.get("/")
 async def root() -> dict[str, str]:
     return {
-        "app": settings.APP_NAME,
+        "app": settings.BXB_APP_NAME,
         "version": settings.version,
-        "domain": settings.APP_DOMAIN,
+        "domain": settings.BXB_DOMAIN,
         "status": "running",
     }

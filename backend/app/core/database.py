@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 from app.core.config import settings
 
 engine = create_engine(
-    settings.APP_DATABASE_DSN,
+    settings.BXB_DATABASE_DSN,
     pool_size=20,
     max_overflow=30,
     pool_timeout=60,

@@ -20,14 +20,14 @@ class PortalService:
             "type": "portal",
             "exp": datetime.now(UTC) + timedelta(hours=12),
         }
-        return jwt.encode(payload, settings.PORTAL_JWT_SECRET, algorithm="HS256")
+        return jwt.encode(payload, settings.BXB_PORTAL_JWT_SECRET, algorithm="HS256")
 
     def generate_portal_url(
         self, customer_id: UUID, organization_id: UUID
     ) -> PortalUrlResponse:
         """Generate a portal URL with a JWT token valid for 12 hours."""
         token = self.generate_token(customer_id, organization_id)
-        url = f"https://{settings.APP_DOMAIN}/portal?token={token}"
+        url = f"https://{settings.BXB_DOMAIN}/portal?token={token}"
         return PortalUrlResponse(portal_url=url)
 
     @staticmethod
@@ -37,7 +37,7 @@ class PortalService:
         Returns (customer_id, organization_id).
         Raises jwt.ExpiredSignatureError or jwt.InvalidTokenError on failure.
         """
-        payload = jwt.decode(token, settings.PORTAL_JWT_SECRET, algorithms=["HS256"])
+        payload = jwt.decode(token, settings.BXB_PORTAL_JWT_SECRET, algorithms=["HS256"])
         if payload.get("type") != "portal":
             raise jwt.InvalidTokenError("Invalid token type")
         return UUID(payload["customer_id"]), UUID(payload["organization_id"])

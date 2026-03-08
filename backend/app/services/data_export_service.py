@@ -90,7 +90,7 @@ class DataExportService:
             )
 
             # Write CSV to file
-            export_dir = os.path.join(settings.APP_DATA_PATH, "exports")
+            export_dir = os.path.join(settings.BXB_DATA_PATH, "exports")
             os.makedirs(export_dir, exist_ok=True)
             file_path = os.path.join(export_dir, f"{export_id}.csv")
 

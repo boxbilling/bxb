@@ -31,7 +31,7 @@ target_metadata = Base.metadata
 
 
 def get_url():
-    return str(settings.APP_DATABASE_DSN)
+    return str(settings.BXB_DATABASE_DSN)
 
 
 def run_migrations_offline():
