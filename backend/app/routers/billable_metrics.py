@@ -76,6 +76,22 @@ async def get_billable_metric_plan_counts(
 
 
 @router.get(
+    "/{metric_id}/plans",
+    response_model=list[dict[str, object]],
+    summary="Get plans using a billable metric",
+    responses={401: {"description": "Unauthorized – invalid or missing API key"}},
+)
+async def get_metric_plans(
+    metric_id: UUID,
+    db: Session = Depends(get_db),
+    organization_id: UUID = Depends(get_current_organization),
+) -> list[dict[str, object]]:
+    """Get the plans that use a given billable metric."""
+    repo = BillableMetricRepository(db)
+    return repo.plans_for_metric(metric_id, organization_id)
+
+
+@router.get(
     "/{metric_id}",
     response_model=BillableMetricResponse,
     summary="Get billable metric",

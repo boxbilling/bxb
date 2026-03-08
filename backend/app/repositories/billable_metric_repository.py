@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.sorting import apply_order_by
 from app.models.billable_metric import BillableMetric
 from app.models.charge import Charge
+from app.models.plan import Plan
 from app.schemas.billable_metric import BillableMetricCreate, BillableMetricUpdate
 
 
@@ -117,6 +118,23 @@ class BillableMetricRepository:
             .all()
         )
         return {str(metric_id): int(cnt) for metric_id, cnt in rows}
+
+    def plans_for_metric(self, metric_id: UUID, organization_id: UUID) -> list[dict[str, object]]:
+        """Return the plans that use a given billable metric (via charges)."""
+        rows = (
+            self.db.query(Plan)
+            .join(Charge, Charge.plan_id == Plan.id)
+            .filter(
+                Charge.billable_metric_id == metric_id,
+                Charge.organization_id == organization_id,
+            )
+            .distinct()
+            .all()
+        )
+        return [
+            {"id": str(p.id), "name": p.name, "code": p.code, "interval": p.interval}
+            for p in rows
+        ]
 
     def code_exists(self, code: str, organization_id: UUID) -> bool:
         """Check if a billable metric with the given code already exists."""

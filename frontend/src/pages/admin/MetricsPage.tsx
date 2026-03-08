@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Code, Hash, ArrowUp, CircleDot, BarChart3, Search, Layers, MoreHorizontal, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Code, Hash, ArrowUp, CircleDot, BarChart3, Search, Layers, MoreHorizontal, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -73,10 +73,135 @@ function AggregationBadge({ type }: { type: AggregationType }) {
   )
 }
 
+// --- Expandable Metric Row ---
+function MetricExpandableRow({ metric, planCount }: { metric: BillableMetric; planCount: number }) {
+  const [expanded, setExpanded] = useState(false)
+  const navigate = useNavigate()
+  const { setDeleteMetric } = useMetricsPageContext()
+
+  const { data: plans, isLoading } = useQuery({
+    queryKey: ['billable-metrics', metric.id, 'plans'],
+    queryFn: () => billableMetricsApi.metricPlans(metric.id),
+    enabled: expanded,
+  })
+
+  return (
+    <>
+      <TableRow>
+        <TableCell className="font-medium">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+            {metric.name}
+          </div>
+        </TableCell>
+        <TableCell>
+          <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.code}</code>
+        </TableCell>
+        <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground">
+          {metric.description || <span className="text-muted-foreground">&mdash;</span>}
+        </TableCell>
+        <TableCell>
+          <AggregationBadge type={metric.aggregation_type} />
+        </TableCell>
+        <TableCell className="hidden md:table-cell">
+          {metric.field_name ? (
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.field_name}</code>
+          ) : metric.expression ? (
+            <code className="text-xs bg-muted px-1.5 py-0.5 rounded block max-w-[200px] truncate" title={metric.expression}>{metric.expression}</code>
+          ) : (
+            <span className="text-muted-foreground">&mdash;</span>
+          )}
+        </TableCell>
+        <TableCell className="hidden md:table-cell">
+          <div className="flex items-center gap-1 text-sm">
+            <Layers className="h-3.5 w-3.5 text-muted-foreground" />
+            {planCount}
+          </div>
+        </TableCell>
+        <TableCell>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => navigate(`/admin/metrics/${metric.id}/edit`)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={() => setDeleteMetric(metric)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </TableCell>
+      </TableRow>
+      {expanded && (
+        <TableRow className="bg-muted/30 hover:bg-muted/30">
+          <TableCell colSpan={7} className="py-3">
+            <div className="pl-10">
+              <p className="text-sm font-medium mb-2">Used by Plans</p>
+              {isLoading ? (
+                <div className="space-y-1">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+              ) : !plans?.length ? (
+                <p className="text-sm text-muted-foreground">
+                  Not used by any plans yet.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {plans.map((plan) => (
+                    <Badge key={plan.id} variant="outline" className="text-xs">
+                      {plan.name}
+                      <span className="mx-1 text-muted-foreground">&middot;</span>
+                      <code className="text-xs">{plan.code}</code>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TableCell>
+        </TableRow>
+      )}
+    </>
+  )
+}
+
+// --- Page context ---
+import { createContext, useContext } from 'react'
+
+type MetricsPageContextType = {
+  setDeleteMetric: (metric: BillableMetric) => void
+}
+
+const MetricsPageContext = createContext<MetricsPageContextType>(null!)
+
+function useMetricsPageContext() {
+  return useContext(MetricsPageContext)
+}
+
 const PAGE_SIZE = 20
 
 export default function MetricsPage() {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
@@ -142,7 +267,10 @@ export default function MetricsPage() {
     )
   }
 
+  const pageContext: MetricsPageContextType = { setDeleteMetric }
+
   return (
+    <MetricsPageContext.Provider value={pageContext}>
     <div className="space-y-6">
       <PageHeader
         title="Billable Metrics"
@@ -264,61 +392,13 @@ export default function MetricsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredMetrics.map((metric) => {
-                const count = planCounts?.[metric.id] ?? 0
-                return (
-                  <TableRow key={metric.id}>
-                    <TableCell className="font-medium">{metric.name}</TableCell>
-                    <TableCell>
-                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.code}</code>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell max-w-[200px] truncate text-muted-foreground">
-                      {metric.description || <span className="text-muted-foreground">&mdash;</span>}
-                    </TableCell>
-                    <TableCell>
-                      <AggregationBadge type={metric.aggregation_type} />
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {metric.field_name ? (
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{metric.field_name}</code>
-                      ) : metric.expression ? (
-                        <code className="text-xs bg-muted px-1.5 py-0.5 rounded block max-w-[200px] truncate" title={metric.expression}>{metric.expression}</code>
-                      ) : (
-                        <span className="text-muted-foreground">&mdash;</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <div className="flex items-center gap-1 text-sm">
-                        <Layers className="h-3.5 w-3.5 text-muted-foreground" />
-                        {count}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => navigate(`/admin/metrics/${metric.id}/edit`)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => setDeleteMetric(metric)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                )
-              })
+              filteredMetrics.map((metric) => (
+                <MetricExpandableRow
+                  key={metric.id}
+                  metric={metric}
+                  planCount={planCounts?.[metric.id] ?? 0}
+                />
+              ))
             )}
           </TableBody>
         </Table>
@@ -356,5 +436,6 @@ export default function MetricsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </MetricsPageContext.Provider>
   )
 }

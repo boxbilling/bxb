@@ -824,6 +824,8 @@ export const billableMetricsApi = {
     request<{ total: number; by_aggregation_type: Record<string, number> }>('/v1/billable_metrics/stats'),
   planCounts: () =>
     request<Record<string, number>>('/v1/billable_metrics/plan_counts'),
+  metricPlans: (metricId: string) =>
+    request<Array<{ id: string; name: string; code: string; interval: string }>>(`/v1/billable_metrics/${metricId}/plans`),
   createFilter: (code: string, data: BillableMetricFilterCreate) =>
     request<BillableMetricFilter>(`/v1/billable_metrics/${code}/filters`, {
       method: 'POST',
