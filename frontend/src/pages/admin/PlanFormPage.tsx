@@ -5,6 +5,7 @@ import { ArrowLeft, Plus, Trash2, Target } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { useSetBreadcrumbs } from '@/components/HeaderBreadcrumb'
+import { ChargePropertiesEditor } from '@/components/ChargePropertiesEditor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -592,7 +593,7 @@ export default function PlanFormPage() {
                           <Label>Charge Model</Label>
                           <Select
                             value={charge.charge_model}
-                            onValueChange={(value: ChargeModel) => updateCharge(index, { charge_model: value })}
+                            onValueChange={(value: ChargeModel) => updateCharge(index, { charge_model: value, properties: '{}' })}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -607,16 +608,11 @@ export default function PlanFormPage() {
                           </Select>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label>Properties (JSON)</Label>
-                        <Textarea
-                          value={charge.properties}
-                          onChange={(e) => updateCharge(index, { properties: e.target.value })}
-                          rows={3}
-                          className="font-mono text-sm"
-                          placeholder="{}"
-                        />
-                      </div>
+                      <ChargePropertiesEditor
+                        chargeModel={charge.charge_model}
+                        value={charge.properties}
+                        onChange={(val) => updateCharge(index, { properties: val })}
+                      />
                     </div>
                   ))}
                 </div>
