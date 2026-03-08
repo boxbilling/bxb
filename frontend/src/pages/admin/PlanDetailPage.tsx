@@ -473,6 +473,17 @@ export default function PlanDetailPage() {
                 variant="outline"
                 size="sm"
                 className="w-full md:w-auto"
+                asChild
+              >
+                <Link to={`/admin/plans/${id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit Plan
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full md:w-auto"
                 onClick={handleClone}
                 disabled={cloneMutation.isPending}
               >
