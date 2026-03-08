@@ -13,6 +13,7 @@ from app.schemas.commitment import (
     CommitmentResponse,
     CommitmentUpdate,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -73,6 +74,20 @@ async def create_commitment(
     )
     repo = CommitmentRepository(db)
     commitment = repo.create(create_data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="commitment",
+        resource_id=commitment.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "plan_code": plan_code,
+            "commitment_type": commitment.commitment_type,
+            "amount_cents": commitment.amount_cents,
+        },
+    )
+
     return CommitmentResponse.model_validate(commitment)
 
 
@@ -94,9 +109,37 @@ async def update_commitment(
 ) -> CommitmentResponse:
     """Update a commitment."""
     repo = CommitmentRepository(db)
-    commitment = repo.update(commitment_id, data, organization_id)
-    if not commitment:
+    old_commitment = repo.get_by_id(commitment_id, organization_id)
+    if not old_commitment:
         raise HTTPException(status_code=404, detail="Commitment not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_commitment, k))
+        for k in fields
+        if hasattr(old_commitment, k)
+    }
+
+    commitment = repo.update(commitment_id, data, organization_id)
+    if not commitment:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Commitment not found")
+
+    new_data = {
+        k: str(getattr(commitment, k)) if getattr(commitment, k) is not None else None
+        for k in fields
+        if hasattr(commitment, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="commitment",
+        resource_id=commitment_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return CommitmentResponse.model_validate(commitment)
 
 
@@ -116,5 +159,21 @@ async def delete_commitment(
 ) -> None:
     """Remove a commitment."""
     repo = CommitmentRepository(db)
-    if not repo.delete(commitment_id, organization_id):
+    commitment = repo.get_by_id(commitment_id, organization_id)
+    if not commitment:
         raise HTTPException(status_code=404, detail="Commitment not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="commitment",
+        resource_id=commitment_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "commitment_type": commitment.commitment_type,
+            "amount_cents": commitment.amount_cents,
+            "plan_id": str(commitment.plan_id),
+        },
+    )
+
+    repo.delete(commitment_id, organization_id)

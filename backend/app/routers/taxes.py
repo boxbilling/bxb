@@ -19,6 +19,7 @@ from app.schemas.tax import (
     TaxResponse,
     TaxUpdate,
 )
+from app.services.audit_service import AuditService
 from app.services.tax_service import TaxCalculationService
 
 router = APIRouter()
@@ -44,7 +45,22 @@ async def create_tax(
     repo = TaxRepository(db)
     if repo.get_by_code(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Tax with this code already exists")
-    return repo.create(data, organization_id)
+    tax = repo.create(data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="tax",
+        resource_id=tax.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": tax.code,
+            "name": tax.name,
+            "rate": str(tax.rate),
+        },
+    )
+
+    return tax
 
 
 @router.get(
@@ -123,6 +139,20 @@ async def apply_tax(
     tax = tax_repo.get_by_id(applied.tax_id)  # type: ignore[arg-type]
     response.tax_name = str(tax.name) if tax else None
     response.tax_code = str(tax.code) if tax else None
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="applied_tax",
+        resource_id=applied.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "tax_code": data.tax_code,
+            "taxable_type": data.taxable_type,
+            "taxable_id": str(data.taxable_id),
+        },
+    )
+
     return response
 
 
@@ -142,8 +172,24 @@ async def remove_applied_tax(
 ) -> None:
     """Remove an applied tax by ID."""
     repo = AppliedTaxRepository(db)
-    if not repo.delete_by_id(applied_tax_id):
+    applied_tax = repo.get_by_id(applied_tax_id)
+    if not applied_tax:
         raise HTTPException(status_code=404, detail="Applied tax not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="applied_tax",
+        resource_id=applied_tax_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "tax_id": str(applied_tax.tax_id),
+            "taxable_type": str(applied_tax.taxable_type),
+            "taxable_id": str(applied_tax.taxable_id),
+        },
+    )
+
+    repo.delete_by_id(applied_tax_id)
 
 
 @router.get(
@@ -237,9 +283,37 @@ async def update_tax(
 ) -> Tax:
     """Update a tax by code."""
     repo = TaxRepository(db)
-    tax = repo.update(code, data, organization_id)
-    if not tax:
+    old_tax = repo.get_by_code(code, organization_id)
+    if not old_tax:
         raise HTTPException(status_code=404, detail="Tax not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_tax, k))
+        for k in fields
+        if hasattr(old_tax, k)
+    }
+
+    tax = repo.update(code, data, organization_id)
+    if not tax:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Tax not found")
+
+    new_data = {
+        k: str(getattr(tax, k)) if getattr(tax, k) is not None else None
+        for k in fields
+        if hasattr(tax, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="tax",
+        resource_id=tax.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return tax
 
 
@@ -259,5 +333,21 @@ async def delete_tax(
 ) -> None:
     """Delete a tax by code."""
     repo = TaxRepository(db)
-    if not repo.delete(code, organization_id):
+    tax = repo.get_by_code(code, organization_id)
+    if not tax:
         raise HTTPException(status_code=404, detail="Tax not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="tax",
+        resource_id=tax.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": tax.code,
+            "name": tax.name,
+            "rate": str(tax.rate),
+        },
+    )
+
+    repo.delete(code, organization_id)

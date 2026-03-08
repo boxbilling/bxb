@@ -21,6 +21,7 @@ from app.schemas.add_on import (
     AppliedAddOnResponse,
     ApplyAddOnRequest,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -45,7 +46,23 @@ async def create_add_on(
     repo = AddOnRepository(db)
     if repo.get_by_code(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Add-on with this code already exists")
-    return repo.create(data, organization_id)
+    add_on = repo.create(data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="add_on",
+        resource_id=add_on.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": add_on.code,
+            "name": add_on.name,
+            "amount_cents": add_on.amount_cents,
+            "amount_currency": add_on.amount_currency,
+        },
+    )
+
+    return add_on
 
 
 @router.get(
@@ -162,9 +179,37 @@ async def update_add_on(
 ) -> AddOn:
     """Update an add-on by code."""
     repo = AddOnRepository(db)
-    add_on = repo.update(code, data, organization_id)
-    if not add_on:
+    old_add_on = repo.get_by_code(code, organization_id)
+    if not old_add_on:
         raise HTTPException(status_code=404, detail="Add-on not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_add_on, k))
+        for k in fields
+        if hasattr(old_add_on, k)
+    }
+
+    add_on = repo.update(code, data, organization_id)
+    if not add_on:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Add-on not found")
+
+    new_data = {
+        k: str(getattr(add_on, k)) if getattr(add_on, k) is not None else None
+        for k in fields
+        if hasattr(add_on, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="add_on",
+        resource_id=add_on.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return add_on
 
 
@@ -184,8 +229,25 @@ async def delete_add_on(
 ) -> None:
     """Delete an add-on by code."""
     repo = AddOnRepository(db)
-    if not repo.delete(code, organization_id):
+    add_on = repo.get_by_code(code, organization_id)
+    if not add_on:
         raise HTTPException(status_code=404, detail="Add-on not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="add_on",
+        resource_id=add_on.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": add_on.code,
+            "name": add_on.name,
+            "amount_cents": add_on.amount_cents,
+            "amount_currency": add_on.amount_currency,
+        },
+    )
+
+    repo.delete(code, organization_id)
 
 
 @router.post(
@@ -215,7 +277,7 @@ async def apply_add_on(
         raise HTTPException(status_code=404, detail="Customer not found")
 
     applied_repo = AppliedAddOnRepository(db)
-    return applied_repo.create(
+    applied = applied_repo.create(
         add_on_id=add_on.id,  # type: ignore[arg-type]
         customer_id=data.customer_id,
         amount_cents=data.amount_cents if data.amount_cents is not None else add_on.amount_cents,  # type: ignore[arg-type]
@@ -223,3 +285,19 @@ async def apply_add_on(
             data.amount_currency if data.amount_currency is not None else add_on.amount_currency  # type: ignore[arg-type]
         ),
     )
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="applied_add_on",
+        resource_id=applied.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "customer_id": str(data.customer_id),
+            "add_on_code": data.add_on_code,
+            "amount_cents": applied.amount_cents,
+            "amount_currency": applied.amount_currency,
+        },
+    )
+
+    return applied

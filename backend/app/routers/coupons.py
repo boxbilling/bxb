@@ -21,6 +21,7 @@ from app.schemas.coupon import (
     CouponResponse,
     CouponUpdate,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -45,7 +46,24 @@ async def create_coupon(
     repo = CouponRepository(db)
     if repo.get_by_code(data.code, organization_id):
         raise HTTPException(status_code=409, detail="Coupon with this code already exists")
-    return repo.create(data, organization_id)
+    coupon = repo.create(data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="coupon",
+        resource_id=coupon.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": coupon.code,
+            "name": coupon.name,
+            "coupon_type": coupon.coupon_type,
+            "amount_cents": coupon.amount_cents,
+            "percentage_rate": str(coupon.percentage_rate) if coupon.percentage_rate else None,
+        },
+    )
+
+    return coupon
 
 
 @router.get(
@@ -109,9 +127,37 @@ async def update_coupon(
 ) -> Coupon:
     """Update a coupon by code."""
     repo = CouponRepository(db)
-    coupon = repo.update(code, data, organization_id)
-    if not coupon:
+    old_coupon = repo.get_by_code(code, organization_id)
+    if not old_coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_coupon, k))
+        for k in fields
+        if hasattr(old_coupon, k)
+    }
+
+    coupon = repo.update(code, data, organization_id)
+    if not coupon:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Coupon not found")
+
+    new_data = {
+        k: str(getattr(coupon, k)) if getattr(coupon, k) is not None else None
+        for k in fields
+        if hasattr(coupon, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="coupon",
+        resource_id=coupon.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return coupon
 
 
@@ -134,6 +180,16 @@ async def terminate_coupon(
     coupon = repo.terminate(code, organization_id)
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="coupon",
+        resource_id=coupon.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        old_status="active",
+        new_status="terminated",
+        actor_type="api_key",
+    )
 
 
 @router.post(
@@ -176,7 +232,7 @@ async def apply_coupon(
         if existing:
             raise HTTPException(status_code=409, detail="Coupon already applied to this customer")
 
-    return applied_repo.create(
+    applied = applied_repo.create(
         coupon_id=coupon.id,  # type: ignore[arg-type]
         customer_id=data.customer_id,
         amount_cents=data.amount_cents if data.amount_cents is not None else coupon.amount_cents,  # type: ignore[arg-type]
@@ -191,6 +247,20 @@ async def apply_coupon(
         frequency=str(coupon.frequency),
         frequency_duration=coupon.frequency_duration,  # type: ignore[arg-type]
     )
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="applied_coupon",
+        resource_id=applied.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "customer_id": str(data.customer_id),
+            "coupon_code": data.coupon_code,
+        },
+    )
+
+    return applied
 
 
 @router.delete(
@@ -212,6 +282,20 @@ async def remove_applied_coupon(
     applied_coupon = applied_repo.get_by_id(applied_coupon_id)
     if not applied_coupon:
         raise HTTPException(status_code=404, detail="Applied coupon not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="applied_coupon",
+        resource_id=applied_coupon_id,
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "coupon_id": str(applied_coupon.coupon_id),
+            "customer_id": str(applied_coupon.customer_id),
+            "status": str(applied_coupon.status),
+        },
+    )
+
     applied_repo.terminate(applied_coupon_id)
 
 
@@ -318,4 +402,19 @@ async def duplicate_coupon(
         expiration=coupon.expiration,  # type: ignore[arg-type]
         expiration_at=coupon.expiration_at,  # type: ignore[arg-type]
     )
-    return repo.create(create_data, organization_id)
+    new_coupon = repo.create(create_data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="coupon",
+        resource_id=new_coupon.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": new_coupon.code,
+            "name": new_coupon.name,
+            "duplicated_from": code,
+        },
+    )
+
+    return new_coupon
