@@ -19,6 +19,7 @@ from app.schemas.dunning_campaign import (
     DunningCampaignUpdate,
     ExecutionHistoryEntry,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -60,6 +61,19 @@ async def create_dunning_campaign(
             detail="Dunning campaign with this code already exists",
         )
     campaign = repo.create(data, organization_id)
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="dunning_campaign",
+        resource_id=campaign.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": data.code,
+            "name": data.name,
+        },
+    )
+
     return _campaign_to_response(campaign, repo)
 
 
@@ -142,9 +156,38 @@ async def update_dunning_campaign(
 ) -> DunningCampaignResponse:
     """Update a dunning campaign."""
     repo = DunningCampaignRepository(db)
-    campaign = repo.update(campaign_id, data, organization_id)
-    if not campaign:
+
+    old_campaign = repo.get_by_id(campaign_id, organization_id)
+    if not old_campaign:
         raise HTTPException(status_code=404, detail="Dunning campaign not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_campaign, k))
+        for k in fields
+        if hasattr(old_campaign, k)
+    }
+
+    campaign = repo.update(campaign_id, data, organization_id)
+    if not campaign:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Dunning campaign not found")
+
+    new_data = {
+        k: str(getattr(campaign, k)) if getattr(campaign, k) is not None else None
+        for k in fields
+        if hasattr(campaign, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="dunning_campaign",
+        resource_id=campaign.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return _campaign_to_response(campaign, repo)
 
 
@@ -164,8 +207,23 @@ async def delete_dunning_campaign(
 ) -> None:
     """Delete a dunning campaign."""
     repo = DunningCampaignRepository(db)
-    if not repo.delete(campaign_id, organization_id):
+    campaign = repo.get_by_id(campaign_id, organization_id)
+    if not campaign:
         raise HTTPException(status_code=404, detail="Dunning campaign not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="dunning_campaign",
+        resource_id=campaign.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": campaign.code,
+            "name": campaign.name,
+        },
+    )
+
+    repo.delete(campaign_id, organization_id)
 
 
 @router.get(

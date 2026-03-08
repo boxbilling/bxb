@@ -17,6 +17,7 @@ from app.schemas.entitlement import (
     EntitlementResponse,
     EntitlementUpdate,
 )
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -95,6 +96,19 @@ async def create_entitlement(
 
     entitlement = repo.create(data, organization_id)
 
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="entitlement",
+        resource_id=entitlement.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "plan_id": str(data.plan_id),
+            "feature_id": str(data.feature_id),
+            "value": str(entitlement.value),
+        },
+    )
+
     if isinstance(idempotency, IdempotencyResult):
         body = EntitlementResponse.model_validate(entitlement).model_dump(mode="json")
         record_idempotency_response(db, organization_id, idempotency.key, 201, body)
@@ -155,6 +169,21 @@ async def copy_entitlements(
         )
         created.append(new_ent)
 
+    if created:
+        audit_service = AuditService(db)
+        audit_service.log_create(
+            resource_type="entitlement",
+            resource_id=created[0].id,  # type: ignore[arg-type]
+            organization_id=organization_id,
+            actor_type="api_key",
+            data={
+                "action": "copy",
+                "source_plan_id": str(data.source_plan_id),
+                "target_plan_id": str(data.target_plan_id),
+                "entitlements_copied": len(created),
+            },
+        )
+
     return created
 
 
@@ -179,10 +208,35 @@ async def update_entitlement(
     entitlement = repo.get_by_id(entitlement_id, organization_id)
     if not entitlement:
         raise HTTPException(status_code=404, detail="Entitlement not found")
-    for key, value in data.model_dump(exclude_unset=True).items():
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(entitlement, k))
+        for k in fields
+        if hasattr(entitlement, k)
+    }
+
+    for key, value in fields.items():
         setattr(entitlement, key, value)
     db.commit()
     db.refresh(entitlement)
+
+    new_data = {
+        k: str(getattr(entitlement, k)) if getattr(entitlement, k) is not None else None
+        for k in fields
+        if hasattr(entitlement, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="entitlement",
+        resource_id=entitlement.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return entitlement
 
 
@@ -205,4 +259,18 @@ async def delete_entitlement(
     entitlement = repo.get_by_id(entitlement_id, organization_id)
     if not entitlement:
         raise HTTPException(status_code=404, detail="Entitlement not found")
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="entitlement",
+        resource_id=entitlement.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "plan_id": str(entitlement.plan_id),
+            "feature_id": str(entitlement.feature_id),
+            "value": str(entitlement.value),
+        },
+    )
+
     repo.delete(entitlement_id, organization_id)

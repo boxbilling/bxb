@@ -11,6 +11,7 @@ from app.models.feature import Feature
 from app.repositories.entitlement_repository import EntitlementRepository
 from app.repositories.feature_repository import FeatureRepository
 from app.schemas.feature import FeatureCreate, FeatureResponse, FeatureUpdate
+from app.services.audit_service import AuditService
 
 router = APIRouter()
 
@@ -101,6 +102,19 @@ async def create_feature(
         )
     feature = repo.create(data, organization_id)
 
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="feature",
+        resource_id=feature.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": feature.code,
+            "name": feature.name,
+            "feature_type": feature.feature_type,
+        },
+    )
+
     if isinstance(idempotency, IdempotencyResult):
         body = FeatureResponse.model_validate(feature).model_dump(mode="json")
         record_idempotency_response(db, organization_id, idempotency.key, 201, body)
@@ -129,10 +143,35 @@ async def update_feature(
     feature = repo.get_by_code(code, organization_id)
     if not feature:
         raise HTTPException(status_code=404, detail="Feature not found")
-    for key, value in data.model_dump(exclude_unset=True).items():
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(feature, k))
+        for k in fields
+        if hasattr(feature, k)
+    }
+
+    for key, value in fields.items():
         setattr(feature, key, value)
     db.commit()
     db.refresh(feature)
+
+    new_data = {
+        k: str(getattr(feature, k)) if getattr(feature, k) is not None else None
+        for k in fields
+        if hasattr(feature, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="feature",
+        resource_id=feature.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return feature
 
 
@@ -166,5 +205,18 @@ async def delete_feature(
             status_code=400,
             detail="Cannot delete feature with existing entitlements",
         )
+
+    audit_service = AuditService(db)
+    audit_service.log_delete(
+        resource_type="feature",
+        resource_id=feature.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "code": feature.code,
+            "name": feature.name,
+            "feature_type": feature.feature_type,
+        },
+    )
 
     repo.delete(UUID(str(feature.id)), organization_id)

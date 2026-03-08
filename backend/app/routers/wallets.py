@@ -26,6 +26,7 @@ from app.schemas.wallet import (
     WalletUpdate,
 )
 from app.schemas.wallet_transaction import WalletTransactionResponse
+from app.services.audit_service import AuditService
 from app.services.wallet_service import WalletService
 
 router = APIRouter()
@@ -50,7 +51,7 @@ async def create_wallet(
     """Create a wallet for a customer."""
     service = WalletService(db)
     try:
-        return service.create_wallet(  # type: ignore[return-value]
+        wallet = service.create_wallet(
             customer_id=data.customer_id,
             name=data.name,
             code=data.code,
@@ -62,6 +63,23 @@ async def create_wallet(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+    assert wallet is not None  # guaranteed by service when no ValueError
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="wallet",
+        resource_id=wallet.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "customer_id": str(data.customer_id),
+            "currency": data.currency,
+            "name": data.name,
+        },
+    )
+
+    return wallet
 
 
 @router.get(
@@ -133,9 +151,38 @@ async def update_wallet(
 ) -> Wallet:
     """Update a wallet (name, expiration_at, priority)."""
     repo = WalletRepository(db)
-    wallet = repo.update(wallet_id, data)
-    if not wallet:
+
+    old_wallet = repo.get_by_id(wallet_id, organization_id)
+    if not old_wallet:
         raise HTTPException(status_code=404, detail="Wallet not found")
+
+    fields = data.model_dump(exclude_unset=True)
+    old_data = {
+        k: str(getattr(old_wallet, k))
+        for k in fields
+        if hasattr(old_wallet, k)
+    }
+
+    wallet = repo.update(wallet_id, data)
+    if not wallet:  # pragma: no cover - race condition
+        raise HTTPException(status_code=404, detail="Wallet not found")
+
+    new_data = {
+        k: str(getattr(wallet, k)) if getattr(wallet, k) is not None else None
+        for k in fields
+        if hasattr(wallet, k)
+    }
+
+    audit_service = AuditService(db)
+    audit_service.log_update(
+        resource_type="wallet",
+        resource_id=wallet.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        old_data=old_data,
+        new_data=new_data,
+    )
+
     return wallet
 
 
@@ -164,6 +211,16 @@ async def terminate_wallet(
             raise HTTPException(status_code=404, detail=detail) from None
         raise HTTPException(status_code=400, detail=detail) from None
 
+    audit_service = AuditService(db)
+    audit_service.log_status_change(
+        resource_type="wallet",
+        resource_id=wallet_id,
+        organization_id=organization_id,
+        old_status="active",
+        new_status="terminated",
+        actor_type="api_key",
+    )
+
 
 @router.post(
     "/{wallet_id}/top_up",
@@ -183,13 +240,30 @@ async def top_up_wallet(
     """Top up a wallet with credits."""
     service = WalletService(db)
     try:
-        return service.top_up_wallet(  # type: ignore[return-value]
+        wallet = service.top_up_wallet(
             wallet_id=wallet_id,
             credits=data.credits,
             source=data.source,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+    assert wallet is not None  # guaranteed by service when no ValueError
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="wallet_transaction",
+        resource_id=wallet.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "wallet_id": str(wallet_id),
+            "credits": str(data.credits),
+            "source": data.source,
+        },
+    )
+
+    return wallet
 
 
 @router.get(
@@ -331,6 +405,20 @@ async def transfer_credits(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from None
+
+    audit_service = AuditService(db)
+    audit_service.log_create(
+        resource_type="wallet_transaction",
+        resource_id=source.id,  # type: ignore[arg-type]
+        organization_id=organization_id,
+        actor_type="api_key",
+        data={
+            "action": "transfer",
+            "source_wallet_id": str(data.source_wallet_id),
+            "target_wallet_id": str(data.target_wallet_id),
+            "credits_transferred": str(data.credits),
+        },
+    )
 
     return WalletTransferResponse(
         source_wallet=WalletResponse.model_validate(source),
