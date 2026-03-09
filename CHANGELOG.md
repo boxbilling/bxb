@@ -1,3 +1,42 @@
+## [0.6.0] - 2026-03-09
+
+- Remove unused `slug` field from organization actor data payload
+- Refactor `OrgSwitcher` component to simplify structure and remove unused organization management functionality; update `organizationsApi` to support optional admin authentication.
+- BXB: add `BXB_ADMIN_SECRET` for admin authentication; enforce header validation on organization management APIs
+- Update `.env.example` to fix default database DSN port
+- BXB: rename `APP_*` config variables to `BXB_*` for clarity and update references accordingly
+- BXB: instrument features, entitlements, wallets, and dunning campaigns with audit logging
+- BXB: instrument medium-priority routers with audit logging (add-ons, coupons, commitments, taxes)
+- BXB: add log_delete() and instrument high-priority routers with audit logging
+- BXB: add Advanced JSON toggle, live preview, and field hints to charge editor
+- BXB: add structured ChargePropertiesEditor replacing raw JSON textarea
+- fix(ui): fix plan edit page breadcrumbs and back navigation
+- feat(ui): add Edit Plan button to plan detail page header
+- feat(ui): add expandable rows to billable metrics admin page
+- BXB: configure web app manifest for standalone PWA
+- BXB: fix tax edit form not prefilling values
+- fix(ui): stack customer header buttons vertically on mobile
+- feat(ui): add created date column to admin customers table
+- feat(ui): add customer links in dashboard tables
+- fix(ui): align events table columns using CSS grid layout
+- feat(ui): add subscription links in dashboard and refactor portal subscriptions to table
+- refactor(ui): extract shared SubscriptionUsageCards component
+- feat(ui): add invoice links to dashboard Recent Invoices cards
+- BXB: fix search API
+- BXB: fix search API response shape mismatch in CommandPalette
+- fix(ui): wire missing activate/cancel props in desktop subscription sidebar
+- fix(ui): make grid layouts responsive for mobile viewports
+- feat(ui): default frontend theme to light mode
+- feat(portal): add light theme variant for portal layout
+- fix(ui): reduce oversized notification bell button and related elements
+- Fix revision dependency in `drop_items_table` migration script
+- Optimize database connection pooling: configure `pool_size`, `max_overflow`, `pool_timeout`, `pool_recycle`, and enable `pool_pre_ping`.
+- fix(customers): accept subscription external_id in usage endpoints
+- fix(alembic): remove stale Item model import
+- fix dashboard
+- Update `openapi.json` to include additional dashboard endpoints and response schemas for enhanced API functionality.
+- remove items
+
 ## [0.5.0] - 2026-03-02
 
 - Refactor dashboard metrics layout: reorganize sections, add "New Customers" and "New Subscriptions" cards, and improve grid responsiveness.
