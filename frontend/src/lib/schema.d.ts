@@ -7127,6 +7127,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Slug */
+            slug: string;
             /** Default Currency */
             default_currency: string;
             /** Timezone */
@@ -7160,6 +7162,8 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Slug */
+            slug: string;
             /** Default Currency */
             default_currency: string;
             /** Timezone */

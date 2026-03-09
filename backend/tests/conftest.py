@@ -34,6 +34,7 @@ def _seed_default_organization(session: Session) -> None:
         org = Organization(
             id=DEFAULT_ORG_ID,
             name="Default Test Organization",
+            slug="default-test-organization",
         )
         session.add(org)
         session.commit()

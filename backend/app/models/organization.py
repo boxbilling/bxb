@@ -9,6 +9,7 @@ class Organization(Base):
 
     id = Column(UUIDType, primary_key=True, default=generate_uuid)
     name = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True)
     default_currency = Column(String(3), nullable=False, default="USD")
     timezone = Column(String(50), nullable=False, default="UTC")
     hmac_key = Column(String(255), nullable=True)

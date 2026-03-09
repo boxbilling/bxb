@@ -88,6 +88,7 @@ async def create_organization(
         actor_type="system",
         data={
             "name": org.name,
+            "slug": org.slug,
         },
     )
 

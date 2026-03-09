@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     BXB_WEBHOOK_SECRET: str = "whsec_default_secret"                            # Webhook signing
     BXB_PORTAL_JWT_SECRET: str = "portal-secret-change-me"                      # Portal JWT secret
     BXB_RATE_LIMIT_EVENTS_PER_MINUTE: int = 1000                                # Rate limiting
-    BXB_ADMIN_SECRET: str = ""                                                  # For org management at least 32 chars
+    BXB_ADMIN_SECRET: str = ""  # For org management, at least 32 chars
 
     REDIS_URL: str = "redis://localhost:6379"
     OPENROUTER_API_KEY: str = ""

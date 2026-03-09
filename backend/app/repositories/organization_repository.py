@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -7,6 +8,15 @@ from sqlalchemy.orm import Session
 from app.core.sorting import apply_order_by
 from app.models.organization import Organization
 from app.schemas.organization import OrganizationCreate, OrganizationUpdate
+
+
+def _slugify(text: str) -> str:
+    """Convert text to a URL-friendly slug."""
+    slug = text.lower().strip()
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[\s_]+", "-", slug)
+    slug = re.sub(r"-+", "-", slug)
+    return slug.strip("-")
 
 
 class OrganizationRepository:
@@ -26,8 +36,27 @@ class OrganizationRepository:
     def get_by_id(self, org_id: UUID) -> Organization | None:
         return self.db.query(Organization).filter(Organization.id == org_id).first()
 
+    def _generate_unique_slug(self, name: str) -> str:
+        """Generate a unique slug from the organization name."""
+        base_slug = _slugify(name)
+        if not base_slug:
+            base_slug = "org"
+        slug = base_slug
+        counter = 1
+        while (
+            self.db.query(Organization)
+            .filter(Organization.slug == slug)
+            .first()
+            is not None
+        ):
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
+
     def create(self, data: OrganizationCreate) -> Organization:
-        org = Organization(**data.model_dump())
+        dump = data.model_dump()
+        dump["slug"] = self._generate_unique_slug(data.name)
+        org = Organization(**dump)
         self.db.add(org)
         self.db.commit()
         self.db.refresh(org)

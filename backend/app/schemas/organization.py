@@ -27,6 +27,7 @@ class OrganizationUpdate(BaseModel):
 class OrganizationResponse(BaseModel):
     id: UUID
     name: str
+    slug: str
     default_currency: str
     timezone: str
     hmac_key: str | None
