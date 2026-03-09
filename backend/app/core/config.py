@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     BXB_DATA_PATH: str = "/var/lib/bxb"
     BXB_DATABASE_DSN: str = "postgresql://user:pass@host:5432/database"
     BXB_CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+    BXB_CORS_ORIGINS_REGEX: str = ""
     BXB_WEBHOOK_SECRET: str = "whsec_default_secret"                            # Webhook signing
     BXB_PORTAL_JWT_SECRET: str = "portal-secret-change-me"                      # Portal JWT secret
     BXB_RATE_LIMIT_EVENTS_PER_MINUTE: int = 1000                                # Rate limiting

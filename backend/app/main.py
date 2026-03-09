@@ -107,6 +107,7 @@ app.add_middleware(
     allow_origins=[
         o.strip() for o in settings.BXB_CORS_ORIGINS.split(",") if o.strip()
     ],
+    allow_origin_regex=settings.BXB_CORS_ORIGINS_REGEX or None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
