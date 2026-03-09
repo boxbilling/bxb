@@ -172,3 +172,61 @@ def test_create_invoice(client: TestClient):
     assert data["status"] == "draft"
     assert data["customer_id"] == customer["id"]
     assert Decimal(data["subtotal_cents"]) == Decimal("49.99")
+
+
+def test_delete_organization(client: TestClient):
+    """DELETE /v1/organizations/{id} hard-deletes an org and its children."""
+    from app.core.config import settings
+
+    # Ensure admin secret is configured for this test
+    original_secret = settings.BXB_ADMIN_SECRET
+    test_secret = "smoke-test-admin-secret-that-is-at-least-32-chars-long"
+    settings.BXB_ADMIN_SECRET = test_secret
+
+    admin_headers = {"X-Admin-Secret": test_secret}
+
+    try:
+        # Step 1: Create a new organization
+        org_resp = client.post(
+            "/v1/organizations/",
+            headers=admin_headers,
+            json={"name": "Delete Test Org"},
+        )
+        assert org_resp.status_code == 201
+        org_data = org_resp.json()
+        org_id = org_data["id"]
+        raw_key = org_data["api_key"]["raw_key"]
+
+        bearer_headers = {"Authorization": f"Bearer {raw_key}"}
+
+        # Step 2: Create a customer under that org
+        cust_resp = client.post(
+            "/v1/customers/",
+            headers=bearer_headers,
+            json={"external_id": "del-test-cust", "name": "Delete Test Customer"},
+        )
+        assert cust_resp.status_code == 201
+
+        # Step 3: Create a plan under that org
+        plan_resp = client.post(
+            "/v1/plans/",
+            headers=bearer_headers,
+            json={"code": "del_test_plan", "name": "Delete Test Plan", "interval": "monthly"},
+        )
+        assert plan_resp.status_code == 201
+
+        # Step 4: Delete the organization
+        del_resp = client.delete(f"/v1/organizations/{org_id}", headers=admin_headers)
+        assert del_resp.status_code == 204
+
+        # Step 5: Verify the org is gone
+        list_resp = client.get("/v1/organizations/", headers=admin_headers)
+        assert list_resp.status_code == 200
+        org_ids = [o["id"] for o in list_resp.json()]
+        assert org_id not in org_ids
+
+        # Step 6: Verify re-deleting returns 404
+        del2_resp = client.delete(f"/v1/organizations/{org_id}", headers=admin_headers)
+        assert del2_resp.status_code == 404
+    finally:
+        settings.BXB_ADMIN_SECRET = original_secret
