@@ -98,6 +98,26 @@ async def create_organization(
     return org_response
 
 
+@router.delete(
+    "/{org_id}",
+    status_code=204,
+    summary="Delete organization",
+    responses={
+        401: {"description": "Unauthorized"},
+        404: {"description": "Organization not found"},
+    },
+)
+async def delete_organization(
+    org_id: UUID,
+    db: Session = Depends(get_db),
+    _admin: None = Depends(require_admin_secret),
+) -> None:
+    """Hard-delete an organization and all its related records."""
+    repo = OrganizationRepository(db)
+    if not repo.delete_by_organization(org_id):
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+
 @router.get(
     "/current",
     response_model=OrganizationResponse,
