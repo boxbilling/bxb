@@ -4,14 +4,18 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.auth import get_current_organization, require_admin_secret
 from app.core.database import get_db
+from app.core.security import hash_password
 from app.models.api_key import ApiKey
 from app.models.organization import Organization
 from app.repositories.api_key_repository import ApiKeyRepository
+from app.repositories.member_repository import MemberRepository
 from app.repositories.organization_repository import OrganizationRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.api_key import (
     ApiKeyCreate,
     ApiKeyCreateResponse,
@@ -22,16 +26,24 @@ from app.schemas.organization import (
     OrganizationCreate,
     OrganizationResponse,
     OrganizationUpdate,
+    OrgBrandingResponse,
 )
+from app.schemas.user import UserCreate
 from app.services.audit_service import AuditService
 
 router = APIRouter()
+
+
+class _OwnerInfo(BaseModel):
+    user_id: UUID
+    email: str
 
 
 class OrganizationCreateResponse(OrganizationResponse):
     """Organization creation response that includes the initial API key."""
 
     api_key: ApiKeyCreateResponse
+    owner: _OwnerInfo | None = None
 
 
 @router.get(
@@ -95,7 +107,48 @@ async def create_organization(
     org_response = OrganizationResponse.model_validate(org).model_dump()
     org_response["api_key"] = api_key_response
 
+    # Bootstrap first owner user if owner_email is provided
+    if data.owner_email:
+        if not data.owner_password:
+            raise HTTPException(
+                status_code=422,
+                detail="owner_password is required when owner_email is provided",
+            )
+        user_repo = UserRepository(db)
+        pw_hash = hash_password(data.owner_password)
+        user = user_repo.create(
+            UserCreate(
+                email=data.owner_email,
+                name=data.owner_name or data.owner_email,
+                password=data.owner_password,
+            ),
+            password_hash=pw_hash,
+        )
+        member_repo = MemberRepository(db)
+        member_repo.create(
+            org_id=org.id,  # type: ignore[arg-type]
+            user_id=user.id,  # type: ignore[arg-type]
+            role="owner",
+        )
+        org_response["owner"] = {"user_id": user.id, "email": user.email}
+
     return org_response
+
+
+@router.get(
+    "/by-slug/{slug}",
+    response_model=OrgBrandingResponse,
+    summary="Get organization branding by slug",
+)
+async def get_org_by_slug(
+    slug: str,
+    db: Session = Depends(get_db),
+) -> Organization:
+    """Look up an organization by slug and return public branding fields."""
+    org = db.query(Organization).filter(Organization.slug == slug).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return org
 
 
 @router.delete(

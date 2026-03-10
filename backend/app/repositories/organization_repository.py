@@ -95,7 +95,7 @@ class OrganizationRepository:
         return slug
 
     def create(self, data: OrganizationCreate) -> Organization:
-        dump = data.model_dump()
+        dump = data.model_dump(exclude={"owner_email", "owner_name", "owner_password"})
         dump["slug"] = self._generate_unique_slug(data.name)
         org = Organization(**dump)
         self.db.add(org)

@@ -12,6 +12,9 @@ class OrganizationCreate(BaseModel):
     logo_url: str | None = Field(default=None, max_length=2048)
     portal_accent_color: str | None = Field(default=None, max_length=7)
     portal_welcome_message: str | None = Field(default=None, max_length=500)
+    owner_email: str | None = Field(default=None, max_length=255)
+    owner_name: str | None = Field(default=None, max_length=255)
+    owner_password: str | None = Field(default=None, max_length=128)
 
 
 class OrganizationUpdate(BaseModel):
@@ -45,5 +48,14 @@ class PortalBrandingResponse(BaseModel):
     logo_url: str | None
     accent_color: str | None
     welcome_message: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class OrgBrandingResponse(BaseModel):
+    name: str
+    slug: str
+    logo_url: str | None
+    portal_accent_color: str | None
 
     model_config = {"from_attributes": True}

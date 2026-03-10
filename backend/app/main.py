@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.routers import (
     add_ons,
     audit_logs,
+    auth,
     billable_metrics,
     billing_entities,
     commitments,
@@ -74,6 +75,7 @@ OPENAPI_TAGS = [
     {"name": "Usage Alerts", "description": "Configure usage monitoring alerts for subscriptions."},
     {"name": "Portal", "description": "Customer self-service portal endpoints."},
     {"name": "Notifications", "description": "In-app notification management."},
+    {"name": "Auth", "description": "User authentication and session management."},
 ]
 
 def init_sentry() -> None:
@@ -215,6 +217,7 @@ app.include_router(
     prefix="/v1/notifications",
     tags=["Notifications"],
 )
+app.include_router(auth.router, prefix="/v1/auth", tags=["Auth"])
 
 
 @app.get("/")
