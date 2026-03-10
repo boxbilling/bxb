@@ -11,8 +11,8 @@ from app.schemas.api_key import ApiKeyCreate
 
 
 def generate_api_key() -> str:
-    """Generate a random API key with 'bxb_' prefix."""
-    return "bxb_" + secrets.token_hex(32)
+    """Generate a random API key with 'bxb_live_' prefix."""
+    return "bxb_live_" + secrets.token_hex(32)
 
 
 def hash_api_key(raw_key: str) -> str:
