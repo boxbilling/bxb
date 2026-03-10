@@ -22,6 +22,7 @@ from app.routers import (
     fees,
     integrations,
     invoices,
+    members,
     notifications,
     organizations,
     payment_methods,
@@ -76,6 +77,7 @@ OPENAPI_TAGS = [
     {"name": "Portal", "description": "Customer self-service portal endpoints."},
     {"name": "Notifications", "description": "In-app notification management."},
     {"name": "Auth", "description": "User authentication and session management."},
+    {"name": "Members", "description": "Organization member management."},
 ]
 
 def init_sentry() -> None:
@@ -218,6 +220,11 @@ app.include_router(
     tags=["Notifications"],
 )
 app.include_router(auth.router, prefix="/v1/auth", tags=["Auth"])
+app.include_router(
+    members.router,
+    prefix="/v1/organizations/current/members",
+    tags=["Members"],
+)
 
 
 @app.get("/")
