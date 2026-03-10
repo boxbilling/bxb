@@ -35,6 +35,7 @@ from app.models.invoice import Invoice
 from app.models.invoice_settlement import InvoiceSettlement
 from app.models.notification import Notification
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.payment import Payment
 from app.models.payment_method import PaymentMethod
 from app.models.payment_request import PaymentRequest
@@ -223,12 +224,13 @@ class OrganizationRepository:
             BillingEntity,          # 37
             WebhookEndpoint,        # 38
             ApiKey,                 # 39
+            OrganizationMember,     # 40
         ]:
             db.query(model).filter(
                 model.organization_id == org_id  # type: ignore[attr-defined]
             ).delete(synchronize_session=False)
 
-        # 40. Finally delete the organization itself
+        # 41. Finally delete the organization itself
         db.delete(org)
         db.commit()
         return True

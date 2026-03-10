@@ -13,6 +13,8 @@ from app.core import database as db_module
 from app.core.database import Base
 from app.models.billing_entity import BillingEntity  # noqa: F401 — register FK target for Customer
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember  # noqa: F401 — register FK target
+from app.models.user import User  # noqa: F401 — register FK target
 
 # Create an in-memory SQLite engine with StaticPool so all connections
 # share the same database state and there are no file-locking issues.

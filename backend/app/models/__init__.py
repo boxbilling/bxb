@@ -41,6 +41,7 @@ from app.models.invoice import Invoice, InvoiceStatus
 from app.models.invoice_settlement import InvoiceSettlement, SettlementType
 from app.models.notification import Notification
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.payment import Payment, PaymentProvider, PaymentStatus
 from app.models.payment_method import PaymentMethod
 from app.models.payment_request import PaymentRequest
@@ -52,6 +53,7 @@ from app.models.tax import Tax
 from app.models.usage_alert import UsageAlert
 from app.models.usage_alert_trigger import UsageAlertTrigger
 from app.models.usage_threshold import UsageThreshold
+from app.models.user import User
 from app.models.wallet import Wallet, WalletStatus
 from app.models.wallet_transaction import (
     TransactionSource,
@@ -119,6 +121,7 @@ __all__ = [
     "InvoiceStatus",
     "SettlementType",
     "Organization",
+    "OrganizationMember",
     "Payment",
     "PaymentProvider",
     "PaymentMethod",
@@ -133,6 +136,7 @@ __all__ = [
     "SubscriptionStatus",
     "TerminationAction",
     "Tax",
+    "User",
     "UsageAlert",
     "UsageAlertTrigger",
     "UsageThreshold",
