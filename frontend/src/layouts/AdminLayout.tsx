@@ -1,14 +1,23 @@
-import { Outlet } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { Outlet, useNavigate } from 'react-router-dom'
+import { Search, LogOut } from 'lucide-react'
 import { useState, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import NotificationBell from '@/components/NotificationBell'
+import { clearToken } from '@/lib/auth'
+import { setActiveOrganizationId } from '@/lib/api'
 import { CommandPalette } from '@/components/CommandPalette'
 import HeaderBreadcrumb, { BreadcrumbProvider, MobilePageTitle, PageBreadcrumbProvider } from '@/components/HeaderBreadcrumb'
 import Sidebar, { MobileSidebar, navigationGroups, settingsNavItems } from '@/components/Sidebar'
 
 export default function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false)
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    clearToken()
+    setActiveOrganizationId(null)
+    navigate('/login')
+  }
 
   const routeLabels = useMemo(() => {
     const labels: Record<string, string> = {}
@@ -55,6 +64,14 @@ export default function AdminLayout() {
               </kbd>
             </Button>
             <NotificationBell />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              title="Log out"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
           </header>
 
           <main className="flex-1 overflow-y-auto p-4 md:p-6">

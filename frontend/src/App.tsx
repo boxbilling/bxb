@@ -2,8 +2,12 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AdminLayout from './layouts/AdminLayout'
 import PortalLayout from './layouts/PortalLayout'
+import AuthGuard from './components/AuthGuard'
 
 import { Spinner } from './components/ui/spinner'
+
+// Auth pages - lazy loaded
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'))
 
 // Admin pages - lazy loaded
 const DashboardPage = lazy(() => import('./pages/admin/DashboardPage'))
@@ -105,8 +109,12 @@ function App() {
   return (
     <Suspense fallback={<PageFallback />}>
       <Routes>
+        {/* Auth */}
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login/:slug" element={<LoginPage />} />
+
         {/* Admin Dashboard */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route path="/admin" element={<AuthGuard><AdminLayout /></AuthGuard>}>
           <Route index element={<DashboardPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="customers/:id" element={<CustomerDetailPage />} />
@@ -187,11 +195,11 @@ function App() {
           <Route path="profile" element={<PortalProfilePage />} />
         </Route>
 
-        {/* Redirect root to admin */}
-        <Route path="/" element={<Navigate to="/admin" replace />} />
+        {/* Redirect root to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* Catch all - redirect to admin */}
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        {/* Catch all - redirect to login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
   )

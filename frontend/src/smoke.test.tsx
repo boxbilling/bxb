@@ -16,6 +16,17 @@ beforeAll(() => {
   }
 })
 
+// Mock auth module so AuthGuard allows access
+vi.mock('@/lib/auth', () => ({
+  getToken: vi.fn().mockReturnValue('mock.token.value'),
+  setToken: vi.fn(),
+  clearToken: vi.fn(),
+  parseToken: vi.fn().mockReturnValue({ sub: 'u1', org: 'o1', role: 'owner', exp: Math.floor(Date.now() / 1000) + 3600 }),
+  isTokenExpired: vi.fn().mockReturnValue(false),
+  isAuthenticated: vi.fn().mockReturnValue(true),
+  getCurrentAuth: vi.fn().mockReturnValue({ userId: 'u1', orgId: 'o1', role: 'owner' }),
+}))
+
 // Mock the API module so components don't make real HTTP calls
 vi.mock('@/lib/api', () => ({
   organizationsApi: {
@@ -46,6 +57,12 @@ vi.mock('@/lib/api', () => ({
     getSubscriptionMetrics: vi.fn().mockResolvedValue({}),
     getUsageMetrics: vi.fn().mockResolvedValue({}),
     getRecentActivity: vi.fn().mockResolvedValue([]),
+  },
+  authApi: {
+    login: vi.fn().mockResolvedValue({ access_token: 'tok', user: { id: 'u1' }, organization: { id: 'o1' }, role: 'owner' }),
+    logout: vi.fn().mockResolvedValue({ message: 'ok' }),
+    me: vi.fn().mockResolvedValue({ user: { id: 'u1' }, organization: { id: 'o1' }, role: 'owner' }),
+    getOrgBySlug: vi.fn().mockResolvedValue({ name: 'Acme', slug: 'acme', logo_url: null, portal_accent_color: null }),
   },
   getActiveOrganizationId: vi.fn().mockReturnValue('org-1'),
   setActiveOrganizationId: vi.fn(),

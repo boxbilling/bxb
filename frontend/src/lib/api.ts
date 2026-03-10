@@ -1,6 +1,7 @@
 // API client for bxb billing platform
 // This file is the single source of truth for all API types.
 import type { components } from '@/lib/schema'
+import { getToken } from '@/lib/auth'
 
 // --- Customers ---
 export type Customer = components['schemas']['CustomerResponse']
@@ -496,9 +497,14 @@ async function request<T>(
     'Content-Type': 'application/json',
   }
 
-  const orgId = getActiveOrganizationId()
-  if (orgId) {
-    headers['X-Organization-Id'] = orgId
+  const token = getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  } else {
+    const orgId = getActiveOrganizationId()
+    if (orgId) {
+      headers['X-Organization-Id'] = orgId
+    }
   }
 
   const response = await fetch(url, {
@@ -536,9 +542,14 @@ async function requestWithCount<T>(
     'Content-Type': 'application/json',
   }
 
-  const orgId = getActiveOrganizationId()
-  if (orgId) {
-    headers['X-Organization-Id'] = orgId
+  const token = getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  } else {
+    const orgId = getActiveOrganizationId()
+    if (orgId) {
+      headers['X-Organization-Id'] = orgId
+    }
   }
 
   const response = await fetch(url, {
@@ -569,9 +580,14 @@ async function requestBlob(
     'Content-Type': 'application/json',
   }
 
-  const orgId = getActiveOrganizationId()
-  if (orgId) {
-    headers['X-Organization-Id'] = orgId
+  const token = getToken()
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  } else {
+    const orgId = getActiveOrganizationId()
+    if (orgId) {
+      headers['X-Organization-Id'] = orgId
+    }
   }
 
   const response = await fetch(url, {
@@ -1726,6 +1742,35 @@ export const notificationsApi = {
     request<NotificationResponse>(`/v1/notifications/${id}/read`, { method: 'POST' }),
   markAllAsRead: () =>
     request<NotificationCountResponse>('/v1/notifications/read_all', { method: 'POST' }),
+}
+
+// Auth API
+export const authApi = {
+  login: (data: { email: string; password: string; org_slug?: string }) =>
+    request<{
+      access_token: string
+      user: { id: string; email: string; name: string }
+      organization: { id: string; name: string; slug: string }
+      role: string
+    }>('/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  logout: () =>
+    request<{ message: string }>('/v1/auth/logout', { method: 'POST' }),
+
+  me: () =>
+    request<{
+      user: { id: string; email: string; name: string; is_active: boolean }
+      organization: { id: string; name: string; slug: string }
+      role: string
+    }>('/v1/auth/me'),
+
+  getOrgBySlug: (slug: string) =>
+    request<{ name: string; slug: string; logo_url: string | null; portal_accent_color: string | null }>(
+      `/v1/organizations/by-slug/${slug}`,
+    ),
 }
 
 export { ApiError }
