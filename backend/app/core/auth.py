@@ -1,4 +1,5 @@
 import secrets
+from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -8,8 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.jwt import decode_access_token
 from app.models.customer import DEFAULT_ORGANIZATION_ID
+from app.models.organization_member import OrganizationMember
+from app.models.user import User
 from app.repositories.api_key_repository import ApiKeyRepository, hash_api_key
+from app.repositories.member_repository import MemberRepository
+from app.repositories.user_repository import UserRepository
 from app.services.portal_service import PortalService
 
 
@@ -81,3 +87,62 @@ def get_portal_customer(token: str = Query(...)) -> tuple[UUID, UUID]:
         raise HTTPException(status_code=401, detail="Portal token has expired") from None
     except (jwt.InvalidTokenError, KeyError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid portal token") from None
+
+
+def get_current_user(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> tuple[User, OrganizationMember]:
+    """Authenticate a user via JWT Bearer token and return (user, membership)."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+
+    token = auth_header[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Token is required")
+
+    # If token starts with bxb_live_ prefix, it's an API key, not a JWT
+    if token.startswith("bxb_live_"):
+        raise HTTPException(status_code=401, detail="API keys cannot be used for user auth")
+
+    try:
+        payload = decode_access_token(token)
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired") from None
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token") from None
+
+    try:
+        user_id = UUID(payload["sub"])
+        org_id = UUID(payload["org"])
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=401, detail="Invalid token claims") from None
+
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_id(user_id)
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found or inactive")
+
+    member_repo = MemberRepository(db)
+    membership = member_repo.get_by_org_and_user(org_id, user_id)
+    if not membership:
+        raise HTTPException(status_code=401, detail="Not a member of this organization")
+
+    return (user, membership)
+
+
+def require_role(
+    *roles: str,
+) -> Callable[..., tuple[User, OrganizationMember]]:
+    """Dependency factory that checks the authenticated user has one of the allowed roles."""
+
+    def _dependency(
+        current: tuple[User, OrganizationMember] = Depends(get_current_user),
+    ) -> tuple[User, OrganizationMember]:
+        _user, membership = current
+        if membership.role not in roles:
+            raise HTTPException(status_code=403, detail="Insufficient permissions")
+        return current
+
+    return _dependency
