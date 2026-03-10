@@ -59,24 +59,33 @@ def get_current_organization(
     if not raw_key:
         raise HTTPException(status_code=401, detail="API key is required")
 
-    key_hash = hash_api_key(raw_key)
-    repo = ApiKeyRepository(db)
-    api_key = repo.get_by_hash(key_hash)
+    # API keys use the bxb_live_ prefix — route to API key flow
+    if raw_key.startswith("bxb_live_"):
+        key_hash = hash_api_key(raw_key)
+        repo = ApiKeyRepository(db)
+        api_key = repo.get_by_hash(key_hash)
 
-    if not api_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+        if not api_key:
+            raise HTTPException(status_code=401, detail="Invalid API key")
 
-    if api_key.status == "revoked":
-        raise HTTPException(status_code=401, detail="API key has been revoked")
+        if api_key.status == "revoked":
+            raise HTTPException(status_code=401, detail="API key has been revoked")
 
-    if api_key.expires_at and api_key.expires_at.replace(tzinfo=None) < datetime.now(UTC).replace(
-        tzinfo=None
-    ):
-        raise HTTPException(status_code=401, detail="API key has expired")
+        expires = api_key.expires_at
+        if expires and expires.replace(tzinfo=None) < datetime.now(UTC).replace(tzinfo=None):
+            raise HTTPException(status_code=401, detail="API key has expired")
 
-    repo.update_last_used(api_key, datetime.now(UTC))
+        repo.update_last_used(api_key, datetime.now(UTC))
 
-    return api_key.organization_id  # type: ignore[return-value]
+        return api_key.organization_id  # type: ignore[return-value]
+
+    # Otherwise, try JWT decoding — extract org claim for dashboard users
+    try:
+        payload = decode_access_token(raw_key)
+        return UUID(payload["org"])
+    except (jwt.InvalidTokenError, KeyError, ValueError):
+        # JWT decode failed — fall through to default org
+        return DEFAULT_ORGANIZATION_ID
 
 
 def get_portal_customer(token: str = Query(...)) -> tuple[UUID, UUID]:
