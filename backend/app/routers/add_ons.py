@@ -57,7 +57,7 @@ async def create_add_on(
         data={
             "code": add_on.code,
             "name": add_on.name,
-            "amount_cents": add_on.amount_cents,
+            "amount_cents": str(add_on.amount_cents) if add_on.amount_cents is not None else None,
             "amount_currency": add_on.amount_currency,
         },
     )
@@ -242,7 +242,7 @@ async def delete_add_on(
         data={
             "code": add_on.code,
             "name": add_on.name,
-            "amount_cents": add_on.amount_cents,
+            "amount_cents": str(add_on.amount_cents) if add_on.amount_cents is not None else None,
             "amount_currency": add_on.amount_currency,
         },
     )
@@ -295,7 +295,7 @@ async def apply_add_on(
         data={
             "customer_id": str(data.customer_id),
             "add_on_code": data.add_on_code,
-            "amount_cents": applied.amount_cents,
+            "amount_cents": str(applied.amount_cents) if applied.amount_cents is not None else None,
             "amount_currency": applied.amount_currency,
         },
     )

@@ -58,7 +58,7 @@ async def create_coupon(
             "code": coupon.code,
             "name": coupon.name,
             "coupon_type": coupon.coupon_type,
-            "amount_cents": coupon.amount_cents,
+            "amount_cents": str(coupon.amount_cents) if coupon.amount_cents is not None else None,
             "percentage_rate": str(coupon.percentage_rate) if coupon.percentage_rate else None,
         },
     )

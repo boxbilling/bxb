@@ -179,7 +179,7 @@ async def create_plan(
             "code": plan.code,
             "name": plan.name,
             "interval": plan.interval,
-            "amount_cents": plan.amount_cents,
+            "amount_cents": str(plan.amount_cents) if plan.amount_cents is not None else None,
         },
     )
 
@@ -360,7 +360,7 @@ async def delete_plan(
             "code": plan.code,
             "name": plan.name,
             "interval": plan.interval,
-            "amount_cents": plan.amount_cents,
+            "amount_cents": str(plan.amount_cents) if plan.amount_cents is not None else None,
         },
     )
 

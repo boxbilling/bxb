@@ -84,7 +84,7 @@ async def create_commitment(
         data={
             "plan_code": plan_code,
             "commitment_type": commitment.commitment_type,
-            "amount_cents": commitment.amount_cents,
+            "amount_cents": str(commitment.amount_cents) if commitment.amount_cents is not None else None,
         },
     )
 
@@ -171,7 +171,7 @@ async def delete_commitment(
         actor_type="api_key",
         data={
             "commitment_type": commitment.commitment_type,
-            "amount_cents": commitment.amount_cents,
+            "amount_cents": str(commitment.amount_cents) if commitment.amount_cents is not None else None,
             "plan_id": str(commitment.plan_id),
         },
     )
