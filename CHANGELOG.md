@@ -1,3 +1,20 @@
+## [0.7.0] - 2026-03-16
+
+- Ensure `amount_cents` is consistently serialized as a string across plans, commitments, add-ons, and coupons APIs.
+- BXB: Add integration smoke test and JWT fallback in get_current_organization
+- Fix `server_default` syntax in `is_active` column definition in migration script
+- BXB: Add frontend login pages, auth guard, and JWT-based API client
+- BXB: Add member management CRUD router with JWT auth and role-based access
+- BXB: Add auth router, org-by-slug endpoint, and org creation with owner bootstrap
+- BXB: Add JWT auth core — token signing, validation, password hashing, and FastAPI dependencies
+- BXB: Add User and OrganizationMember models, schemas, repositories, and migration
+- BXB: update API key prefix from `bxb_` to `bxb_live_` in `generate_api_key` function
+- BXB: add `BXB_CORS_ORIGINS_REGEX` for regex-based CORS origin matching and update middleware configuration
+- Update `openapi.json` to expand dashboard API with additional endpoints and response schemas.
+- BXB: Add smoke test for organization deletion endpoint
+- BXB: Add hard-delete organization endpoint with dependency-ordered deletion
+- Add slug field to organizations
+
 ## [0.6.0] - 2026-03-09
 
 - Remove unused `slug` field from organization actor data payload
